@@ -57,12 +57,6 @@ class SimpleWindow(QMainWindow):
         tabs.addTab(load_tab, "Load")
         load_layout = QVBoxLayout(load_tab)
         load_layout.addWidget(QLabel("This is the 'Load' tab."))
-
-        # Add a theme toggle button
-        theme_button = QPushButton("Toggle Dark Mode")
-        theme_button.clicked.connect(self.toggle_theme)
-        load_layout.addWidget(theme_button)
-
         load_layout.addStretch() # Pushes the content to the top
 
         # --- Create the "Items" tab ---
@@ -78,6 +72,17 @@ class SimpleWindow(QMainWindow):
         button = QPushButton("Click Me!")
         button.clicked.connect(self.on_button_click) # Connect the click event to our method
         items_layout.addWidget(button)
+
+        # --- Create the "Settings" tab ---
+        settings_tab = QWidget()
+        tabs.addTab(settings_tab, "Settings")
+        settings_layout = QVBoxLayout(settings_tab)
+
+        # Add a theme toggle button
+        theme_button = QPushButton("Toggle Dark Mode")
+        theme_button.clicked.connect(self.toggle_theme)
+        settings_layout.addWidget(theme_button)
+        settings_layout.addStretch() # Pushes the content to the top
 
     def on_button_click(self):
         self.counter += 1
