@@ -1,8 +1,10 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit
-from PySide6.QtCore import Signal, Qt
+import requests
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView
+from PySide6.QtCore import Signal, Qt, QObject, QThread
 from typing import List
 from PySide6.QtGui import QMouseEvent
+
 
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
@@ -74,6 +76,32 @@ LIGHT_STYLE = """
     }
 """
 
+class LobbyFetcher(QObject):
+    """Worker object to fetch lobby data in a separate thread."""
+    finished = Signal(list)
+    error = Signal(str)
+
+    def run(self):
+        """Fetches lobby data from the API."""
+        try:
+            response = requests.get("https://api.wc3stats.com/gamelist", timeout=10)
+            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            data = response.json()
+            if data.get("status") == "OK":
+                self.finished.emit(data.get("body", []))
+            else:
+                self.error.emit("API returned an unexpected status.")
+        except requests.exceptions.JSONDecodeError:
+            self.error.emit("Failed to parse server response.")
+        except requests.exceptions.RequestException as e:
+            self.error.emit(f"Network error: {e}")
+
+
+class AlignedTableWidgetItem(QTableWidgetItem):
+    def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
+        super().__init__(text)
+        self.setTextAlignment(alignment)
+
 class SimpleWindow(QMainWindow):
     """
     This is our main window. It inherits from QMainWindow.
@@ -87,6 +115,8 @@ class SimpleWindow(QMainWindow):
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
         self.old_pos = None
+        self.all_lobbies = [] # To store the full list of lobbies from the API
+        self.thread = None
 
         # Main layout for the window
         main_layout = QVBoxLayout()
@@ -183,18 +213,31 @@ class SimpleWindow(QMainWindow):
         lobbies_tab_content = QWidget()
         lobbies_layout = QVBoxLayout(lobbies_tab_content)
 
-        search_bar_layout = QHBoxLayout()
-        lobby_search_bar = QLineEdit()
-        lobby_search_bar.setPlaceholderText("Search by name or map…")
-        search_bar_layout.addWidget(lobby_search_bar)
+        # --- Search and Refresh Controls ---
+        controls_layout = QHBoxLayout()
+        self.lobby_search_bar = QLineEdit()
+        self.lobby_search_bar.setPlaceholderText("Search by name or map…")
+        self.lobby_search_bar.textChanged.connect(self.filter_lobbies)
+        controls_layout.addWidget(self.lobby_search_bar)
 
         refresh_button = QPushButton("Refresh")
         refresh_button.clicked.connect(self.refresh_lobbies)
-        search_bar_layout.addWidget(refresh_button)
+        controls_layout.addWidget(refresh_button)
 
-        lobbies_layout.addLayout(search_bar_layout)
+        lobbies_layout.addLayout(controls_layout)
 
-        lobbies_layout.addStretch()
+        # --- Lobbies Table ---
+        self.lobbies_table = QTableWidget()
+        self.lobbies_table.setColumnCount(3)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players"])
+        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Make table read-only
+        self.lobbies_table.verticalHeader().setVisible(False) # Hide row numbers
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Players column
+
+        lobbies_layout.addWidget(self.lobbies_table)
+
+
         self.stacked_widget.addWidget(lobbies_tab_content)
 
         # --- Create the "Settings" tab ---
@@ -223,6 +266,7 @@ class SimpleWindow(QMainWindow):
 
         # Apply the initial theme and set button text
         self.update_theme()
+        self.refresh_lobbies() # Initial data load
 
     def mousePressEvent(self, event: QMouseEvent):
         """Captures the initial mouse position for window dragging."""
@@ -283,9 +327,62 @@ class SimpleWindow(QMainWindow):
 
     def refresh_lobbies(self):
         """Placeholder method to refresh lobby data."""
-        # This is where you would add the logic to fetch and display lobby data.
-        print("Refreshing lobbies...")
+        self.lobbies_table.setRowCount(0) # Clear table
+        self.lobbies_table.setRowCount(1)
+        loading_item = QTableWidgetItem("Fetching lobby data...")
+        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lobbies_table.setItem(0, 0, loading_item)
+        self.lobbies_table.setSpan(0, 0, 1, 3) # Span across all columns
 
+        # Setup and start the worker thread
+        self.thread = QThread()
+        self.worker = LobbyFetcher()
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.on_lobbies_fetched)
+        self.worker.error.connect(self.on_lobbies_fetch_error)
+        
+        # Clean up the thread when done
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.error.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.error.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+
+        self.thread.start()
+
+    def on_lobbies_fetched(self, lobbies: list):
+        """Slot to handle successfully fetched lobby data."""
+        self.all_lobbies = lobbies
+        self.filter_lobbies(self.lobby_search_bar.text())
+
+    def on_lobbies_fetch_error(self, error_message: str):
+        """Slot to handle errors during lobby data fetching."""
+        self.lobbies_table.setRowCount(1)
+        self.lobbies_table.setSpan(0, 0, 1, 3)
+        error_item = QTableWidgetItem(f"Error: {error_message}")
+        error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lobbies_table.setItem(0, 0, error_item)
+
+    def filter_lobbies(self, query: str):
+        """Filters and displays lobbies based on the search query."""
+        self.lobbies_table.setRowCount(0) # Clear table
+        self.lobbies_table.setSortingEnabled(False)
+        
+        query = query.lower()
+        filtered_lobbies = [
+            lobby for lobby in self.all_lobbies 
+            if query in lobby.get('name', '').lower() or query in lobby.get('map', '').lower()
+        ]
+
+        self.lobbies_table.setRowCount(len(filtered_lobbies))
+        for row, lobby in enumerate(filtered_lobbies):
+            self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
+            self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
+            players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
+            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+        self.lobbies_table.setSortingEnabled(True)
 
 class CustomTabBar(QWidget):
     """
