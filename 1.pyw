@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit
 from PySide6.QtCore import Signal, Qt
 from typing import List
 from PySide6.QtGui import QMouseEvent
@@ -182,7 +182,11 @@ class SimpleWindow(QMainWindow):
         # --- Create the "Lobbies" tab ---
         lobbies_tab_content = QWidget()
         lobbies_layout = QVBoxLayout(lobbies_tab_content)
-        lobbies_layout.addWidget(QLabel("This is the 'Lobbies' tab."))
+
+        lobby_search_bar = QLineEdit()
+        lobby_search_bar.setPlaceholderText("Search by name or map…")
+        lobbies_layout.addWidget(lobby_search_bar)
+
         lobbies_layout.addStretch()
         self.stacked_widget.addWidget(lobbies_tab_content)
 
