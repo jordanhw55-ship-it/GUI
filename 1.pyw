@@ -7,16 +7,16 @@ from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #1B1B1B;
-        color: #ECEFF4; /* nord6 */
+        background-color: #1c1c1e;
+        color: #f0f0f0;
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #1B1B1B;
+        background-color: #1c1c1e;
     }
     #CustomTitleBar {
-        background-color: #3B4252; /* nord1 */
+        background-color: #2a2a2c;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
@@ -31,10 +31,10 @@ DARK_STYLE = """
         background-color: #4C566A; /* nord3 */
     }
     QPushButton {
-        background-color: #434C5E; /* nord3 */
-        border: 1px solid #4C566A;
+        background-color: #ff69b4;
+        border: 1px solid #444;
         padding: 5px;
-        border-radius: 4px;
+        border-radius: 6px;
     }
 """
 
@@ -309,29 +309,29 @@ class CustomTabBar(QWidget):
         if dark_mode:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #F4A3F3;
-                    border: 1px solid #E094DF;
+                    background-color: #2a2a2c;
+                    border: 1px solid #ff69b4;
                     padding: 8px;
-                    border-radius: 4px;
-                    color: #2E3440; /* nord0 */
+                    border-radius: 6px;
+                    color: #f0f0f0;
                 }
                 QPushButton:hover {
-                    background-color: #F6B3F5;
+                    background-color: #ff85c1;
                 }
                 QPushButton:pressed {
-                    background-color: #E094DF;
+                    background-color: #ff85c1;
                 }
                 QPushButton:checked {
-                    background-color: #D685D4; /* Darker accent for selection */
-                    color: #2E3440;
-                    border-color: #D685D4;
+                    background-color: #ff69b4;
+                    color: white;
+                    border-color: #ff69b4;
                 }
             """)
         else:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #F4A3F3;
-                    border: 1px solid #E094DF;
+                    background-color: #F4A3F3; /* This is from a previous request, keeping it for light mode */
+                    border: 1px solid #E094DF; /* This is from a previous request, keeping it for light mode */
                     padding: 8px;
                     border-radius: 4px;
                     color: #2E3440; /* nord0 */
