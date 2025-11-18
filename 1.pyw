@@ -1,8 +1,8 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout
 from PySide6.QtCore import Signal
-DARK_STYLE = """
 from typing import List
+DARK_STYLE = """
     QWidget {
         background-color: #2d2d2d;
         color: #d0d0d0;
@@ -145,7 +145,7 @@ class CustomTabBar(QWidget):
     """
     tab_selected = Signal(int)
 
-    def __init__(self, tab_names: List[str], tabs_per_row: int = 4):
+    def __init__(self, tab_names: list[str], tabs_per_row: int = 4):
         super().__init__()
         self.tab_names = tab_names
         self.tabs_per_row = tabs_per_row
