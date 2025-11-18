@@ -119,7 +119,7 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Hellfire Helper")
         # Make the window frameless to implement a custom title bar
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(600, 580)
+        self.resize(700, 800)
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
         self.old_pos = None
