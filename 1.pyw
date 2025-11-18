@@ -8,6 +8,7 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simple GUI with Tabs")
+        self.resize(600, 400)  # Set the initial size of the window
         self.counter = 0
 
         # Create a QTabWidget to hold our tabs
