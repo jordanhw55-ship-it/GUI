@@ -39,6 +39,12 @@ DARK_STYLE = """
         padding: 5px;
         border-radius: 6px;
     }
+    QHeaderView::section {
+        background-color: #2A2A2C;
+        padding: 4px;
+        border: 1px solid #444444;
+        color: #F0F0F0;
+    }
 """
 
 LIGHT_STYLE = """
