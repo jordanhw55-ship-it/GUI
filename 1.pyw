@@ -18,6 +18,10 @@ DARK_STYLE = """
     #CustomTitleBar {
         background-color: #3B4252; /* nord1 */
     }
+    #CustomTitleBar QLabel {
+        background-color: transparent;
+        color: #ECEFF4;
+    }
     #CustomTitleBar QPushButton {
         background-color: transparent;
         border: none;
@@ -47,6 +51,10 @@ LIGHT_STYLE = """
     }
     #CustomTitleBar {
         background-color: #D8DEE9; /* nord5 */
+    }
+    #CustomTitleBar QLabel {
+        background-color: transparent;
+        color: #2E3440;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
