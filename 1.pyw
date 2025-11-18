@@ -7,32 +7,32 @@ from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #1C1C1E;
-        color: #CCCCCC;
+        background-color: #2C2C2C;
+        color: #FFFFFF;
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #1c1c1e;
+        background-color: #2C2C2C;
     }
     #CustomTitleBar {
         background-color: #2A2A2C;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
-        color: #CCCCCC;
+        color: #FFFFFF;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
         border: none;
-        color: #CCCCCC;
+        color: #FFFFFF;
     }
     #CustomTitleBar QPushButton:hover {
-        background-color: #FFA64D;
+        background-color: #FFDAB9;
     }
     QPushButton {
-        background-color: #ff7f50;
-        border: 1px solid #444444;
+        background-color: #FFB07C;
+        border: 1px solid #444;
         padding: 5px;
         border-radius: 6px;
     }
@@ -310,21 +310,21 @@ class CustomTabBar(QWidget):
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
                     background-color: #2A2A2C;
-                    border: 1px solid #FF7F50;
+                    border: 1px solid #FFDAB9;
                     padding: 8px;
                     border-radius: 6px;
-                    color: #CCCCCC;
+                    color: #FFFFFF;
                 }
                 QPushButton:hover {
-                    background-color: #FFA64D;
+                    background-color: #FFDAB9;
                 }
                 QPushButton:pressed {
-                    background-color: #FFA64D;
+                    background-color: #FFDAB9;
                 }
                 QPushButton:checked {
-                    background-color: #FF7F50;
+                    background-color: #FFB07C;
                     color: white;
-                    border-color: #FF7F50;
+                    border-color: #FFB07C;
                 }
             """)
         else:
