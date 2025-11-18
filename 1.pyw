@@ -1,9 +1,9 @@
 import sys
 import requests
 import json
-import os
+import os # QTimer is already imported from PySide6.QtCore
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
-from PySide6.QtCore import Signal, Qt, QObject, QThread
+from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor, QCloseEvent
 
@@ -305,6 +305,11 @@ class SimpleWindow(QMainWindow):
         self.update_theme()
         self.refresh_lobbies() # Initial data load
 
+        # --- Auto-refresh Timer for Lobbies ---
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.setInterval(30000)  # 30 seconds
+        self.refresh_timer.timeout.connect(self.refresh_lobbies)
+        self.refresh_timer.start()
     def mousePressEvent(self, event: QMouseEvent):
         """Captures the initial mouse position for window dragging."""
         if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
