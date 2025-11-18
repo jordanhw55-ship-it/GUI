@@ -25,10 +25,10 @@ DARK_STYLE = """
     #CustomTitleBar QPushButton {
         background-color: transparent;
         border: none;
-        color: #ECEFF4;
+        color: #f0f0f0;
     }
     #CustomTitleBar QPushButton:hover {
-        background-color: #4C566A; /* nord3 */
+        background-color: #444444;
     }
     QPushButton {
         background-color: #ff69b4;
@@ -310,21 +310,21 @@ class CustomTabBar(QWidget):
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
                     background-color: #2a2a2c;
-                    border: 1px solid #ff69b4;
+                    border: 1px solid #ff0000;
                     padding: 8px;
                     border-radius: 6px;
                     color: #f0f0f0;
                 }
                 QPushButton:hover {
-                    background-color: #ff85c1;
+                    background-color: #ff4d4d;
                 }
                 QPushButton:pressed {
-                    background-color: #ff85c1;
+                    background-color: #ff4d4d;
                 }
                 QPushButton:checked {
-                    background-color: #ff69b4;
+                    background-color: #ff0000;
                     color: white;
-                    border-color: #ff69b4;
+                    border-color: #ff0000;
                 }
             """)
         else:
