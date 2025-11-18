@@ -104,6 +104,7 @@ class SimpleWindow(QMainWindow):
         # Left spacer to balance the buttons on the right
         left_spacer = QWidget()
         left_spacer.setFixedSize(60, 30)
+        left_spacer.setStyleSheet("background-color: transparent;")
 
         title_label = QLabel("Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
