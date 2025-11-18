@@ -3,43 +3,64 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QV
 from PySide6.QtCore import Signal, Qt
 from typing import List
 from PySide6.QtGui import QMouseEvent
+
 DARK_STYLE = """
+    /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #2d2d2d;
-        color: #d0d0d0;
-        font-family: Arial;
+        background-color: #2E3440; /* nord0 */
+        color: #ECEFF4; /* nord6 */
+        font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #2d2d2d;
+        background-color: #2E3440;
     }
-    /* Style for our custom title bar */
     #CustomTitleBar {
-        background-color: #DB7093; /* PaleVioletRed */
-        color: black;
+        background-color: #3B4252; /* nord1 */
     }
-    QPushButton:hover {
-        background-color: #5a5a5a;
+    #CustomTitleBar QPushButton {
+        background-color: transparent;
+        border: none;
+        color: #ECEFF4;
     }
-    QPushButton:pressed {
-        background-color: #3a3a3a;
+    #CustomTitleBar QPushButton:hover {
+        background-color: #4C566A; /* nord3 */
+    }
+    QPushButton {
+        background-color: #434C5E; /* nord3 */
+        border: 1px solid #4C566A;
+        padding: 5px;
+        border-radius: 4px;
     }
 """
 
 LIGHT_STYLE = """
+    /* Clean Light Theme */
     QWidget {
-        background-color: #f0f0f0;
-        color: #000000;
-        font-family: Arial;
+        background-color: #ECEFF4; /* nord6 */
+        color: #2E3440; /* nord0 */
+        font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #f0f0f0;
+        background-color: #ECEFF4;
     }
-    /* Style for our custom title bar */
     #CustomTitleBar {
-        background-color: #DB7093; /* PaleVioletRed */
-        color: black;
+        background-color: #D8DEE9; /* nord5 */
+    }
+    #CustomTitleBar QPushButton {
+        background-color: transparent;
+        border: none;
+        color: #2E3440;
+    }
+    #CustomTitleBar QPushButton:hover {
+        background-color: #E5E9F0; /* nord6, slightly lighter */
+    }
+    QPushButton {
+        background-color: #D8DEE9; /* nord5 */
+        border: 1px solid #C5C9D1;
+        padding: 5px;
+        border-radius: 4px;
     }
 """
 
@@ -77,10 +98,12 @@ class SimpleWindow(QMainWindow):
         title_bar_layout.addStretch()
 
         min_button = QPushButton("_")
+        min_button.setObjectName("TitleBarButton")
         min_button.setFixedSize(30, 30)
         min_button.clicked.connect(self.showMinimized)
 
         close_button = QPushButton("X")
+        close_button.setObjectName("TitleBarButton")
         close_button.setFixedSize(30, 30)
         close_button.clicked.connect(self.close)
 
@@ -277,42 +300,43 @@ class CustomTabBar(QWidget):
         # including the :checked state, overriding general QPushButton styles if necessary.
         if dark_mode:
             self.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFC0CB; /* Pink */
-                    border: 1px solid #E6A8B8; /* Darker pink border */
+                QPushButton { /* Tab buttons */
+                    background-color: #3B4252; /* nord1 */
+                    border: 1px solid #4C566A; /* nord3 */
                     padding: 8px;
                     border-radius: 4px;
-                    color: #000000; /* Black text */
+                    color: #ECEFF4; /* nord6 */
                 }
                 QPushButton:hover {
-                    background-color: #FFB6C1; /* LightPink on hover */
+                    background-color: #434C5E; /* nord3 */
                 }
                 QPushButton:pressed {
-                    background-color: #DB7093; /* PaleVioletRed when pressed */
+                    background-color: #4C566A;
                 }
                 QPushButton:checked {
-                    background-color: #F0A1B0; /* Darker pink for selected tab */
-                    border-color: #D8909F;
+                    background-color: #88C0D0; /* nord8 - Accent */
+                    color: #2E3440; /* nord0 */
+                    border-color: #88C0D0;
                 }
             """)
         else:
             self.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFC0CB; /* Pink */
-                    border: 1px solid #E6A8B8; /* Darker pink border */
+                QPushButton { /* Tab buttons */
+                    background-color: #E5E9F0; /* nord6 */
+                    border: 1px solid #D8DEE9; /* nord5 */
                     padding: 8px;
                     border-radius: 4px;
-                    color: #000000; /* Black text */
+                    color: #2E3440; /* nord0 */
                 }
                 QPushButton:hover {
-                    background-color: #FFB6C1; /* LightPink on hover */
+                    background-color: #D8DEE9; /* nord5 */
                 }
                 QPushButton:pressed {
-                    background-color: #DB7093; /* PaleVioletRed when pressed */
+                    background-color: #C5C9D1;
                 }
                 QPushButton:checked {
-                    background-color: #F0A1B0; /* Darker pink for selected tab */
-                    border-color: #D8909F;
+                    background-color: #88C0D0; /* nord8 - Accent */
+                    border-color: #88C0D0;
                 }
             """)
 
