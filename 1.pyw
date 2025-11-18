@@ -83,7 +83,7 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Hellfire Helper")
         # Make the window frameless to implement a custom title bar
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(600, 550)
+        self.resize(600, 580)
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
         self.old_pos = None
@@ -263,7 +263,7 @@ class SimpleWindow(QMainWindow):
 
     def reset_state(self):
         """Resets the application to its initial state."""
-        self.resize(600, 550)
+        self.resize(600, 580)
         self.counter = 0
         self.label.setText("Hello! Click the button.")
         self.dark_mode = True
