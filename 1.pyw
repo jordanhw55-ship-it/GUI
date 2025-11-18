@@ -108,7 +108,7 @@ class SimpleWindow(QMainWindow):
         left_spacer.setFixedSize(60, 30)
         left_spacer.setStyleSheet("background-color: transparent;")
 
-        title_label = QLabel("Hellfire Helper")
+        title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         min_button = QPushButton("_")
