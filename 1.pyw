@@ -72,7 +72,7 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simple GUI with Tabs")
-        self.resize(900, 400)  # Set the initial size of the window
+        self.resize(0, 400)  # Set the initial size of the window
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
 
