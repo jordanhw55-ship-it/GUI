@@ -112,6 +112,9 @@ class SimpleWindow(QMainWindow):
         settings_layout.addWidget(theme_button)
         settings_layout.addStretch() # Pushes the content to the top
 
+        # Apply the initial theme
+        self.setStyleSheet(LIGHT_STYLE)
+
     def on_button_click(self):
         self.counter += 1
         self.label.setText(f"Button has been clicked {self.counter} times.")
