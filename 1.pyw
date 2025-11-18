@@ -431,12 +431,23 @@ class SimpleWindow(QMainWindow):
             if query in lobby.get('name', '').lower() or query in lobby.get('map', '').lower()
         ]
 
-        self.lobbies_table.setRowCount(len(filtered_lobbies))
-        for row, lobby in enumerate(filtered_lobbies):
+        # Sort the lobbies to show watched ones first
+        def is_watched(lobby):
+            name = lobby.get('name', '').lower()
+            map_name = lobby.get('map', '').lower()
+            for keyword in self.watchlist:
+                if keyword in name or keyword in map_name:
+                    return True
+            return False
+
+        # Sort by watched status (descending) so True comes before False
+        sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
+
+        self.lobbies_table.setRowCount(len(sorted_lobbies))
+        for row, lobby in enumerate(sorted_lobbies):
             lobby_name = lobby.get('name', '').lower()
             lobby_map = lobby.get('map', '').lower()
             
-            # Check for watchlist match
             is_watched = False
             for keyword in self.watchlist:
                 if keyword in lobby_name or keyword in lobby_map:
