@@ -140,14 +140,14 @@ class SimpleWindow(QMainWindow):
 
         # --- Sound Effect for Notifications ---
         self.notification_sound = QSoundEffect()
-        # You must provide a sound file named 'notification.wav' in the same directory
+        # You must provide a sound file named 'ping.wav' in the same directory
         # or provide a full path to a sound file.
-        sound_path = os.path.join(os.path.dirname(__file__), "notification.wav")
+        sound_path = os.path.join(os.path.dirname(__file__), "ping.wav")
         if os.path.exists(sound_path):
             self.notification_sound.setSource(QUrl.fromLocalFile(sound_path))
             self.notification_sound.setVolume(0.5)
         else:
-            print("Warning: 'notification.wav' not found. Sound notifications will be silent.")
+            print("Warning: 'ping.wav' not found. Sound notifications will be silent.")
 
         # --- Create Custom Title Bar ---
         self.title_bar = QWidget()
