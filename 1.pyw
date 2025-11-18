@@ -7,8 +7,8 @@ from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #1c1c1e;
-        color: #f0f0f0;
+        background-color: #1C1C1E;
+        color: #CCCCCC;
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
@@ -16,19 +16,19 @@ DARK_STYLE = """
         background-color: #1c1c1e;
     }
     #CustomTitleBar {
-        background-color: #2a2a2c;
+        background-color: #2A2A2C;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
-        color: #f0f0f0;
+        color: #CCCCCC;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
         border: none;
-        color: #f0f0f0;
+        color: #CCCCCC;
     }
     #CustomTitleBar QPushButton:hover {
-        background-color: #444444;
+        background-color: #FFA64D;
     }
     QPushButton {
         background-color: #ff7f50;
@@ -309,22 +309,22 @@ class CustomTabBar(QWidget):
         if dark_mode:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #2a2a2c;
-                    border: 1px solid #ff7f50;
+                    background-color: #2A2A2C;
+                    border: 1px solid #FF7F50;
                     padding: 8px;
                     border-radius: 6px;
-                    color: #f0f0f0;
+                    color: #CCCCCC;
                 }
                 QPushButton:hover {
-                    background-color: #ffa64d;
+                    background-color: #FFA64D;
                 }
                 QPushButton:pressed {
-                    background-color: #ffa64d;
+                    background-color: #FFA64D;
                 }
                 QPushButton:checked {
-                    background-color: #ff7f50;
+                    background-color: #FF7F50;
                     color: white;
-                    border-color: #ff7f50;
+                    border-color: #FF7F50;
                 }
             """)
         else:
