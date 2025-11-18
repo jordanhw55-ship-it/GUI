@@ -1,6 +1,42 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QTabWidget
 
+DARK_STYLE = """
+    QWidget {
+        background-color: #2d2d2d;
+        color: #d0d0d0;
+        font-family: Arial;
+        font-size: 12px;
+    }
+    QMainWindow {
+        background-color: #2d2d2d;
+    }
+    QTabWidget::pane {
+        border: 1px solid #444;
+    }
+    QTabBar::tab {
+        background: #2d2d2d;
+        border: 1px solid #444;
+        padding: 8px 20px;
+    }
+    QTabBar::tab:selected {
+        background: #4a4a4a;
+        border-bottom-color: #4a4a4a; /* Same as background */
+    }
+    QPushButton {
+        background-color: #4a4a4a;
+        border: 1px solid #555;
+        padding: 8px;
+        border-radius: 4px;
+    }
+    QPushButton:hover {
+        background-color: #5a5a5a;
+    }
+    QPushButton:pressed {
+        background-color: #3a3a3a;
+    }
+"""
+
 class SimpleWindow(QMainWindow):
     """
     This is our main window. It inherits from QMainWindow.
@@ -10,6 +46,7 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Simple GUI with Tabs")
         self.resize(600, 400)  # Set the initial size of the window
         self.counter = 0
+        self.dark_mode = False
 
         # Create a QTabWidget to hold our tabs
         tabs = QTabWidget()
@@ -20,6 +57,12 @@ class SimpleWindow(QMainWindow):
         tabs.addTab(load_tab, "Load")
         load_layout = QVBoxLayout(load_tab)
         load_layout.addWidget(QLabel("This is the 'Load' tab."))
+
+        # Add a theme toggle button
+        theme_button = QPushButton("Toggle Dark Mode")
+        theme_button.clicked.connect(self.toggle_theme)
+        load_layout.addWidget(theme_button)
+
         load_layout.addStretch() # Pushes the content to the top
 
         # --- Create the "Items" tab ---
@@ -39,6 +82,14 @@ class SimpleWindow(QMainWindow):
     def on_button_click(self):
         self.counter += 1
         self.label.setText(f"Button has been clicked {self.counter} times.")
+
+    def toggle_theme(self):
+        """Toggles between light and dark mode."""
+        self.dark_mode = not self.dark_mode
+        if self.dark_mode:
+            self.setStyleSheet(DARK_STYLE)
+        else:
+            self.setStyleSheet("") # Clear the stylesheet to revert to default
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
