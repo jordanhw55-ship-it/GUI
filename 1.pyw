@@ -223,41 +223,41 @@ class CustomTabBar(QWidget):
         if dark_mode:
             self.setStyleSheet("""
                 QPushButton {
-                    background-color: #4a4a4a;
-                    border: 1px solid #555;
+                    background-color: #FFC0CB; /* Pink */
+                    border: 1px solid #E6A8B8; /* Darker pink border */
                     padding: 8px;
                     border-radius: 4px;
-                    color: #d0d0d0;
+                    color: #000000; /* Black text */
                 }
                 QPushButton:hover {
-                    background-color: #5a5a5a;
+                    background-color: #FFB6C1; /* LightPink on hover */
                 }
                 QPushButton:pressed {
-                    background-color: #3a3a3a;
+                    background-color: #DB7093; /* PaleVioletRed when pressed */
                 }
                 QPushButton:checked {
-                    background-color: #6a6a6a; /* Darker background for selected tab */
-                    border-color: #777;
+                    background-color: #F0A1B0; /* Darker pink for selected tab */
+                    border-color: #D8909F;
                 }
             """)
         else:
             self.setStyleSheet("""
                 QPushButton {
-                    background-color: #f0f0f0;
-                    border: 1px solid #c5c5c5;
+                    background-color: #FFC0CB; /* Pink */
+                    border: 1px solid #E6A8B8; /* Darker pink border */
                     padding: 8px;
                     border-radius: 4px;
-                    color: #000000;
+                    color: #000000; /* Black text */
                 }
                 QPushButton:hover {
-                    background-color: #e0e0e0;
+                    background-color: #FFB6C1; /* LightPink on hover */
                 }
                 QPushButton:pressed {
-                    background-color: #d0d0d0;
+                    background-color: #DB7093; /* PaleVioletRed when pressed */
                 }
                 QPushButton:checked {
-                    background-color: #cccccc; /* Darker background for selected tab */
-                    border-color: #b0b0b0;
+                    background-color: #F0A1B0; /* Darker pink for selected tab */
+                    border-color: #D8909F;
                 }
             """)
 
