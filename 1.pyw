@@ -68,7 +68,7 @@ LIGHT_STYLE = """
         background-color: #D8DEE9; /* nord5 */
         border: 1px solid #C5C9D1;
         padding: 5px;
-        border-radius: 4px;
+        border-radius: 6px;
     }
 """
 
@@ -333,7 +333,7 @@ class CustomTabBar(QWidget):
                     background-color: #F4A3F3; /* This is from a previous request, keeping it for light mode */
                     border: 1px solid #E094DF; /* This is from a previous request, keeping it for light mode */
                     padding: 8px;
-                    border-radius: 4px;
+                    border-radius: 6px;
                     color: #2E3440; /* nord0 */
                 }
                 QPushButton:hover {
