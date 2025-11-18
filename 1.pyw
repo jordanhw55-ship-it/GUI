@@ -1,9 +1,12 @@
 import sys
 import requests
+import json
+import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
-from PySide6.QtCore import Signal, Qt, QObject, QThread
+from PySide6.QtCore import Signal, Qt, QObject, QThread, QUrl
 from typing import List
-from PySide6.QtGui import QMouseEvent, QColor
+from PySide6.QtGui import QMouseEvent, QColor, QCloseEvent
+from PySide6.QtMultimedia import QSoundEffect
 
 
 DARK_STYLE = """
@@ -123,7 +126,9 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = [] # To store the full list of lobbies from the API
         self.thread = None
-        self.watchlist = ["legion", "hellgate"] # Example watchlist
+        self.watchlist_file = "watchlist.json"
+        self.watchlist = self.load_watchlist()
+        self.previous_watched_lobbies = set()
 
         # Main layout for the window
         main_layout = QVBoxLayout()
@@ -132,6 +137,17 @@ class SimpleWindow(QMainWindow):
         main_widget = QWidget()
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+
+        # --- Sound Effect for Notifications ---
+        self.notification_sound = QSoundEffect()
+        # You must provide a sound file named 'notification.wav' in the same directory
+        # or provide a full path to a sound file.
+        sound_path = os.path.join(os.path.dirname(__file__), "notification.wav")
+        if os.path.exists(sound_path):
+            self.notification_sound.setSource(QUrl.fromLocalFile(sound_path))
+            self.notification_sound.setVolume(0.5)
+        else:
+            print("Warning: 'notification.wav' not found. Sound notifications will be silent.")
 
         # --- Create Custom Title Bar ---
         self.title_bar = QWidget()
@@ -357,9 +373,24 @@ class SimpleWindow(QMainWindow):
         self.dark_mode = True
         self.update_theme()
         self.custom_tab_bar._on_button_clicked(0) # Switch to the first tab
-        self.watchlist = ["legion", "hellgate"]
+        self.watchlist = self.load_watchlist()
         self.watchlist_widget.clear()
         self.watchlist_widget.addItems(self.watchlist)
+
+    def load_watchlist(self):
+        """Loads the watchlist from a JSON file."""
+        try:
+            if os.path.exists(self.watchlist_file):
+                with open(self.watchlist_file, 'r') as f:
+                    return json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error loading watchlist: {e}")
+        return ["legion", "hellgate"] # Default if file doesn't exist or is corrupt
+
+    def save_watchlist(self):
+        """Saves the current watchlist to a JSON file."""
+        with open(self.watchlist_file, 'w') as f:
+            json.dump(self.watchlist, f, indent=4)
 
     def add_to_watchlist(self):
         """Adds a keyword to the watchlist."""
@@ -368,6 +399,7 @@ class SimpleWindow(QMainWindow):
             self.watchlist.append(keyword)
             self.watchlist_widget.addItem(keyword)
             self.watchlist_input.clear()
+            self.save_watchlist()
             self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to apply new keyword
 
     def remove_from_watchlist(self):
@@ -378,6 +410,7 @@ class SimpleWindow(QMainWindow):
         for item in selected_items:
             self.watchlist.remove(item.text())
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
+        self.save_watchlist()
         self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
 
     def refresh_lobbies(self):
@@ -409,6 +442,22 @@ class SimpleWindow(QMainWindow):
 
     def on_lobbies_fetched(self, lobbies: list):
         """Slot to handle successfully fetched lobby data."""
+        # Check for new watched lobbies before updating the main list
+        current_watched_lobbies = set()
+        for lobby in lobbies:
+            lobby_name = lobby.get('name', '').lower()
+            lobby_map = lobby.get('map', '').lower()
+            for keyword in self.watchlist:
+                if keyword in lobby_name or keyword in lobby_map:
+                    # Use a unique identifier for the lobby, name is usually good enough
+                    current_watched_lobbies.add(lobby.get('name'))
+                    break
+
+        newly_found = current_watched_lobbies - self.previous_watched_lobbies
+        if newly_found:
+            self.notification_sound.play()
+
+        self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
         self.filter_lobbies(self.lobby_search_bar.text())
 
@@ -425,6 +474,9 @@ class SimpleWindow(QMainWindow):
         self.lobbies_table.setRowCount(0) # Clear table
         self.lobbies_table.setSortingEnabled(False)
         
+        # On a simple filter, we don't want to clear the "previous" state for notifications
+        # so we only update self.previous_watched_lobbies on a full refresh (in on_lobbies_fetched)
+
         query = query.lower()
         filtered_lobbies = [
             lobby for lobby in self.all_lobbies 
