@@ -10,7 +10,7 @@ DARK_STYLE = """
         background-color: #1C1C1E;
         color: #F0F0F0;
         font-family: 'Segoe UI';
-        font-size: 12px;
+        font-size: 14px;
     }
     QMainWindow {
         background-color: #1C1C1E;
@@ -44,7 +44,7 @@ LIGHT_STYLE = """
         background-color: #ECEFF4; /* nord6 */
         color: #2E3440; /* nord0 */
         font-family: 'Segoe UI';
-        font-size: 12px;
+        font-size: 14px;
     }
     QMainWindow {
         background-color: #ECEFF4;
