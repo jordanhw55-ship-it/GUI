@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox
 from PySide6.QtCore import Signal
 from typing import List
 DARK_STYLE = """
@@ -117,9 +117,17 @@ class SimpleWindow(QMainWindow):
 
         # --- Create the "Reset" tab ---
         reset_tab_content = QWidget()
-        reset_layout = QVBoxLayout(reset_tab_content)
-        reset_layout.addWidget(QLabel("This is the 'Reset' tab."))
-        reset_layout.addStretch()
+        self.reset_layout = QVBoxLayout(reset_tab_content)
+        
+        warning_text = QLabel("This will reset the GUI to its default state.\nAre you sure you want to continue?")
+        warning_text.setStyleSheet("font-weight: bold;")
+        self.reset_layout.addWidget(warning_text, 0, Qt.AlignmentFlag.AlignCenter)
+
+        reset_button = QPushButton("Reset GUI")
+        reset_button.clicked.connect(self.confirm_reset)
+        self.reset_layout.addWidget(reset_button, 0, Qt.AlignmentFlag.AlignCenter)
+
+        self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
         # Apply the initial theme and set button text
@@ -145,6 +153,25 @@ class SimpleWindow(QMainWindow):
             self.theme_button.setText("Toggle Dark Mode")
         # Apply theme to custom tab bar buttons
         self.custom_tab_bar.apply_style(self.dark_mode)
+
+    def confirm_reset(self):
+        """Shows a confirmation dialog before resetting the application state."""
+        confirm_box = QMessageBox(self)
+        confirm_box.setWindowTitle("Confirm Reset")
+        confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
+        confirm_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm_box.setDefaultButton(QMessageBox.StandardButton.No)
+        
+        if confirm_box.exec() == QMessageBox.StandardButton.Yes:
+            self.reset_state()
+
+    def reset_state(self):
+        """Resets the application to its initial state."""
+        self.counter = 0
+        self.label.setText("Hello! Click the button.")
+        self.dark_mode = True
+        self.update_theme()
+        self.custom_tab_bar._on_button_clicked(0) # Switch to the first tab
 
 
 class CustomTabBar(QWidget):
