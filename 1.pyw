@@ -74,7 +74,7 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Simple GUI with Tabs")
         self.resize(600, 400)  # Set the initial size of the window
         self.counter = 0
-        self.dark_mode = False
+        self.dark_mode = True  # Default to dark mode
 
         # Create a QTabWidget to hold our tabs
         tabs = QTabWidget()
@@ -107,25 +107,31 @@ class SimpleWindow(QMainWindow):
         settings_layout = QVBoxLayout(settings_tab)
 
         # Add a theme toggle button
-        theme_button = QPushButton("Toggle Dark Mode")
-        theme_button.clicked.connect(self.toggle_theme)
-        settings_layout.addWidget(theme_button)
+        self.theme_button = QPushButton()
+        self.theme_button.clicked.connect(self.toggle_theme)
+        settings_layout.addWidget(self.theme_button)
         settings_layout.addStretch() # Pushes the content to the top
 
-        # Apply the initial theme
-        self.setStyleSheet(LIGHT_STYLE)
+        # Apply the initial theme and set button text
+        self.update_theme()
 
     def on_button_click(self):
         self.counter += 1
         self.label.setText(f"Button has been clicked {self.counter} times.")
 
     def toggle_theme(self):
-        """Toggles between light and dark mode."""
+        """Flips the theme state and updates the UI."""
         self.dark_mode = not self.dark_mode
+        self.update_theme()
+
+    def update_theme(self):
+        """Applies the current theme and updates the toggle button text."""
         if self.dark_mode:
             self.setStyleSheet(DARK_STYLE)
+            self.theme_button.setText("Toggle Light Mode")
         else:
-            self.setStyleSheet(LIGHT_STYLE) # Revert to a consistent light style
+            self.setStyleSheet(LIGHT_STYLE)
+            self.theme_button.setText("Toggle Dark Mode")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
