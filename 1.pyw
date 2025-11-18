@@ -9,7 +9,7 @@ DARK_STYLE = """
     QWidget {
         background-color: #1C1C1E;
         color: #F0F0F0;
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: 'Segoe UI';
         font-size: 12px;
     }
     QMainWindow {
@@ -43,7 +43,7 @@ LIGHT_STYLE = """
     QWidget {
         background-color: #ECEFF4; /* nord6 */
         color: #2E3440; /* nord0 */
-        font-family: 'Segoe UI', Arial, sans-serif;
+        font-family: 'Segoe UI';
         font-size: 12px;
     }
     QMainWindow {
