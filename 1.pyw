@@ -7,32 +7,32 @@ from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #1B1F3B;
-        color: #E0E0E0;
+        background-color: #1C1C1E;
+        color: #F0F0F0;
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #1B1F3B;
+        background-color: #1C1C1E;
     }
     #CustomTitleBar {
-        background-color: #1B1F3B;
+        background-color: #2A2A2C;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
-        color: #E0E0E0;
+        color: #F0F0F0;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
         border: none;
-        color: #E0E0E0;
+        color: #F0F0F0;
     }
     #CustomTitleBar QPushButton:hover {
-        background-color: #54E864;
+        background-color: #FFA64D;
     }
     QPushButton {
-        background-color: #2E8B57;
-        border: 1px solid #54E864;
+        background-color: #FF7F50;
+        border: 1px solid #444444;
         padding: 5px;
         border-radius: 6px;
     }
@@ -309,22 +309,22 @@ class CustomTabBar(QWidget):
         if dark_mode:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #1B1F3B;
-                    border: 1px solid #54E864;
+                    background-color: #2A2A2C;
+                    border: 1px solid #444444;
                     padding: 8px;
                     border-radius: 6px;
-                    color: #E0E0E0;
+                    color: #F0F0F0;
                 }
                 QPushButton:hover {
-                    background-color: #54E864;
+                    background-color: #FFA64D;
                 }
                 QPushButton:pressed {
-                    background-color: #54E864;
+                    background-color: #FFA64D;
                 }
                 QPushButton:checked {
-                    background-color: #2E8B57;
-                    color: white;
-                    border-color: #2E8B57;
+                    background-color: #FF7F50;
+                    color: #F0F0F0;
+                    border-color: #FF7F50;
                 }
             """)
         else:
