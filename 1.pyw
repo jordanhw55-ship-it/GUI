@@ -3,10 +3,9 @@ import requests
 import json
 import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
-from PySide6.QtCore import Signal, Qt, QObject, QThread, QUrl
+from PySide6.QtCore import Signal, Qt, QObject, QThread
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor, QCloseEvent
-from PySide6.QtMultimedia import QSoundEffect
 
 
 DARK_STYLE = """
@@ -137,17 +136,6 @@ class SimpleWindow(QMainWindow):
         main_widget = QWidget()
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
-
-        # --- Sound Effect for Notifications ---
-        self.notification_sound = QSoundEffect()
-        # You must provide a sound file named 'ping.wav' in the same directory
-        # or provide a full path to a sound file.
-        sound_path = os.path.join(os.path.dirname(__file__), "ping.wav")
-        if os.path.exists(sound_path):
-            self.notification_sound.setSource(QUrl.fromLocalFile(sound_path))
-            self.notification_sound.setVolume(0.5)
-        else:
-            print("Warning: 'ping.wav' not found. Sound notifications will be silent.")
 
         # --- Create Custom Title Bar ---
         self.title_bar = QWidget()
@@ -455,7 +443,7 @@ class SimpleWindow(QMainWindow):
 
         newly_found = current_watched_lobbies - self.previous_watched_lobbies
         if newly_found:
-            self.notification_sound.play()
+            QApplication.beep()
 
         self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
