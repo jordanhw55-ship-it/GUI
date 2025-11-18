@@ -39,80 +39,88 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simple GUI with Tabs")
-        self.resize(0, 400)  # Set the initial size of the window
+        self.resize(600, 450)
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
 
-        # Create a QTabWidget to hold our tabs
-        tabs = QTabWidget()
-        self.setCentralWidget(tabs)
+        # Main layout for the window
+        main_layout = QVBoxLayout()
+        main_widget = QWidget()
+        main_widget.setLayout(main_layout)
+        self.setCentralWidget(main_widget)
+
+        # Create a custom tab bar
+        self.tab_names = ["Load", "Items", "Recipes", "Automation", "Hotkey", "Lobbies", "Settings", "Reset"]
+        self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
+        main_layout.addWidget(self.custom_tab_bar)
+
+        # Create a QStackedWidget to hold our tab contents
+        self.stacked_widget = QStackedWidget()
+        main_layout.addWidget(self.stacked_widget)
+
+        # Connect the custom tab bar to the stacked widget
+        self.custom_tab_bar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # --- Create the "Load" tab ---
-        load_tab = QWidget()
-        tabs.addTab(load_tab, "Load")
-        load_layout = QVBoxLayout(load_tab)
+        load_tab_content = QWidget()
+        load_layout = QVBoxLayout(load_tab_content)
         load_layout.addWidget(QLabel("This is the 'Load' tab."))
         load_layout.addStretch() # Pushes the content to the top
+        self.stacked_widget.addWidget(load_tab_content)
 
         # --- Create the "Items" tab ---
-        items_tab = QWidget()
-        tabs.addTab(items_tab, "Items")
-        items_layout = QVBoxLayout(items_tab)
-
-        # Create a label to display text
+        items_tab_content = QWidget()
+        items_layout = QVBoxLayout(items_tab_content)
         self.label = QLabel("Hello! Click the button.")
         items_layout.addWidget(self.label)
-
-        # Create a button that the user can click
         button = QPushButton("Click Me!")
         button.clicked.connect(self.on_button_click) # Connect the click event to our method
         items_layout.addWidget(button)
+        self.stacked_widget.addWidget(items_tab_content)
 
         # --- Create the "Recipes" tab ---
-        recipes_tab = QWidget()
-        tabs.addTab(recipes_tab, "Recipes")
-        recipes_layout = QVBoxLayout(recipes_tab)
+        recipes_tab_content = QWidget()
+        recipes_layout = QVBoxLayout(recipes_tab_content)
         recipes_layout.addWidget(QLabel("This is the 'Recipes' tab."))
         recipes_layout.addStretch()
+        self.stacked_widget.addWidget(recipes_tab_content)
 
         # --- Create the "Automation" tab ---
-        automation_tab = QWidget()
-        tabs.addTab(automation_tab, "Automation")
-        automation_layout = QVBoxLayout(automation_tab)
+        automation_tab_content = QWidget()
+        automation_layout = QVBoxLayout(automation_tab_content)
         automation_layout.addWidget(QLabel("This is the 'Automation' tab."))
         automation_layout.addStretch()
+        self.stacked_widget.addWidget(automation_tab_content)
 
         # --- Create the "Hotkey" tab ---
-        hotkey_tab = QWidget()
-        tabs.addTab(hotkey_tab, "Hotkey")
-        hotkey_layout = QVBoxLayout(hotkey_tab)
+        hotkey_tab_content = QWidget()
+        hotkey_layout = QVBoxLayout(hotkey_tab_content)
         hotkey_layout.addWidget(QLabel("This is the 'Hotkey' tab."))
         hotkey_layout.addStretch()
+        self.stacked_widget.addWidget(hotkey_tab_content)
 
         # --- Create the "Lobbies" tab ---
-        lobbies_tab = QWidget()
-        tabs.addTab(lobbies_tab, "Lobbies")
-        lobbies_layout = QVBoxLayout(lobbies_tab)
+        lobbies_tab_content = QWidget()
+        lobbies_layout = QVBoxLayout(lobbies_tab_content)
         lobbies_layout.addWidget(QLabel("This is the 'Lobbies' tab."))
         lobbies_layout.addStretch()
+        self.stacked_widget.addWidget(lobbies_tab_content)
 
         # --- Create the "Settings" tab ---
-        settings_tab = QWidget()
-        tabs.addTab(settings_tab, "Settings")
-        settings_layout = QVBoxLayout(settings_tab)
-
-        # Add a theme toggle button
+        settings_tab_content = QWidget()
+        settings_layout = QVBoxLayout(settings_tab_content)
         self.theme_button = QPushButton()
         self.theme_button.clicked.connect(self.toggle_theme)
         settings_layout.addWidget(self.theme_button)
         settings_layout.addStretch() # Pushes the content to the top
+        self.stacked_widget.addWidget(settings_tab_content)
 
         # --- Create the "Reset" tab ---
-        reset_tab = QWidget()
-        tabs.addTab(reset_tab, "Reset")
-        reset_layout = QVBoxLayout(reset_tab)
+        reset_tab_content = QWidget()
+        reset_layout = QVBoxLayout(reset_tab_content)
         reset_layout.addWidget(QLabel("This is the 'Reset' tab."))
         reset_layout.addStretch()
+        self.stacked_widget.addWidget(reset_tab_content)
 
         # Apply the initial theme and set button text
         self.update_theme()
