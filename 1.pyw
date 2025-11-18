@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox
 from PySide6.QtCore import Signal, Qt
 from typing import List
+from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     QWidget {
         background-color: #2d2d2d;
@@ -11,6 +12,11 @@ DARK_STYLE = """
     }
     QMainWindow {
         background-color: #2d2d2d;
+    }
+    /* Style for our custom title bar */
+    #CustomTitleBar {
+        background-color: #DB7093; /* PaleVioletRed */
+        color: black;
     }
     QPushButton:hover {
         background-color: #5a5a5a;
@@ -30,6 +36,11 @@ LIGHT_STYLE = """
     QMainWindow {
         background-color: #f0f0f0;
     }
+    /* Style for our custom title bar */
+    #CustomTitleBar {
+        background-color: #DB7093; /* PaleVioletRed */
+        color: black;
+    }
 """
 
 class SimpleWindow(QMainWindow):
@@ -39,15 +50,43 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simple GUI with Tabs")
+        # Make the window frameless to implement a custom title bar
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(600, 450)
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
+        self.old_pos = None
 
         # Main layout for the window
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setSpacing(0)
         main_widget = QWidget()
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+
+        # --- Create Custom Title Bar ---
+        self.title_bar = QWidget()
+        self.title_bar.setObjectName("CustomTitleBar")
+        self.title_bar.setFixedHeight(30)
+        title_bar_layout = QHBoxLayout(self.title_bar)
+        title_bar_layout.setContentsMargins(10, 0, 0, 0)
+
+        title_label = QLabel("Simple GUI with Tabs")
+        title_bar_layout.addWidget(title_label)
+        title_bar_layout.addStretch()
+
+        min_button = QPushButton("_")
+        min_button.setFixedSize(30, 30)
+        min_button.clicked.connect(self.showMinimized)
+
+        close_button = QPushButton("X")
+        close_button.setFixedSize(30, 30)
+        close_button.clicked.connect(self.close)
+
+        title_bar_layout.addWidget(min_button)
+        title_bar_layout.addWidget(close_button)
+        main_layout.addWidget(self.title_bar)
 
         # Create a custom tab bar
         self.tab_names = ["Load", "Items", "Recipes", "Automation", "Hotkey", "Lobbies", "Settings", "Reset"]
@@ -132,6 +171,22 @@ class SimpleWindow(QMainWindow):
 
         # Apply the initial theme and set button text
         self.update_theme()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """Captures the initial mouse position for window dragging."""
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
+            self.old_pos = event.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Moves the window if the mouse is being dragged from the title bar."""
+        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
+            delta = event.globalPosition().toPoint() - self.old_pos
+            self.move(self.x() + delta.x(), self.y() + delta.y())
+            self.old_pos = event.globalPosition().toPoint()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """Resets the drag position when the mouse is released."""
+        self.old_pos = None
 
     def on_button_click(self):
         self.counter += 1
