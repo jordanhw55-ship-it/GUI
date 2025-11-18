@@ -37,6 +37,34 @@ DARK_STYLE = """
     }
 """
 
+LIGHT_STYLE = """
+    QWidget {
+        background-color: #f0f0f0;
+        color: #000000;
+        font-family: Arial;
+        font-size: 12px;
+    }
+    QMainWindow {
+        background-color: #f0f0f0;
+    }
+    QTabWidget::pane {
+        border: 1px solid #c5c5c5;
+    }
+    QTabBar::tab {
+        background: #f0f0f0;
+        border: 1px solid #c5c5c5;
+        padding: 8px 20px;
+    }
+    QTabBar::tab:selected {
+        background: #dcdcdc;
+        border-bottom-color: #dcdcdc;
+    }
+    QPushButton {
+        padding: 8px;
+        border-radius: 4px;
+    }
+"""
+
 class SimpleWindow(QMainWindow):
     """
     This is our main window. It inherits from QMainWindow.
@@ -94,7 +122,7 @@ class SimpleWindow(QMainWindow):
         if self.dark_mode:
             self.setStyleSheet(DARK_STYLE)
         else:
-            self.setStyleSheet("") # Clear the stylesheet to revert to default
+            self.setStyleSheet(LIGHT_STYLE) # Revert to a consistent light style
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
