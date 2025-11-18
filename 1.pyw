@@ -7,13 +7,13 @@ from PySide6.QtGui import QMouseEvent
 DARK_STYLE = """
     /* Nord-inspired Dark Theme */
     QWidget {
-        background-color: #2E3440; /* nord0 */
+        background-color: #1B1B1B;
         color: #ECEFF4; /* nord6 */
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
     }
     QMainWindow {
-        background-color: #2E3440;
+        background-color: #1B1B1B;
     }
     #CustomTitleBar {
         background-color: #C11C84;
