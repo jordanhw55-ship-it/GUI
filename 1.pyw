@@ -21,6 +21,7 @@ DARK_STYLE = """
     #CustomTitleBar QLabel {
         background-color: transparent;
         color: #F0F0F0;
+        font-size: 16px;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
@@ -55,6 +56,7 @@ LIGHT_STYLE = """
     #CustomTitleBar QLabel {
         background-color: transparent;
         color: #2E3440;
+        font-size: 16px;
     }
     #CustomTitleBar QPushButton {
         background-color: transparent;
@@ -322,6 +324,7 @@ class CustomTabBar(QWidget):
                     padding: 8px;
                     border-radius: 6px;
                     color: #F0F0F0;
+                    font-size: 16px;
                 }
                 QPushButton:hover {
                     background-color: #FFA64D;
@@ -343,6 +346,7 @@ class CustomTabBar(QWidget):
                     padding: 8px;
                     border-radius: 6px;
                     color: #2E3440; /* nord0 */
+                    font-size: 16px;
                 }
                 QPushButton:hover {
                     background-color: #F6B3F5;
