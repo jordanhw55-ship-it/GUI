@@ -265,12 +265,12 @@ class SimpleWindow(QMainWindow):
 
         # --- Lobbies Table ---
         self.lobbies_table = QTableWidget()
-        self.lobbies_table.setColumnCount(3)
-        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players"])
+        self.lobbies_table.setColumnCount(4)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Host", "Players"])
         self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Make table read-only
         self.lobbies_table.verticalHeader().setVisible(False) # Hide row numbers
         self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Players column
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents) # Players column
 
         lobbies_layout.addWidget(self.lobbies_table)
 
@@ -501,8 +501,9 @@ class SimpleWindow(QMainWindow):
 
             self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
             self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
+            self.lobbies_table.setItem(row, 2, QTableWidgetItem(lobby.get('host', 'N/A')))
             players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+            self.lobbies_table.setItem(row, 3, AlignedTableWidgetItem(players))
 
             if is_watched:
                 for col in range(self.lobbies_table.columnCount()):
