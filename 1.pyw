@@ -2,6 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout
 from PySide6.QtCore import Signal
 DARK_STYLE = """
+from typing import List
     QWidget {
         background-color: #2d2d2d;
         color: #d0d0d0;
