@@ -1,6 +1,6 @@
 import sys
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 from typing import List
 DARK_STYLE = """
     QWidget {
