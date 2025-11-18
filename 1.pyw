@@ -1,9 +1,9 @@
 import sys
 import requests
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
 from PySide6.QtCore import Signal, Qt, QObject, QThread
 from typing import List
-from PySide6.QtGui import QMouseEvent
+from PySide6.QtGui import QMouseEvent, QColor
 
 
 DARK_STYLE = """
@@ -123,6 +123,7 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = [] # To store the full list of lobbies from the API
         self.thread = None
+        self.watchlist = ["legion", "hellgate"] # Example watchlist
 
         # Main layout for the window
         main_layout = QVBoxLayout()
@@ -232,6 +233,32 @@ class SimpleWindow(QMainWindow):
 
         lobbies_layout.addLayout(controls_layout)
 
+        # --- Watchlist Controls ---
+        watchlist_group = QGroupBox("Watchlist")
+        watchlist_layout = QHBoxLayout()
+
+        self.watchlist_widget = QListWidget()
+        self.watchlist_widget.addItems(self.watchlist)
+        watchlist_layout.addWidget(self.watchlist_widget)
+
+        watchlist_controls_layout = QVBoxLayout()
+        self.watchlist_input = QLineEdit()
+        self.watchlist_input.setPlaceholderText("Add keyword...")
+        watchlist_controls_layout.addWidget(self.watchlist_input)
+
+        add_watchlist_button = QPushButton("Add")
+        add_watchlist_button.clicked.connect(self.add_to_watchlist)
+        watchlist_controls_layout.addWidget(add_watchlist_button)
+
+        remove_watchlist_button = QPushButton("Remove")
+        remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
+        watchlist_controls_layout.addWidget(remove_watchlist_button)
+        watchlist_controls_layout.addStretch()
+
+        watchlist_layout.addLayout(watchlist_controls_layout)
+        watchlist_group.setLayout(watchlist_layout)
+        lobbies_layout.addWidget(watchlist_group)
+
         # --- Lobbies Table ---
         self.lobbies_table = QTableWidget()
         self.lobbies_table.setColumnCount(3)
@@ -330,6 +357,28 @@ class SimpleWindow(QMainWindow):
         self.dark_mode = True
         self.update_theme()
         self.custom_tab_bar._on_button_clicked(0) # Switch to the first tab
+        self.watchlist = ["legion", "hellgate"]
+        self.watchlist_widget.clear()
+        self.watchlist_widget.addItems(self.watchlist)
+
+    def add_to_watchlist(self):
+        """Adds a keyword to the watchlist."""
+        keyword = self.watchlist_input.text().strip().lower()
+        if keyword and keyword not in self.watchlist:
+            self.watchlist.append(keyword)
+            self.watchlist_widget.addItem(keyword)
+            self.watchlist_input.clear()
+            self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to apply new keyword
+
+    def remove_from_watchlist(self):
+        """Removes the selected keyword from the watchlist."""
+        selected_items = self.watchlist_widget.selectedItems()
+        if not selected_items:
+            return
+        for item in selected_items:
+            self.watchlist.remove(item.text())
+            self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
+        self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
 
     def refresh_lobbies(self):
         """Placeholder method to refresh lobby data."""
@@ -384,10 +433,24 @@ class SimpleWindow(QMainWindow):
 
         self.lobbies_table.setRowCount(len(filtered_lobbies))
         for row, lobby in enumerate(filtered_lobbies):
+            lobby_name = lobby.get('name', '').lower()
+            lobby_map = lobby.get('map', '').lower()
+            
+            # Check for watchlist match
+            is_watched = False
+            for keyword in self.watchlist:
+                if keyword in lobby_name or keyword in lobby_map:
+                    is_watched = True
+                    break
+
             self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
             self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
             players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
             self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+
+            if is_watched:
+                for col in range(self.lobbies_table.columnCount()):
+                    self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B")) # A dark green color
         self.lobbies_table.setSortingEnabled(True)
 
 class CustomTabBar(QWidget):
