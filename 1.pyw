@@ -72,7 +72,7 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simple GUI with Tabs")
-        self.resize(600, 400)  # Set the initial size of the window
+        self.resize(900, 400)  # Set the initial size of the window
         self.counter = 0
         self.dark_mode = True  # Default to dark mode
 
@@ -101,6 +101,34 @@ class SimpleWindow(QMainWindow):
         button.clicked.connect(self.on_button_click) # Connect the click event to our method
         items_layout.addWidget(button)
 
+        # --- Create the "Recipes" tab ---
+        recipes_tab = QWidget()
+        tabs.addTab(recipes_tab, "Recipes")
+        recipes_layout = QVBoxLayout(recipes_tab)
+        recipes_layout.addWidget(QLabel("This is the 'Recipes' tab."))
+        recipes_layout.addStretch()
+
+        # --- Create the "Automation" tab ---
+        automation_tab = QWidget()
+        tabs.addTab(automation_tab, "Automation")
+        automation_layout = QVBoxLayout(automation_tab)
+        automation_layout.addWidget(QLabel("This is the 'Automation' tab."))
+        automation_layout.addStretch()
+
+        # --- Create the "Hotkey" tab ---
+        hotkey_tab = QWidget()
+        tabs.addTab(hotkey_tab, "Hotkey")
+        hotkey_layout = QVBoxLayout(hotkey_tab)
+        hotkey_layout.addWidget(QLabel("This is the 'Hotkey' tab."))
+        hotkey_layout.addStretch()
+
+        # --- Create the "Lobbies" tab ---
+        lobbies_tab = QWidget()
+        tabs.addTab(lobbies_tab, "Lobbies")
+        lobbies_layout = QVBoxLayout(lobbies_tab)
+        lobbies_layout.addWidget(QLabel("This is the 'Lobbies' tab."))
+        lobbies_layout.addStretch()
+
         # --- Create the "Settings" tab ---
         settings_tab = QWidget()
         tabs.addTab(settings_tab, "Settings")
@@ -111,6 +139,13 @@ class SimpleWindow(QMainWindow):
         self.theme_button.clicked.connect(self.toggle_theme)
         settings_layout.addWidget(self.theme_button)
         settings_layout.addStretch() # Pushes the content to the top
+
+        # --- Create the "Reset" tab ---
+        reset_tab = QWidget()
+        tabs.addTab(reset_tab, "Reset")
+        reset_layout = QVBoxLayout(reset_tab)
+        reset_layout.addWidget(QLabel("This is the 'Reset' tab."))
+        reset_layout.addStretch()
 
         # Apply the initial theme and set button text
         self.update_theme()
