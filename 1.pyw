@@ -167,6 +167,7 @@ class SimpleWindow(QMainWindow):
 
     def reset_state(self):
         """Resets the application to its initial state."""
+        self.resize(600, 450)
         self.counter = 0
         self.label.setText("Hello! Click the button.")
         self.dark_mode = True
