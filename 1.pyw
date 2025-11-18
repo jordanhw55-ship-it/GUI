@@ -183,9 +183,16 @@ class SimpleWindow(QMainWindow):
         lobbies_tab_content = QWidget()
         lobbies_layout = QVBoxLayout(lobbies_tab_content)
 
+        search_bar_layout = QHBoxLayout()
         lobby_search_bar = QLineEdit()
         lobby_search_bar.setPlaceholderText("Search by name or map…")
-        lobbies_layout.addWidget(lobby_search_bar)
+        search_bar_layout.addWidget(lobby_search_bar)
+
+        refresh_button = QPushButton("Refresh")
+        refresh_button.clicked.connect(self.refresh_lobbies)
+        search_bar_layout.addWidget(refresh_button)
+
+        lobbies_layout.addLayout(search_bar_layout)
 
         lobbies_layout.addStretch()
         self.stacked_widget.addWidget(lobbies_tab_content)
@@ -273,6 +280,11 @@ class SimpleWindow(QMainWindow):
         self.dark_mode = True
         self.update_theme()
         self.custom_tab_bar._on_button_clicked(0) # Switch to the first tab
+
+    def refresh_lobbies(self):
+        """Placeholder method to refresh lobby data."""
+        # This is where you would add the logic to fetch and display lobby data.
+        print("Refreshing lobbies...")
 
 
 class CustomTabBar(QWidget):
