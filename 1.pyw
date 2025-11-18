@@ -16,7 +16,7 @@ DARK_STYLE = """
         background-color: #2E3440;
     }
     #CustomTitleBar {
-        background-color: #C71585; /* MediumVioletRed */
+        background-color: #C11C84;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
@@ -50,7 +50,7 @@ LIGHT_STYLE = """
         background-color: #ECEFF4;
     }
     #CustomTitleBar {
-        background-color: #C71585; /* MediumVioletRed */
+        background-color: #C11C84;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
@@ -309,43 +309,43 @@ class CustomTabBar(QWidget):
         if dark_mode:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #C71585; /* MediumVioletRed */
-                    border: 1px solid #B31378;
+                    background-color: #C11C84;
+                    border: 1px solid #A71973;
                     padding: 8px;
                     border-radius: 4px;
                     color: #ECEFF4; /* nord6 */
                 }
                 QPushButton:hover {
-                    background-color: #D61791;
+                    background-color: #D02E93;
                 }
                 QPushButton:pressed {
-                    background-color: #B31378;
+                    background-color: #A71973;
                 }
                 QPushButton:checked {
-                    background-color: #8B008B; /* DarkMagenta */
+                    background-color: #9A1669; /* Darker accent for selection */
                     color: #ECEFF4;
-                    border-color: #8B008B;
+                    border-color: #9A1669;
                 }
             """)
         else:
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
-                    background-color: #C71585; /* MediumVioletRed */
-                    border: 1px solid #B31378;
+                    background-color: #C11C84;
+                    border: 1px solid #A71973;
                     padding: 8px;
                     border-radius: 4px;
                     color: #2E3440; /* nord0 */
                 }
                 QPushButton:hover {
-                    background-color: #D61791;
+                    background-color: #D02E93;
                 }
                 QPushButton:pressed {
-                    background-color: #B31378;
+                    background-color: #A71973;
                 }
                 QPushButton:checked {
-                    background-color: #8B008B; /* DarkMagenta */
+                    background-color: #9A1669; /* Darker accent for selection */
                     color: #ECEFF4;
-                    border-color: #8B008B;
+                    border-color: #9A1669;
                 }
             """)
 
