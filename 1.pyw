@@ -16,7 +16,7 @@ DARK_STYLE = """
         background-color: #1B1B1B;
     }
     #CustomTitleBar {
-        background-color: #1B1B1B;
+        background-color: #3B4252; /* nord1 */
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
@@ -78,7 +78,7 @@ class SimpleWindow(QMainWindow):
     """
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Simple GUI with Tabs")
+        self.setWindowTitle("Hellfire Helper")
         # Make the window frameless to implement a custom title bar
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(600, 450)
@@ -101,7 +101,7 @@ class SimpleWindow(QMainWindow):
         title_bar_layout = QHBoxLayout(self.title_bar)
         title_bar_layout.setContentsMargins(10, 0, 0, 0)
 
-        title_label = QLabel("Simple GUI with Tabs")
+        title_label = QLabel("Hellfire Helper")
         title_bar_layout.addWidget(title_label)
         title_bar_layout.addStretch()
 
