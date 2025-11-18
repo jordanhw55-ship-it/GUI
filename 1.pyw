@@ -99,10 +99,11 @@ class SimpleWindow(QMainWindow):
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(10, 0, 0, 0)
+        title_bar_layout.setContentsMargins(0, 0, 0, 0)
 
         title_label = QLabel("Hellfire Helper")
-        title_bar_layout.addWidget(title_label)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_bar_layout.addWidget(title_label, 1) # Add with stretch factor
         title_bar_layout.addStretch()
 
         min_button = QPushButton("_")
