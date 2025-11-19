@@ -3,14 +3,14 @@ import requests
 import json
 import os
 import re
-from datetime import datetime
 from typing import List
+from datetime import datetime
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
     QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
-    QListWidgetItem
+    QListWidgetItem, QColorDialog, QCheckBox
 )
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from PySide6.QtGui import QMouseEvent, QColor
@@ -187,6 +187,7 @@ class ItemDatabase:
 
 
 class ThemePreview(QWidget):
+    """Clickable theme preview."""
     clicked = Signal()
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -216,7 +217,6 @@ class HotkeyCaptureWorker(QObject):
     hotkey_captured = Signal(str)
     def run(self):
         try:
-            # Capture a single hotkey string, suppress so it doesn't leak into GUI
             hotkey = keyboard.read_hotkey(suppress=True)
             self.hotkey_captured.emit(hotkey)
         except Exception as e:
@@ -383,7 +383,15 @@ class SimpleWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
 
+        # Theme state
         self.current_theme_index = 0
+        self.custom_theme_enabled = False
+        self.custom_theme = {
+            "bg": "#121212",
+            "fg": "#F0F0F0",
+            "accent": "#FF7F50"
+        }
+
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None
@@ -615,10 +623,43 @@ class SimpleWindow(QMainWindow):
         lobbies_layout.addWidget(self.lobbies_table)
         self.stacked_widget.addWidget(lobbies_tab_content)
 
-        # Settings tab
+        # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
+
+        # Preset themes grid
         self.create_theme_grid(settings_layout)
+
+        # Custom theme controls below presets
+        row_below = (len(self.themes) - 1) // 4 + 1
+        custom_box = QGroupBox("Custom theme")
+        custom_layout = QGridLayout(custom_box)
+
+        self.custom_enable_checkbox = QCheckBox("Enable custom theme (overrides preset)")
+        self.custom_enable_checkbox.setChecked(self.custom_theme_enabled)
+        self.custom_enable_checkbox.stateChanged.connect(self.on_custom_theme_toggled)
+        custom_layout.addWidget(self.custom_enable_checkbox, 0, 0, 1, 3)
+
+        self.bg_color_btn = QPushButton("Pick background")
+        self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
+        self.fg_color_btn = QPushButton("Pick text")
+        self.fg_color_btn.clicked.connect(lambda: self.pick_color('fg'))
+        self.accent_color_btn = QPushButton("Pick accent")
+        self.accent_color_btn.clicked.connect(lambda: self.pick_color('accent'))
+
+        self.apply_custom_btn = QPushButton("Apply custom")
+        self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
+        self.reset_custom_btn = QPushButton("Reset custom")
+        self.reset_custom_btn.clicked.connect(self.reset_custom_theme_to_defaults)
+
+        custom_layout.addWidget(self.bg_color_btn, 1, 0)
+        custom_layout.addWidget(self.fg_color_btn, 1, 1)
+        custom_layout.addWidget(self.accent_color_btn, 1, 2)
+        custom_layout.addWidget(self.apply_custom_btn, 2, 0, 1, 2)
+        custom_layout.addWidget(self.reset_custom_btn, 2, 2)
+
+        settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
+
         self.stacked_widget.addWidget(settings_tab_content)
 
         # Reset tab
@@ -640,7 +681,11 @@ class SimpleWindow(QMainWindow):
         # Initial setup
         self.load_message_hotkeys()
         self.on_main_tab_selected(0)
-        self.apply_theme(self.current_theme_index)
+        # Apply preset or custom theme depending on the flag
+        if self.custom_theme_enabled:
+            self.apply_custom_theme()
+        else:
+            self.apply_theme(self.current_theme_index)
         self.refresh_lobbies()
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
 
@@ -688,8 +733,9 @@ class SimpleWindow(QMainWindow):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
 
-    # Themes
+    # Preset themes
     def apply_theme(self, theme_index: int):
+        self.custom_theme_enabled = False  # disable custom when preset applied
         self.current_theme_index = theme_index
         theme = self.themes[theme_index]
         self.dark_mode = theme["is_dark"]
@@ -700,6 +746,111 @@ class SimpleWindow(QMainWindow):
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
         self.save_settings()
         self.update_materials_table_colors()
+
+    # Custom theme builder
+    def build_custom_stylesheet(self) -> str:
+        bg = self.custom_theme["bg"]
+        fg = self.custom_theme["fg"]
+        accent = self.custom_theme["accent"]
+        # Generate a minimal, consistent CSS using custom colours
+        return f"""
+        QWidget {{
+            background-color: {bg};
+            color: {fg};
+            font-family: 'Segoe UI';
+            font-size: 14px;
+            outline: none;
+        }}
+        QMainWindow {{ background-color: {bg}; }}
+        #CustomTitleBar {{
+            background-color: {bg};
+        }}
+        #CustomTitleBar QLabel, #CustomTitleBar QPushButton {{
+            background-color: transparent;
+            border: none;
+            color: {fg};
+            font-size: 16px;
+        }}
+        #CustomTitleBar QPushButton:hover {{
+            background-color: {accent};
+        }}
+        QPushButton {{
+            background-color: {accent};
+            border: 1px solid {fg};
+            padding: 5px;
+            border-radius: 6px;
+            color: {bg};
+        }}
+        QHeaderView::section {{
+            background-color: {bg};
+            border: 1px solid {fg};
+            color: {fg};
+        }}
+        QLineEdit, QTextEdit, QListWidget, QTableWidget {{
+            background-color: {bg};
+            color: {fg};
+            border: 1px solid {fg};
+        }}
+        QGroupBox {{
+            border: 1px solid {fg};
+            margin-top: 6px;
+        }}
+        QGroupBox:title {{
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 3px;
+        }}
+        """
+
+    def apply_custom_theme(self):
+        self.custom_theme_enabled = True
+        self.setStyleSheet(self.build_custom_stylesheet())
+        # For tab bar styling, approximate using custom colours
+        self.custom_tab_bar.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.custom_theme['bg']};
+                border: 1px solid {self.custom_theme['fg']};
+                padding: 8px;
+                border-radius: 6px;
+                color: {self.custom_theme['fg']};
+                font-size: 16px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.custom_theme['accent']};
+            }}
+            QPushButton:checked {{
+                background-color: {self.custom_theme['accent']};
+                color: {self.custom_theme['bg']};
+                border-color: {self.custom_theme['accent']};
+            }}
+        """)
+        # Update preview borders (remove highlight since custom overrides)
+        for preview in self.theme_previews:
+            preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {self.custom_theme['bg']}; }}")
+        self.save_settings()
+        self.update_materials_table_colors()
+
+    def on_custom_theme_toggled(self, state: int):
+        self.custom_theme_enabled = state == Qt.CheckState.Checked
+        if self.custom_theme_enabled:
+            self.apply_custom_theme()
+        else:
+            self.apply_theme(self.current_theme_index)
+
+    def pick_color(self, key: str):
+        initial = QColor(self.custom_theme[key])
+        color = QColorDialog.getColor(initial, self, f"Pick {key} color")
+        if color.isValid():
+            self.custom_theme[key] = color.name()
+            # If custom is enabled, live-apply
+            if self.custom_theme_enabled:
+                self.apply_custom_theme()
+
+    def reset_custom_theme_to_defaults(self):
+        self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
+        if self.custom_theme_enabled:
+            self.apply_custom_theme()
+        self.save_settings()
 
     def update_materials_table_colors(self):
         self.materials_table.itemChanged.disconnect(self.on_material_checked)
@@ -724,6 +875,8 @@ class SimpleWindow(QMainWindow):
     def reset_state(self):
         self.resize(700, 800)
         self.label.setText("Hello! Click the button.")
+        self.custom_theme_enabled = False
+        self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = self.load_watchlist()
@@ -739,15 +892,21 @@ class SimpleWindow(QMainWindow):
                     self.current_theme_index = settings.get("theme_index", 0)
                     self.character_path = settings.get("character_path", "")
                     self.message_hotkeys = settings.get("message_hotkeys", {})
+                    # Custom theme
+                    self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
+                    self.custom_theme = settings.get("custom_theme", self.custom_theme)
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
             self.character_path = ""
             self.message_hotkeys = {}
+
     def save_settings(self):
         settings = {
             "theme_index": self.current_theme_index,
             "character_path": self.character_path,
-            "message_hotkeys": self.message_hotkeys
+            "message_hotkeys": self.message_hotkeys,
+            "custom_theme_enabled": self.custom_theme_enabled,
+            "custom_theme": self.custom_theme
         }
         with open("settings.json", 'w') as f:
             json.dump(settings, f, indent=4)
@@ -1077,14 +1236,10 @@ class SimpleWindow(QMainWindow):
 
     # Hotkey capture and registration
     def capture_message_hotkey(self):
-        # Disable message input during capture
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
         self.hotkey_capture_btn.setEnabled(False)
-
-        # Clear hooks to ensure clean capture
         keyboard.unhook_all()
-
         self.capture_thread = QThread()
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -1093,7 +1248,6 @@ class SimpleWindow(QMainWindow):
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
-        # Validate combos: modifiers + key; avoid nonsense combos like "2+3"
         is_valid = True
         if '+' in hotkey:
             parts = hotkey.split('+')
@@ -1101,19 +1255,13 @@ class SimpleWindow(QMainWindow):
                 if part.strip().lower() not in keyboard.all_modifiers:
                     is_valid = False
                     break
-
-        # Re-enable message input
         self.message_edit.setEnabled(True)
-
         if not is_valid or hotkey == 'esc':
-            # Reset capture button on invalid or Escape
             self.hotkey_capture_btn.setText("Click to set")
             self.hotkey_capture_btn.setEnabled(True)
         else:
             self.hotkey_capture_btn.setText(hotkey)
             self.hotkey_capture_btn.setEnabled(True)
-
-        # Stop capture thread and re-register saved hotkeys
         self.capture_thread.quit()
         self.capture_thread.wait()
         self.register_all_message_hotkeys()
@@ -1132,19 +1280,15 @@ class SimpleWindow(QMainWindow):
     def add_message_hotkey(self):
         hotkey = self.hotkey_capture_btn.text()
         message = self.message_edit.text()
-
         if hotkey == "Click to set" or not message:
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
             return
         if hotkey in self.message_hotkeys:
             QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
             return
-
         self.message_hotkeys[hotkey] = message
         self.save_settings()
         self.load_message_hotkeys()
-
-        # Reset capture UI so it doesn't reuse the previous hotkey (e.g., "2+3")
         self.hotkey_capture_btn.setText("Click to set")
         self.hotkey_capture_btn.setEnabled(True)
         self.message_edit.clear()
@@ -1156,32 +1300,22 @@ class SimpleWindow(QMainWindow):
             return
         selected_row = selected_items[0].row()
         old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
-
         new_hotkey = self.hotkey_capture_btn.text()
         new_message = self.message_edit.text()
-
         if new_hotkey == "Click to set" or not new_message:
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
             return
         if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
             QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
             return
-
-        # Remove old binding
         if old_hotkey in self.hotkey_ids:
-            try:
-                keyboard.remove_hotkey(self.hotkey_ids[old_hotkey])
-            except Exception:
-                pass
+            try: keyboard.remove_hotkey(self.hotkey_ids[old_hotkey])
+            except Exception: pass
             self.hotkey_ids.pop(old_hotkey, None)
-
-        # Update store
         self.message_hotkeys.pop(old_hotkey, None)
         self.message_hotkeys[new_hotkey] = new_message
         self.save_settings()
         self.load_message_hotkeys()
-
-        # Reset capture button
         self.hotkey_capture_btn.setText("Click to set")
         self.hotkey_capture_btn.setEnabled(True)
         self.message_edit.clear()
@@ -1193,20 +1327,15 @@ class SimpleWindow(QMainWindow):
             return
         selected_row = selected_items[0].row()
         hotkey_to_delete = self.msg_hotkey_table.item(selected_row, 0).text()
-
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
             if hotkey_to_delete in self.hotkey_ids:
-                try:
-                    keyboard.remove_hotkey(self.hotkey_ids[hotkey_to_delete])
-                except Exception:
-                    pass
+                try: keyboard.remove_hotkey(self.hotkey_ids[hotkey_to_delete])
+                except Exception: pass
                 self.hotkey_ids.pop(hotkey_to_delete, None)
             self.message_hotkeys.pop(hotkey_to_delete, None)
             self.save_settings()
             self.msg_hotkey_table.removeRow(selected_row)
-
-            # Reset capture button
             self.hotkey_capture_btn.setText("Click to set")
             self.hotkey_capture_btn.setEnabled(True)
             self.message_edit.clear()
@@ -1219,14 +1348,11 @@ class SimpleWindow(QMainWindow):
             print(f"Failed to register F5 hotkey: {e}")
 
     def register_all_message_hotkeys(self):
-        # Remove previous message hotkeys only (preserve global F5)
         for hk, hk_id in list(self.hotkey_ids.items()):
             if hk != 'f5':
                 try: keyboard.remove_hotkey(hk_id)
                 except Exception: pass
                 self.hotkey_ids.pop(hk, None)
-
-        # Register all message hotkeys
         for hotkey, message in self.message_hotkeys.items():
             def callback(h=hotkey, msg=message):
                 self.send_chat_message(h, msg)
@@ -1237,22 +1363,18 @@ class SimpleWindow(QMainWindow):
                 print(f"Failed to register hotkey '{hotkey}': {e}")
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        # If game not active, forward the key back to the OS
         try:
             game_hwnd = win32gui.FindWindow(None, self.game_title)
             is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
         except Exception:
             is_game_active = False
-
         if not is_game_active:
             try: keyboard.send(hotkey_pressed)
             except Exception: pass
             return
-
         if self.is_sending_message:
             return
         self.is_sending_message = True
-
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         thread = QThread()
         worker.moveToThread(thread)
