@@ -349,10 +349,6 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
-        self.watchlist_file = "watchlist.json"
-        self.watchlist = self.load_watchlist()
-        self.character_path = ""
-        self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
@@ -427,6 +423,11 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
         load_layout.addLayout(content_layout)
         self.stacked_widget.addWidget(load_tab_content)
+        
+        # Set initial path and load characters
+        if not self.character_path:
+            self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
+        self.load_path_edit.setText(self.character_path)
 
         # Items tab
         self.item_database = ItemDatabase()
@@ -629,6 +630,7 @@ class SimpleWindow(QMainWindow):
 
         # Initialize some tabs
         self.refresh_lobbies()
+        self.load_characters() # Load characters on startup
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
         
         # Load saved recipes after the UI is fully initialized
