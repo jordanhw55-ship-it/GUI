@@ -759,6 +759,17 @@ class SimpleWindow(QMainWindow):
             self.custom_theme[key] = color.name()
             if self.custom_theme_enabled:
                 self.apply_custom_theme()
+
+    def reset_custom_theme_to_defaults(self):
+        """Resets custom theme colors to their default values."""
+        self.custom_theme = {
+            "bg": "#121212",
+            "fg": "#F0F0F0",
+            "accent": "#FF7F50"
+        }
+        if self.custom_theme_enabled:
+            self.apply_custom_theme()
+
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
         confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
