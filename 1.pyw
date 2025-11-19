@@ -313,8 +313,9 @@ class HotkeyCaptureWorker(QObject):
         try:
             while True:
                 event = keyboard.read_event(suppress=True)
-                # Check if the event has a valid name to avoid errors with special keys.
-                if event.event_type == keyboard.KEY_DOWN and event.name:
+                # Check if the event has a valid, non-empty name to avoid errors.
+                # Some keys can produce a name that is just whitespace.
+                if event.event_type == keyboard.KEY_DOWN and event.name and event.name.strip():
                     hotkey = keyboard.get_hotkey_name([event])
                     if hotkey == 'esc': # Allow 'esc' to cancel capture
                         break
