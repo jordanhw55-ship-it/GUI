@@ -764,6 +764,21 @@ class SimpleWindow(QMainWindow):
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
         self.save_settings()
 
+        # Manually update colors for items that have been explicitly set
+        self.update_materials_table_colors()
+
+    def update_materials_table_colors(self):
+        """Updates the text color of items in the materials table to match the current theme."""
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
+        for row in range(self.materials_table.rowCount()):
+            # Check the hidden sort column to see if the item is checked
+            is_checked = self.materials_table.item(row, 4).text() == "1"
+            if not is_checked:
+                new_color = self.palette().color(self.foregroundRole())
+                for col in range(self.materials_table.columnCount()):
+                    self.materials_table.item(row, col).setForeground(new_color)
+        self.materials_table.itemChanged.connect(self.on_material_checked)
+
     def confirm_reset(self):
         """Shows a confirmation dialog before resetting the application state."""
         confirm_box = QMessageBox(self)
