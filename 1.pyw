@@ -688,7 +688,6 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        self.save_settings() # Save after all changes are applied
 
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
@@ -773,7 +772,6 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        self.save_settings() # Save after all changes are applied
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
@@ -801,7 +799,6 @@ class SimpleWindow(QMainWindow):
         }
         if self.custom_theme_enabled:
             self.apply_custom_theme()
-        self.save_settings()
 
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
@@ -817,7 +814,6 @@ class SimpleWindow(QMainWindow):
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0) # type: ignore
-        self.save_settings() # Save the reset state
         self.watchlist = self.load_watchlist()
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
 
@@ -948,10 +944,8 @@ class SimpleWindow(QMainWindow):
         """Adds a recipe to the 'in-progress' list from the UI selection."""
         selected_item = self.available_recipes_list.currentItem()
         if not selected_item:
-            return
-        recipe_name = selected_item.text()
-        if self._add_recipe_by_name(recipe_name):
-            self.save_settings()
+            return False
+        return self._add_recipe_by_name(selected_item.text())
 
     def _add_recipe_by_name(self, recipe_name: str):
         """Helper to add a recipe to the in-progress list by its name."""
@@ -982,7 +976,6 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-            self.save_settings()
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -1296,13 +1289,14 @@ class SimpleWindow(QMainWindow):
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
+        self.save_settings() # Save all settings on exit
         try:
             for timer in self.automation_timers.values():
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
         except Exception:
             pass
-        super().closeEvent(event)
+        event.accept()
 
 
 if __name__ == "__main__":
