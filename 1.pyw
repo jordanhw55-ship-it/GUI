@@ -1070,7 +1070,8 @@ class SimpleWindow(QMainWindow):
 
     def select_character_path(self):
         """Opens a dialog to select the character data folder."""
-        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder")
+        default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
+        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
         if new_path:
             self.load_path_edit.setText(new_path)
             self.load_characters() # Automatically refresh
