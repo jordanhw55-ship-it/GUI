@@ -776,6 +776,17 @@ class SimpleWindow(QMainWindow):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
+        # Apply specific styling to the sound dropdown to prevent selection highlighting
+        accent_color = "#FF7F50" # Default for Black/Orange
+        if theme['name'] == "White/Pink": accent_color = "#DB7093"
+        elif theme['name'] == "Black/Blue": accent_color = "#4682B4"
+        elif theme['name'] == "White/Blue": accent_color = "#4682B4"
+        self.sound_select_dropdown.setStyleSheet(f"""
+            QComboBox#SoundSelect QAbstractItemView {{
+                selection-background-color: {accent_color};
+            }}
+        """)
+
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
         bg = self.custom_theme["bg"]
@@ -836,6 +847,16 @@ class SimpleWindow(QMainWindow):
             border: 1px solid {fg};
             background-color: {bg};
         }}
+        QComboBox#SoundSelect {{
+            border: 1px solid {fg};
+            background-color: {bg};
+            color: {fg};
+        }}
+        QComboBox#SoundSelect QAbstractItemView {{
+            background-color: {bg};
+            color: {fg};
+            selection-background-color: {accent};
+        }}
         """
 
     def apply_custom_theme(self):
@@ -863,6 +884,14 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        
+        # Also apply specific styling to the sound dropdown to prevent selection highlighting
+        self.sound_select_dropdown.setStyleSheet(f"""
+            QComboBox#SoundSelect QAbstractItemView {{
+                selection-background-color: {self.custom_theme['accent']};
+                selection-color: {self.custom_theme['bg']};
+            }}
+        """)
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
