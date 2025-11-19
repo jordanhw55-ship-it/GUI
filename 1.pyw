@@ -329,12 +329,6 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Hellfire Helper")
-        # Load settings first
-        self.load_settings()
-
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(700, 800)
 
         # Theme state
         self.current_theme_index = 0
@@ -344,6 +338,13 @@ class SimpleWindow(QMainWindow):
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         }
+
+        self.setWindowTitle("Hellfire Helper")
+        # Load settings first, which will overwrite the defaults above if a file exists
+        self.load_settings()
+
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.resize(700, 800)
 
         self.old_pos = None
         self.all_lobbies = []
