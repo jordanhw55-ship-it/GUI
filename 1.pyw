@@ -736,7 +736,27 @@ class CustomTabBar(QWidget):
                     border-color: #4169E1; /* RoyalBlue */
                 }
             """)
+        elif theme_name == "White/Blue":
+            # Specific style for White/Blue
+            self.setStyleSheet("""
+                QPushButton { /* Tab buttons */
+                    background-color: #87CEEB; /* SkyBlue */
+                    border: 1px solid #4682B4; /* SteelBlue */
+                    padding: 8px;
+                    border-radius: 6px;
+                    color: #000080; /* Navy */
+                    font-size: 16px;
+                }
+                QPushButton:hover {
+                    background-color: #87CEFA; /* LightSkyBlue */
+                }
+                QPushButton:checked {
+                    background-color: #4682B4; /* SteelBlue */
+                    color: #F0F8FF; /* AliceBlue */
+                }
+            """)
         else:
+            # Default for other light themes (e.g., White/Pink)
             self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
                     background-color: #FFC0CB; /* Pink */
