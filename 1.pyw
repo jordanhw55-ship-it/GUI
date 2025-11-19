@@ -464,7 +464,7 @@ class SimpleWindow(QMainWindow):
         self.setStyleSheet(theme["style"])
 
         # Apply theme to custom tab bar buttons
-        self.custom_tab_bar.apply_style(self.dark_mode)
+        self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
         
         # Update selection border on theme previews
         for i, preview in enumerate(self.theme_previews):
