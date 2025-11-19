@@ -367,7 +367,7 @@ class SimpleWindow(QMainWindow):
         self.theme_previews = []
         self.message_hotkeys = {}
         self.is_sending_message = False # Flag to prevent hotkey re-entrancy.
-
+        self.game_title = "Warcraft III" # Configurable game window title
         self.themes = [
             {
                 "name": "Black/Orange", "style": DARK_STYLE,
@@ -1582,7 +1582,7 @@ class SimpleWindow(QMainWindow):
             return # Prevent the function from running again if it's already busy.
 
         try:
-            game_hwnd = win32gui.FindWindow(None, "Warcraft III")
+            game_hwnd = win32gui.FindWindow(None, self.game_title)
             is_game_active = win32gui.GetForegroundWindow() == game_hwnd
 
             if not is_game_active:
@@ -1599,14 +1599,18 @@ class SimpleWindow(QMainWindow):
                 pyautogui.write(message, interval=0.01)
                 pyautogui.press('enter')
 
-                # Unblock the key after a short delay to ensure it's fully suppressed.
-                QTimer.singleShot(50, lambda: keyboard.unblock_key(key_to_block))
-                self.is_sending_message = False
+                # Schedule the key to be unblocked and the flag to be reset.
+                QTimer.singleShot(50, lambda: self.finish_sending_message(key_to_block))
         except Exception as e:
             print(f"Error sending chat message: {e}")
-        finally:
-            # Ensure the flag is always reset, even if an error occurs.
+            # If an error occurs, reset the flag immediately.
             self.is_sending_message = False
+
+    def finish_sending_message(self, key_to_unblock: str):
+        """Unblocks the key and resets the sending flag."""
+        keyboard.unblock_key(key_to_unblock)
+        self.is_sending_message = False
+
 
 class CustomTabBar(QWidget):
     """
