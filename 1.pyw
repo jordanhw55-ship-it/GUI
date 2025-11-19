@@ -625,7 +625,7 @@ class SimpleWindow(QMainWindow):
         watchlist_controls_layout.addWidget(remove_watchlist_button); watchlist_controls_layout.addStretch()
         
         # Add the new checkbox and dropdown
-        self.lobby_placeholder_checkbox = QCheckBox("Placeholder Checkbox")
+        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
         self.lobby_placeholder_dropdown = QComboBox(); self.lobby_placeholder_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
         watchlist_controls_layout.insertWidget(3, self.lobby_placeholder_checkbox)
         watchlist_controls_layout.insertWidget(4, self.lobby_placeholder_dropdown)
