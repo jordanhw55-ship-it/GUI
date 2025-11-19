@@ -175,7 +175,6 @@ class SimpleWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
         self.current_theme_index = 0
-        self.dark_mode = True  # Default to dark mode
         self.old_pos = None
         self.all_lobbies = [] # To store the full list of lobbies from the API
         self.thread = None
@@ -343,12 +342,12 @@ class SimpleWindow(QMainWindow):
 
         # --- Lobbies Table ---
         self.lobbies_table = QTableWidget()
-        self.lobbies_table.setColumnCount(4)
-        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Host", "Players"])
+        self.lobbies_table.setColumnCount(3)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players"])
         self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Make table read-only
         self.lobbies_table.verticalHeader().setVisible(False) # Hide row numbers
         self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents) # Players column
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Players column
 
         lobbies_layout.addWidget(self.lobbies_table)
 
@@ -472,14 +471,31 @@ class SimpleWindow(QMainWindow):
     def reset_state(self):
         """Resets the application to its initial state."""
         self.resize(600, 580)
-        self.counter = 0
         self.label.setText("Hello! Click the button.")
-        self.dark_mode = True
-        self.update_theme()
-        self.custom_tab_bar._on_button_clicked(0) # Switch to the first tab
+        self.apply_theme(0) # Reset to the first theme
+        self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = self.load_watchlist()
         self.watchlist_widget.clear()
         self.watchlist_widget.addItems(self.watchlist)
+        self.save_settings()
+
+    def load_settings(self):
+        """Loads settings like the current theme from a file."""
+        try:
+            if os.path.exists("settings.json"):
+                with open("settings.json", 'r') as f:
+                    settings = json.load(f)
+                    self.current_theme_index = settings.get("theme_index", 0)
+        except (IOError, json.JSONDecodeError):
+            self.current_theme_index = 0 # Default on error
+
+    def save_settings(self):
+        """Saves current settings to a file."""
+        settings = {
+            "theme_index": self.current_theme_index
+        }
+        with open("settings.json", 'w') as f:
+            json.dump(settings, f, indent=4)
 
     def load_watchlist(self):
         """Loads the watchlist from a JSON file."""
@@ -612,9 +628,8 @@ class SimpleWindow(QMainWindow):
 
             self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
             self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
-            self.lobbies_table.setItem(row, 2, QTableWidgetItem(lobby.get('host', 'N/A')))
             players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            self.lobbies_table.setItem(row, 3, AlignedTableWidgetItem(players))
+            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
 
             if is_watched:
                 for col in range(self.lobbies_table.columnCount()):
