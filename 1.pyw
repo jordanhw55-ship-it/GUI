@@ -771,8 +771,24 @@ class SimpleWindow(QMainWindow):
             preview_layout.addWidget(color_block); preview_layout.addWidget(name_label)
             layout.addWidget(preview, row, col); self.theme_previews.append(preview)
             col += 1
-            if col >= 4: col = 0; row += 1
+            if col >= 4:
+                col = 0
+                row += 1
         layout.setRowStretch(row + 1, 1); layout.setColumnStretch(col + 1, 1)
+
+    def select_ping_sound(self, sound_file: str):
+        """Selects a sound, plays it, and updates button styles."""
+        self.selected_sound = sound_file
+        self.play_specific_sound(sound_file)
+        self.update_ping_button_styles()
+
+    def update_ping_button_styles(self):
+        """Updates the visual state of the ping buttons."""
+        for sound, btn in self.ping_buttons.items():
+            if sound == self.selected_sound:
+                btn.setStyleSheet("background-color: black; color: white;")
+            else:
+                btn.setStyleSheet("") # Revert to the default stylesheet
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
