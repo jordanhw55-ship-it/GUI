@@ -666,12 +666,13 @@ class SimpleWindow(QMainWindow):
 
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
-        self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(3)
-        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players"])
+        self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(4)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"])
         self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.lobbies_table.verticalHeader().setVisible(False)
         self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         lobbies_layout.addWidget(self.lobbies_table)
         self.stacked_widget.addWidget(lobbies_tab_content)
 
@@ -1562,8 +1563,10 @@ class SimpleWindow(QMainWindow):
             self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
             players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
             self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+            host = lobby.get('host', lobby.get('server', 'N/A')) # Fallback to 'server' if 'host' is not present
+            self.lobbies_table.setItem(row, 3, AlignedTableWidgetItem(host))
             if watched:
-                for col in range(self.lobbies_table.columnCount()):
+                for col in range(self.lobbies_table.columnCount()): # type: ignore
                     self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
         self.lobbies_table.setSortingEnabled(True)
 
