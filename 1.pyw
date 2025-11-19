@@ -11,17 +11,17 @@ from PySide6.QtGui import QMouseEvent, QColor
 DARK_STYLE = """ 
     /* Black/Orange Theme */
     QWidget {
-        background-color: #1C1C1E;
+        background-color: #121212;
         color: #F0F0F0;
         font-family: 'Segoe UI';
         font-size: 14px;
         outline: none; /* Remove focus outline */
     }
     QMainWindow {
-        background-color: #1C1C1E;
+        background-color: #1F1F1F;
     }
     #CustomTitleBar {
-        background-color: #2A2A2C;
+        background-color: #1F1F1F;
     }
     #CustomTitleBar QLabel {
         background-color: transparent;
@@ -43,7 +43,7 @@ DARK_STYLE = """
         border-radius: 6px;
     }
     QHeaderView::section {
-        background-color: #2A2A2C;
+        background-color: #1F1F1F;
         padding: 4px;
         border: 1px solid #444444;
         color: #F0F0F0;
