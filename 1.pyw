@@ -367,6 +367,7 @@ class SimpleWindow(QMainWindow):
         self.is_automation_running = False
         self.custom_action_running = False
 
+        self.is_fetching_lobbies = False # Add a flag to prevent concurrent refreshes
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(5)
@@ -1030,6 +1031,10 @@ class SimpleWindow(QMainWindow):
 
     # Lobbies
     def refresh_lobbies(self):
+        if self.is_fetching_lobbies:
+            return # Don't start a new refresh if one is already running
+        self.is_fetching_lobbies = True
+
         self.lobbies_table.setRowCount(0); self.lobbies_table.setRowCount(1)
         loading_item = QTableWidgetItem("Fetching lobby data..."); loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lobbies_table.setItem(0, 0, loading_item); self.lobbies_table.setSpan(0, 0, 1, 3)
@@ -1043,6 +1048,7 @@ class SimpleWindow(QMainWindow):
         self.thread.start()
     def on_lobbies_fetched(self, lobbies: list):
         current_watched_lobbies = set()
+        self.is_fetching_lobbies = False # Reset the flag
         for lobby in lobbies:
             lobby_name = lobby.get('name', '').lower()
             lobby_map = lobby.get('map', '').lower()
@@ -1055,6 +1061,7 @@ class SimpleWindow(QMainWindow):
         self.all_lobbies = lobbies
         self.filter_lobbies(self.lobby_search_bar.text())
     def on_lobbies_fetch_error(self, error_message: str):
+        self.is_fetching_lobbies = False # Reset the flag
         self.lobbies_table.setRowCount(1)
         self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
         error_item = QTableWidgetItem(f"Error: {error_message}")
