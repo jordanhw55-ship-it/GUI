@@ -366,7 +366,6 @@ class SimpleWindow(QMainWindow):
         self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}
-        self.is_sending_message = False # Flag to prevent hotkey re-entrancy.
         self.game_title = "Warcraft III" # Configurable game window title
         self.themes = [
             {
@@ -1577,39 +1576,27 @@ class SimpleWindow(QMainWindow):
             keyboard.add_hotkey(hotkey, callback, suppress=True)
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        """Sends a chat message if the game window is active."""
-        if self.is_sending_message:
-            return # Prevent the function from running again if it's already busy.
-
+        """Creates a new worker to send a chat message if the game window is active."""
         try:
             game_hwnd = win32gui.FindWindow(None, self.game_title)
             is_game_active = win32gui.GetForegroundWindow() == game_hwnd
 
             if not is_game_active:
-                # If game is not active, re-send the keypress so it works in other apps.
+                # If the game isn't active, re-send the suppressed keypress so it can be
+                # used in other applications (like this GUI's input fields).
                 keyboard.send(hotkey_pressed)
             else:
-                self.is_sending_message = True
-                
-                # Block the key to prevent it from being sent to the game.
-                key_to_block = hotkey_pressed.split('+')[-1].strip()
-                keyboard.block_key(key_to_block)
-
-                pyautogui.press('enter')
-                pyautogui.write(message, interval=0.01)
-                pyautogui.press('enter')
-
-                # Schedule the key to be unblocked and the flag to be reset.
-                QTimer.singleShot(50, lambda: self.finish_sending_message(key_to_block))
+                # Create a new worker and thread for each hotkey press to ensure a clean state.
+                worker = AutomationWorker(self.game_title, "chat", message)
+                thread = QThread()
+                worker.moveToThread(thread)
+                thread.started.connect(worker.run)
+                worker.finished.connect(thread.quit)
+                worker.finished.connect(worker.deleteLater)
+                thread.finished.connect(thread.deleteLater)
+                thread.start()
         except Exception as e:
             print(f"Error sending chat message: {e}")
-            # If an error occurs, reset the flag immediately.
-            self.is_sending_message = False
-
-    def finish_sending_message(self, key_to_unblock: str):
-        """Unblocks the key and resets the sending flag."""
-        keyboard.unblock_key(key_to_unblock)
-        self.is_sending_message = False
 
 
 class CustomTabBar(QWidget):
