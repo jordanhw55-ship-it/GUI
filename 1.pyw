@@ -945,7 +945,10 @@ class SimpleWindow(QMainWindow):
         selected_item = self.available_recipes_list.currentItem()
         if not selected_item:
             return False
-        return self._add_recipe_by_name(selected_item.text())
+        if self._add_recipe_by_name(selected_item.text()):
+            self._rebuild_materials_table()
+            return True
+        return False
 
     def _add_recipe_by_name(self, recipe_name: str):
         """Helper to add a recipe to the in-progress list by its name."""
@@ -976,6 +979,7 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+            self._rebuild_materials_table()
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -1071,7 +1075,6 @@ class SimpleWindow(QMainWindow):
     def on_recipe_check_changed(self, item: QListWidgetItem):
         """Called when any recipe's check state changes to rebuild the material list."""
         # This handler is now connected to QListWidget.itemChanged
-        self._rebuild_materials_table()
         self._rebuild_materials_table()
 
     # Character loading
