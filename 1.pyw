@@ -377,6 +377,7 @@ class CustomTabBar(QWidget):
 
 class SimpleWindow(QMainWindow):
     automation_toggled_signal = Signal()
+    load_character_signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -737,6 +738,7 @@ class SimpleWindow(QMainWindow):
 
         # Connect the thread-safe signal to the automation toggle slot
         self.automation_toggled_signal.connect(self.toggle_automation)
+        self.load_character_signal.connect(self.on_f3_pressed)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
@@ -1502,6 +1504,11 @@ class SimpleWindow(QMainWindow):
         except (IOError, OSError) as e:
             self.char_content_box.setText(f"Error reading file: {e}")
     def load_selected_character(self):
+        # This is now the core logic, can be called by button or hotkey handler
+        if not self.char_list_box.currentItem():
+            # If nothing is selected, try to select the first item
+            if self.char_list_box.count() > 0:
+                self.char_list_box.setCurrentRow(0)
         current_item = self.char_list_box.currentItem()
         if not current_item:
             QMessageBox.warning(self, "No Character Selected", "Please select a character from the list."); return
@@ -1514,6 +1521,11 @@ class SimpleWindow(QMainWindow):
             pyautogui.press('enter'); pyautogui.write(f"-load {char_name}", interval=0.05); pyautogui.press('enter')
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
+
+    def on_f3_pressed(self):
+        """Handler for the F3 hotkey press."""
+        self.load_selected_character()
+        self.showMinimized()
 
     # Lobbies
     def refresh_lobbies(self):
@@ -1759,6 +1771,13 @@ class SimpleWindow(QMainWindow):
             self.hotkey_ids['f5'] = f5_id
         except Exception as e:
             print(f"Failed to register F5 hotkey: {e}")
+
+        # Register global F3 for loading character
+        try:
+            f3_id = keyboard.add_hotkey('f3', lambda: self.load_character_signal.emit(), suppress=True)
+            self.hotkey_ids['f3'] = f3_id
+        except Exception as e:
+            print(f"Failed to register F3 hotkey: {e}")
 
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
