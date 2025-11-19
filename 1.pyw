@@ -781,6 +781,23 @@ class SimpleWindow(QMainWindow):
                 row += 1
         layout.setRowStretch(row + 1, 1); layout.setColumnStretch(col + 1, 1)
 
+    def select_ping_sound(self, sound_file: str):
+        """Selects a sound, plays it, and updates button styles."""
+        self.selected_sound = sound_file
+        self.play_specific_sound(sound_file)
+        self.update_ping_button_styles()
+
+    def update_ping_button_styles(self):
+        """Updates the visual state of the ping buttons."""
+        accent_color = self.custom_theme.get("accent", "#FF7F50") if self.custom_theme_enabled else "#FF7F50"
+        for sound, btn in self.ping_buttons.items():
+            if sound == self.selected_sound:
+                btn.setChecked(True)
+                btn.setStyleSheet(f"background-color: {accent_color}; color: black;")
+            else:
+                btn.setChecked(False)
+                btn.setStyleSheet("") # Revert to the default stylesheet
+
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
