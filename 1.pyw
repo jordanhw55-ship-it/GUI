@@ -539,7 +539,12 @@ class SimpleWindow(QMainWindow):
         recipes_main_layout.addLayout(recipes_top_layout)
 
         # Materials Checklist table
-        self.materials_table = self._create_item_table(["Material", "#", "Unit", "Location"])
+        self.materials_table = QTableWidget()
+        self.materials_table.setColumnCount(5) # Add a hidden column for sorting
+        self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
+        self.materials_table.setColumnHidden(4, True) # Hide the 'Checked' column
+        self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.materials_table.setSortingEnabled(True)
         self.materials_table.itemChanged.connect(self.on_material_checked)
         recipes_main_layout.addWidget(self.materials_table)
 
@@ -926,6 +931,7 @@ class SimpleWindow(QMainWindow):
 
     def _rebuild_materials_table(self):
         """Clears and repopulates the materials table from the internal data dictionary."""
+        self.materials_table.setSortingEnabled(False) # Disable sorting during rebuild
         self.materials_table.setRowCount(0)
         for row, item_data in enumerate(self.material_list_data.values()):
             self._add_row_to_materials_table(row, item_data)
@@ -970,16 +976,33 @@ class SimpleWindow(QMainWindow):
         self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
         self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
 
+        # Column 4: Hidden sort key for checked status
+        checked_item = QTableWidgetItem("0")
+        self.materials_table.setItem(row_num, 4, checked_item)
+
     def on_material_checked(self, item: QTableWidgetItem):
         """Grays out a row in the materials table when its checkbox is ticked."""
         if item.column() != 0: # Only respond to changes in the first column
             return
 
-        color = QColor("gray") if item.checkState() == Qt.CheckState.Checked else self.palette().color(self.foregroundRole())
+        is_checked = item.checkState() == Qt.CheckState.Checked
+        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
+        
+        # Temporarily disconnect the signal to prevent recursion
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
+
         for col in range(self.materials_table.columnCount()):
             table_item = self.materials_table.item(item.row(), col)
             if table_item: # Add a check to ensure the item exists before modifying it
                 table_item.setForeground(color)
+
+        # Update the hidden sort column and re-sort the table
+        self.materials_table.item(item.row(), 4).setText("1" if is_checked else "0")
+        self.materials_table.setSortingEnabled(True)
+        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder) # Sort by checked status
+
+        # Reconnect the signal
+        self.materials_table.itemChanged.connect(self.on_material_checked)
 
     def filter_current_item_view(self):
         """Filters the currently visible item table based on the search query."""
