@@ -672,6 +672,8 @@ class SimpleWindow(QMainWindow):
         self.custom_theme_enabled = False  # disable custom when preset applied
         self.current_theme_index = theme_index
         theme = self.themes[theme_index]
+        self.save_settings() # Save preset theme choice
+
         self.dark_mode = theme["is_dark"]
         self.setStyleSheet(theme["style"])
         self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
@@ -741,6 +743,7 @@ class SimpleWindow(QMainWindow):
         self.custom_theme_enabled = True
         self.setStyleSheet(self.build_custom_stylesheet())
         self.custom_tab_bar.setStyleSheet(f"""
+            self.save_settings() # Save custom theme state
             QPushButton {{
                 background-color: {self.custom_theme['bg']};
                 border: 1px solid {self.custom_theme['fg']};
@@ -765,6 +768,7 @@ class SimpleWindow(QMainWindow):
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
+        self.save_settings() # Save the toggle state
         if self.custom_theme_enabled:
             self.apply_custom_theme()
         else:
@@ -775,6 +779,7 @@ class SimpleWindow(QMainWindow):
         color = QColorDialog.getColor(initial, self, f"Pick {key} color")
         if color.isValid():
             self.custom_theme[key] = color.name()
+            self.save_settings() # Save the new custom color
             if self.custom_theme_enabled:
                 self.apply_custom_theme()
 
@@ -785,6 +790,7 @@ class SimpleWindow(QMainWindow):
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         }
+        self.save_settings() # Save the reset colors
         if self.custom_theme_enabled:
             self.apply_custom_theme()
 
@@ -802,8 +808,42 @@ class SimpleWindow(QMainWindow):
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
+        self.save_settings() # Save the reset state
         self.watchlist = self.load_watchlist()
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
+
+    # Settings
+    def load_settings(self):
+        """Loads settings from a JSON file."""
+        settings_path = os.path.join(get_base_path(), "settings.json")
+        try:
+            if os.path.exists(settings_path):
+                with open(settings_path, 'r') as f:
+                    settings = json.load(f)
+                    self.current_theme_index = settings.get("theme_index", 0)
+                    self.character_path = settings.get("character_path", "")
+                    self.message_hotkeys = settings.get("message_hotkeys", {})
+                    self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
+                    self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
+        except (IOError, json.JSONDecodeError):
+            self.current_theme_index = 0
+            self.character_path = ""
+            self.message_hotkeys = {}
+            self.custom_theme_enabled = False
+            self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
+
+    def save_settings(self):
+        """Saves current settings to a JSON file."""
+        settings_path = os.path.join(get_base_path(), "settings.json")
+        settings = {
+            "theme_index": self.current_theme_index,
+            "character_path": self.character_path,
+            "message_hotkeys": self.message_hotkeys,
+            "custom_theme_enabled": self.custom_theme_enabled,
+            "custom_theme": self.custom_theme
+        }
+        with open(settings_path, 'w') as f:
+            json.dump(settings, f, indent=4)
 
     # Watchlist
     def load_watchlist(self):
