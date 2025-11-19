@@ -17,7 +17,11 @@ from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 
 import keyboard   # type: ignore
 import pyautogui  # type: ignore
-import win32gui   # type: ignore
+try:
+    import win32gui
+    import winsound
+except ImportError:
+    print("Windows-specific libraries (pywin32) not found. Some features will be disabled.")
 
 
 DARK_STYLE = """
@@ -627,8 +631,12 @@ class SimpleWindow(QMainWindow):
         
         # Add the new checkbox and dropdown
         self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
-        watchlist_controls_layout.insertWidget(3, self.lobby_placeholder_checkbox)
+        test_sound_button = QPushButton("Test Sound")
+        test_sound_button.clicked.connect(self.play_notification_sound)
+        sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
+        watchlist_controls_layout.addLayout(sound_layout)
         self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
+
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
         self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(3)
@@ -1455,7 +1463,7 @@ class SimpleWindow(QMainWindow):
                     current_watched_lobbies.add(lobby.get('name')); break
         newly_found = current_watched_lobbies - self.previous_watched_lobbies
         if newly_found and self.lobby_placeholder_checkbox.isChecked():
-            QApplication.beep()
+            self.play_notification_sound()
         self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
         self.filter_lobbies(self.lobby_search_bar.text())
@@ -1646,6 +1654,15 @@ class SimpleWindow(QMainWindow):
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
+
+    def play_notification_sound(self):
+        """Plays a system sound. Tries winsound first, falls back to QApplication.beep()."""
+        try:
+            # Play the standard system 'Asterisk' sound
+            winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS | winsound.SND_ASYNC)
+        except NameError:
+            # Fallback for non-Windows or if winsound failed to import
+            QApplication.beep()
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
