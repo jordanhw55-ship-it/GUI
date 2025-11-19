@@ -657,6 +657,7 @@ class SimpleWindow(QMainWindow):
         self.msg_hotkey_table = QTableWidget()
         self.msg_hotkey_table.setColumnCount(2)
         self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
+        self.msg_hotkey_table.verticalHeader().setVisible(False)
         self.msg_hotkey_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         right_layout.addWidget(self.msg_hotkey_table)
 
