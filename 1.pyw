@@ -398,6 +398,7 @@ class SimpleWindow(QMainWindow):
         self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}
+        self.running_chat_threads = [] # Keep references to running threads
         self.game_title = "Warcraft III" # Configurable game window title
         self.themes = [
             {
@@ -1621,14 +1622,20 @@ class SimpleWindow(QMainWindow):
                 # Create a new, specialized worker and thread for each hotkey press.
                 # This ensures a clean state and reliable key suppression.
                 worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-                thread = QThread()
+                thread = QThread() # Create a new thread for this worker
                 worker.moveToThread(thread)
 
+                # When the thread is finished, remove it from our list to allow garbage collection.
+                thread.finished.connect(lambda t=thread: self.running_chat_threads.remove(t))
+
+                # Standard thread setup
                 thread.started.connect(worker.run)
                 worker.finished.connect(thread.quit)
                 worker.finished.connect(worker.deleteLater)
                 thread.finished.connect(thread.deleteLater)
 
+                # Add the thread to our list to keep a reference to it.
+                self.running_chat_threads.append(thread)
                 thread.start()
         except Exception as e:
             print(f"Error sending chat message: {e}")
