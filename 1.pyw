@@ -894,6 +894,11 @@ class SimpleWindow(QMainWindow):
         self._rebuild_materials_table()
         self._reset_automation_ui()
 
+        # Reset message hotkeys
+        self.message_hotkeys.clear()
+        self.load_message_hotkeys() # This will clear the table
+        self.register_global_hotkeys() # This will unhook old and register new (just F5)
+
     # Settings
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
