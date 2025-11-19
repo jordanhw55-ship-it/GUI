@@ -632,15 +632,12 @@ class SimpleWindow(QMainWindow):
         add_watchlist_button = QPushButton("Add"); add_watchlist_button.clicked.connect(self.add_to_watchlist)
         watchlist_controls_layout.addWidget(add_watchlist_button)
         remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
-        watchlist_controls_layout.addWidget(remove_watchlist_button); watchlist_controls_layout.addStretch()
-        
-        # Add the new checkbox and dropdown
-        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
-        test_sound_button = QPushButton("Test Sound")
-        test_sound_button.clicked.connect(self.play_notification_sound)
-        sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
-        watchlist_controls_layout.addLayout(sound_layout)
-        self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
+        watchlist_controls_layout.addWidget(remove_watchlist_button)
+
+        self.sound_select_dropdown = QComboBox()
+        self.sound_select_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
+        watchlist_controls_layout.addWidget(self.sound_select_dropdown)
+        watchlist_controls_layout.addStretch()
 
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
