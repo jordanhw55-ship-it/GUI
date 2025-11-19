@@ -349,6 +349,10 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
+        self.watchlist_file = "watchlist.json"
+        self.watchlist = self.load_watchlist()
+        self.previous_watched_lobbies = set()
+
         self.theme_previews = []
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
