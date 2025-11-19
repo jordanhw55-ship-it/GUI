@@ -364,6 +364,98 @@ class ChatMessageWorker(QObject):
         finally:
             self.finished.emit()
 
+class ChatMessageWorker(QObject):
+    """
+    A dedicated worker to send a chat message and handle key suppression.
+    This worker is created for each hotkey press to ensure a clean state.
+    """
+    finished = Signal()
+
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+
+    def run(self):
+        """Blocks the original key, sends the message, then unblocks."""
+        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
+        try:
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+        finally:
+            self.finished.emit()
+
+class ChatMessageWorker(QObject):
+    """
+    A dedicated worker to send a chat message and handle key suppression.
+    This worker is created for each hotkey press to ensure a clean state.
+    """
+    finished = Signal()
+
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+
+    def run(self):
+        """Blocks the original key, sends the message, then unblocks."""
+        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
+        try:
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+        finally:
+            self.finished.emit()
+
+class ChatMessageWorker(QObject):
+    """
+    A dedicated worker to send a chat message and handle key suppression.
+    This worker is created for each hotkey press to ensure a clean state.
+    """
+    finished = Signal()
+
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+
+    def run(self):
+        """Blocks the original key, sends the message, then unblocks."""
+        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
+        try:
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+        finally:
+            self.finished.emit()
+
+class ChatMessageWorker(QObject):
+    """
+    A dedicated worker to send a chat message and handle key suppression.
+    This worker is created for each hotkey press to ensure a clean state.
+    """
+    finished = Signal()
+
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+
+    def run(self):
+        """Blocks the original key, sends the message, then unblocks."""
+        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
+        try:
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+        finally:
+            self.finished.emit()
+
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
         super().__init__(text)
@@ -1473,6 +1565,9 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
+        # Reset keyboard listener state to prevent combining previous presses.
+        keyboard.press_and_release('esc')
+
         # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
@@ -1583,17 +1678,24 @@ class SimpleWindow(QMainWindow):
         
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
-            if hotkey_to_delete in self.message_hotkeys:
-                # Unhook only the specific hotkey to avoid side effects
-                keyboard.remove_hotkey(hotkey_to_delete)
-                del self.message_hotkeys[hotkey_to_delete]
-                self.save_settings()
-                # Just remove the row from the table, no need to reload everything
-                self.msg_hotkey_table.removeRow(selected_items[0].row())
+            keyboard.remove_hotkey(hotkey_to_delete)
+            del self.message_hotkeys[hotkey_to_delete]
+            self.save_settings()
+            self.load_message_hotkeys()
+
+    def register_message_hotkey(self, hotkey: str, message: str):
+        """Registers a single hotkey and adds it to the internal dictionary."""
+        # The callback needs to be created in a way that captures the current hotkey and message
+        callback = (lambda h, msg: lambda: self.send_chat_message(h, msg))(hotkey, message)
+        keyboard.add_hotkey(hotkey, callback, suppress=True)
+        self.message_hotkeys[hotkey] = message
+        self.load_message_hotkeys() # Refresh the UI table
 
     def register_all_message_hotkeys(self):
         """Registers all loaded hotkeys with the keyboard listener."""
-        keyboard.unhook_all() # Clear previous hooks
+        keyboard.unhook_all()
+        # Also register other global hotkeys here
+        keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
         # Use a copy of the items to avoid issues if the dict is modified elsewhere.
         for hotkey, message in self.message_hotkeys.items():
             # Create a closure to capture the correct message and hotkey for the callback.
