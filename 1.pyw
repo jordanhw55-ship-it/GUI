@@ -935,7 +935,7 @@ class SimpleWindow(QMainWindow):
             row_position = self.msg_hotkey_table.rowCount()
             self.msg_hotkey_table.insertRow(row_position)
             self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
-            self.msg_hot_table.setItem(row_position, 1, QTableWidgetItem(message))
+            self.msg_hotkey_table.setItem(row_position, 1, QTableWidgetItem(message))
 
     def add_message_hotkey(self):
         """Adds a new hotkey and message to the system."""
