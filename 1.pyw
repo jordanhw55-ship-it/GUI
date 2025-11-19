@@ -473,6 +473,7 @@ class SimpleWindow(QMainWindow):
         remove_recipe_btn = QPushButton("<- Remove"); remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
         add_remove_layout.addWidget(add_recipe_btn); add_remove_layout.addWidget(remove_recipe_btn); add_remove_layout.addStretch()
         self.in_progress_recipes_list = QListWidget()
+        self.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
         recipes_top_layout.addLayout(recipes_list_layout); recipes_top_layout.addLayout(add_remove_layout); recipes_top_layout.addWidget(self.in_progress_recipes_list)
         recipes_main_layout.addLayout(recipes_top_layout)
         self.materials_table = QTableWidget()
@@ -969,7 +970,6 @@ class SimpleWindow(QMainWindow):
         item = QListWidgetItem(recipe_name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Unchecked)
-        item.checkStateChanged.connect(self.on_recipe_check_changed)
         self.in_progress_recipes_list.addItem(item)
         return True
 
@@ -980,6 +980,7 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+            self.save_settings()
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -1081,8 +1082,9 @@ class SimpleWindow(QMainWindow):
         self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
         self.materials_table.itemChanged.connect(self.on_material_checked)
 
-    def on_recipe_check_changed(self):
+    def on_recipe_check_changed(self, item: QListWidgetItem):
         """Called when any recipe's check state changes to rebuild the material list."""
+        # This handler is now connected to QListWidget.itemChanged
         self._rebuild_materials_table()
 
     # Character loading
