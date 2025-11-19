@@ -379,11 +379,6 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
-        self.watchlist = ["legion", "hellgate"] # Default, will be overwritten by load_settings
-        self.previous_watched_lobbies = set()
-
-        self.theme_previews = []
-        self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
@@ -393,6 +388,11 @@ class SimpleWindow(QMainWindow):
         self.is_automation_running = False
         self.automation_settings = {} # To hold loaded settings
         self.custom_action_running = False
+        self.previous_watched_lobbies = set()
+        self.theme_previews = []
+        self.message_hotkeys = {}       # {hotkey_str: message_str}
+        self.watchlist = ["legion", "hellgate"] # Default, will be overwritten by load_settings
+
 
         self.setWindowTitle("Hellfire Helper")
         # Load settings first, which will overwrite the defaults above if a file exists
@@ -1065,7 +1065,7 @@ class SimpleWindow(QMainWindow):
         key_settings = self.automation_settings.get("keys", {})
         for key, settings in key_settings.items():
             if key in self.automation_key_ctrls:
-                self.automation_key_ctrls[key]["chk"].setChecked(settings.get("checked", False))
+                self.automation_key_ctrls[key]["chk"].setChecked(settings.get("checked", False)) # type: ignore
                 self.automation_key_ctrls[key]["edit"].setText(settings.get("interval", "500"))
 
         custom_settings = self.automation_settings.get("custom", {})
@@ -1115,7 +1115,6 @@ class SimpleWindow(QMainWindow):
 
     # Watchlist
     def load_watchlist(self):
-        watchlist_path = os.path.join(get_base_path(), self.watchlist_file)
         # This method is no longer needed as watchlist is loaded/saved via settings.json
         pass
     def add_to_watchlist(self):
@@ -1124,7 +1123,6 @@ class SimpleWindow(QMainWindow):
             self.watchlist.append(keyword)
             self.watchlist_widget.addItem(keyword)
             self.watchlist_input.clear()
-            # Settings are now saved on close, no need to save here
             self.filter_lobbies(self.lobby_search_bar.text())
     def remove_from_watchlist(self):
         selected_items = self.watchlist_widget.selectedItems()
@@ -1133,7 +1131,6 @@ class SimpleWindow(QMainWindow):
         for item in selected_items:
             self.watchlist.remove(item.text())
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
-        # Settings are now saved on close, no need to save here
         self.filter_lobbies(self.lobby_search_bar.text())
 
     # Items
