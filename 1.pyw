@@ -309,7 +309,7 @@ class HotkeyCaptureWorker(QObject):
         """Waits for and reads a single hotkey press."""
         try:
             # read_hotkey blocks until a key is pressed
-            hotkey = keyboard.read_hotkey(suppress=False)
+            hotkey = keyboard.read_hotkey(suppress=True)
             self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
