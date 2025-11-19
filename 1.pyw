@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QV
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor
+import keyboard
 import pyautogui # type: ignore
 import win32gui # type: ignore
 
@@ -350,6 +351,7 @@ class SimpleWindow(QMainWindow):
         self.character_path = ""
         self.previous_watched_lobbies = set()
         self.theme_previews = []
+        self.message_hotkeys = {}
         self.game_title = "Warcraft III" # Configurable game window title
 
         self.themes = [
@@ -655,9 +657,15 @@ class SimpleWindow(QMainWindow):
         right_layout.addLayout(msg_form_layout)
 
         msg_btn_layout = QHBoxLayout()
-        msg_btn_layout.addWidget(QPushButton("Add"))
-        msg_btn_layout.addWidget(QPushButton("Update"))
-        msg_btn_layout.addWidget(QPushButton("Delete"))
+        self.add_msg_btn = QPushButton("Add")
+        self.add_msg_btn.clicked.connect(self.add_message_hotkey)
+        self.update_msg_btn = QPushButton("Update")
+        self.update_msg_btn.clicked.connect(self.update_message_hotkey)
+        self.delete_msg_btn = QPushButton("Delete")
+        self.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
+        msg_btn_layout.addWidget(self.add_msg_btn)
+        msg_btn_layout.addWidget(self.update_msg_btn)
+        msg_btn_layout.addWidget(self.delete_msg_btn)
         right_layout.addLayout(msg_btn_layout)
 
         automation_main_layout.addWidget(left_panel, 1)
@@ -758,6 +766,7 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
         # Initial tab selection
+        self.load_message_hotkeys()
         self.on_main_tab_selected(0)
 
         # Apply the initial theme and set button text
@@ -838,6 +847,8 @@ class SimpleWindow(QMainWindow):
         elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
             self.item_database.load_recipes()
             self.filter_recipes_list()
+        elif self.tab_names[index] == "Automation":
+            self.load_message_hotkeys()
 
     def _create_item_table(self, headers: list) -> QTableWidget:
         """Factory function to create and configure an item table."""
@@ -968,15 +979,18 @@ class SimpleWindow(QMainWindow):
                     settings = json.load(f)
                     self.current_theme_index = settings.get("theme_index", 0)
                     self.character_path = settings.get("character_path", "")
+                    self.message_hotkeys = settings.get("message_hotkeys", {})
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0 # Default on error
             self.character_path = ""
+            self.message_hotkeys = {}
 
     def save_settings(self):
         """Saves current settings to a file."""
         settings = {
             "theme_index": self.current_theme_index,
-            "character_path": self.character_path
+            "character_path": self.character_path,
+            "message_hotkeys": self.message_hotkeys
         }
         with open("settings.json", 'w') as f:
             json.dump(settings, f, indent=4)
@@ -1415,6 +1429,92 @@ class SimpleWindow(QMainWindow):
                 for col in range(self.lobbies_table.columnCount()):
                     self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B")) # A dark green color
         self.lobbies_table.setSortingEnabled(True)
+
+    def load_message_hotkeys(self):
+        """Loads hotkeys from settings and populates the table."""
+        self.msg_hotkey_table.setRowCount(0)
+        for hotkey, message in self.message_hotkeys.items():
+            row_position = self.msg_hotkey_table.rowCount()
+            self.msg_hotkey_table.insertRow(row_position)
+            self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
+            self.msg_hotkey_table.setItem(row_position, 1, QTableWidgetItem(message))
+        self.register_all_message_hotkeys()
+
+    def add_message_hotkey(self):
+        """Adds a new hotkey and message to the list."""
+        hotkey = self.hotkey_capture_btn.text()
+        message = self.message_edit.text()
+
+        if hotkey == "Click to set" or not message:
+            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
+            return
+
+        if hotkey in self.message_hotkeys:
+            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
+            return
+
+        self.message_hotkeys[hotkey] = message
+        self.save_settings()
+        self.load_message_hotkeys()
+        self.hotkey_capture_btn.setText("Click to set")
+        self.message_edit.clear()
+
+    def update_message_hotkey(self):
+        """Updates the selected hotkey and message."""
+        selected_items = self.msg_hotkey_table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to update.")
+            return
+
+        selected_row = selected_items[0].row()
+        old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
+        
+        new_hotkey = self.hotkey_capture_btn.text()
+        new_message = self.message_edit.text()
+
+        if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
+            QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
+            return
+
+        # Remove old, add new
+        del self.message_hotkeys[old_hotkey]
+        self.message_hotkeys[new_hotkey] = new_message
+        self.save_settings()
+        self.load_message_hotkeys()
+
+    def delete_message_hotkey(self):
+        """Deletes the selected hotkey."""
+        selected_items = self.msg_hotkey_table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
+            return
+
+        hotkey_to_delete = self.msg_hotkey_table.item(selected_items[0].row(), 0).text()
+        
+        confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
+        if confirm == QMessageBox.StandardButton.Yes:
+            if hotkey_to_delete in self.message_hotkeys:
+                del self.message_hotkeys[hotkey_to_delete]
+                self.save_settings()
+                self.load_message_hotkeys()
+
+    def register_all_message_hotkeys(self):
+        """Registers all loaded hotkeys with the keyboard listener."""
+        keyboard.unhook_all() # Clear previous hooks
+        for hotkey, message in self.message_hotkeys.items():
+            # Create a closure to capture the correct message for the callback
+            callback = (lambda msg: lambda: self.send_chat_message(msg))(message)
+            keyboard.add_hotkey(hotkey, callback, suppress=True)
+
+    def send_chat_message(self, message: str):
+        """Sends a chat message if the game window is active."""
+        try:
+            if win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title):
+                pyautogui.press('enter')
+                pyautogui.write(message, interval=0.01)
+                pyautogui.press('enter')
+        except Exception as e:
+            print(f"Error sending chat message: {e}")
 
 class CustomTabBar(QWidget):
     """
