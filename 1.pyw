@@ -2,10 +2,13 @@ import sys
 import requests
 import json
 import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
+from datetime import datetime
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor
+import pyautogui
+import win32gui
 
 
 DARK_STYLE = """ 
@@ -198,6 +201,7 @@ class SimpleWindow(QMainWindow):
         self.thread = None
         self.watchlist_file = "watchlist.json"
         self.watchlist = self.load_watchlist()
+        self.character_path = ""
         self.previous_watched_lobbies = set()
         self.theme_previews = []
 
@@ -280,8 +284,50 @@ class SimpleWindow(QMainWindow):
         # --- Create the "Load" tab ---
         load_tab_content = QWidget()
         load_layout = QVBoxLayout(load_tab_content)
-        load_layout.addWidget(QLabel("This is the 'Load' tab."))
-        load_layout.addStretch() # Pushes the content to the top
+
+        # Path controls
+        path_layout = QHBoxLayout()
+        self.load_path_edit = QLineEdit()
+        self.load_path_edit.setPlaceholderText("Character save path...")
+        self.load_path_edit.textChanged.connect(self.on_path_changed)
+        browse_btn = QPushButton("Browse...")
+        browse_btn.clicked.connect(self.select_character_path)
+        reset_path_btn = QPushButton("Reset Path")
+        reset_path_btn.clicked.connect(self.reset_character_path)
+        path_layout.addWidget(self.load_path_edit)
+        path_layout.addWidget(browse_btn)
+        path_layout.addWidget(reset_path_btn)
+        load_layout.addLayout(path_layout)
+
+        # Action buttons
+        action_layout = QHBoxLayout()
+        load_char_btn = QPushButton("Load Character (F3)")
+        load_char_btn.clicked.connect(self.load_selected_character)
+        refresh_chars_btn = QPushButton("Refresh")
+        refresh_chars_btn.clicked.connect(self.load_characters)
+        action_layout.addWidget(load_char_btn)
+        action_layout.addWidget(refresh_chars_btn)
+        action_layout.addStretch()
+        load_layout.addLayout(action_layout)
+
+        # Character list and content view
+        content_layout = QHBoxLayout()
+        self.char_list_box = QListWidget()
+        self.char_list_box.setFixedWidth(200)
+        self.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
+        
+        self.char_content_box = QTextEdit()
+        self.char_content_box.setReadOnly(True)
+        self.char_content_box.setFontFamily("Consolas")
+        self.char_content_box.setFontPointSize(10)
+
+        content_layout.addWidget(self.char_list_box)
+        content_layout.addWidget(self.char_content_box)
+        load_layout.addLayout(content_layout)
+
+        # Set initial path and load characters
+        self.load_path_edit.setText(self.character_path)
+        self.load_characters()
         self.stacked_widget.addWidget(load_tab_content)
 
         # --- Create the "Items" tab ---
@@ -504,13 +550,16 @@ class SimpleWindow(QMainWindow):
                 with open("settings.json", 'r') as f:
                     settings = json.load(f)
                     self.current_theme_index = settings.get("theme_index", 0)
+                    self.character_path = settings.get("character_path", "")
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0 # Default on error
+            self.character_path = ""
 
     def save_settings(self):
         """Saves current settings to a file."""
         settings = {
-            "theme_index": self.current_theme_index
+            "theme_index": self.current_theme_index,
+            "character_path": self.character_path
         }
         with open("settings.json", 'w') as f:
             json.dump(settings, f, indent=4)
@@ -550,6 +599,96 @@ class SimpleWindow(QMainWindow):
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
         self.save_watchlist()
         self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
+
+    def on_path_changed(self, new_path: str):
+        """Updates character path when the text is edited."""
+        self.character_path = new_path
+        self.save_settings()
+
+    def select_character_path(self):
+        """Opens a dialog to select the character data folder."""
+        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder")
+        if new_path:
+            self.load_path_edit.setText(new_path)
+            self.load_characters() # Automatically refresh
+
+    def reset_character_path(self):
+        """Resets the character path to the default location."""
+        confirm_box = QMessageBox.question(self, "Confirm Reset", "Reset character path to default?",
+                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                           QMessageBox.StandardButton.No)
+        if confirm_box == QMessageBox.StandardButton.Yes:
+            default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
+            self.load_path_edit.setText(default_path)
+            self.load_characters() # Automatically refresh
+
+    def load_characters(self):
+        """Loads and displays character files from the specified path."""
+        self.char_list_box.clear()
+        self.char_content_box.clear()
+
+        if not self.character_path or not os.path.isdir(self.character_path):
+            if self.character_path: # Only show error if path is set but invalid
+                QMessageBox.warning(self, "Error", f"Character save directory not found:\n{self.character_path}")
+            return
+
+        char_files = []
+        for filename in os.listdir(self.character_path):
+            if filename.endswith(".txt"):
+                full_path = os.path.join(self.character_path, filename)
+                try:
+                    mod_time = os.path.getmtime(full_path)
+                    char_name = os.path.splitext(filename)[0]
+                    char_files.append({"name": char_name, "path": full_path, "mod_time": mod_time})
+                except OSError:
+                    continue # Skip files that can't be accessed
+
+        # Sort by modification time, descending
+        sorted_chars = sorted(char_files, key=lambda x: x["mod_time"], reverse=True)
+
+        for char in sorted_chars:
+            item = QListWidgetItem(char["name"])
+            item.setData(Qt.ItemDataRole.UserRole, char["path"]) # Store full path in the item
+            self.char_list_box.addItem(item)
+
+        if self.char_list_box.count() > 0:
+            self.char_list_box.setCurrentRow(0)
+
+    def show_character_file_contents(self, current_item: QListWidgetItem, previous_item: QListWidgetItem):
+        """Displays the content of the selected character file."""
+        if not current_item:
+            self.char_content_box.clear()
+            return
+
+        file_path = current_item.data(Qt.ItemDataRole.UserRole)
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                self.char_content_box.setText(f.read())
+        except (IOError, OSError) as e:
+            self.char_content_box.setText(f"Error reading file: {e}")
+
+    def load_selected_character(self):
+        """Sends the -load command for the selected character to the game."""
+        current_item = self.char_list_box.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "No Character Selected", "Please select a character from the list.")
+            return
+
+        char_name = current_item.text()
+        game_title = "Warcraft III"
+
+        try:
+            hwnd = win32gui.FindWindow(None, game_title)
+            if hwnd == 0:
+                QMessageBox.critical(self, "Error", f"'{game_title}' window not found.")
+                return
+
+            win32gui.SetForegroundWindow(hwnd)
+            pyautogui.press('enter')
+            pyautogui.write(f"-load {char_name}", interval=0.05)
+            pyautogui.press('enter')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
 
     def refresh_lobbies(self):
         """Placeholder method to refresh lobby data."""
