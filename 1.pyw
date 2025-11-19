@@ -369,6 +369,7 @@ class SimpleWindow(QMainWindow):
 
         # Theme state
         self.current_theme_index = 0
+        self.last_tab_index = 0
         self.custom_theme_enabled = False
         self.custom_theme = {
             "bg": "#121212",
@@ -687,12 +688,7 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
         # Apply preset or custom theme depending on the flag
-        if self.custom_theme_enabled:
-            self.apply_custom_theme()
-        else:
-            self.apply_theme(self.current_theme_index)
-
-        # Initialize some tabs
+        self.custom_tab_bar._on_button_clicked(self.last_tab_index)
         self.refresh_lobbies()
         self.load_characters() # Load characters on startup
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
@@ -703,6 +699,12 @@ class SimpleWindow(QMainWindow):
 
         # Register global hotkeys (F5 for automation, etc.)
         self.register_global_hotkeys()
+
+        # Apply theme last to ensure all widgets are styled correctly on startup
+        if self.custom_theme_enabled:
+            self.apply_custom_theme()
+        else:
+            self.apply_theme(self.current_theme_index)
 
     # Core helpers
     def _create_item_table(self, headers: list) -> QTableWidget:
@@ -1048,6 +1050,7 @@ class SimpleWindow(QMainWindow):
                 with open(settings_path, 'r') as f:
                     settings = json.load(f)
                     self.current_theme_index = settings.get("theme_index", 0)
+                    self.last_tab_index = settings.get("last_tab_index", 0)
                     self.character_path = settings.get("character_path", "")
                     self.message_hotkeys = settings.get("message_hotkeys", {})
                     self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
@@ -1056,6 +1059,7 @@ class SimpleWindow(QMainWindow):
                     self.watchlist = settings.get("watchlist", ["hellfire", "rpg"])
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
+            self.last_tab_index = 0
             self.character_path = ""
             self.message_hotkeys = {}
             self.custom_theme_enabled = False
@@ -1098,6 +1102,7 @@ class SimpleWindow(QMainWindow):
         settings_path = os.path.join(get_base_path(), "settings.json")
         settings = {
             "theme_index": self.current_theme_index,
+            "last_tab_index": self.stacked_widget.currentIndex(),
             "character_path": self.character_path,
             "message_hotkeys": self.message_hotkeys,
             "custom_theme_enabled": self.custom_theme_enabled,
