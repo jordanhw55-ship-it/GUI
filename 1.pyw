@@ -629,6 +629,10 @@ class SimpleWindow(QMainWindow):
         # Initialize some tabs
         self.refresh_lobbies()
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
+        
+        # Load saved recipes after the UI is fully initialized
+        self.item_database.load_recipes()
+        self.load_saved_recipes()
 
     # Core helpers
     def _create_item_table(self, headers: list) -> QTableWidget:
@@ -836,6 +840,16 @@ class SimpleWindow(QMainWindow):
             self.custom_theme_enabled = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
 
+    def load_saved_recipes(self):
+        """Loads and populates the in-progress recipes from settings."""
+        settings_path = os.path.join(get_base_path(), "settings.json")
+        if not os.path.exists(settings_path): return
+        with open(settings_path, 'r') as f:
+            settings = json.load(f)
+            saved_recipes = settings.get("in_progress_recipes", [])
+            for recipe_name in saved_recipes:
+                self._add_recipe_by_name(recipe_name)
+
     def save_settings(self):
         """Saves current settings to a JSON file."""
         settings_path = os.path.join(get_base_path(), "settings.json")
@@ -844,7 +858,8 @@ class SimpleWindow(QMainWindow):
             "character_path": self.character_path,
             "message_hotkeys": self.message_hotkeys,
             "custom_theme_enabled": self.custom_theme_enabled,
-            "custom_theme": self.custom_theme
+            "custom_theme": self.custom_theme,
+            "in_progress_recipes": [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())]
         }
         with open(settings_path, 'w') as f:
             json.dump(settings, f, indent=4)
@@ -929,23 +944,31 @@ class SimpleWindow(QMainWindow):
                 self.available_recipes_list.addItem(item)
 
     def add_recipe_to_progress(self):
+        """Adds a recipe to the 'in-progress' list from the UI selection."""
         selected_item = self.available_recipes_list.currentItem()
-        if not selected_item: return
-        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
-        recipe_name = recipe["name"]
+        if not selected_item:
+            return
+        recipe_name = selected_item.text()
+        self._add_recipe_by_name(recipe_name)
+
+    def _add_recipe_by_name(self, recipe_name: str):
+        """Helper to add a recipe to the in-progress list by its name."""
         if recipe_name in self.in_progress_recipes:
-            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
+            # Don't show a message box when loading from settings, just skip.
+            # QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
             return
 
-        # Add to UI and internal tracking
+        # Find the full recipe object from the database
+        recipe = next((r for r in self.item_database.recipes_data if r["name"] == recipe_name), None)
+        if not recipe:
+            return # Recipe not found in database
+
+        recipe_name = recipe["name"]
         self.in_progress_recipes[recipe_name] = recipe
         item = QListWidgetItem(recipe_name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Unchecked)
         self.in_progress_recipes_list.addItem(item)
-        for component_str in recipe["components"]:
-            self._add_component_to_materials(component_str)
-        self._rebuild_materials_table()
 
     def remove_recipe_from_progress(self):
         selected_item = self.in_progress_recipes_list.currentItem()
@@ -953,10 +976,7 @@ class SimpleWindow(QMainWindow):
         recipe_name = selected_item.text()
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
-            for component_str in recipe["components"]:
-                self._remove_component_from_materials(component_str)
-        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-        self._rebuild_materials_table()
+            self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -995,6 +1015,16 @@ class SimpleWindow(QMainWindow):
         self.materials_table.setRowCount(0)
 
         checked_recipes = []
+        # Always recalculate all materials based on the current list
+        self.material_list_data.clear()
+        for i in range(self.in_progress_recipes_list.count()):
+            recipe_name = self.in_progress_recipes_list.item(i).text()
+            recipe = self.in_progress_recipes.get(recipe_name)
+            if recipe:
+                for component_str in recipe["components"]:
+                    self._add_component_to_materials(component_str)
+
+        # Filter materials to display based on checked recipes
         for i in range(self.in_progress_recipes_list.count()):
             item = self.in_progress_recipes_list.item(i)
             if item.checkState() == Qt.CheckState.Checked:
@@ -1047,6 +1077,10 @@ class SimpleWindow(QMainWindow):
         self.materials_table.setSortingEnabled(True)
         self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
         self.materials_table.itemChanged.connect(self.on_material_checked)
+
+    def on_recipe_check_changed(self):
+        """Called when any recipe's check state changes to rebuild the material list."""
+        self._rebuild_materials_table()
 
     # Character loading
     def on_path_changed(self, new_path: str):
@@ -1177,6 +1211,7 @@ class SimpleWindow(QMainWindow):
             self.refresh_lobbies()
         elif self.tab_names[index] == "Recipes":
             self.filter_recipes_list()
+            self._rebuild_materials_table()
 
     # --- Automation: AHK-style behavior ---
     def pause_all_automation(self):
