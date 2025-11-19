@@ -394,7 +394,6 @@ class SimpleWindow(QMainWindow):
         self.is_automation_running = False
         self.automation_settings = {} # To hold loaded settings
         self.custom_action_running = False
-        self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
@@ -1467,10 +1466,8 @@ class SimpleWindow(QMainWindow):
             for keyword in self.watchlist:
                 if keyword in lobby_name or keyword in lobby_map:
                     current_watched_lobbies.add(lobby.get('name')); break
-        newly_found = current_watched_lobbies - self.previous_watched_lobbies
-        if newly_found and self.lobby_placeholder_checkbox.isChecked():
+        if current_watched_lobbies and self.lobby_placeholder_checkbox.isChecked():
             self.play_notification_sound()
-        self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
         self.filter_lobbies(self.lobby_search_bar.text())
     def on_lobbies_fetch_error(self, error_message: str):
