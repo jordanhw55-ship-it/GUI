@@ -9,7 +9,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QComboBox,
     QListWidgetItem, QColorDialog, QCheckBox
 )
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
@@ -623,6 +623,12 @@ class SimpleWindow(QMainWindow):
         watchlist_controls_layout.addWidget(add_watchlist_button)
         remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
         watchlist_controls_layout.addWidget(remove_watchlist_button); watchlist_controls_layout.addStretch()
+        
+        # Add the new checkbox and dropdown
+        self.lobby_placeholder_checkbox = QCheckBox("Placeholder Checkbox")
+        self.lobby_placeholder_dropdown = QComboBox(); self.lobby_placeholder_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
+        watchlist_controls_layout.insertWidget(3, self.lobby_placeholder_checkbox)
+        watchlist_controls_layout.insertWidget(4, self.lobby_placeholder_dropdown)
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
         self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(3)
