@@ -832,6 +832,10 @@ class SimpleWindow(QMainWindow):
             border: 1px solid {fg};
             background-color: {bg};
         }}
+        QComboBox#SoundSelect {{
+            border: 1px solid {fg};
+            background-color: {bg};
+        }}
         """
 
     def apply_custom_theme(self):
