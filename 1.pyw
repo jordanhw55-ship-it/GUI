@@ -730,6 +730,10 @@ class SimpleWindow(QMainWindow):
             subcontrol-position: top left;
             padding: 0 3px;
         }}
+        QCheckBox::indicator {{
+            border: 1px solid {fg};
+            background-color: {bg};
+        }}
         """
 
     def apply_custom_theme(self):
@@ -753,6 +757,10 @@ class SimpleWindow(QMainWindow):
                 border-color: {self.custom_theme['accent']};
             }}
         """)
+        # Re-apply theme to ensure all child widgets get the new style
+        for i, preview in enumerate(self.theme_previews):
+            border_style = "border: 2px solid transparent;"
+            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
