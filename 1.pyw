@@ -393,6 +393,7 @@ class SimpleWindow(QMainWindow):
         self.theme_previews = []
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
+        self.play_sound_on_found = False # Default, will be overwritten by load_settings
 
 
         self.setWindowTitle("Hellfire Helper")
@@ -628,6 +629,7 @@ class SimpleWindow(QMainWindow):
         self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
         self.lobby_placeholder_dropdown = QComboBox(); self.lobby_placeholder_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
         watchlist_controls_layout.insertWidget(3, self.lobby_placeholder_checkbox)
+        self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
         watchlist_controls_layout.insertWidget(4, self.lobby_placeholder_dropdown)
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
@@ -1074,12 +1076,14 @@ class SimpleWindow(QMainWindow):
                     self.automation_settings = settings.get("automation", {})
                     self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
                     self.watchlist = settings.get("watchlist", ["hellfire", "rpg"])
+                    self.play_sound_on_found = settings.get("play_sound_on_found", False)
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
             self.last_tab_index = 0
             self.character_path = ""
             self.message_hotkeys = {}
             self.custom_theme_enabled = False
+            self.play_sound_on_found = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
             self.automation_settings = {}
             self.watchlist = ["hellfire", "rpg"]
@@ -1136,7 +1140,8 @@ class SimpleWindow(QMainWindow):
                     "message": self.custom_action_edit2.text()
                 }
             },
-            "watchlist": self.watchlist
+            "watchlist": self.watchlist,
+            "play_sound_on_found": self.lobby_placeholder_checkbox.isChecked()
         }
         with open(settings_path, 'w') as f:
             json.dump(settings, f, indent=4)
@@ -1451,7 +1456,8 @@ class SimpleWindow(QMainWindow):
                 if keyword in lobby_name or keyword in lobby_map:
                     current_watched_lobbies.add(lobby.get('name')); break
         newly_found = current_watched_lobbies - self.previous_watched_lobbies
-        if newly_found: QApplication.beep()
+        if newly_found and self.lobby_placeholder_checkbox.isChecked():
+            QApplication.beep()
         self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
         self.filter_lobbies(self.lobby_search_bar.text())
