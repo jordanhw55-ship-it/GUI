@@ -379,8 +379,7 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
-        self.watchlist_file = "watchlist.json"
-        self.watchlist = self.load_watchlist()
+        self.watchlist = ["legion", "hellgate"] # Default, will be overwritten by load_settings
         self.previous_watched_lobbies = set()
 
         self.theme_previews = []
@@ -1108,7 +1107,8 @@ class SimpleWindow(QMainWindow):
                     "interval": self.custom_action_edit1.text(),
                     "message": self.custom_action_edit2.text()
                 }
-            }
+            },
+            "watchlist": self.watchlist
         }
         with open(settings_path, 'w') as f:
             json.dump(settings, f, indent=4)
@@ -1116,24 +1116,15 @@ class SimpleWindow(QMainWindow):
     # Watchlist
     def load_watchlist(self):
         watchlist_path = os.path.join(get_base_path(), self.watchlist_file)
-        try:
-            if os.path.exists(watchlist_path):
-                with open(watchlist_path, 'r') as f:
-                    return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            print(f"Error loading watchlist: {e}")
-        return ["legion", "hellgate"]
-    def save_watchlist(self):
-        watchlist_path = os.path.join(get_base_path(), self.watchlist_file)
-        with open(watchlist_path, 'w') as f:
-            json.dump(self.watchlist, f, indent=4)
+        # This method is no longer needed as watchlist is loaded/saved via settings.json
+        pass
     def add_to_watchlist(self):
         keyword = self.watchlist_input.text().strip().lower()
         if keyword and keyword not in self.watchlist:
             self.watchlist.append(keyword)
             self.watchlist_widget.addItem(keyword)
             self.watchlist_input.clear()
-            self.save_watchlist()
+            # Settings are now saved on close, no need to save here
             self.filter_lobbies(self.lobby_search_bar.text())
     def remove_from_watchlist(self):
         selected_items = self.watchlist_widget.selectedItems()
@@ -1142,7 +1133,7 @@ class SimpleWindow(QMainWindow):
         for item in selected_items:
             self.watchlist.remove(item.text())
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
-        self.save_watchlist()
+        # Settings are now saved on close, no need to save here
         self.filter_lobbies(self.lobby_search_bar.text())
 
     # Items
