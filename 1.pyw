@@ -161,6 +161,7 @@ class ItemDatabase:
         self.drops_data = []
         self.raid_data = []
         self.vendor_data = []
+        self.recipes_data = []
 
     def _clean_item(self, raw_line: str) -> dict:
         """Parses a raw line of text into an item object."""
@@ -225,6 +226,49 @@ class ItemDatabase:
             except (IOError, OSError):
                 continue # Skip files that can't be read
         return data
+
+    def load_recipes(self):
+        """Loads recipe data from contents/Recipes.txt."""
+        if self.recipes_data: # Already loaded
+            return
+
+        file_path = os.path.join(self.base_path, "Recipes.txt")
+        if not os.path.exists(file_path):
+            return
+
+        self.recipes_data = []
+        current_recipe_name = ""
+        current_components = []
+
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    line = line.strip()
+
+                    if not line: # Blank line is a separator
+                        if current_recipe_name:
+                            self.recipes_data.append({"name": current_recipe_name, "components": current_components})
+                            current_recipe_name = ""
+                            current_components = []
+                        continue
+
+                    material_match = re.match(r"^\s*Material\s*:\s*(.+)", line, re.IGNORECASE)
+                    if material_match:
+                        if current_recipe_name:
+                            current_components.append(material_match.group(1).strip())
+                    else: # It's a recipe name
+                        if current_recipe_name: # A new recipe starts without a blank line separator
+                            self.recipes_data.append({"name": current_recipe_name, "components": current_components})
+                        
+                        current_recipe_name = line
+                        current_components = []
+
+            # Add the last recipe if the file doesn't end with a blank line
+            if current_recipe_name:
+                self.recipes_data.append({"name": current_recipe_name, "components": current_components})
+
+        except (IOError, OSError):
+            print(f"Could not read {file_path}")
 
 
 class ThemePreview(QWidget):
@@ -457,10 +501,48 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(items_tab_content)
 
         # --- Create the "Recipes" tab ---
+        self.in_progress_recipes = {} # To store recipe objects
+        self.material_list_data = {} # To store aggregated materials
+
         recipes_tab_content = QWidget()
-        recipes_layout = QVBoxLayout(recipes_tab_content)
-        recipes_layout.addWidget(QLabel("This is the 'Recipes' tab."))
-        recipes_layout.addStretch()
+        recipes_main_layout = QVBoxLayout(recipes_tab_content)
+
+        # Top layout with lists and controls
+        recipes_top_layout = QHBoxLayout()
+        
+        # Available Recipes list
+        recipes_list_layout = QVBoxLayout()
+        self.recipe_search_box = QLineEdit()
+        self.recipe_search_box.setPlaceholderText("Search Recipes...")
+        self.recipe_search_box.textChanged.connect(self.filter_recipes_list)
+        self.available_recipes_list = QListWidget()
+        recipes_list_layout.addWidget(self.recipe_search_box)
+        recipes_list_layout.addWidget(self.available_recipes_list)
+
+        # Add/Remove buttons
+        add_remove_layout = QVBoxLayout()
+        add_remove_layout.addStretch()
+        add_recipe_btn = QPushButton("Add ->")
+        add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
+        remove_recipe_btn = QPushButton("<- Remove")
+        remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
+        add_remove_layout.addWidget(add_recipe_btn)
+        add_remove_layout.addWidget(remove_recipe_btn)
+        add_remove_layout.addStretch()
+
+        # In-Progress Recipes list
+        self.in_progress_recipes_list = QListWidget()
+
+        recipes_top_layout.addLayout(recipes_list_layout)
+        recipes_top_layout.addLayout(add_remove_layout)
+        recipes_top_layout.addWidget(self.in_progress_recipes_list)
+        recipes_main_layout.addLayout(recipes_top_layout)
+
+        # Materials Checklist table
+        self.materials_table = self._create_item_table(["Material", "#", "Unit", "Location"])
+        self.materials_table.itemChanged.connect(self.on_material_checked)
+        recipes_main_layout.addWidget(self.materials_table)
+
         self.stacked_widget.addWidget(recipes_tab_content)
 
         # --- Create the "Automation" tab ---
@@ -588,6 +670,9 @@ class SimpleWindow(QMainWindow):
             self.switch_items_sub_tab(0) # This will trigger the data load
         elif self.tab_names[index] == "Lobbies":
             self.refresh_lobbies()
+        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
+            self.item_database.load_recipes()
+            self.filter_recipes_list()
 
     def _create_item_table(self, headers: list) -> QTableWidget:
         """Factory function to create and configure an item table."""
@@ -752,6 +837,99 @@ class SimpleWindow(QMainWindow):
         self.save_watchlist()
         self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
 
+    def filter_recipes_list(self):
+        """Filters the available recipes list based on its search box."""
+        query = self.recipe_search_box.text().lower()
+        self.available_recipes_list.clear()
+        for recipe in self.item_database.recipes_data:
+            if query in recipe["name"].lower():
+                item = QListWidgetItem(recipe["name"])
+                # Store the full recipe object in the item
+                item.setData(Qt.ItemDataRole.UserRole, recipe)
+                self.available_recipes_list.addItem(item)
+
+    def add_recipe_to_progress(self):
+        """Adds a selected recipe to the 'in-progress' list and updates materials."""
+        selected_item = self.available_recipes_list.currentItem()
+        if not selected_item:
+            return
+
+        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
+        recipe_name = recipe["name"]
+
+        if recipe_name in self.in_progress_recipes:
+            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
+            return
+
+        # Add to UI and internal tracking
+        self.in_progress_recipes[recipe_name] = recipe
+        self.in_progress_recipes_list.addItem(recipe_name)
+
+        # Add components to the material list
+        for component_str in recipe["components"]:
+            self._add_component_to_materials(component_str)
+        
+        self._rebuild_materials_table()
+
+    def remove_recipe_from_progress(self):
+        """Removes a recipe from 'in-progress' and updates the material list."""
+        selected_item = self.in_progress_recipes_list.currentItem()
+        if not selected_item:
+            return
+
+        recipe_name = selected_item.text()
+        recipe = self.in_progress_recipes.pop(recipe_name, None)
+
+        if recipe:
+            # Remove components from the material list
+            for component_str in recipe["components"]:
+                self._remove_component_from_materials(component_str)
+
+        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+        self._rebuild_materials_table()
+
+    def _add_component_to_materials(self, component_str: str):
+        """Helper to parse and add a material to the master list."""
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] += quantity
+        else:
+            # Find drop info from the main item database
+            if not self.item_database.all_items_data:
+                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+            
+            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
+            self.material_list_data[name] = {
+                "Material": name,
+                "#": quantity,
+                "Unit": drop_info["Unit"] if drop_info else "?",
+                "Location": drop_info["Location"] if drop_info else "?"
+            }
+
+    def _remove_component_from_materials(self, component_str: str):
+        """Helper to parse and remove a material from the master list."""
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] -= quantity
+            if self.material_list_data[name]["#"] <= 0:
+                del self.material_list_data[name]
+
+    def _rebuild_materials_table(self):
+        """Clears and repopulates the materials table from the internal data dictionary."""
+        self.materials_table.setRowCount(0)
+        for row, item_data in enumerate(self.material_list_data.values()):
+            self._add_row_to_materials_table(row, item_data)
+
     def switch_items_sub_tab(self, index: int):
         """Switches the visible table in the Items tab and loads data."""
         for i, btn in self.item_tab_buttons.items():
@@ -773,6 +951,33 @@ class SimpleWindow(QMainWindow):
             self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
         
         self.filter_current_item_view()
+
+    def _add_row_to_materials_table(self, row_num, item_data):
+        """Adds a single row to the materials table, including a checkbox."""
+        self.materials_table.insertRow(row_num)
+        
+        # Column 0: Material (with checkbox)
+        material_item = QTableWidgetItem(item_data["Material"])
+        material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        material_item.setCheckState(Qt.CheckState.Unchecked)
+        self.materials_table.setItem(row_num, 0, material_item)
+
+        # Column 1: Quantity
+        quantity_item = AlignedTableWidgetItem(str(item_data["#"]))
+        self.materials_table.setItem(row_num, 1, quantity_item)
+
+        # Column 2 & 3: Unit and Location
+        self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
+        self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
+
+    def on_material_checked(self, item: QTableWidgetItem):
+        """Grays out a row in the materials table when its checkbox is ticked."""
+        if item.column() != 0: # Only respond to changes in the first column
+            return
+
+        color = QColor("gray") if item.checkState() == Qt.CheckState.Checked else self.palette().color(self.foregroundRole())
+        for col in range(self.materials_table.columnCount()):
+            self.materials_table.item(item.row(), col).setForeground(color)
 
     def filter_current_item_view(self):
         """Filters the currently visible item table based on the search query."""
