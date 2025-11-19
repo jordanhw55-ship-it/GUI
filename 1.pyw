@@ -1,16 +1,23 @@
 import sys
-import requests
-import json
 import os
 import re
-from datetime import datetime
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem, QMenu
-from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
+import json
+import requests
 from typing import List
+from datetime import datetime
+
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
+    QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit,
+    QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox,
+    QFileDialog, QTextEdit, QListWidgetItem
+)
+from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from PySide6.QtGui import QMouseEvent, QColor
+
 import keyboard
-import pyautogui # type: ignore
-import win32gui # type: ignore
+import pyautogui  # type: ignore
+import win32gui   # type: ignore
 
 
 DARK_STYLE = """ 
@@ -169,22 +176,21 @@ class ItemDatabase:
         line = raw_line.strip()
         if not line:
             return {}
-        
-        # Regex patterns to match item lines
         patterns = [
             r"^\s*\[([^\]]+)\]\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",  # [Tag] Name : X%
             r"^\s*\[([^\]]+)\]\s*(.+)$",                          # [Tag] Name
-            r"^\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",                  # Name : X%
+            r"^\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",                # Name : X%
         ]
-
         for i, pattern in enumerate(patterns):
             match = re.match(pattern, line)
             if match:
-                if i == 0: return {"type": match.group(1), "name": match.group(2).strip(), "rate": f"{match.group(3)}%"}
-                if i == 1: return {"type": match.group(1), "name": match.group(2).strip(), "rate": ""}
-                if i == 2: return {"name": match.group(1).strip(), "rate": f"{match.group(2)}%"}
-        
-        return {"name": line, "rate": ""} # Fallback
+                if i == 0:
+                    return {"type": match.group(1), "name": match.group(2).strip(), "rate": f"{match.group(3)}%"}
+                if i == 1:
+                    return {"type": match.group(1), "name": match.group(2).strip(), "rate": ""}
+                if i == 2:
+                    return {"name": match.group(1).strip(), "rate": f"{match.group(2)}%"}
+        return {"name": line, "rate": ""}  # Fallback
 
     def _load_item_data_from_folder(self, folder: str) -> list:
         """Loads all item data from a specific subfolder."""
@@ -192,25 +198,20 @@ class ItemDatabase:
         folder_path = os.path.join(self.base_path, folder)
         if not os.path.isdir(folder_path):
             return []
-
         for filename in os.listdir(folder_path):
             if not filename.endswith(".txt"):
                 continue
-            
             file_path = os.path.join(folder_path, filename)
             zone = os.path.splitext(filename)[0]
             unit = "?"
-
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    for line in f:
-                        line = line.strip()
+                    for raw in f:
+                        line = raw.strip()
                         if not line:
                             continue
-                        
                         zone_match = re.match(r"^Zone:\s*(.+)", line)
                         unit_match = re.match(r"^\[Unit\]\s*(.+)", line)
-
                         if zone_match:
                             zone = zone_match.group(1).strip()
                         elif unit_match:
@@ -225,49 +226,40 @@ class ItemDatabase:
                                     "Location": zone
                                 })
             except (IOError, OSError):
-                continue # Skip files that can't be read
+                continue
         return data
 
     def load_recipes(self):
         """Loads recipe data from contents/Recipes.txt."""
-        if self.recipes_data: # Already loaded
+        if self.recipes_data:
             return
-
         file_path = os.path.join(self.base_path, "Recipes.txt")
         if not os.path.exists(file_path):
             return
-
         self.recipes_data = []
         current_recipe_name = ""
         current_components = []
-
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
-                    line = line.strip()
-
-                    if not line: # Blank line is a separator
+                for raw in f:
+                    line = raw.strip()
+                    if not line:
                         if current_recipe_name:
                             self.recipes_data.append({"name": current_recipe_name, "components": current_components})
                             current_recipe_name = ""
                             current_components = []
                         continue
-
                     material_match = re.match(r"^\s*Material\s*:\s*(.+)", line, re.IGNORECASE)
                     if material_match:
                         if current_recipe_name:
                             current_components.append(material_match.group(1).strip())
-                    else: # It's a recipe name
-                        if current_recipe_name: # A new recipe starts without a blank line separator
+                    else:
+                        if current_recipe_name:
                             self.recipes_data.append({"name": current_recipe_name, "components": current_components})
-                        
                         current_recipe_name = line
                         current_components = []
-
-            # Add the last recipe if the file doesn't end with a blank line
             if current_recipe_name:
                 self.recipes_data.append({"name": current_recipe_name, "components": current_components})
-
         except (IOError, OSError):
             print(f"Could not read {file_path}")
 
@@ -275,22 +267,20 @@ class ItemDatabase:
 class ThemePreview(QWidget):
     """A clickable widget to preview and select a theme."""
     clicked = Signal()
-
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
 
+
 class LobbyFetcher(QObject):
     """Worker object to fetch lobby data in a separate thread."""
     finished = Signal(list)
     error = Signal(str)
-
     def run(self):
-        """Fetches lobby data from the API."""
         try:
             response = requests.get("https://api.wc3stats.com/gamelist", timeout=10)
-            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            response.raise_for_status()
             data = response.json()
             if data.get("status") == "OK":
                 self.finished.emit(data.get("body", []))
@@ -301,227 +291,119 @@ class LobbyFetcher(QObject):
         except requests.exceptions.RequestException as e:
             self.error.emit(f"Network error: {e}")
 
+
 class HotkeyCaptureWorker(QObject):
     """Worker to capture a hotkey in a separate thread to avoid freezing the GUI."""
     hotkey_captured = Signal(str)
-
     def run(self):
-        """Waits for and reads a single hotkey press."""
         try:
-            # Reverting to read_hotkey() as it's more stable for getting a direct name,
-            # and is less likely to crash on keys without standard names.
             hotkey = keyboard.read_hotkey(suppress=True)
             self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
 
+
 class AutomationWorker(QObject):
     """Worker to perform automation tasks in a separate thread."""
     finished = Signal()
     error = Signal(str)
-
     def __init__(self, game_title: str, action: str, message: str = ""):
         super().__init__()
         self.game_title = game_title
         self.action = action
         self.message = message
-
     def run(self):
-        """Finds the game window and performs the action."""
         try:
             hwnd = win32gui.FindWindow(None, self.game_title)
             if hwnd == 0:
-                # Don't emit an error for every single timer tick
                 print(f"'{self.game_title}' window not found.")
                 return
-
             pyautogui.press('enter')
             pyautogui.write(self.message if self.action == "chat" else self.action, interval=0.05)
             pyautogui.press('enter')
         finally:
             self.finished.emit()
 
-class ChatMessageWorker(QObject):
-    """
-    A dedicated worker to send a chat message and handle key suppression.
-    This worker is created for each hotkey press to ensure a clean state.
-    """
-    finished = Signal()
 
+class ChatMessageWorker(QObject):
+    """Dedicated worker to send a chat message; fresh thread per hotkey press."""
+    finished = Signal()
+    error = Signal(str)
     def __init__(self, game_title: str, hotkey_pressed: str, message: str):
         super().__init__()
         self.game_title = game_title
         self.hotkey_pressed = hotkey_pressed
         self.message = message
-
     def run(self):
-        """Blocks the original key, sends the message, then unblocks."""
-        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
         try:
+            hwnd = win32gui.FindWindow(None, self.game_title)
+            if hwnd == 0:
+                self.error.emit(f"Window '{self.game_title}' not found")
+                return
+            # Ensure game has focus
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+            except Exception:
+                pass
             pyautogui.press('enter')
             pyautogui.write(self.message, interval=0.01)
             pyautogui.press('enter')
+        except Exception as e:
+            self.error.emit(str(e))
         finally:
             self.finished.emit()
 
-class ChatMessageWorker(QObject):
-    """
-    A dedicated worker to send a chat message and handle key suppression.
-    This worker is created for each hotkey press to ensure a clean state.
-    """
-    finished = Signal()
-
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-
-    def run(self):
-        """Blocks the original key, sends the message, then unblocks."""
-        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
-        try:
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        finally:
-            self.finished.emit()
-
-class ChatMessageWorker(QObject):
-    """
-    A dedicated worker to send a chat message and handle key suppression.
-    This worker is created for each hotkey press to ensure a clean state.
-    """
-    finished = Signal()
-
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-
-    def run(self):
-        """Blocks the original key, sends the message, then unblocks."""
-        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
-        try:
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        finally:
-            self.finished.emit()
-
-class ChatMessageWorker(QObject):
-    """
-    A dedicated worker to send a chat message and handle key suppression.
-    This worker is created for each hotkey press to ensure a clean state.
-    """
-    finished = Signal()
-
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-
-    def run(self):
-        """Blocks the original key, sends the message, then unblocks."""
-        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
-        try:
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        finally:
-            self.finished.emit()
-
-class ChatMessageWorker(QObject):
-    """
-    A dedicated worker to send a chat message and handle key suppression.
-    This worker is created for each hotkey press to ensure a clean state.
-    """
-    finished = Signal()
-
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-
-    def run(self):
-        """Blocks the original key, sends the message, then unblocks."""
-        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
-        try:
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        finally:
-            self.finished.emit()
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
         super().__init__(text)
         self.setTextAlignment(alignment)
 
+
 class SimpleWindow(QMainWindow):
-    """
-    This is our main window. It inherits from QMainWindow.
-    """
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Hellfire Helper")
-        # Make the window frameless to implement a custom title bar
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
+
         self.current_theme_index = 0
         self.old_pos = None
-        self.all_lobbies = [] # To store the full list of lobbies from the API
+        self.all_lobbies = []
         self.thread = None
         self.watchlist_file = "watchlist.json"
         self.watchlist = self.load_watchlist()
         self.character_path = ""
         self.previous_watched_lobbies = set()
         self.theme_previews = []
-        self.message_hotkeys = {}
-        self.is_sending_message = False # Flag to prevent hotkey re-entrancy.
-        self.game_title = "Warcraft III" # Configurable game window title
+        self.message_hotkeys = {}       # {hotkey_str: message_str}
+        self.hotkey_ids = {}            # {hotkey_str: hotkey_id returned by keyboard.add_hotkey}
+        self.is_sending_message = False
+        self.game_title = "Warcraft III"
+
         self.themes = [
-            {
-                "name": "Black/Orange", "style": DARK_STYLE,
-                "preview_color": "#FF7F50", "is_dark": True
-            },
-            {
-                "name": "White/Pink", "style": LIGHT_STYLE,
-                "preview_color": "#FFC0CB", "is_dark": False
-            },
-            {
-                "name": "Black/Blue", "style": FOREST_STYLE,
-                "preview_color": "#1E90FF", "is_dark": True
-            },
-            {
-                "name": "White/Blue", "style": OCEAN_STYLE,
-                "preview_color": "#87CEEB", "is_dark": False
-            }
+            {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
+            {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False},
+            {"name": "Black/Blue", "style": FOREST_STYLE, "preview_color": "#1E90FF", "is_dark": True},
+            {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False},
         ]
 
-        # Load saved theme or default to the first one
         self.load_settings()
 
-
-        # Main layout for the window
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(5)
         main_widget = QWidget()
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
-        # --- Create Custom Title Bar ---
+        # Custom title bar
         self.title_bar = QWidget()
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(0, 0, 0, 0) # No margins
+        title_bar_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Left spacer to balance the buttons on the right
         left_spacer = QWidget()
         left_spacer.setFixedSize(60, 30)
         left_spacer.setStyleSheet("background-color: transparent;")
@@ -547,23 +429,20 @@ class SimpleWindow(QMainWindow):
         title_bar_layout.addWidget(close_button)
         main_layout.addWidget(self.title_bar)
 
-        # Create a custom tab bar
+        # Tabs
         self.tab_names = ["Load", "Items", "Recipes", "Automation", "Hotkey", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
-        # Create a QStackedWidget to hold our tab contents
         self.stacked_widget = QStackedWidget()
         main_layout.addWidget(self.stacked_widget)
 
-        # Connect the custom tab bar to the stacked widget
         self.custom_tab_bar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
-        # --- Create the "Load" tab ---
+        # Load tab
         load_tab_content = QWidget()
         load_layout = QVBoxLayout(load_tab_content)
 
-        # Path controls
         path_layout = QHBoxLayout()
         self.load_path_edit = QLineEdit()
         self.load_path_edit.setPlaceholderText("Character save path...")
@@ -577,7 +456,6 @@ class SimpleWindow(QMainWindow):
         path_layout.addWidget(reset_path_btn)
         load_layout.addLayout(path_layout)
 
-        # Action buttons
         action_layout = QHBoxLayout()
         load_char_btn = QPushButton("Load Character (F3)")
         load_char_btn.clicked.connect(self.load_selected_character)
@@ -588,38 +466,33 @@ class SimpleWindow(QMainWindow):
         action_layout.addStretch()
         load_layout.addLayout(action_layout)
 
-        # Character list and content view
         content_layout = QHBoxLayout()
         self.char_list_box = QListWidget()
         self.char_list_box.setFixedWidth(200)
         self.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
-        
         self.char_content_box = QTextEdit()
         self.char_content_box.setReadOnly(True)
         self.char_content_box.setFontFamily("Consolas")
         self.char_content_box.setFontPointSize(10)
-
         content_layout.addWidget(self.char_list_box)
         content_layout.addWidget(self.char_content_box)
         load_layout.addLayout(content_layout)
 
-        # Set initial path and load characters
         self.load_path_edit.setText(self.character_path)
         self.load_characters()
         self.stacked_widget.addWidget(load_tab_content)
 
-        # --- Create the "Items" tab ---
+        # Items tab
         self.item_database = ItemDatabase()
         items_tab_content = QWidget()
         items_main_layout = QVBoxLayout(items_tab_content)
 
-        # Sub-tab and search layout
         items_controls_layout = QHBoxLayout()
         self.items_sub_tabs = QWidget()
         self.items_sub_tabs_layout = QHBoxLayout(self.items_sub_tabs)
-        self.items_sub_tabs_layout.setContentsMargins(0,0,0,0)
+        self.items_sub_tabs_layout.setContentsMargins(0, 0, 0, 0)
         self.items_sub_tabs_layout.setSpacing(5)
-        
+
         self.item_tab_buttons = {}
         item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
         for i, name in enumerate(item_tab_names):
@@ -638,11 +511,9 @@ class SimpleWindow(QMainWindow):
         items_controls_layout.addWidget(self.items_search_box)
         items_main_layout.addLayout(items_controls_layout)
 
-        # Stacked widget for item tables
         self.items_stacked_widget = QStackedWidget()
         items_main_layout.addWidget(self.items_stacked_widget)
 
-        # Create the tables
         self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
@@ -653,21 +524,17 @@ class SimpleWindow(QMainWindow):
         self.items_stacked_widget.addWidget(self.raid_items_table)
         self.items_stacked_widget.addWidget(self.vendor_table)
 
-        self.switch_items_sub_tab(0) # Select "All Items" by default
-
+        self.switch_items_sub_tab(0)
         self.stacked_widget.addWidget(items_tab_content)
 
-        # --- Create the "Recipes" tab ---
-        self.in_progress_recipes = {} # To store recipe objects
-        self.material_list_data = {} # To store aggregated materials
+        # Recipes tab
+        self.in_progress_recipes = {}
+        self.material_list_data = {}
 
         recipes_tab_content = QWidget()
         recipes_main_layout = QVBoxLayout(recipes_tab_content)
 
-        # Top layout with lists and controls
         recipes_top_layout = QHBoxLayout()
-        
-        # Available Recipes list
         recipes_list_layout = QVBoxLayout()
         self.recipe_search_box = QLineEdit()
         self.recipe_search_box.setPlaceholderText("Search Recipes...")
@@ -676,7 +543,6 @@ class SimpleWindow(QMainWindow):
         recipes_list_layout.addWidget(self.recipe_search_box)
         recipes_list_layout.addWidget(self.available_recipes_list)
 
-        # Add/Remove buttons
         add_remove_layout = QVBoxLayout()
         add_remove_layout.addStretch()
         add_recipe_btn = QPushButton("Add ->")
@@ -687,7 +553,6 @@ class SimpleWindow(QMainWindow):
         add_remove_layout.addWidget(remove_recipe_btn)
         add_remove_layout.addStretch()
 
-        # In-Progress Recipes list
         self.in_progress_recipes_list = QListWidget()
 
         recipes_top_layout.addLayout(recipes_list_layout)
@@ -695,12 +560,11 @@ class SimpleWindow(QMainWindow):
         recipes_top_layout.addWidget(self.in_progress_recipes_list)
         recipes_main_layout.addLayout(recipes_top_layout)
 
-        # Materials Checklist table
         self.materials_table = QTableWidget()
-        self.materials_table.setColumnCount(5) # Add a hidden column for sorting
+        self.materials_table.setColumnCount(5)
         self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
-        self.materials_table.setColumnHidden(4, True) # Hide the 'Checked' column
-        self.materials_table.verticalHeader().setVisible(False) # Hide row numbers
+        self.materials_table.setColumnHidden(4, True)
+        self.materials_table.verticalHeader().setVisible(False)
         self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.materials_table.setSortingEnabled(True)
         self.materials_table.itemChanged.connect(self.on_material_checked)
@@ -708,17 +572,16 @@ class SimpleWindow(QMainWindow):
 
         self.stacked_widget.addWidget(recipes_tab_content)
 
-        # --- Create the "Automation" tab ---
+        # Automation tab
         self.automation_timers = {}
         self.is_automation_running = False
 
         automation_tab_content = QWidget()
         automation_main_layout = QHBoxLayout(automation_tab_content)
 
-        # Left side for key automation
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
-        
+
         automation_keys_group = QGroupBox("Key Automation")
         automation_grid = QGridLayout()
 
@@ -730,24 +593,19 @@ class SimpleWindow(QMainWindow):
             btn.setCheckable(True)
             edit = QLineEdit("15000" if key == "Complete Quest" else "500")
             edit.setFixedWidth(60)
-            
             automation_grid.addWidget(btn, row, col * 2)
             automation_grid.addWidget(edit, row, col * 2 + 1)
-            
             self.automation_key_ctrls[key] = {"btn": btn, "edit": edit}
-
             col += 1
             if col > 1:
                 col = 0
                 row += 1
 
-        # Custom Action
         self.custom_action_btn = QPushButton("Custom Action")
         self.custom_action_btn.setCheckable(True)
         self.custom_action_edit1 = QLineEdit("30000")
         self.custom_action_edit1.setFixedWidth(60)
         self.custom_action_edit2 = QLineEdit("-save x")
-        
         custom_action_layout = QHBoxLayout()
         custom_action_layout.addWidget(self.custom_action_btn)
         custom_action_layout.addWidget(self.custom_action_edit1)
@@ -761,12 +619,12 @@ class SimpleWindow(QMainWindow):
         self.start_automation_btn = QPushButton("Start (F5)")
         self.start_automation_btn.clicked.connect(self.toggle_automation)
         left_layout.addWidget(self.start_automation_btn)
-        
+
         interval_note = QLabel("Interval delay default 0.5 seconds (500ms)")
         left_layout.addWidget(interval_note)
         left_layout.addStretch()
 
-        # Right side for message hotkeys
+        # Right panel: Custom Message Hotkeys
         msg_hotkey_group = QGroupBox("Custom Message Hotkeys")
         right_layout = QVBoxLayout(msg_hotkey_group)
 
@@ -803,21 +661,19 @@ class SimpleWindow(QMainWindow):
 
         automation_main_layout.addWidget(left_panel, 1)
         automation_main_layout.addWidget(msg_hotkey_group, 1)
-
         self.stacked_widget.addWidget(automation_tab_content)
 
-        # --- Create the "Hotkey" tab ---
+        # Hotkey tab (placeholder)
         hotkey_tab_content = QWidget()
         hotkey_layout = QVBoxLayout(hotkey_tab_content)
         hotkey_layout.addWidget(QLabel("This is the 'Hotkey' tab."))
         hotkey_layout.addStretch()
         self.stacked_widget.addWidget(hotkey_tab_content)
 
-        # --- Create the "Lobbies" tab ---
+        # Lobbies tab
         lobbies_tab_content = QWidget()
         lobbies_layout = QVBoxLayout(lobbies_tab_content)
 
-        # --- Search and Refresh Controls ---
         controls_layout = QHBoxLayout()
         self.lobby_search_bar = QLineEdit()
         self.lobby_search_bar.setPlaceholderText("Search by name or map…")
@@ -827,99 +683,546 @@ class SimpleWindow(QMainWindow):
         refresh_button = QPushButton("Refresh")
         refresh_button.clicked.connect(self.refresh_lobbies)
         controls_layout.addWidget(refresh_button)
-
         lobbies_layout.addLayout(controls_layout)
 
-        # --- Watchlist Controls ---
         watchlist_group = QGroupBox("Watchlist")
         watchlist_layout = QHBoxLayout()
-
         self.watchlist_widget = QListWidget()
         self.watchlist_widget.addItems(self.watchlist)
         watchlist_layout.addWidget(self.watchlist_widget)
-
         watchlist_controls_layout = QVBoxLayout()
         self.watchlist_input = QLineEdit()
         self.watchlist_input.setPlaceholderText("Add keyword...")
         watchlist_controls_layout.addWidget(self.watchlist_input)
-
         add_watchlist_button = QPushButton("Add")
         add_watchlist_button.clicked.connect(self.add_to_watchlist)
         watchlist_controls_layout.addWidget(add_watchlist_button)
-
         remove_watchlist_button = QPushButton("Remove")
         remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
         watchlist_controls_layout.addWidget(remove_watchlist_button)
         watchlist_controls_layout.addStretch()
-
         watchlist_layout.addLayout(watchlist_controls_layout)
         watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
 
-        # --- Lobbies Table ---
         self.lobbies_table = QTableWidget()
         self.lobbies_table.setColumnCount(3)
         self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players"])
-        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers) # Make table read-only
-        self.lobbies_table.verticalHeader().setVisible(False) # Hide row numbers
+        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.lobbies_table.verticalHeader().setVisible(False)
         self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents) # Players column
-
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         lobbies_layout.addWidget(self.lobbies_table)
-
-
         self.stacked_widget.addWidget(lobbies_tab_content)
 
-        # --- Create the "Settings" tab ---
+        # Settings tab
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
         self.create_theme_grid(settings_layout)
         self.stacked_widget.addWidget(settings_tab_content)
 
-
-        # --- Create the "Reset" tab ---
+        # Reset tab
         reset_tab_content = QWidget()
         self.reset_layout = QVBoxLayout(reset_tab_content)
-        
         warning_text = QLabel("This will reset the GUI to its default state.\nAre you sure you want to continue?")
         warning_text.setStyleSheet("font-weight: bold;")
         self.reset_layout.addWidget(warning_text, 0, Qt.AlignmentFlag.AlignCenter)
-
         reset_button = QPushButton("Reset GUI")
         reset_button.clicked.connect(self.confirm_reset)
         self.reset_layout.addWidget(reset_button, 0, Qt.AlignmentFlag.AlignCenter)
-
         self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
-        # --- Finalize Setup ---
-        self.label = QLabel("This is a placeholder label.") # Keep a reference for reset_state
+        # Finalize
+        self.label = QLabel("This is a placeholder label.")
 
-        # Connect tab bar to a method that can handle special loading
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
-        # Initial tab selection
+        # Initial selection and setup
         self.load_message_hotkeys()
         self.on_main_tab_selected(0)
-
-        # Apply the initial theme and set button text
         self.apply_theme(self.current_theme_index)
+        self.refresh_lobbies()
 
-
-
-        # Apply the initial theme and set button text
-        self.apply_theme(self.current_theme_index)
-        self.refresh_lobbies() # Initial data load
-
-        # --- Auto-refresh Timer for Lobbies ---
         self.refresh_timer = QTimer(self)
-        self.refresh_timer.setInterval(30000)  # 30 seconds
+        self.refresh_timer.setInterval(30000)
         self.refresh_timer.timeout.connect(self.refresh_lobbies)
         self.refresh_timer.start()
 
+        # Register global automation toggle hotkey (F5) persistently
+        self.register_global_hotkeys()
+
+    # Theme and UI helpers
+    def _create_item_table(self, headers: list) -> QTableWidget:
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for i in range(1, len(headers)):
+            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        table.setSortingEnabled(True)
+        return table
+
+    def create_theme_grid(self, layout: QGridLayout):
+        row, col = 0, 0
+        for i, theme in enumerate(self.themes):
+            preview = ThemePreview()
+            preview.setFixedSize(150, 120)
+            preview.setCursor(Qt.CursorShape.PointingHandCursor)
+            preview.setObjectName("ThemePreview")
+            preview.clicked.connect(lambda idx=i: self.apply_theme(idx))
+            preview_layout = QVBoxLayout(preview)
+            color_block = QLabel()
+            color_block.setFixedHeight(80)
+            color_block.setStyleSheet(f"background-color: {theme['preview_color']}; border-radius: 5px;")
+            name_label = QLabel(theme['name'])
+            name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            preview_layout.addWidget(color_block)
+            preview_layout.addWidget(name_label)
+            layout.addWidget(preview, row, col)
+            self.theme_previews.append(preview)
+            col += 1
+            if col >= 4:
+                col = 0
+                row += 1
+        layout.setRowStretch(row + 1, 1)
+        layout.setColumnStretch(col + 1, 1)
+
+    # Title bar dragging
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
+            self.old_pos = event.globalPosition().toPoint()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
+            delta = event.globalPosition().toPoint() - self.old_pos
+            self.move(self.x() + delta.x(), self.y() + delta.y())
+            self.old_pos = event.globalPosition().toPoint()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        self.old_pos = None
+
+    def apply_theme(self, theme_index: int):
+        self.current_theme_index = theme_index
+        theme = self.themes[theme_index]
+        self.dark_mode = theme["is_dark"]
+        self.setStyleSheet(theme["style"])
+        self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
+        for i, preview in enumerate(self.theme_previews):
+            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
+            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.save_settings()
+        self.update_materials_table_colors()
+
+    def update_materials_table_colors(self):
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
+        for row in range(self.materials_table.rowCount()):
+            is_checked = self.materials_table.item(row, 4).text() == "1"
+            if not is_checked:
+                new_color = self.palette().color(self.foregroundRole())
+                for col in range(self.materials_table.columnCount()):
+                    itm = self.materials_table.item(row, col)
+                    if itm:
+                        itm.setForeground(new_color)
+        self.materials_table.itemChanged.connect(self.on_material_checked)
+
+    def confirm_reset(self):
+        confirm_box = QMessageBox(self)
+        confirm_box.setWindowTitle("Confirm Reset")
+        confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
+        confirm_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm_box.setDefaultButton(QMessageBox.StandardButton.No)
+        if confirm_box.exec() == QMessageBox.StandardButton.Yes:
+            self.reset_state()
+
+    def reset_state(self):
+        self.resize(700, 800)
+        self.label.setText("Hello! Click the button.")
+        self.apply_theme(0)
+        self.custom_tab_bar._on_button_clicked(0)
+        self.watchlist = self.load_watchlist()
+        self.watchlist_widget.clear()
+        self.watchlist_widget.addItems(self.watchlist)
+        self.save_settings()
+
+    # Settings persistence
+    def load_settings(self):
+        try:
+            if os.path.exists("settings.json"):
+                with open("settings.json", 'r') as f:
+                    settings = json.load(f)
+                    self.current_theme_index = settings.get("theme_index", 0)
+                    self.character_path = settings.get("character_path", "")
+                    self.message_hotkeys = settings.get("message_hotkeys", {})
+        except (IOError, json.JSONDecodeError):
+            self.current_theme_index = 0
+            self.character_path = ""
+            self.message_hotkeys = {}
+
+    def save_settings(self):
+        settings = {
+            "theme_index": self.current_theme_index,
+            "character_path": self.character_path,
+            "message_hotkeys": self.message_hotkeys
+        }
+        with open("settings.json", 'w') as f:
+            json.dump(settings, f, indent=4)
+
+    # Watchlist
+    def load_watchlist(self):
+        try:
+            if os.path.exists(self.watchlist_file):
+                with open(self.watchlist_file, 'r') as f:
+                    return json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            print(f"Error loading watchlist: {e}")
+        return ["legion", "hellgate"]
+
+    def save_watchlist(self):
+        with open(self.watchlist_file, 'w') as f:
+            json.dump(self.watchlist, f, indent=4)
+
+    def add_to_watchlist(self):
+        keyword = self.watchlist_input.text().strip().lower()
+        if keyword and keyword not in self.watchlist:
+            self.watchlist.append(keyword)
+            self.watchlist_widget.addItem(keyword)
+            self.watchlist_input.clear()
+            self.save_watchlist()
+            self.filter_lobbies(self.lobby_search_bar.text())
+
+    def remove_from_watchlist(self):
+        selected_items = self.watchlist_widget.selectedItems()
+        if not selected_items:
+            return
+        for item in selected_items:
+            self.watchlist.remove(item.text())
+            self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
+        self.save_watchlist()
+        self.filter_lobbies(self.lobby_search_bar.text())
+
+    # Recipes
+    def filter_recipes_list(self):
+        query = self.recipe_search_box.text().lower()
+        self.available_recipes_list.clear()
+        for recipe in self.item_database.recipes_data:
+            if query in recipe["name"].lower():
+                item = QListWidgetItem(recipe["name"])
+                item.setData(Qt.ItemDataRole.UserRole, recipe)
+                self.available_recipes_list.addItem(item)
+
+    def add_recipe_to_progress(self):
+        selected_item = self.available_recipes_list.currentItem()
+        if not selected_item:
+            return
+        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
+        recipe_name = recipe["name"]
+        if recipe_name in self.in_progress_recipes:
+            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
+            return
+        self.in_progress_recipes[recipe_name] = recipe
+        self.in_progress_recipes_list.addItem(recipe_name)
+        for component_str in recipe["components"]:
+            self._add_component_to_materials(component_str)
+        self._rebuild_materials_table()
+
+    def remove_recipe_from_progress(self):
+        selected_item = self.in_progress_recipes_list.currentItem()
+        if not selected_item:
+            return
+        recipe_name = selected_item.text()
+        recipe = self.in_progress_recipes.pop(recipe_name, None)
+        if recipe:
+            for component_str in recipe["components"]:
+                self._remove_component_from_materials(component_str)
+        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+        self._rebuild_materials_table()
+
+    def _add_component_to_materials(self, component_str: str):
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] += quantity
+        else:
+            if not self.item_database.all_items_data:
+                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
+            self.material_list_data[name] = {
+                "Material": name,
+                "#": quantity,
+                "Unit": drop_info["Unit"] if drop_info else "?",
+                "Location": drop_info["Location"] if drop_info else "?"
+            }
+
+    def _remove_component_from_materials(self, component_str: str):
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] -= quantity
+            if self.material_list_data[name]["#"] <= 0:
+                del self.material_list_data[name]
+
+    def _rebuild_materials_table(self):
+        self.materials_table.setSortingEnabled(False)
+        self.materials_table.setRowCount(0)
+        for row, item_data in enumerate(self.material_list_data.values()):
+            self._add_row_to_materials_table(row, item_data)
+
+    def _add_row_to_materials_table(self, row_num, item_data):
+        self.materials_table.insertRow(row_num)
+        material_item = QTableWidgetItem(item_data["Material"])
+        material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        material_item.setCheckState(Qt.CheckState.Unchecked)
+        self.materials_table.setItem(row_num, 0, material_item)
+        quantity_item = AlignedTableWidgetItem(str(item_data["#"]))
+        self.materials_table.setItem(row_num, 1, quantity_item)
+        self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
+        self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
+        checked_item = QTableWidgetItem("0")
+        self.materials_table.setItem(row_num, 4, checked_item)
+
+    def on_material_checked(self, item: QTableWidgetItem):
+        if item.column() != 0:
+            return
+        is_checked = item.checkState() == Qt.CheckState.Checked
+        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
+        for col in range(self.materials_table.columnCount()):
+            table_item = self.materials_table.item(item.row(), col)
+            if table_item:
+                table_item.setForeground(color)
+        sort_item = self.materials_table.item(item.row(), 4)
+        if sort_item:
+            sort_item.setText("1" if is_checked else "0")
+        self.materials_table.setSortingEnabled(True)
+        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
+        self.materials_table.itemChanged.connect(self.on_material_checked)
+
+    # Items filtering
+    def filter_current_item_view(self):
+        query = self.items_search_box.text().lower()
+        current_index = self.items_stacked_widget.currentIndex()
+        data_source = []
+        table_widget = None
+        if current_index == 0:
+            data_source = self.item_database.all_items_data
+            table_widget = self.all_items_table
+        elif current_index == 1:
+            data_source = self.item_database.drops_data
+            table_widget = self.drops_table
+        elif current_index == 2:
+            data_source = self.item_database.raid_data
+            table_widget = self.raid_items_table
+        elif current_index == 3:
+            data_source = self.item_database.vendor_data
+            table_widget = self.vendor_table
+        if not table_widget:
+            return
+        table_widget.setSortingEnabled(False)
+        table_widget.setRowCount(0)
+        filtered_data = [
+            item for item in data_source
+            if query in item.get("Item", "").lower() or
+               query in item.get("Unit", "").lower() or
+               query in item.get("Location", "").lower()
+        ]
+        headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]
+        for row, item_data in enumerate(filtered_data):
+            table_widget.insertRow(row)
+            for col, header in enumerate(headers):
+                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
+        table_widget.setSortingEnabled(True)
+
+    def switch_items_sub_tab(self, index: int):
+        for i, btn in self.item_tab_buttons.items():
+            btn.setChecked(i == index)
+        self.items_stacked_widget.setCurrentIndex(index)
+        self.items_search_box.setVisible(True)
+        if index == 0 and not self.item_database.all_items_data:
+            self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+        elif index == 1 and not self.item_database.drops_data:
+            self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
+        elif index == 2 and not self.item_database.raid_data:
+            self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
+        elif index == 3 and not self.item_database.vendor_data:
+            self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
+        self.filter_current_item_view()
+
+    # Character loading
+    def on_path_changed(self, new_path: str):
+        self.character_path = new_path
+        self.save_settings()
+
+    def select_character_path(self):
+        default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
+        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
+        if new_path:
+            self.load_path_edit.setText(new_path)
+            self.load_characters()
+
+    def reset_character_path(self):
+        confirm_box = QMessageBox.question(
+            self, "Confirm Reset", "Reset character path to default?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if confirm_box == QMessageBox.StandardButton.Yes:
+            default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
+            self.load_path_edit.setText(default_path)
+            self.load_characters()
+
+    def load_characters(self):
+        self.char_list_box.clear()
+        self.char_content_box.clear()
+        if not self.character_path or not os.path.isdir(self.character_path):
+            if self.character_path:
+                QMessageBox.warning(self, "Error", f"Character save directory not found:\n{self.character_path}")
+            return
+        char_files = []
+        for filename in os.listdir(self.character_path):
+            if filename.endswith(".txt"):
+                full_path = os.path.join(self.character_path, filename)
+                try:
+                    mod_time = os.path.getmtime(full_path)
+                    char_name = os.path.splitext(filename)[0]
+                    char_files.append({"name": char_name, "path": full_path, "mod_time": mod_time})
+                except OSError:
+                    continue
+        sorted_chars = sorted(char_files, key=lambda x: x["mod_time"], reverse=True)
+        for char in sorted_chars:
+            item = QListWidgetItem(char["name"])
+            item.setData(Qt.ItemDataRole.UserRole, char["path"])
+            self.char_list_box.addItem(item)
+        if self.char_list_box.count() > 0:
+            self.char_list_box.setCurrentRow(0)
+
+    def show_character_file_contents(self, current_item: QListWidgetItem, previous_item: QListWidgetItem):
+        if not current_item:
+            self.char_content_box.clear()
+            return
+        file_path = current_item.data(Qt.ItemDataRole.UserRole)
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                self.char_content_box.setText(f.read())
+        except (IOError, OSError) as e:
+            self.char_content_box.setText(f"Error reading file: {e}")
+
+    def load_selected_character(self):
+        current_item = self.char_list_box.currentItem()
+        if not current_item:
+            QMessageBox.warning(self, "No Character Selected", "Please select a character from the list.")
+            return
+        char_name = current_item.text()
+        game_title = self.game_title
+        try:
+            hwnd = win32gui.FindWindow(None, game_title)
+            if hwnd == 0:
+                QMessageBox.critical(self, "Error", f"'{game_title}' window not found.")
+                return
+            win32gui.SetForegroundWindow(hwnd)
+            pyautogui.press('enter')
+            pyautogui.write(f"-load {char_name}", interval=0.05)
+            pyautogui.press('enter')
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
+
+    # Lobbies
+    def refresh_lobbies(self):
+        self.lobbies_table.setRowCount(0)
+        self.lobbies_table.setRowCount(1)
+        loading_item = QTableWidgetItem("Fetching lobby data...")
+        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lobbies_table.setItem(0, 0, loading_item)
+        self.lobbies_table.setSpan(0, 0, 1, 3)
+        self.thread = QThread()
+        self.worker = LobbyFetcher()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.on_lobbies_fetched)
+        self.worker.error.connect(self.on_lobbies_fetch_error)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.error.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.error.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.start()
+
+    def on_lobbies_fetched(self, lobbies: list):
+        current_watched_lobbies = set()
+        for lobby in lobbies:
+            lobby_name = lobby.get('name', '').lower()
+            lobby_map = lobby.get('map', '').lower()
+            for keyword in self.watchlist:
+                if keyword in lobby_name or keyword in lobby_map:
+                    current_watched_lobbies.add(lobby.get('name'))
+                    break
+        newly_found = current_watched_lobbies - self.previous_watched_lobbies
+        if newly_found:
+            QApplication.beep()
+        self.previous_watched_lobbies = current_watched_lobbies
+        self.all_lobbies = lobbies
+        self.filter_lobbies(self.lobby_search_bar.text())
+
+    def on_lobbies_fetch_error(self, error_message: str):
+        self.lobbies_table.setRowCount(1)
+        self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
+        error_item = QTableWidgetItem(f"Error: {error_message}")
+        error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lobbies_table.setItem(0, 0, error_item)
+
+    def filter_lobbies(self, query: str):
+        self.lobbies_table.setRowCount(0)
+        self.lobbies_table.setSortingEnabled(False)
+        query = query.lower()
+        filtered_lobbies = [
+            lobby for lobby in self.all_lobbies
+            if query in lobby.get('name', '').lower() or query in lobby.get('map', '').lower()
+        ]
+        def is_watched(lobby):
+            name = lobby.get('name', '').lower()
+            map_name = lobby.get('map', '').lower()
+            for keyword in self.watchlist:
+                if keyword in name or keyword in map_name:
+                    return True
+            return False
+        sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
+        self.lobbies_table.setRowCount(len(sorted_lobbies))
+        for row, lobby in enumerate(sorted_lobbies):
+            lobby_name = lobby.get('name', '').lower()
+            lobby_map = lobby.get('map', '').lower()
+            watched = any(keyword in lobby_name or keyword in lobby_map for keyword in self.watchlist)
+            self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
+            self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
+            players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
+            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+            if watched:
+                for col in range(self.lobbies_table.columnCount()):
+                    self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
+        self.lobbies_table.setSortingEnabled(True)
+
+    # Tab select logic
+    def on_main_tab_selected(self, index: int):
+        self.stacked_widget.setCurrentIndex(index)
+        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
+            self.switch_items_sub_tab(0)
+        elif self.tab_names[index] == "Lobbies":
+            self.refresh_lobbies()
+        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
+            self.item_database.load_recipes()
+            self.filter_recipes_list()
+        elif self.tab_names[index] == "Automation":
+            self.load_message_hotkeys()
+
+    # Automation helpers
     def _run_automation_action(self, action, message=""):
-        """Helper to run a single automation task in a thread."""
-        # This worker will be short-lived and clean itself up.
         worker = AutomationWorker(self.game_title, action, message)
         thread = QThread()
         worker.moveToThread(thread)
@@ -933,10 +1236,7 @@ class SimpleWindow(QMainWindow):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
             self.start_automation_btn.setText("Stop (F5)")
-            self.start_automation_btn.setStyleSheet("background-color: #B00000;") # Red for running
-            print("Automation Started")
-
-            # Iterate through key automations
+            self.start_automation_btn.setStyleSheet("background-color: #B00000;")
             for key, ctrls in self.automation_key_ctrls.items():
                 if ctrls["btn"].isChecked():
                     try:
@@ -948,8 +1248,6 @@ class SimpleWindow(QMainWindow):
                         self.automation_timers[key] = timer
                     except ValueError:
                         print(f"Invalid interval for '{key}'. Must be an integer.")
-
-            # Handle Custom Action
             if self.custom_action_btn.isChecked():
                 try:
                     interval = int(self.custom_action_edit1.text())
@@ -967,639 +1265,29 @@ class SimpleWindow(QMainWindow):
                 timer.stop()
                 timer.deleteLater()
             self.automation_timers.clear()
-            print("Automation Stopped")
 
-    def on_main_tab_selected(self, index: int):
-        """Handles logic when a main tab is selected."""
-        self.stacked_widget.setCurrentIndex(index)
-        # Lazy load item data only when the "Items" tab is first clicked
-        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0) # This will trigger the data load
-        elif self.tab_names[index] == "Lobbies":
-            self.refresh_lobbies()
-        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
-            self.item_database.load_recipes()
-            self.filter_recipes_list()
-        elif self.tab_names[index] == "Automation":
-            self.load_message_hotkeys()
-
-    def _create_item_table(self, headers: list) -> QTableWidget:
-        """Factory function to create and configure an item table."""
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Item name
-        for i in range(1, len(headers)):
-            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
-        table.setSortingEnabled(True)
-        return table
-
-    def create_theme_grid(self, layout: QGridLayout):
-        """Creates and populates the theme selection grid."""
-        row, col = 0, 0
-        for i, theme in enumerate(self.themes):
-            preview = ThemePreview()
-            preview.setFixedSize(150, 120)
-            preview.setCursor(Qt.CursorShape.PointingHandCursor)
-            preview.setObjectName("ThemePreview")
-            preview.clicked.connect(lambda idx=i: self.apply_theme(idx))
-
-            preview_layout = QVBoxLayout(preview)
-            
-            color_block = QLabel()
-            color_block.setFixedHeight(80)
-            color_block.setStyleSheet(f"background-color: {theme['preview_color']}; border-radius: 5px;")
-            
-            name_label = QLabel(theme['name'])
-            name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            preview_layout.addWidget(color_block)
-            preview_layout.addWidget(name_label)
-
-            layout.addWidget(preview, row, col)
-            self.theme_previews.append(preview)
-
-            col += 1
-            if col >= 4: # 4 previews per row
-                col = 0
-                row += 1
-        
-        layout.setRowStretch(row + 1, 1)
-        layout.setColumnStretch(col + 1, 1)
-
-
-    def mousePressEvent(self, event: QMouseEvent):
-        """Captures the initial mouse position for window dragging."""
-        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
-            self.old_pos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event: QMouseEvent):
-        """Moves the window if the mouse is being dragged from the title bar."""
-        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
-            delta = event.globalPosition().toPoint() - self.old_pos
-            self.move(self.x() + delta.x(), self.y() + delta.y())
-            self.old_pos = event.globalPosition().toPoint()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        """Resets the drag position when the mouse is released."""
-        self.old_pos = None
-
-    def on_button_click(self):
-        # This function is no longer tied to a counter, let's update it.
-        QMessageBox.information(self, "Info", "This button is just for demonstration!")
-
-    def apply_theme(self, theme_index: int):
-        """Applies the selected theme and updates UI elements."""
-        self.current_theme_index = theme_index
-        theme = self.themes[theme_index]
-        
-        self.dark_mode = theme["is_dark"]
-        self.setStyleSheet(theme["style"])
-
-        # Apply theme to custom tab bar buttons
-        self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
-        
-        # Update selection border on theme previews
-        for i, preview in enumerate(self.theme_previews):
-            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        self.save_settings()
-
-        # Manually update colors for items that have been explicitly set
-        self.update_materials_table_colors()
-
-    def update_materials_table_colors(self):
-        """Updates the text color of items in the materials table to match the current theme."""
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        for row in range(self.materials_table.rowCount()):
-            # Check the hidden sort column to see if the item is checked
-            is_checked = self.materials_table.item(row, 4).text() == "1"
-            if not is_checked:
-                new_color = self.palette().color(self.foregroundRole())
-                for col in range(self.materials_table.columnCount()):
-                    self.materials_table.item(row, col).setForeground(new_color)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-
-    def confirm_reset(self):
-        """Shows a confirmation dialog before resetting the application state."""
-        confirm_box = QMessageBox(self)
-        confirm_box.setWindowTitle("Confirm Reset")
-        confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
-        confirm_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        confirm_box.setDefaultButton(QMessageBox.StandardButton.No)
-        
-        if confirm_box.exec() == QMessageBox.StandardButton.Yes:
-            self.reset_state()
-
-    def reset_state(self):
-        """Resets the application to its initial state."""
-        self.resize(700, 800)
-        self.label.setText("Hello! Click the button.")
-        self.apply_theme(0) # Reset to the first theme
-        self.custom_tab_bar._on_button_clicked(0)
-        self.watchlist = self.load_watchlist()
-        self.watchlist_widget.clear()
-        self.watchlist_widget.addItems(self.watchlist)
-        self.save_settings()
-
-    def load_settings(self):
-        """Loads settings like the current theme from a file."""
-        try:
-            if os.path.exists("settings.json"):
-                with open("settings.json", 'r') as f:
-                    settings = json.load(f)
-                    self.current_theme_index = settings.get("theme_index", 0)
-                    self.character_path = settings.get("character_path", "")
-                    self.message_hotkeys = settings.get("message_hotkeys", {})
-        except (IOError, json.JSONDecodeError):
-            self.current_theme_index = 0 # Default on error
-            self.character_path = ""
-            self.message_hotkeys = {}
-
-    def save_settings(self):
-        """Saves current settings to a file."""
-        settings = {
-            "theme_index": self.current_theme_index,
-            "character_path": self.character_path,
-            "message_hotkeys": self.message_hotkeys
-        }
-        with open("settings.json", 'w') as f:
-            json.dump(settings, f, indent=4)
-
-    def load_watchlist(self):
-        """Loads the watchlist from a JSON file."""
-        try:
-            if os.path.exists(self.watchlist_file):
-                with open(self.watchlist_file, 'r') as f:
-                    return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            print(f"Error loading watchlist: {e}")
-        return ["legion", "hellgate"] # Default if file doesn't exist or is corrupt
-
-    def save_watchlist(self):
-        """Saves the current watchlist to a JSON file."""
-        with open(self.watchlist_file, 'w') as f:
-            json.dump(self.watchlist, f, indent=4)
-
-    def add_to_watchlist(self):
-        """Adds a keyword to the watchlist."""
-        keyword = self.watchlist_input.text().strip().lower()
-        if keyword and keyword not in self.watchlist:
-            self.watchlist.append(keyword)
-            self.watchlist_widget.addItem(keyword)
-            self.watchlist_input.clear()
-            self.save_watchlist()
-            self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to apply new keyword
-
-    def remove_from_watchlist(self):
-        """Removes the selected keyword from the watchlist."""
-        selected_items = self.watchlist_widget.selectedItems()
-        if not selected_items:
-            return
-        for item in selected_items:
-            self.watchlist.remove(item.text())
-            self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
-        self.save_watchlist()
-        self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
-
-    def filter_recipes_list(self):
-        """Filters the available recipes list based on its search box."""
-        query = self.recipe_search_box.text().lower()
-        self.available_recipes_list.clear()
-        for recipe in self.item_database.recipes_data:
-            if query in recipe["name"].lower():
-                item = QListWidgetItem(recipe["name"])
-                # Store the full recipe object in the item
-                item.setData(Qt.ItemDataRole.UserRole, recipe)
-                self.available_recipes_list.addItem(item)
-
-    def add_recipe_to_progress(self):
-        """Adds a selected recipe to the 'in-progress' list and updates materials."""
-        selected_item = self.available_recipes_list.currentItem()
-        if not selected_item:
-            return
-
-        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
-        recipe_name = recipe["name"]
-
-        if recipe_name in self.in_progress_recipes:
-            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
-            return
-
-        # Add to UI and internal tracking
-        self.in_progress_recipes[recipe_name] = recipe
-        self.in_progress_recipes_list.addItem(recipe_name)
-
-        # Add components to the material list
-        for component_str in recipe["components"]:
-            self._add_component_to_materials(component_str)
-        
-        self._rebuild_materials_table()
-
-    def remove_recipe_from_progress(self):
-        """Removes a recipe from 'in-progress' and updates the material list."""
-        selected_item = self.in_progress_recipes_list.currentItem()
-        if not selected_item:
-            return
-
-        recipe_name = selected_item.text()
-        recipe = self.in_progress_recipes.pop(recipe_name, None)
-
-        if recipe:
-            # Remove components from the material list
-            for component_str in recipe["components"]:
-                self._remove_component_from_materials(component_str)
-
-        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-        self._rebuild_materials_table()
-
-    def _add_component_to_materials(self, component_str: str):
-        """Helper to parse and add a material to the master list."""
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] += quantity
-        else:
-            # Find drop info from the main item database
-            if not self.item_database.all_items_data:
-                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-            
-            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-            self.material_list_data[name] = {
-                "Material": name,
-                "#": quantity,
-                "Unit": drop_info["Unit"] if drop_info else "?",
-                "Location": drop_info["Location"] if drop_info else "?"
-            }
-
-    def _remove_component_from_materials(self, component_str: str):
-        """Helper to parse and remove a material from the master list."""
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] -= quantity
-            if self.material_list_data[name]["#"] <= 0:
-                del self.material_list_data[name]
-
-    def _rebuild_materials_table(self):
-        """Clears and repopulates the materials table from the internal data dictionary."""
-        self.materials_table.setSortingEnabled(False) # Disable sorting during rebuild
-        self.materials_table.setRowCount(0)
-        for row, item_data in enumerate(self.material_list_data.values()):
-            self._add_row_to_materials_table(row, item_data)
-
-    def switch_items_sub_tab(self, index: int):
-        """Switches the visible table in the Items tab and loads data."""
-        for i, btn in self.item_tab_buttons.items():
-            btn.setChecked(i == index)
-
-        self.items_stacked_widget.setCurrentIndex(index)
-        
-        # Show search box for all item tabs
-        self.items_search_box.setVisible(True)
-
-        # Lazy load data
-        if index == 0 and not self.item_database.all_items_data:
-            self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-        elif index == 1 and not self.item_database.drops_data:
-            self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
-        elif index == 2 and not self.item_database.raid_data:
-            self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
-        elif index == 3 and not self.item_database.vendor_data:
-            self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
-        
-        self.filter_current_item_view()
-
-    def _add_row_to_materials_table(self, row_num, item_data):
-        """Adds a single row to the materials table, including a checkbox."""
-        self.materials_table.insertRow(row_num)
-        
-        # Column 0: Material (with checkbox)
-        material_item = QTableWidgetItem(item_data["Material"])
-        material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-        material_item.setCheckState(Qt.CheckState.Unchecked)
-        self.materials_table.setItem(row_num, 0, material_item)
-
-        # Column 1: Quantity
-        quantity_item = AlignedTableWidgetItem(str(item_data["#"]))
-        self.materials_table.setItem(row_num, 1, quantity_item)
-
-        # Column 2 & 3: Unit and Location
-        self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
-        self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
-
-        # Column 4: Hidden sort key for checked status
-        checked_item = QTableWidgetItem("0")
-        self.materials_table.setItem(row_num, 4, checked_item)
-
-    def on_material_checked(self, item: QTableWidgetItem):
-        """Grays out a row in the materials table when its checkbox is ticked."""
-        if item.column() != 0: # Only respond to changes in the first column
-            return
-
-        is_checked = item.checkState() == Qt.CheckState.Checked
-        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
-        
-        # Temporarily disconnect the signal to prevent recursion
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-
-        for col in range(self.materials_table.columnCount()):
-            table_item = self.materials_table.item(item.row(), col)
-            if table_item: # Add a check to ensure the item exists before modifying it
-                table_item.setForeground(color)
-
-        # Update the hidden sort column and re-sort the table
-        sort_item = self.materials_table.item(item.row(), 4)
-        if sort_item:
-            sort_item.setText("1" if is_checked else "0")
-        self.materials_table.setSortingEnabled(True)
-        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder) # Sort by checked status
-
-        # Reconnect the signal
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-
-    def filter_current_item_view(self):
-        """Filters the currently visible item table based on the search query."""
-        query = self.items_search_box.text().lower()
-        current_index = self.items_stacked_widget.currentIndex()
-
-        data_source = []
-        table_widget = None
-
-        if current_index == 0:
-            data_source = self.item_database.all_items_data
-            table_widget = self.all_items_table
-        elif current_index == 1:
-            data_source = self.item_database.drops_data
-            table_widget = self.drops_table
-        elif current_index == 2:
-            data_source = self.item_database.raid_data
-            table_widget = self.raid_items_table
-        elif current_index == 3:
-            data_source = self.item_database.vendor_data
-            table_widget = self.vendor_table
-
-        if not table_widget:
-            return
-
-        table_widget.setSortingEnabled(False)
-        table_widget.setRowCount(0)
-
-        filtered_data = [
-            item for item in data_source
-            if query in item.get("Item", "").lower() or \
-               query in item.get("Unit", "").lower() or \
-               query in item.get("Location", "").lower()
-        ]
-
-        for row, item_data in enumerate(filtered_data):
-            table_widget.insertRow(row)
-            for col, header in enumerate([table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]):
-                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
-        
-        table_widget.setSortingEnabled(True)
-
-    def on_path_changed(self, new_path: str):
-        """Updates character path when the text is edited."""
-        self.character_path = new_path
-        self.save_settings()
-
-    def select_character_path(self):
-        """Opens a dialog to select the character data folder."""
-        default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
-        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
-        if new_path:
-            self.load_path_edit.setText(new_path)
-            self.load_characters() # Automatically refresh
-
-    def reset_character_path(self):
-        """Resets the character path to the default location."""
-        confirm_box = QMessageBox.question(self, "Confirm Reset", "Reset character path to default?",
-                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                           QMessageBox.StandardButton.No)
-        if confirm_box == QMessageBox.StandardButton.Yes:
-            default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
-            self.load_path_edit.setText(default_path)
-            self.load_characters() # Automatically refresh
-
-    def load_characters(self):
-        """Loads and displays character files from the specified path."""
-        self.char_list_box.clear()
-        self.char_content_box.clear()
-
-        if not self.character_path or not os.path.isdir(self.character_path):
-            if self.character_path: # Only show error if path is set but invalid
-                QMessageBox.warning(self, "Error", f"Character save directory not found:\n{self.character_path}")
-            return
-
-        char_files = []
-        for filename in os.listdir(self.character_path):
-            if filename.endswith(".txt"):
-                full_path = os.path.join(self.character_path, filename)
-                try:
-                    mod_time = os.path.getmtime(full_path)
-                    char_name = os.path.splitext(filename)[0]
-                    char_files.append({"name": char_name, "path": full_path, "mod_time": mod_time})
-                except OSError:
-                    continue # Skip files that can't be accessed
-
-        # Sort by modification time, descending
-        sorted_chars = sorted(char_files, key=lambda x: x["mod_time"], reverse=True)
-
-        for char in sorted_chars:
-            item = QListWidgetItem(char["name"])
-            item.setData(Qt.ItemDataRole.UserRole, char["path"]) # Store full path in the item
-            self.char_list_box.addItem(item)
-
-        if self.char_list_box.count() > 0:
-            self.char_list_box.setCurrentRow(0)
-
-    def show_character_file_contents(self, current_item: QListWidgetItem, previous_item: QListWidgetItem):
-        """Displays the content of the selected character file."""
-        if not current_item:
-            self.char_content_box.clear()
-            return
-
-        file_path = current_item.data(Qt.ItemDataRole.UserRole)
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                self.char_content_box.setText(f.read())
-        except (IOError, OSError) as e:
-            self.char_content_box.setText(f"Error reading file: {e}")
-
-    def load_selected_character(self):
-        """Sends the -load command for the selected character to the game."""
-        current_item = self.char_list_box.currentItem()
-        if not current_item:
-            QMessageBox.warning(self, "No Character Selected", "Please select a character from the list.")
-            return
-
-        char_name = current_item.text()
-        game_title = "Warcraft III"
-
-        try:
-            hwnd = win32gui.FindWindow(None, game_title)
-            if hwnd == 0:
-                QMessageBox.critical(self, "Error", f"'{game_title}' window not found.")
-                return
-
-            win32gui.SetForegroundWindow(hwnd)
-            pyautogui.press('enter')
-            pyautogui.write(f"-load {char_name}", interval=0.05)
-            pyautogui.press('enter')
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
-
-    def refresh_lobbies(self):
-        """Placeholder method to refresh lobby data."""
-        self.lobbies_table.setRowCount(0) # Clear table
-        self.lobbies_table.setRowCount(1)
-        loading_item = QTableWidgetItem("Fetching lobby data...")
-        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter) # This line is correct
-        self.lobbies_table.setItem(0, 0, loading_item)
-        self.lobbies_table.setSpan(0, 0, 1, 3) # Span across all columns
-
-        # Setup and start the worker thread
-        self.thread = QThread()
-        self.worker = LobbyFetcher()
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.on_lobbies_fetched)
-        self.worker.error.connect(self.on_lobbies_fetch_error)
-        
-        # Clean up the thread when done
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.error.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.worker.error.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-
-        self.thread.start()
-
-    def on_lobbies_fetched(self, lobbies: list):
-        """Slot to handle successfully fetched lobby data."""
-        # Check for new watched lobbies before updating the main list
-        current_watched_lobbies = set()
-        for lobby in lobbies:
-            lobby_name = lobby.get('name', '').lower()
-            lobby_map = lobby.get('map', '').lower()
-            for keyword in self.watchlist:
-                if keyword in lobby_name or keyword in lobby_map:
-                    # Use a unique identifier for the lobby, name is usually good enough
-                    current_watched_lobbies.add(lobby.get('name'))
-                    break
-
-        newly_found = current_watched_lobbies - self.previous_watched_lobbies
-        if newly_found:
-            QApplication.beep()
-
-        self.previous_watched_lobbies = current_watched_lobbies
-        self.all_lobbies = lobbies
-        self.filter_lobbies(self.lobby_search_bar.text())
-
-    def on_lobbies_fetch_error(self, error_message: str):
-        """Slot to handle errors during lobby data fetching."""
-        self.lobbies_table.setRowCount(1)
-        self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
-        error_item = QTableWidgetItem(f"Error: {error_message}")
-        error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lobbies_table.setItem(0, 0, error_item)
-
-    def filter_lobbies(self, query: str):
-        """Filters and displays lobbies based on the search query."""
-        self.lobbies_table.setRowCount(0) # Clear table
-        self.lobbies_table.setSortingEnabled(False)
-        
-        # On a simple filter, we don't want to clear the "previous" state for notifications
-        # so we only update self.previous_watched_lobbies on a full refresh (in on_lobbies_fetched)
-
-        query = query.lower()
-        filtered_lobbies = [
-            lobby for lobby in self.all_lobbies 
-            if query in lobby.get('name', '').lower() or query in lobby.get('map', '').lower()
-        ]
-
-        # Sort the lobbies to show watched ones first
-        def is_watched(lobby):
-            name = lobby.get('name', '').lower()
-            map_name = lobby.get('map', '').lower()
-            for keyword in self.watchlist:
-                if keyword in name or keyword in map_name:
-                    return True
-            return False
-
-        # Sort by watched status (descending) so True comes before False
-        sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
-
-        self.lobbies_table.setRowCount(len(sorted_lobbies))
-        for row, lobby in enumerate(sorted_lobbies):
-            lobby_name = lobby.get('name', '').lower()
-            lobby_map = lobby.get('map', '').lower()
-            
-            is_watched = False
-            for keyword in self.watchlist:
-                if keyword in lobby_name or keyword in lobby_map:
-                    is_watched = True
-                    break
-
-            self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
-            self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
-            players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
-
-            if is_watched:
-                for col in range(self.lobbies_table.columnCount()):
-                    self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B")) # A dark green color
-        self.lobbies_table.setSortingEnabled(True)
-
+    # Hotkey capture and registration
     def capture_message_hotkey(self):
-        """Initiates the process of capturing a new hotkey."""
-        # Reset keyboard listener state to prevent combining previous presses.
-        keyboard.press_and_release('esc')
-
-        # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
         self.hotkey_capture_btn.setEnabled(False)
-
         self.capture_thread = QThread()
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
-
-        # Unhook all existing hotkeys to ensure a clean capture state
-        keyboard.unhook_all()
-
+        keyboard.unhook_all()  # clear current hooks to avoid interference during capture
         self.capture_thread.started.connect(self.capture_worker.run)
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
-
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
-        """Updates the UI once a hotkey has been captured by the worker."""
         is_valid = True
         if '+' in hotkey:
             parts = hotkey.split('+')
-            # For a combination like "ctrl+shift+a", all parts except the last must be modifiers.
-            # This prevents combinations like "a+b" or "2+3".
             for part in parts[:-1]:
                 if part.strip().lower() not in keyboard.all_modifiers:
                     is_valid = False
                     break
-
-        # Re-enable the message box now that capture is complete
         self.message_edit.setEnabled(True)
-
         if not is_valid:
             QMessageBox.warning(self, "Invalid Hotkey", f"The hotkey '{hotkey}' is not a valid combination. Please use a single key or modifier combinations (e.g., Ctrl+C).")
             self.hotkey_capture_btn.setText("Click to set")
@@ -1607,15 +1295,16 @@ class SimpleWindow(QMainWindow):
             self.hotkey_capture_btn.setText("Click to set")
         else:
             self.hotkey_capture_btn.setText(hotkey)
-
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
-        # Unhook the temporary capture listener and re-register only the saved hotkeys.
+        self.capture_thread.wait()
         self.register_all_message_hotkeys()
 
     def load_message_hotkeys(self):
-        """Loads hotkeys from settings and populates the table."""
         self.msg_hotkey_table.setRowCount(0)
+        # Ensure we have dict in memory
+        if not isinstance(self.message_hotkeys, dict):
+            self.message_hotkeys = {}
         for hotkey, message in self.message_hotkeys.items():
             row_position = self.msg_hotkey_table.rowCount()
             self.msg_hotkey_table.insertRow(row_position)
@@ -1624,153 +1313,161 @@ class SimpleWindow(QMainWindow):
         self.register_all_message_hotkeys()
 
     def add_message_hotkey(self):
-        """Adds a new hotkey and message to the list and registers it."""
-        """Adds a new hotkey and message to the list."""
         hotkey = self.hotkey_capture_btn.text()
         message = self.message_edit.text()
-
         if hotkey == "Click to set" or not message:
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
             return
-
         if hotkey in self.message_hotkeys:
             QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
             return
-
-        self.register_message_hotkey(hotkey, message)
+        self.message_hotkeys[hotkey] = message
         self.save_settings()
+        self.load_message_hotkeys()
         self.hotkey_capture_btn.setText("Click to set")
         self.message_edit.clear()
 
     def update_message_hotkey(self):
-        """Updates the selected hotkey's message or keybinding."""
-        """Updates the selected hotkey and message."""
         selected_items = self.msg_hotkey_table.selectedItems()
         if not selected_items:
             QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to update.")
             return
-
         selected_row = selected_items[0].row()
         old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
-        
         new_hotkey = self.hotkey_capture_btn.text()
         new_message = self.message_edit.text()
-
         if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
             QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
             return
-
-        # Unregister old, register new
-        keyboard.remove_hotkey(old_hotkey)
-        del self.message_hotkeys[old_hotkey]
-        self.register_message_hotkey(new_hotkey, new_message)
+        # remove old binding
+        if old_hotkey in self.hotkey_ids:
+            try:
+                keyboard.remove_hotkey(self.hotkey_ids[old_hotkey])
+            except Exception:
+                pass
+            self.hotkey_ids.pop(old_hotkey, None)
+        # update store
+        self.message_hotkeys.pop(old_hotkey, None)
+        self.message_hotkeys[new_hotkey] = new_message
         self.save_settings()
+        self.load_message_hotkeys()
 
     def delete_message_hotkey(self):
-        """Deletes the selected hotkey and unregisters it."""
-        """Deletes the selected hotkey."""
         selected_items = self.msg_hotkey_table.selectedItems()
         if not selected_items:
             QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
             return
-
-        hotkey_to_delete = self.msg_hotkey_table.item(selected_items[0].row(), 0).text()
-        
+        selected_row = selected_items[0].row()
+        hotkey_to_delete = self.msg_hotkey_table.item(selected_row, 0).text()
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
-            keyboard.remove_hotkey(hotkey_to_delete)
-            del self.message_hotkeys[hotkey_to_delete]
+            # unhook only that hotkey
+            if hotkey_to_delete in self.hotkey_ids:
+                try:
+                    keyboard.remove_hotkey(self.hotkey_ids[hotkey_to_delete])
+                except Exception:
+                    pass
+                self.hotkey_ids.pop(hotkey_to_delete, None)
+            self.message_hotkeys.pop(hotkey_to_delete, None)
             self.save_settings()
-            self.load_message_hotkeys()
+            self.msg_hotkey_table.removeRow(selected_row)
 
-    def register_message_hotkey(self, hotkey: str, message: str):
-        """Registers a single hotkey and adds it to the internal dictionary."""
-        # The callback needs to be created in a way that captures the current hotkey and message
-        callback = (lambda h, msg: lambda: self.send_chat_message(h, msg))(hotkey, message)
-        keyboard.add_hotkey(hotkey, callback, suppress=True)
-        self.message_hotkeys[hotkey] = message
-        self.load_message_hotkeys() # Refresh the UI table
+    def register_global_hotkeys(self):
+        # F5 to toggle automation
+        try:
+            # store ID so we can remove if needed later
+            f5_id = keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
+            self.hotkey_ids['f5'] = f5_id
+        except Exception as e:
+            print(f"Failed to register F5 hotkey: {e}")
 
     def register_all_message_hotkeys(self):
-        """Registers all loaded hotkeys with the keyboard listener."""
-        keyboard.unhook_all()
-        # Also register other global hotkeys here
-        keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
-        # Use a copy of the items to avoid issues if the dict is modified elsewhere.
+        # Keep existing global keys; re-register message hotkeys cleanly
+        # Remove previous message hotkeys only (not global ones)
+        for hk, hk_id in list(self.hotkey_ids.items()):
+            if hk != 'f5':  # preserve F5
+                try:
+                    keyboard.remove_hotkey(hk_id)
+                except Exception:
+                    pass
+                self.hotkey_ids.pop(hk, None)
+        # Register all message hotkeys
         for hotkey, message in self.message_hotkeys.items():
-            # Create a closure to capture the correct message and hotkey for the callback.
-            callback = (lambda h, msg: lambda: self.send_chat_message(h, msg))(hotkey, message)
-            keyboard.add_hotkey(hotkey, callback, suppress=True)
+            def callback(h=hotkey, msg=message):
+                self.send_chat_message(h, msg)
+            try:
+                hk_id = keyboard.add_hotkey(hotkey, callback, suppress=True)
+                self.hotkey_ids[hotkey] = hk_id
+            except Exception as e:
+                print(f"Failed to register hotkey '{hotkey}': {e}")
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        """Sends a chat message if the game window is active."""
-        if self.is_sending_message:
-            return # Prevent the function from running again if it's already busy.
-
+        # If game not active, let the key go through elsewhere
         try:
             game_hwnd = win32gui.FindWindow(None, self.game_title)
-            is_game_active = win32gui.GetForegroundWindow() == game_hwnd
+            is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
+        except Exception:
+            is_game_active = False
 
-            if not is_game_active:
-                # If game is not active, re-send the keypress so it works in other apps.
+        if not is_game_active:
+            # forward the original key
+            try:
                 keyboard.send(hotkey_pressed)
-            else:
-                self.is_sending_message = True
-                
-                # Block the key to prevent it from being sent to the game.
-                key_to_block = hotkey_pressed.split('+')[-1].strip()
-                keyboard.block_key(key_to_block)
+            except Exception:
+                pass
+            return
 
-                pyautogui.press('enter')
-                pyautogui.write(message, interval=0.01)
-                pyautogui.press('enter')
+        if self.is_sending_message:
+            return
+        self.is_sending_message = True
 
-                # Schedule the key to be unblocked and the flag to be reset.
-                QTimer.singleShot(50, lambda: self.finish_sending_message(key_to_block))
-        except Exception as e:
-            print(f"Error sending chat message: {e}")
-            # If an error occurs, reset the flag immediately.
-            self.is_sending_message = False
+        worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
+        thread = QThread()
+        worker.moveToThread(thread)
 
-    def finish_sending_message(self, key_to_unblock: str):
-        """Unblocks the key and resets the sending flag."""
-        keyboard.unblock_key(key_to_unblock)
+        thread.started.connect(worker.run)
+        worker.finished.connect(lambda: self.cleanup_chat_thread(thread, worker))
+        worker.error.connect(lambda e: self.cleanup_chat_thread(thread, worker))
+        thread.start()
+
+    def cleanup_chat_thread(self, thread: QThread, worker: ChatMessageWorker):
         self.is_sending_message = False
+        try:
+            worker.deleteLater()
+        except Exception:
+            pass
+        try:
+            thread.quit()
+            thread.wait()
+            thread.deleteLater()
+        except Exception:
+            pass
 
 
 class CustomTabBar(QWidget):
-    """
-    A custom widget to act as a tab bar, allowing for multi-row tab buttons.
-    """
     tab_selected = Signal(int)
-
     def __init__(self, tab_names: list[str], tabs_per_row: int = 4):
         super().__init__()
         self.tab_names = tab_names
         self.tabs_per_row = tabs_per_row
         self.buttons: List[QPushButton] = []
         self.current_index = -1
-
         self.layout = QGridLayout(self)
-        self.layout.setContentsMargins(5, 0, 5, 0) # Add some horizontal margin
-        self.layout.setSpacing(2) # Small spacing between buttons
-
+        self.layout.setContentsMargins(5, 0, 5, 0)
+        self.layout.setSpacing(2)
         self._create_buttons()
 
     def _create_buttons(self):
         for i, name in enumerate(self.tab_names):
             button = QPushButton(name)
-            button.setCheckable(True) # Make buttons toggleable
+            button.setCheckable(True)
             button.clicked.connect(lambda checked, idx=i: self._on_button_clicked(idx))
             self.buttons.append(button)
-
             row = i // self.tabs_per_row
             col = i % self.tabs_per_row
             self.layout.addWidget(button, row, col)
-
-        # Set initial selection
         if self.buttons:
-            self._on_button_clicked(0) # Select the first tab by default
+            self._on_button_clicked(0)
 
     def _on_button_clicked(self, index: int):
         if self.current_index != index:
@@ -1781,12 +1478,9 @@ class CustomTabBar(QWidget):
             self.tab_selected.emit(index)
 
     def apply_style(self, theme_name: str, dark_mode: bool):
-        # This method applies specific styling for the buttons within this custom tab bar,
-        # including the :checked state, overriding general QPushButton styles if necessary.
         if theme_name == "Black/Orange":
-            # Specific style for Black/Orange
             self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
+                QPushButton {
                     background-color: #2A2A2C;
                     border: 1px solid #444444;
                     padding: 8px;
@@ -1794,9 +1488,7 @@ class CustomTabBar(QWidget):
                     color: #F0F0F0;
                     font-size: 16px;
                 }
-                QPushButton:hover {
-                    background-color: #FFA64D;
-                }
+                QPushButton:hover { background-color: #FFA64D; }
                 QPushButton:checked {
                     background-color: #FF7F50;
                     color: #F0F0F0;
@@ -1804,9 +1496,8 @@ class CustomTabBar(QWidget):
                 }
             """)
         elif dark_mode:
-            # Generic style for other dark themes (e.g., Black/Blue)
             self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
+                QPushButton {
                     background-color: #2A2A2C;
                     border: 1px solid #444444;
                     padding: 8px;
@@ -1814,770 +1505,50 @@ class CustomTabBar(QWidget):
                     color: #EAEAEA;
                     font-size: 16px;
                 }
-                QPushButton:hover {
-                    background-color: #4682B4; /* SteelBlue */
-                }
+                QPushButton:hover { background-color: #4682B4; }
                 QPushButton:checked {
-                    background-color: #1E90FF; /* DodgerBlue */
+                    background-color: #1E90FF;
                     color: #EAEAEA;
-                    border-color: #4169E1; /* RoyalBlue */
+                    border-color: #4169E1;
                 }
             """)
         elif theme_name == "White/Blue":
-            # Specific style for White/Blue
             self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #87CEEB; /* SkyBlue */
-                    border: 1px solid #4682B4; /* SteelBlue */
+                QPushButton {
+                    background-color: #87CEEB;
+                    border: 1px solid #4682B4;
                     padding: 8px;
                     border-radius: 6px;
-                    color: #000080; /* Navy */
+                    color: #000080;
                     font-size: 16px;
                 }
-                QPushButton:hover {
-                    background-color: #87CEFA; /* LightSkyBlue */
-                }
+                QPushButton:hover { background-color: #87CEFA; }
                 QPushButton:checked {
-                    background-color: #4682B4; /* SteelBlue */
-                    color: #F0F8FF; /* AliceBlue */
+                    background-color: #4682B4;
+                    color: #F0F8FF;
                 }
             """)
         else:
-            # Default for other light themes (e.g., White/Pink)
             self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #FFC0CB; /* Pink */
-                    border: 1px solid #E6A8B8; /* Darker pink border */
+                QPushButton {
+                    background-color: #FFC0CB;
+                    border: 1px solid #E6A8B8;
                     padding: 8px;
                     border-radius: 6px;
-                    color: #2E3440; /* nord0 */
+                    color: #2E3440;
                     font-size: 16px;
                 }
-                QPushButton:hover {
-                    background-color: #F6B3F5;
-                }
+                QPushButton:hover { background-color: #F6B3F5; }
                 QPushButton:checked {
-                    background-color: #DB7093; /* PaleVioletRed for selection */
+                    background-color: #DB7093;
                     color: #2E3440;
                 }
             """)
 
-if __name__ == "__main__":
-    # Set this environment variable to prevent Qt from trying to set
-    # the DPI awareness, which can suppress the "Access is denied" warning.
-    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-
-    app = QApplication(sys.argv)
-    window = SimpleWindow()
-    window.show()
-    sys.exit(app.exec())
-
-    def _create_item_table(self, headers: list) -> QTableWidget:
-        """Factory function to create and configure an item table."""
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Item name
-        for i in range(1, len(headers)):
-            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
-        table.setSortingEnabled(True)
-        return table
-
-    def create_theme_grid(self, layout: QGridLayout):
-        """Creates and populates the theme selection grid."""
-        row, col = 0, 0
-        for i, theme in enumerate(self.themes):
-            preview = ThemePreview()
-            preview.setFixedSize(150, 120)
-            preview.setCursor(Qt.CursorShape.PointingHandCursor)
-            preview.setObjectName("ThemePreview")
-            preview.clicked.connect(lambda idx=i: self.apply_theme(idx))
-
-            preview_layout = QVBoxLayout(preview)
-            
-            color_block = QLabel()
-            color_block.setFixedHeight(80)
-            color_block.setStyleSheet(f"background-color: {theme['preview_color']}; border-radius: 5px;")
-            
-            name_label = QLabel(theme['name'])
-            name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-            preview_layout.addWidget(color_block)
-            preview_layout.addWidget(name_label)
-
-            layout.addWidget(preview, row, col)
-            self.theme_previews.append(preview)
-
-            col += 1
-            if col >= 4: # 4 previews per row
-                col = 0
-                row += 1
-        
-        layout.setRowStretch(row + 1, 1)
-        layout.setColumnStretch(col + 1, 1)
-
-
-    def mousePressEvent(self, event: QMouseEvent):
-        """Captures the initial mouse position for window dragging."""
-        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
-            self.old_pos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event: QMouseEvent):
-        """Moves the window if the mouse is being dragged from the title bar."""
-        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
-            delta = event.globalPosition().toPoint() - self.old_pos
-            self.move(self.x() + delta.x(), self.y() + delta.y())
-            self.old_pos = event.globalPosition().toPoint()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        """Resets the drag position when the mouse is released."""
-        self.old_pos = None
-
-    def on_button_click(self):
-        # This function is no longer tied to a counter, let's update it.
-        QMessageBox.information(self, "Info", "This button is just for demonstration!")
-
-    def apply_theme(self, theme_index: int):
-        """Applies the selected theme and updates UI elements."""
-        self.current_theme_index = theme_index
-        theme = self.themes[theme_index]
-        
-        self.dark_mode = theme["is_dark"]
-        self.setStyleSheet(theme["style"])
-
-        # Apply theme to custom tab bar buttons
-        self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
-        
-        # Update selection border on theme previews
-        for i, preview in enumerate(self.theme_previews):
-            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        self.save_settings()
-
-        # Manually update colors for items that have been explicitly set
-        self.update_materials_table_colors()
-
-    def update_materials_table_colors(self):
-        """Updates the text color of items in the materials table to match the current theme."""
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        for row in range(self.materials_table.rowCount()):
-            # Check the hidden sort column to see if the item is checked
-            is_checked = self.materials_table.item(row, 4).text() == "1"
-            if not is_checked:
-                new_color = self.palette().color(self.foregroundRole())
-                for col in range(self.materials_table.columnCount()):
-                    self.materials_table.item(row, col).setForeground(new_color)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-
-    def confirm_reset(self):
-        """Shows a confirmation dialog before resetting the application state."""
-        confirm_box = QMessageBox(self)
-        confirm_box.setWindowTitle("Confirm Reset")
-        confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
-        confirm_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        confirm_box.setDefaultButton(QMessageBox.StandardButton.No)
-        
-        if confirm_box.exec() == QMessageBox.StandardButton.Yes:
-            self.reset_state()
-
-    def reset_state(self):
-        """Resets the application to its initial state."""
-        self.resize(700, 800)
-        self.label.setText("Hello! Click the button.")
-        self.apply_theme(0) # Reset to the first theme
-        self.custom_tab_bar._on_button_clicked(0)
-        self.watchlist = self.load_watchlist()
-        self.watchlist_widget.clear()
-        self.watchlist_widget.addItems(self.watchlist)
-        self.save_settings()
-
-    def load_settings(self):
-        """Loads settings like the current theme from a file."""
-        try:
-            if os.path.exists("settings.json"):
-                with open("settings.json", 'r') as f:
-                    settings = json.load(f)
-                    self.current_theme_index = settings.get("theme_index", 0)
-                    self.character_path = settings.get("character_path", "")
-        except (IOError, json.JSONDecodeError):
-            self.current_theme_index = 0 # Default on error
-            self.character_path = ""
-
-    def save_settings(self):
-        """Saves current settings to a file."""
-        settings = {
-            "theme_index": self.current_theme_index,
-            "character_path": self.character_path
-        }
-        with open("settings.json", 'w') as f:
-            json.dump(settings, f, indent=4)
-
-    def load_watchlist(self):
-        """Loads the watchlist from a JSON file."""
-        try:
-            if os.path.exists(self.watchlist_file):
-                with open(self.watchlist_file, 'r') as f:
-                    return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            print(f"Error loading watchlist: {e}")
-        return ["legion", "hellgate"] # Default if file doesn't exist or is corrupt
-
-    def save_watchlist(self):
-        """Saves the current watchlist to a JSON file."""
-        with open(self.watchlist_file, 'w') as f:
-            json.dump(self.watchlist, f, indent=4)
-
-    def add_to_watchlist(self):
-        """Adds a keyword to the watchlist."""
-        keyword = self.watchlist_input.text().strip().lower()
-        if keyword and keyword not in self.watchlist:
-            self.watchlist.append(keyword)
-            self.watchlist_widget.addItem(keyword)
-            self.watchlist_input.clear()
-            self.save_watchlist()
-            self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to apply new keyword
-
-    def remove_from_watchlist(self):
-        """Removes the selected keyword from the watchlist."""
-        selected_items = self.watchlist_widget.selectedItems()
-        if not selected_items:
-            return
-        for item in selected_items:
-            self.watchlist.remove(item.text())
-            self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
-        self.save_watchlist()
-        self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
-
-    def filter_recipes_list(self):
-        """Filters the available recipes list based on its search box."""
-        query = self.recipe_search_box.text().lower()
-        self.available_recipes_list.clear()
-        for recipe in self.item_database.recipes_data:
-            if query in recipe["name"].lower():
-                item = QListWidgetItem(recipe["name"])
-                # Store the full recipe object in the item
-                item.setData(Qt.ItemDataRole.UserRole, recipe)
-                self.available_recipes_list.addItem(item)
-
-    def add_recipe_to_progress(self):
-        """Adds a selected recipe to the 'in-progress' list and updates materials."""
-        selected_item = self.available_recipes_list.currentItem()
-        if not selected_item:
-            return
-
-        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
-        recipe_name = recipe["name"]
-
-        if recipe_name in self.in_progress_recipes:
-            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
-            return
-
-        # Add to UI and internal tracking
-        self.in_progress_recipes[recipe_name] = recipe
-        self.in_progress_recipes_list.addItem(recipe_name)
-
-        # Add components to the material list
-        for component_str in recipe["components"]:
-            self._add_component_to_materials(component_str)
-        
-        self._rebuild_materials_table()
-
-    def remove_recipe_from_progress(self):
-        """Removes a recipe from 'in-progress' and updates the material list."""
-        selected_item = self.in_progress_recipes_list.currentItem()
-        if not selected_item:
-            return
-
-        recipe_name = selected_item.text()
-        recipe = self.in_progress_recipes.pop(recipe_name, None)
-
-        if recipe:
-            # Remove components from the material list
-            for component_str in recipe["components"]:
-                self._remove_component_from_materials(component_str)
-
-        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-        self._rebuild_materials_table()
-
-    def _add_component_to_materials(self, component_str: str):
-        """Helper to parse and add a material to the master list."""
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] += quantity
-        else:
-            # Find drop info from the main item database
-            if not self.item_database.all_items_data:
-                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-            
-            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-            self.material_list_data[name] = {
-                "Material": name,
-                "#": quantity,
-                "Unit": drop_info["Unit"] if drop_info else "?",
-                "Location": drop_info["Location"] if drop_info else "?"
-            }
-
-    def _remove_component_from_materials(self, component_str: str):
-        """Helper to parse and remove a material from the master list."""
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] -= quantity
-            if self.material_list_data[name]["#"] <= 0:
-                del self.material_list_data[name]
-
-    def _rebuild_materials_table(self):
-        """Clears and repopulates the materials table from the internal data dictionary."""
-        self.materials_table.setSortingEnabled(False) # Disable sorting during rebuild
-        self.materials_table.setRowCount(0)
-        for row, item_data in enumerate(self.material_list_data.values()):
-            self._add_row_to_materials_table(row, item_data)
-
-    def switch_items_sub_tab(self, index: int):
-        """Switches the visible table in the Items tab and loads data."""
-        for i, btn in self.item_tab_buttons.items():
-            btn.setChecked(i == index)
-
-        self.items_stacked_widget.setCurrentIndex(index)
-        
-        # Show search box for all item tabs
-        self.items_search_box.setVisible(True)
-
-        # Lazy load data
-        if index == 0 and not self.item_database.all_items_data:
-            self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-        elif index == 1 and not self.item_database.drops_data:
-            self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
-        elif index == 2 and not self.item_database.raid_data:
-            self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
-        elif index == 3 and not self.item_database.vendor_data:
-            self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
-        
-        self.filter_current_item_view()
-
-    def _add_row_to_materials_table(self, row_num, item_data):
-        """Adds a single row to the materials table, including a checkbox."""
-        self.materials_table.insertRow(row_num)
-        
-        # Column 0: Material (with checkbox)
-        material_item = QTableWidgetItem(item_data["Material"])
-        material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-        material_item.setCheckState(Qt.CheckState.Unchecked)
-        self.materials_table.setItem(row_num, 0, material_item)
-
-        # Column 1: Quantity
-        quantity_item = AlignedTableWidgetItem(str(item_data["#"]))
-        self.materials_table.setItem(row_num, 1, quantity_item)
-
-        # Column 2 & 3: Unit and Location
-        self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
-        self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
-
-        # Column 4: Hidden sort key for checked status
-        checked_item = QTableWidgetItem("0")
-        self.materials_table.setItem(row_num, 4, checked_item)
-
-    def on_material_checked(self, item: QTableWidgetItem):
-        """Grays out a row in the materials table when its checkbox is ticked."""
-        if item.column() != 0: # Only respond to changes in the first column
-            return
-
-        is_checked = item.checkState() == Qt.CheckState.Checked
-        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
-        
-        # Temporarily disconnect the signal to prevent recursion
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-
-        for col in range(self.materials_table.columnCount()):
-            table_item = self.materials_table.item(item.row(), col)
-            if table_item: # Add a check to ensure the item exists before modifying it
-                table_item.setForeground(color)
-
-        # Update the hidden sort column and re-sort the table
-        sort_item = self.materials_table.item(item.row(), 4)
-        if sort_item:
-            sort_item.setText("1" if is_checked else "0")
-        self.materials_table.setSortingEnabled(True)
-        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder) # Sort by checked status
-
-        # Reconnect the signal
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-
-    def filter_current_item_view(self):
-        """Filters the currently visible item table based on the search query."""
-        query = self.items_search_box.text().lower()
-        current_index = self.items_stacked_widget.currentIndex()
-
-        data_source = []
-        table_widget = None
-
-        if current_index == 0:
-            data_source = self.item_database.all_items_data
-            table_widget = self.all_items_table
-        elif current_index == 1:
-            data_source = self.item_database.drops_data
-            table_widget = self.drops_table
-        elif current_index == 2:
-            data_source = self.item_database.raid_data
-            table_widget = self.raid_items_table
-        elif current_index == 3:
-            data_source = self.item_database.vendor_data
-            table_widget = self.vendor_table
-
-        if not table_widget:
-            return
-
-        table_widget.setSortingEnabled(False)
-        table_widget.setRowCount(0)
-
-        filtered_data = [
-            item for item in data_source
-            if query in item.get("Item", "").lower() or \
-               query in item.get("Unit", "").lower() or \
-               query in item.get("Location", "").lower()
-        ]
-
-        for row, item_data in enumerate(filtered_data):
-            table_widget.insertRow(row)
-            for col, header in enumerate([table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]):
-                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
-        
-        table_widget.setSortingEnabled(True)
-
-    def on_path_changed(self, new_path: str):
-        """Updates character path when the text is edited."""
-        self.character_path = new_path
-        self.save_settings()
-
-    def select_character_path(self):
-        """Opens a dialog to select the character data folder."""
-        default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
-        new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
-        if new_path:
-            self.load_path_edit.setText(new_path)
-            self.load_characters() # Automatically refresh
-
-    def reset_character_path(self):
-        """Resets the character path to the default location."""
-        confirm_box = QMessageBox.question(self, "Confirm Reset", "Reset character path to default?",
-                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                           QMessageBox.StandardButton.No)
-        if confirm_box == QMessageBox.StandardButton.Yes:
-            default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
-            self.load_path_edit.setText(default_path)
-            self.load_characters() # Automatically refresh
-
-    def load_characters(self):
-        """Loads and displays character files from the specified path."""
-        self.char_list_box.clear()
-        self.char_content_box.clear()
-
-        if not self.character_path or not os.path.isdir(self.character_path):
-            if self.character_path: # Only show error if path is set but invalid
-                QMessageBox.warning(self, "Error", f"Character save directory not found:\n{self.character_path}")
-            return
-
-        char_files = []
-        for filename in os.listdir(self.character_path):
-            if filename.endswith(".txt"):
-                full_path = os.path.join(self.character_path, filename)
-                try:
-                    mod_time = os.path.getmtime(full_path)
-                    char_name = os.path.splitext(filename)[0]
-                    char_files.append({"name": char_name, "path": full_path, "mod_time": mod_time})
-                except OSError:
-                    continue # Skip files that can't be accessed
-
-        # Sort by modification time, descending
-        sorted_chars = sorted(char_files, key=lambda x: x["mod_time"], reverse=True)
-
-        for char in sorted_chars:
-            item = QListWidgetItem(char["name"])
-            item.setData(Qt.ItemDataRole.UserRole, char["path"]) # Store full path in the item
-            self.char_list_box.addItem(item)
-
-        if self.char_list_box.count() > 0:
-            self.char_list_box.setCurrentRow(0)
-
-    def show_character_file_contents(self, current_item: QListWidgetItem, previous_item: QListWidgetItem):
-        """Displays the content of the selected character file."""
-        if not current_item:
-            self.char_content_box.clear()
-            return
-
-        file_path = current_item.data(Qt.ItemDataRole.UserRole)
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                self.char_content_box.setText(f.read())
-        except (IOError, OSError) as e:
-            self.char_content_box.setText(f"Error reading file: {e}")
-
-    def load_selected_character(self):
-        """Sends the -load command for the selected character to the game."""
-        current_item = self.char_list_box.currentItem()
-        if not current_item:
-            QMessageBox.warning(self, "No Character Selected", "Please select a character from the list.")
-            return
-
-        char_name = current_item.text()
-        game_title = "Warcraft III"
-
-        try:
-            hwnd = win32gui.FindWindow(None, game_title)
-            if hwnd == 0:
-                QMessageBox.critical(self, "Error", f"'{game_title}' window not found.")
-                return
-
-            win32gui.SetForegroundWindow(hwnd)
-            pyautogui.press('enter')
-            pyautogui.write(f"-load {char_name}", interval=0.05)
-            pyautogui.press('enter')
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
-
-    def refresh_lobbies(self):
-        """Placeholder method to refresh lobby data."""
-        self.lobbies_table.setRowCount(0) # Clear table
-        self.lobbies_table.setRowCount(1)
-        loading_item = QTableWidgetItem("Fetching lobby data...")
-        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter) # This line is correct
-        self.lobbies_table.setItem(0, 0, loading_item)
-        self.lobbies_table.setSpan(0, 0, 1, 3) # Span across all columns
-
-        # Setup and start the worker thread
-        self.thread = QThread()
-        self.worker = LobbyFetcher()
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.on_lobbies_fetched)
-        self.worker.error.connect(self.on_lobbies_fetch_error)
-        
-        # Clean up the thread when done
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.error.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.worker.error.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-
-        self.thread.start()
-
-    def on_lobbies_fetched(self, lobbies: list):
-        """Slot to handle successfully fetched lobby data."""
-        # Check for new watched lobbies before updating the main list
-        current_watched_lobbies = set()
-        for lobby in lobbies:
-            lobby_name = lobby.get('name', '').lower()
-            lobby_map = lobby.get('map', '').lower()
-            for keyword in self.watchlist:
-                if keyword in lobby_name or keyword in lobby_map:
-                    # Use a unique identifier for the lobby, name is usually good enough
-                    current_watched_lobbies.add(lobby.get('name'))
-                    break
-
-        newly_found = current_watched_lobbies - self.previous_watched_lobbies
-        if newly_found:
-            QApplication.beep()
-
-        self.previous_watched_lobbies = current_watched_lobbies
-        self.all_lobbies = lobbies
-        self.filter_lobbies(self.lobby_search_bar.text())
-
-    def on_lobbies_fetch_error(self, error_message: str):
-        """Slot to handle errors during lobby data fetching."""
-        self.lobbies_table.setRowCount(1)
-        self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
-        error_item = QTableWidgetItem(f"Error: {error_message}")
-        error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lobbies_table.setItem(0, 0, error_item)
-
-    def filter_lobbies(self, query: str):
-        """Filters and displays lobbies based on the search query."""
-        self.lobbies_table.setRowCount(0) # Clear table
-        self.lobbies_table.setSortingEnabled(False)
-        
-        # On a simple filter, we don't want to clear the "previous" state for notifications
-        # so we only update self.previous_watched_lobbies on a full refresh (in on_lobbies_fetched)
-
-        query = query.lower()
-        filtered_lobbies = [
-            lobby for lobby in self.all_lobbies 
-            if query in lobby.get('name', '').lower() or query in lobby.get('map', '').lower()
-        ]
-
-        # Sort the lobbies to show watched ones first
-        def is_watched(lobby):
-            name = lobby.get('name', '').lower()
-            map_name = lobby.get('map', '').lower()
-            for keyword in self.watchlist:
-                if keyword in name or keyword in map_name:
-                    return True
-            return False
-
-        # Sort by watched status (descending) so True comes before False
-        sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
-
-        self.lobbies_table.setRowCount(len(sorted_lobbies))
-        for row, lobby in enumerate(sorted_lobbies):
-            lobby_name = lobby.get('name', '').lower()
-            lobby_map = lobby.get('map', '').lower()
-            
-            is_watched = False
-            for keyword in self.watchlist:
-                if keyword in lobby_name or keyword in lobby_map:
-                    is_watched = True
-                    break
-
-            self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
-            self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
-            players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
-
-            if is_watched:
-                for col in range(self.lobbies_table.columnCount()):
-                    self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B")) # A dark green color
-        self.lobbies_table.setSortingEnabled(True)
-
-class CustomTabBar(QWidget):
-    """
-    A custom widget to act as a tab bar, allowing for multi-row tab buttons.
-    """
-    tab_selected = Signal(int)
-
-    def __init__(self, tab_names: list[str], tabs_per_row: int = 4):
-        super().__init__()
-        self.tab_names = tab_names
-        self.tabs_per_row = tabs_per_row
-        self.buttons: List[QPushButton] = []
-        self.current_index = -1
-
-        self.layout = QGridLayout(self)
-        self.layout.setContentsMargins(5, 0, 5, 0) # Add some horizontal margin
-        self.layout.setSpacing(2) # Small spacing between buttons
-
-        self._create_buttons()
-
-    def _create_buttons(self):
-        for i, name in enumerate(self.tab_names):
-            button = QPushButton(name)
-            button.setCheckable(True) # Make buttons toggleable
-            button.clicked.connect(lambda checked, idx=i: self._on_button_clicked(idx))
-            self.buttons.append(button)
-
-            row = i // self.tabs_per_row
-            col = i % self.tabs_per_row
-            self.layout.addWidget(button, row, col)
-
-        # Set initial selection
-        if self.buttons:
-            self._on_button_clicked(0) # Select the first tab by default
-
-    def _on_button_clicked(self, index: int):
-        if self.current_index != index:
-            if self.current_index != -1:
-                self.buttons[self.current_index].setChecked(False)
-            self.buttons[index].setChecked(True)
-            self.current_index = index
-            self.tab_selected.emit(index)
-
-    def apply_style(self, theme_name: str, dark_mode: bool):
-        # This method applies specific styling for the buttons within this custom tab bar,
-        # including the :checked state, overriding general QPushButton styles if necessary.
-        if theme_name == "Black/Orange":
-            # Specific style for Black/Orange
-            self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #2A2A2C;
-                    border: 1px solid #444444;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #F0F0F0;
-                    font-size: 16px;
-                }
-                QPushButton:hover {
-                    background-color: #FFA64D;
-                }
-                QPushButton:checked {
-                    background-color: #FF7F50;
-                    color: #F0F0F0;
-                    border-color: #FF7F50;
-                }
-            """)
-        elif dark_mode:
-            # Generic style for other dark themes (e.g., Black/Blue)
-            self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #2A2A2C;
-                    border: 1px solid #444444;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #EAEAEA;
-                    font-size: 16px;
-                }
-                QPushButton:hover {
-                    background-color: #4682B4; /* SteelBlue */
-                }
-                QPushButton:checked {
-                    background-color: #1E90FF; /* DodgerBlue */
-                    color: #EAEAEA;
-                    border-color: #4169E1; /* RoyalBlue */
-                }
-            """)
-        elif theme_name == "White/Blue":
-            # Specific style for White/Blue
-            self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #87CEEB; /* SkyBlue */
-                    border: 1px solid #4682B4; /* SteelBlue */
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #000080; /* Navy */
-                    font-size: 16px;
-                }
-                QPushButton:hover {
-                    background-color: #87CEFA; /* LightSkyBlue */
-                }
-                QPushButton:checked {
-                    background-color: #4682B4; /* SteelBlue */
-                    color: #F0F8FF; /* AliceBlue */
-                }
-            """)
-        else:
-            # Default for other light themes (e.g., White/Pink)
-            self.setStyleSheet("""
-                QPushButton { /* Tab buttons */
-                    background-color: #FFC0CB; /* Pink */
-                    border: 1px solid #E6A8B8; /* Darker pink border */
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #2E3440; /* nord0 */
-                    font-size: 16px;
-                }
-                QPushButton:hover {
-                    background-color: #F6B3F5;
-                }
-                QPushButton:checked {
-                    background-color: #DB7093; /* PaleVioletRed for selection */
-                    color: #2E3440;
-                }
-            """)
 
 if __name__ == "__main__":
-    # Set this environment variable to prevent Qt from trying to set
-    # the DPI awareness, which can suppress the "Access is denied" warning.
+    # Avoid DPI scaling side effects warning
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
-
     app = QApplication(sys.argv)
     window = SimpleWindow()
     window.show()
