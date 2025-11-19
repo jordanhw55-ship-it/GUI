@@ -675,7 +675,6 @@ class SimpleWindow(QMainWindow):
         self.custom_theme_enabled = False  # disable custom when preset applied
         self.current_theme_index = theme_index
         theme = self.themes[theme_index]
-        self.save_settings()
 
         self.dark_mode = theme["is_dark"]
         self.setStyleSheet(theme["style"])
@@ -683,6 +682,7 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.save_settings() # Save after all changes are applied
 
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
@@ -745,8 +745,7 @@ class SimpleWindow(QMainWindow):
     def apply_custom_theme(self):
         self.custom_theme_enabled = True
         self.setStyleSheet(self.build_custom_stylesheet())
-        self.custom_tab_bar.setStyleSheet(f"""
-            
+        self.custom_tab_bar.setStyleSheet(f"""            
             QPushButton {{
                 background-color: {self.custom_theme['bg']};
                 border: 1px solid {self.custom_theme['fg']};
@@ -764,11 +763,11 @@ class SimpleWindow(QMainWindow):
                 border-color: {self.custom_theme['accent']};
             }}
         """)
-        self.save_settings() # Save custom theme state
         # Re-apply theme to ensure all child widgets get the new style
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.save_settings() # Save after all changes are applied
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
@@ -783,9 +782,9 @@ class SimpleWindow(QMainWindow):
         color = QColorDialog.getColor(initial, self, f"Pick {key} color")
         if color.isValid():
             self.custom_theme[key] = color.name()
-            
             if self.custom_theme_enabled:
                 self.apply_custom_theme()
+
 
     def reset_custom_theme_to_defaults(self):
         """Resets custom theme colors to their default values."""
@@ -794,9 +793,9 @@ class SimpleWindow(QMainWindow):
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         }
-        
         if self.custom_theme_enabled:
             self.apply_custom_theme()
+        self.save_settings()
 
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
