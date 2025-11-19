@@ -660,6 +660,7 @@ class SimpleWindow(QMainWindow):
         self.msg_hotkey_table.verticalHeader().setVisible(False)
         self.msg_hotkey_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.msg_hotkey_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         right_layout.addWidget(self.msg_hotkey_table)
 
         msg_form_layout = QGridLayout()
