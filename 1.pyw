@@ -20,8 +20,12 @@ import keyboard   # type: ignore
 import pyautogui  # type: ignore
 try:
     import win32gui # type: ignore
+    import win32api # type: ignore
+    import win32con # type: ignore
 except ImportError:
     win32gui = None
+    win32api = None
+    win32con = None
 try:
     import winsound # type: ignore
 except ImportError:
@@ -1585,6 +1589,41 @@ class SimpleWindow(QMainWindow):
         elif tab_name == "Automation":
             self.load_message_hotkeys()
 
+    def control_send_key(self, key: str):
+        """Sends a key press to the game window without activating it."""
+        if not win32gui or not win32api or not win32con:
+            print("ControlSend functionality is only available on Windows.")
+            return
+
+        hwnd = win32gui.FindWindow(None, self.game_title)
+        if hwnd == 0:
+            # Silently fail if the window is not found, to avoid spamming messages.
+            # The user will see that the automation isn't working.
+            return
+
+        # Virtual-Key Codes mapping
+        vk_code = {
+            'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52, 'd': 0x44, 'f': 0x46,
+            't': 0x54, 'z': 0x5A, 'x': 0x58, 'y': 0x59, 'esc': win32con.VK_ESCAPE
+        }.get(key.lower())
+
+        if vk_code is None:
+            print(f"No virtual key code found for key: {key}")
+            return
+
+        # PostMessage is asynchronous and non-blocking
+        win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+        # Add a small delay before sending the key up message
+        QTimer.singleShot(50, lambda: self._control_send_key_up(hwnd, vk_code))
+
+    def _control_send_key_up(self, hwnd, vk_code):
+        """Helper to send the WM_KEYUP message."""
+        if not win32api or not win32con:
+            return
+        # The lparam for key up includes flags indicating the key is being released.
+        lparam = (1 << 31) | (1 << 30)
+        win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, lparam)
+
     def pause_all_automation(self):
         # Unhook message hotkeys temporarily to prevent them from firing
         for hk, hk_id in list(self.hotkey_ids.items()):
@@ -1611,11 +1650,11 @@ class SimpleWindow(QMainWindow):
             return
         # Pause QWERDFZX timers
         self.pause_all_automation()
-        # Sequence: y -> 50ms -> e -> 50ms -> esc
-        pyautogui.press('y')
-        QTimer.singleShot(50, lambda: pyautogui.press('e'))
-        QTimer.singleShot(100, lambda: pyautogui.press('esc'))
-        # Resume after ~2s
+        # Sequence: y -> 100ms -> e -> 100ms -> esc
+        self.control_send_key('y')
+        QTimer.singleShot(100, lambda: self.control_send_key('e'))
+        QTimer.singleShot(200, lambda: self.control_send_key('esc'))
+        # Resume after ~2.1s to allow keys to be processed
         QTimer.singleShot(2100, self.resume_all_automation)
 
     def run_custom_action(self, message: str):
@@ -1663,7 +1702,7 @@ class SimpleWindow(QMainWindow):
                             timer.timeout.connect(self.run_complete_quest)
                         else:
                             # Raw key presses (no typing into chat)
-                            timer.timeout.connect(lambda k=key: pyautogui.press(k))
+                            timer.timeout.connect(lambda k=key: self.control_send_key(k))
                         timer.start(interval)
                         self.automation_timers[key] = timer
                     except ValueError:
