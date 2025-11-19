@@ -307,12 +307,18 @@ class HotkeyCaptureWorker(QObject):
 
     def run(self):
         """Waits for and reads a single hotkey press."""
+        # Using keyboard.record() is more reliable for clearing state than read_hotkey().
+        # We record events until the user releases the key(s).
         try:
-            # read_hotkey blocks until a key is pressed
-            hotkey = keyboard.read_hotkey(suppress=True)
-            self.hotkey_captured.emit(hotkey)
+            events = keyboard.record(until='up', suppress=True)
+            # The last event is the 'up' event, we don't need it.
+            # We only care about the 'down' events to build the hotkey name.
+            if events:
+                # keyboard.get_hotkey_name() correctly formats combinations like 'ctrl+s'
+                hotkey = keyboard.get_hotkey_name(events[:-1])
+                self.hotkey_captured.emit(hotkey)
         except Exception as e:
-            print(f"Error capturing hotkey: {e}")
+            print(f"Error during hotkey capture: {e}")
 
 class AutomationWorker(QObject):
     """Worker to perform automation tasks in a separate thread."""
@@ -1447,9 +1453,6 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
-        # Reset keyboard listener state to prevent combining previous presses.
-        keyboard.press_and_release('esc')
-
         # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
