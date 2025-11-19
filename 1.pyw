@@ -8,8 +8,8 @@ from typing import List
 from PySide6.QtGui import QMouseEvent, QColor
 
 
-DARK_STYLE = """
-    /* Hellfire Dark Theme */
+DARK_STYLE = """ 
+    /* Black/Orange Theme */
     QWidget {
         background-color: #1C1C1E;
         color: #F0F0F0;
@@ -51,13 +51,13 @@ DARK_STYLE = """
 """
 
 LIGHT_STYLE = """
-    /* Hellfire Light Theme */
+    /* White/Pink Theme */
     QWidget {
-        background-color: #ECEFF4; /* nord6 */
-        color: #2E3440; /* nord0 */
+        background-color: #FFFFFF; /* White */
+        color: #000000; /* Black */
         font-family: 'Segoe UI';
         font-size: 14px;
-        outline: none; /* Remove focus outline */
+        outline: none;
     }
     QMainWindow {
         background-color: #ECEFF4;
@@ -65,24 +65,25 @@ LIGHT_STYLE = """
     #CustomTitleBar {
         background-color: #C11C84;
     }
-    #CustomTitleBar QLabel {
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         background-color: transparent;
-        color: #2E3440;
+        color: #FFFFFF;
         font-size: 16px;
     }
-    #CustomTitleBar QPushButton {
-        background-color: transparent;
-        border: none;
-        color: #2E3440;
-    }
     #CustomTitleBar QPushButton:hover {
-        background-color: #E5E9F0; /* nord6, slightly lighter */
+        background-color: #DA3A9D;
     }
     QPushButton {
-        background-color: #D8DEE9; /* nord5 */
-        border: 1px solid #C5C9D1;
+        background-color: #FFC0CB; /* Pink */
+        border: 1px solid #E6A8B8;
         padding: 5px;
         border-radius: 6px;
+        color: #000000;
+    }
+    QHeaderView::section {
+        background-color: #FFC0CB;
+        border: 1px solid #E6A8B8;
+        color: #000000;
     }
 """
 
@@ -185,12 +186,12 @@ class SimpleWindow(QMainWindow):
 
         self.themes = [
             {
-                "name": "Hellfire Dark", "style": DARK_STYLE,
-                "preview_color": "#1C1C1E", "is_dark": True
+                "name": "Black/Orange", "style": DARK_STYLE,
+                "preview_color": "#FF7F50", "is_dark": True
             },
             {
-                "name": "Hellfire Light", "style": LIGHT_STYLE,
-                "preview_color": "#ECEFF4", "is_dark": False
+                "name": "White/Pink", "style": LIGHT_STYLE,
+                "preview_color": "#FFC0CB", "is_dark": False
             },
             {
                 "name": "Forest", "style": FOREST_STYLE,
@@ -682,19 +683,15 @@ class CustomTabBar(QWidget):
         # This method applies specific styling for the buttons within this custom tab bar,
         # including the :checked state, overriding general QPushButton styles if necessary.
         if dark_mode:
-            self.setStyleSheet("""
+            self.setStyleSheet(""" 
                 QPushButton { /* Tab buttons */
                     background-color: #2A2A2C;
                     border: 1px solid #444444;
                     padding: 8px;
                     border-radius: 6px;
                     color: #F0F0F0;
-                    font-size: 16px;
                 }
                 QPushButton:hover {
-                    background-color: #FFA64D;
-                }
-                QPushButton:pressed {
                     background-color: #FFA64D;
                 }
                 QPushButton:checked {
@@ -704,10 +701,10 @@ class CustomTabBar(QWidget):
                 }
             """)
         else:
-            self.setStyleSheet("""
+            self.setStyleSheet(""" 
                 QPushButton { /* Tab buttons */
-                    background-color: #F4A3F3; /* This is from a previous request, keeping it for light mode */
-                    border: 1px solid #E094DF; /* This is from a previous request, keeping it for light mode */
+                    background-color: #FFC0CB; /* Pink */
+                    border: 1px solid #E6A8B8; /* Darker pink border */
                     padding: 8px;
                     border-radius: 6px;
                     color: #2E3440; /* nord0 */
@@ -716,13 +713,9 @@ class CustomTabBar(QWidget):
                 QPushButton:hover {
                     background-color: #F6B3F5;
                 }
-                QPushButton:pressed {
-                    background-color: #E094DF;
-                }
                 QPushButton:checked {
-                    background-color: #D685D4; /* Darker accent for selection */
+                    background-color: #DB7093; /* PaleVioletRed for selection */
                     color: #2E3440;
-                    border-color: #D685D4;
                 }
             """)
 
