@@ -12,17 +12,20 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QComboBox,
     QListWidgetItem, QColorDialog, QCheckBox
 )
-from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer, QUrl
+from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer, QUrl, QStandardPaths
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
 import pyautogui  # type: ignore
 try:
-    import win32gui
-    import winsound
+    import win32gui # type: ignore
 except ImportError:
-    print("Windows-specific libraries (pywin32) not found. Some features will be disabled.")
+    win32gui = None
+try:
+    import winsound # type: ignore
+except ImportError:
+    winsound = None
 
 
 DARK_STYLE = """
@@ -395,6 +398,7 @@ class SimpleWindow(QMainWindow):
         self.automation_settings = {} # To hold loaded settings
         self.custom_action_running = False
         self.theme_previews = []
+        self.previous_watched_lobbies = set()
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
@@ -530,8 +534,8 @@ class SimpleWindow(QMainWindow):
         self.in_progress_recipes_list = QListWidget()
         self.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
         recipes_top_layout.addLayout(recipes_list_layout); recipes_top_layout.addLayout(add_remove_layout); recipes_top_layout.addWidget(self.in_progress_recipes_list)
-        # Add top layout with a smaller stretch factor (1)
-        recipes_main_layout.addLayout(recipes_top_layout, 1)
+        recipes_main_layout.addLayout(recipes_top_layout)
+        recipes_main_layout.setStretchFactor(recipes_top_layout, 1)
         self.materials_table = QTableWidget()
         self.materials_table.setColumnCount(5)
         self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
@@ -540,8 +544,8 @@ class SimpleWindow(QMainWindow):
         self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.materials_table.setSortingEnabled(True)
         self.materials_table.itemChanged.connect(self.on_material_checked)
-        # Add materials table with a larger stretch factor (3)
-        recipes_main_layout.addWidget(self.materials_table, 3)
+        recipes_main_layout.addWidget(self.materials_table)
+        recipes_main_layout.setStretchFactor(self.materials_table, 3)
         self.stacked_widget.addWidget(recipes_tab_content)
 
         # Automation tab
@@ -638,17 +642,18 @@ class SimpleWindow(QMainWindow):
         watchlist_controls_layout.addWidget(remove_watchlist_button)
         
         # Sound selection buttons
-        new_boxes_layout = QHBoxLayout()
+        ping_buttons_layout = QHBoxLayout()
         self.ping_buttons = {
             "ping1.mp3": QPushButton("Ping 1"),
             "ping2.mp3": QPushButton("Ping 2"),
             "ping3.mp3": QPushButton("Ping 3"),
         }
         for sound, btn in self.ping_buttons.items():
+            btn.setCheckable(True)
             btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s))
-            new_boxes_layout.addWidget(btn)
+            ping_buttons_layout.addWidget(btn)
 
-        watchlist_controls_layout.addLayout(new_boxes_layout)
+        watchlist_controls_layout.addLayout(ping_buttons_layout)
 
         # Add the sound controls
         self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
@@ -776,20 +781,6 @@ class SimpleWindow(QMainWindow):
                 row += 1
         layout.setRowStretch(row + 1, 1); layout.setColumnStretch(col + 1, 1)
 
-    def select_ping_sound(self, sound_file: str):
-        """Selects a sound, plays it, and updates button styles."""
-        self.selected_sound = sound_file
-        self.play_specific_sound(sound_file)
-        self.update_ping_button_styles()
-
-    def update_ping_button_styles(self):
-        """Updates the visual state of the ping buttons."""
-        for sound, btn in self.ping_buttons.items():
-            if sound == self.selected_sound:
-                btn.setStyleSheet("background-color: black; color: white;")
-            else:
-                btn.setStyleSheet("") # Revert to the default stylesheet
-
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
@@ -812,9 +803,9 @@ class SimpleWindow(QMainWindow):
         self.setStyleSheet(theme["style"])
         self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
         for i, preview in enumerate(self.theme_previews):
-            self.update_ping_button_styles()
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.update_ping_button_styles()
 
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
@@ -898,8 +889,8 @@ class SimpleWindow(QMainWindow):
         # Re-apply theme to ensure all child widgets get the new style
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
-            self.update_ping_button_styles()
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.update_ping_button_styles()
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
@@ -1083,6 +1074,8 @@ class SimpleWindow(QMainWindow):
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
+        if not win32gui:
+            return
         try:
             game_hwnd = win32gui.FindWindow(None, self.game_title)
             is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
@@ -1507,9 +1500,11 @@ class SimpleWindow(QMainWindow):
             for keyword in self.watchlist:
                 if keyword in lobby_name or keyword in lobby_map:
                     current_watched_lobbies.add(lobby.get('name')); break
-        if current_watched_lobbies and self.lobby_placeholder_checkbox.isChecked():
+        newly_found = current_watched_lobbies - self.previous_watched_lobbies
+        if newly_found and self.lobby_placeholder_checkbox.isChecked():
             self.play_notification_sound()
-        self.all_lobbies = lobbies
+        self.previous_watched_lobbies = current_watched_lobbies
+        self.all_lobbies = lobbies # type: ignore
         self.filter_lobbies(self.lobby_search_bar.text())
     def on_lobbies_fetch_error(self, error_message: str):
         self.is_fetching_lobbies = False # Reset the flag
@@ -1712,7 +1707,7 @@ class SimpleWindow(QMainWindow):
         except Exception as e:
             print(f"Error playing sound: {e}")
             QApplication.beep()
-
+    
     def play_notification_sound(self):
         """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
         self.play_specific_sound(self.selected_sound)
