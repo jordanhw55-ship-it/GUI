@@ -1474,6 +1474,9 @@ class SimpleWindow(QMainWindow):
             self.hotkey_capture_btn.setText(hotkey)
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
+        # Unhook the temporary capture listener and re-register only the saved hotkeys.
+        # This is the most reliable way to clear the keyboard library's internal state.
+        self.register_all_message_hotkeys()
 
     def load_message_hotkeys(self):
         """Loads hotkeys from settings and populates the table."""
