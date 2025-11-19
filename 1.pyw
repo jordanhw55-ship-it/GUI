@@ -1,15 +1,15 @@
 import sys
 import requests
 import json
-import os # QTimer is already imported from PySide6.QtCore
+import os
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
-from PySide6.QtGui import QMouseEvent, QColor, QCloseEvent
+from PySide6.QtGui import QMouseEvent, QColor
 
 
 DARK_STYLE = """
-    /* Nord-inspired Dark Theme */
+    /* Hellfire Dark Theme */
     QWidget {
         background-color: #1C1C1E;
         color: #F0F0F0;
@@ -51,7 +51,7 @@ DARK_STYLE = """
 """
 
 LIGHT_STYLE = """
-    /* Clean Light Theme */
+    /* Hellfire Light Theme */
     QWidget {
         background-color: #ECEFF4; /* nord6 */
         color: #2E3440; /* nord0 */
@@ -85,6 +85,58 @@ LIGHT_STYLE = """
         border-radius: 6px;
     }
 """
+
+FOREST_STYLE = """
+    /* Forest Theme */
+    QWidget {
+        background-color: #2F4F2F; /* Dark Sea Green */
+        color: #E0E0E0;
+        font-family: 'Segoe UI';
+        font-size: 14px;
+        outline: none;
+    }
+    QMainWindow, #CustomTitleBar { background-color: #2A402A; }
+    #CustomTitleBar QLabel { color: #E0E0E0; }
+    #CustomTitleBar QPushButton:hover { background-color: #556B2F; } /* Olive Drab */
+    QPushButton {
+        background-color: #556B2F;
+        border: 1px solid #6B8E23; /* Olive Drab */
+        padding: 5px;
+        border-radius: 6px;
+    }
+    QHeaderView::section { background-color: #2A402A; border: 1px solid #6B8E23; }
+"""
+
+OCEAN_STYLE = """
+    /* Ocean Theme */
+    QWidget {
+        background-color: #E0FFFF; /* Light Cyan */
+        color: #000080; /* Navy */
+        font-family: 'Segoe UI';
+        font-size: 14px;
+        outline: none;
+    }
+    QMainWindow, #CustomTitleBar { background-color: #ADD8E6; } /* Light Blue */
+    #CustomTitleBar QLabel { color: #000080; }
+    #CustomTitleBar QPushButton:hover { background-color: #B0E0E6; } /* Powder Blue */
+    QPushButton {
+        background-color: #B0E0E6;
+        border: 1px solid #87CEEB; /* Sky Blue */
+        padding: 5px;
+        border-radius: 6px;
+    }
+    QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
+"""
+
+
+class ThemePreview(QWidget):
+    """A clickable widget to preview and select a theme."""
+    clicked = Signal()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
 class LobbyFetcher(QObject):
     """Worker object to fetch lobby data in a separate thread."""
@@ -122,7 +174,7 @@ class SimpleWindow(QMainWindow):
         # Make the window frameless to implement a custom title bar
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
-        self.counter = 0
+        self.current_theme_index = 0
         self.dark_mode = True  # Default to dark mode
         self.old_pos = None
         self.all_lobbies = [] # To store the full list of lobbies from the API
@@ -130,6 +182,30 @@ class SimpleWindow(QMainWindow):
         self.watchlist_file = "watchlist.json"
         self.watchlist = self.load_watchlist()
         self.previous_watched_lobbies = set()
+        self.theme_previews = []
+
+        self.themes = [
+            {
+                "name": "Hellfire Dark", "style": DARK_STYLE,
+                "preview_color": "#1C1C1E", "is_dark": True
+            },
+            {
+                "name": "Hellfire Light", "style": LIGHT_STYLE,
+                "preview_color": "#ECEFF4", "is_dark": False
+            },
+            {
+                "name": "Forest", "style": FOREST_STYLE,
+                "preview_color": "#2F4F2F", "is_dark": True
+            },
+            {
+                "name": "Ocean", "style": OCEAN_STYLE,
+                "preview_color": "#E0FFFF", "is_dark": False
+            }
+        ]
+
+        # Load saved theme or default to the first one
+        self.load_settings()
+
 
         # Main layout for the window
         main_layout = QVBoxLayout()
@@ -281,12 +357,10 @@ class SimpleWindow(QMainWindow):
 
         # --- Create the "Settings" tab ---
         settings_tab_content = QWidget()
-        settings_layout = QVBoxLayout(settings_tab_content)
-        self.theme_button = QPushButton()
-        self.theme_button.clicked.connect(self.toggle_theme)
-        settings_layout.addWidget(self.theme_button)
-        settings_layout.addStretch() # Pushes the content to the top
+        settings_layout = QGridLayout(settings_tab_content)
+        self.create_theme_grid(settings_layout)
         self.stacked_widget.addWidget(settings_tab_content)
+
 
         # --- Create the "Reset" tab ---
         reset_tab_content = QWidget()
@@ -304,7 +378,7 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(reset_tab_content)
 
         # Apply the initial theme and set button text
-        self.update_theme()
+        self.apply_theme(self.current_theme_index)
         self.refresh_lobbies() # Initial data load
 
         # --- Auto-refresh Timer for Lobbies ---
@@ -312,6 +386,41 @@ class SimpleWindow(QMainWindow):
         self.refresh_timer.setInterval(30000)  # 30 seconds
         self.refresh_timer.timeout.connect(self.refresh_lobbies)
         self.refresh_timer.start()
+
+    def create_theme_grid(self, layout: QGridLayout):
+        """Creates and populates the theme selection grid."""
+        row, col = 0, 0
+        for i, theme in enumerate(self.themes):
+            preview = ThemePreview()
+            preview.setFixedSize(150, 120)
+            preview.setCursor(Qt.CursorShape.PointingHandCursor)
+            preview.setObjectName("ThemePreview")
+            preview.clicked.connect(lambda idx=i: self.apply_theme(idx))
+
+            preview_layout = QVBoxLayout(preview)
+            
+            color_block = QLabel()
+            color_block.setFixedHeight(80)
+            color_block.setStyleSheet(f"background-color: {theme['preview_color']}; border-radius: 5px;")
+            
+            name_label = QLabel(theme['name'])
+            name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            preview_layout.addWidget(color_block)
+            preview_layout.addWidget(name_label)
+
+            layout.addWidget(preview, row, col)
+            self.theme_previews.append(preview)
+
+            col += 1
+            if col >= 4: # 4 previews per row
+                col = 0
+                row += 1
+        
+        layout.setRowStretch(row + 1, 1)
+        layout.setColumnStretch(col + 1, 1)
+
+
     def mousePressEvent(self, event: QMouseEvent):
         """Captures the initial mouse position for window dragging."""
         if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
@@ -329,25 +438,25 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
 
     def on_button_click(self):
-        self.counter += 1
-        self.label.setText(f"Button has been clicked {self.counter} times.")
+        # This function is no longer tied to a counter, let's update it.
+        QMessageBox.information(self, "Info", "This button is just for demonstration!")
 
-    def toggle_theme(self):
-        """Flips the theme state and updates the UI."""
-        self.dark_mode = not self.dark_mode
-        self.update_theme()
+    def apply_theme(self, theme_index: int):
+        """Applies the selected theme and updates UI elements."""
+        self.current_theme_index = theme_index
+        theme = self.themes[theme_index]
+        
+        self.dark_mode = theme["is_dark"]
+        self.setStyleSheet(theme["style"])
 
-    def update_theme(self):
-        """Applies the current theme and updates the toggle button text."""
-        # Apply global stylesheet for general widgets and buttons (like theme_button)
-        if self.dark_mode:
-            self.setStyleSheet(DARK_STYLE)
-            self.theme_button.setText("Toggle Light Mode")
-        else:
-            self.setStyleSheet(LIGHT_STYLE)
-            self.theme_button.setText("Toggle Dark Mode")
         # Apply theme to custom tab bar buttons
         self.custom_tab_bar.apply_style(self.dark_mode)
+        
+        # Update selection border on theme previews
+        for i, preview in enumerate(self.theme_previews):
+            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
+            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        self.save_settings()
 
     def confirm_reset(self):
         """Shows a confirmation dialog before resetting the application state."""
@@ -413,7 +522,7 @@ class SimpleWindow(QMainWindow):
         self.lobbies_table.setRowCount(0) # Clear table
         self.lobbies_table.setRowCount(1)
         loading_item = QTableWidgetItem("Fetching lobby data...")
-        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter) # This line is correct
         self.lobbies_table.setItem(0, 0, loading_item)
         self.lobbies_table.setSpan(0, 0, 1, 3) # Span across all columns
 
@@ -459,7 +568,7 @@ class SimpleWindow(QMainWindow):
     def on_lobbies_fetch_error(self, error_message: str):
         """Slot to handle errors during lobby data fetching."""
         self.lobbies_table.setRowCount(1)
-        self.lobbies_table.setSpan(0, 0, 1, 3)
+        self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
         error_item = QTableWidgetItem(f"Error: {error_message}")
         error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lobbies_table.setItem(0, 0, error_item)
