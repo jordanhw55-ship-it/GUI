@@ -997,7 +997,9 @@ class SimpleWindow(QMainWindow):
                 table_item.setForeground(color)
 
         # Update the hidden sort column and re-sort the table
-        self.materials_table.item(item.row(), 4).setText("1" if is_checked else "0")
+        sort_item = self.materials_table.item(item.row(), 4)
+        if sort_item:
+            sort_item.setText("1" if is_checked else "0")
         self.materials_table.setSortingEnabled(True)
         self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder) # Sort by checked status
 
