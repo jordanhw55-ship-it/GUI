@@ -1447,6 +1447,9 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
+        # Reset keyboard listener state to prevent combining previous presses.
+        keyboard.press_and_release('esc')
+
         # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
