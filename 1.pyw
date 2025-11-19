@@ -627,10 +627,8 @@ class SimpleWindow(QMainWindow):
         
         # Add the new checkbox and dropdown
         self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
-        self.lobby_placeholder_dropdown = QComboBox(); self.lobby_placeholder_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
         watchlist_controls_layout.insertWidget(3, self.lobby_placeholder_checkbox)
         self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
-        watchlist_controls_layout.insertWidget(4, self.lobby_placeholder_dropdown)
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
         self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(3)
