@@ -1519,6 +1519,17 @@ class SimpleWindow(QMainWindow):
         self.custom_action_running = False
         self.resume_all_automation()
 
+    def _reset_automation_button_style(self):
+        """Resets the automation button to its default theme color."""
+        if self.custom_theme_enabled:
+            accent_color = self.custom_theme.get("accent", "#FF7F50")
+            text_color = self.custom_theme.get("bg", "#121212")
+            self.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
+        else:
+            # For preset themes, setting an empty stylesheet is enough to revert.
+            # However, to be explicit and robust:
+            self.start_automation_btn.setStyleSheet("")
+
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
@@ -1556,7 +1567,8 @@ class SimpleWindow(QMainWindow):
                     except ValueError:
                         QMessageBox.warning(self, "Invalid interval", "Interval for 'Custom Action' must be a number in ms.")
         else:
-            self.start_automation_btn.setText("Start (F5)"); self.start_automation_btn.setStyleSheet("")
+            self.start_automation_btn.setText("Start (F5)")
+            self._reset_automation_button_style()
             for timer in self.automation_timers.values():
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
