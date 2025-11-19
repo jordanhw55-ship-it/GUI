@@ -126,8 +126,8 @@ OCEAN_STYLE = """
         font-size: 14px;
         outline: none;
     }
-    QMainWindow { background-color: #ADD8E6; }
-    #CustomTitleBar { background-color: #ADD8E6; } /* Light Blue */
+    QMainWindow { background-color: #F0F8FF; }
+    #CustomTitleBar { background-color: #F0F8FF; } /* AliceBlue */
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         color: #000080; /* Navy */
         background-color: transparent;
