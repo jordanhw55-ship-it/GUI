@@ -789,14 +789,23 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        accent_color = self.custom_theme.get("accent", "#FF7F50") if self.custom_theme_enabled else "#FF7F50"
+        theme = self.themes[self.current_theme_index]
+        accent_color = self.custom_theme.get("accent", "#FF7F50")
+        
+        if not self.custom_theme_enabled:
+            if theme['name'] == "Black/Orange": accent_color = "#FF7F50"
+            elif theme['name'] == "White/Pink": accent_color = "#FFC0CB"
+            elif theme['name'] == "Black/Blue": accent_color = "#1E90FF"
+            elif theme['name'] == "White/Blue": accent_color = "#87CEEB"
+
         for sound, btn in self.ping_buttons.items():
             if sound == self.selected_sound:
                 btn.setChecked(True)
-                btn.setStyleSheet(f"background-color: {accent_color}; color: black;")
+                # Use a more specific selector to override the default theme
+                btn.setStyleSheet(f"QPushButton {{ background-color: {accent_color}; color: black; }}")
             else:
                 btn.setChecked(False)
-                btn.setStyleSheet("") # Revert to the default stylesheet
+                btn.setStyleSheet("") # Revert to the parent stylesheet
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
