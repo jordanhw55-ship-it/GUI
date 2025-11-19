@@ -366,7 +366,7 @@ class SimpleWindow(QMainWindow):
         self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}
-        self.game_title = "Warcraft III" # Configurable game window title
+        self.is_sending_message = False # Flag to prevent hotkey re-entrancy.
 
         self.themes = [
             {
@@ -1570,35 +1570,43 @@ class SimpleWindow(QMainWindow):
     def register_all_message_hotkeys(self):
         """Registers all loaded hotkeys with the keyboard listener."""
         keyboard.unhook_all() # Clear previous hooks
+        # Use a copy of the items to avoid issues if the dict is modified elsewhere.
         for hotkey, message in self.message_hotkeys.items():
-            # Create a closure to capture the correct message for the callback
+            # Create a closure to capture the correct message and hotkey for the callback.
             callback = (lambda h, msg: lambda: self.send_chat_message(h, msg))(hotkey, message)
             keyboard.add_hotkey(hotkey, callback, suppress=True)
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game window is active."""
+        if self.is_sending_message:
+            return # Prevent the function from running again if it's already busy.
+
         try:
-            game_hwnd = win32gui.FindWindow(None, self.game_title)
+            game_hwnd = win32gui.FindWindow(None, "Warcraft III")
             is_game_active = win32gui.GetForegroundWindow() == game_hwnd
 
             if not is_game_active:
-                # If the game is not active, re-send the suppressed keypress
-                # so it can be used in other applications (like this GUI).
+                # If game is not active, re-send the keypress so it works in other apps.
                 keyboard.send(hotkey_pressed)
             else:
-                # To prevent the original keypress from reaching the game, we
-                # temporarily unhook all hotkeys, send the message, and then
-                # schedule a re-hook in the next event loop cycle.
-                keyboard.unhook_all()
+                self.is_sending_message = True
+                
+                # Block the key to prevent it from being sent to the game.
+                key_to_block = hotkey_pressed.split('+')[-1].strip()
+                keyboard.block_key(key_to_block)
 
                 pyautogui.press('enter')
                 pyautogui.write(message, interval=0.01)
                 pyautogui.press('enter')
 
-                # Schedule re-registration to happen after the current event is processed.
-                QTimer.singleShot(0, self.register_all_message_hotkeys)
+                # Unblock the key after a short delay to ensure it's fully suppressed.
+                QTimer.singleShot(50, lambda: keyboard.unblock_key(key_to_block))
+                self.is_sending_message = False
         except Exception as e:
             print(f"Error sending chat message: {e}")
+        finally:
+            # Ensure the flag is always reset, even if an error occurs.
+            self.is_sending_message = False
 
 class CustomTabBar(QWidget):
     """
