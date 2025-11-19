@@ -1658,8 +1658,9 @@ class SimpleWindow(QMainWindow):
     def play_notification_sound(self):
         """Plays a system sound. Tries winsound first, falls back to QApplication.beep()."""
         try:
-            # Play the standard system 'Asterisk' sound
-            winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS | winsound.SND_ASYNC)
+            # Generate a direct beep sound (Frequency in Hz, Duration in ms)
+            # This is more reliable than PlaySound as it doesn't depend on system sound schemes.
+            winsound.Beep(1000, 300) # 1000 Hz for 300 ms
         except NameError:
             # Fallback for non-Windows or if winsound failed to import
             QApplication.beep()
