@@ -950,6 +950,7 @@ class SimpleWindow(QMainWindow):
             return
         recipe_name = selected_item.text()
         self._add_recipe_by_name(recipe_name)
+        self.save_settings()
 
     def _add_recipe_by_name(self, recipe_name: str):
         """Helper to add a recipe to the in-progress list by its name."""
@@ -977,6 +978,7 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+        self.save_settings()
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
