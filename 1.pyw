@@ -1485,34 +1485,6 @@ if __name__ == "__main__":
     window = SimpleWindow()
     window.show()
     sys.exit(app.exec())
-        self.on_main_tab_selected(0)
-
-        # Apply the initial theme and set button text
-        self.apply_theme(self.current_theme_index)
-
-
-
-        # Apply the initial theme and set button text
-        self.apply_theme(self.current_theme_index)
-        self.refresh_lobbies() # Initial data load
-
-        # --- Auto-refresh Timer for Lobbies ---
-        self.refresh_timer = QTimer(self)
-        self.refresh_timer.setInterval(30000)  # 30 seconds
-        self.refresh_timer.timeout.connect(self.refresh_lobbies)
-        self.refresh_timer.start()
-
-    def on_main_tab_selected(self, index: int):
-        """Handles logic when a main tab is selected."""
-        self.stacked_widget.setCurrentIndex(index)
-        # Lazy load item data only when the "Items" tab is first clicked
-        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0) # This will trigger the data load
-        elif self.tab_names[index] == "Lobbies":
-            self.refresh_lobbies()
-        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
-            self.item_database.load_recipes()
-            self.filter_recipes_list()
 
     def _create_item_table(self, headers: list) -> QTableWidget:
         """Factory function to create and configure an item table."""
