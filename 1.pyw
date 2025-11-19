@@ -777,7 +777,7 @@ class SimpleWindow(QMainWindow):
 
     def reset_state(self):
         """Resets the application to its initial state."""
-        self.resize(600, 580)
+        self.resize(700, 800)
         self.label.setText("Hello! Click the button.")
         self.apply_theme(0) # Reset to the first theme
         self.custom_tab_bar._on_button_clicked(0)
