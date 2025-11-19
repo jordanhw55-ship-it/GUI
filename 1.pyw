@@ -307,16 +307,11 @@ class HotkeyCaptureWorker(QObject):
 
     def run(self):
         """Waits for and reads a single hotkey press."""
-        # This approach is more robust for capturing a single key press and
-        # avoids the stateful issues of read_hotkey(). We hook for all key
-        # down events, capture the first one that comes in, and then
-        # immediately unhook to prevent capturing sequences like '2+3'.
         try:
-            # keyboard.read_event() blocks until the next keyboard event.
-            event = keyboard.read_event(suppress=True)
-            if event.event_type == keyboard.KEY_DOWN:
-                # keyboard.get_hotkey_name() can format the event into a string.
-                self.hotkey_captured.emit(keyboard.get_hotkey_name([event]))
+            # Reverting to read_hotkey() as it's more stable for getting a direct name,
+            # and is less likely to crash on keys without standard names.
+            hotkey = keyboard.read_hotkey(suppress=True)
+            self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
 
@@ -1455,6 +1450,9 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
+        # Reset keyboard listener state to prevent combining previous presses.
+        keyboard.press_and_release('esc')
+
         # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
@@ -1479,6 +1477,9 @@ class SimpleWindow(QMainWindow):
             self.hotkey_capture_btn.setText(hotkey)
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
+        # Unhook the temporary capture listener and re-register only the saved hotkeys.
+        # This is the most reliable way to clear the keyboard library's internal state.
+        self.register_all_message_hotkeys()
 
     def load_message_hotkeys(self):
         """Loads hotkeys from settings and populates the table."""
