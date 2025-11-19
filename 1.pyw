@@ -398,6 +398,7 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
+        self.selected_sound = "ping1.mp3" # Default, will be overwritten by load_settings
 
 
         self.setWindowTitle("Hellfire Helper")
@@ -636,14 +637,17 @@ class SimpleWindow(QMainWindow):
         remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
         watchlist_controls_layout.addWidget(remove_watchlist_button)
         
-        # Add the three new placeholder boxes
+        # Sound selection buttons
         new_boxes_layout = QHBoxLayout()
-        ping1_btn = QPushButton("Ping 1"); ping1_btn.clicked.connect(lambda: self.play_specific_sound("ping1.mp3"))
-        ping2_btn = QPushButton("Ping 2"); ping2_btn.clicked.connect(lambda: self.play_specific_sound("ping2.mp3"))
-        ping3_btn = QPushButton("Ping 3"); ping3_btn.clicked.connect(lambda: self.play_specific_sound("ping3.mp3"))
-        new_boxes_layout.addWidget(ping1_btn)
-        new_boxes_layout.addWidget(ping2_btn)
-        new_boxes_layout.addWidget(ping3_btn)
+        self.ping_buttons = {
+            "ping1.mp3": QPushButton("Ping 1"),
+            "ping2.mp3": QPushButton("Ping 2"),
+            "ping3.mp3": QPushButton("Ping 3"),
+        }
+        for sound, btn in self.ping_buttons.items():
+            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s))
+            new_boxes_layout.addWidget(btn)
+
         watchlist_controls_layout.addLayout(new_boxes_layout)
 
         # Add the sound controls
@@ -719,6 +723,9 @@ class SimpleWindow(QMainWindow):
         # Finalize
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
+        # Set initial selected ping sound
+        self.update_ping_button_styles()
+
         # Apply preset or custom theme depending on the flag
         self.custom_tab_bar._on_button_clicked(self.last_tab_index)
         self.refresh_lobbies()
@@ -789,6 +796,7 @@ class SimpleWindow(QMainWindow):
         self.setStyleSheet(theme["style"])
         self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
         for i, preview in enumerate(self.theme_previews):
+            self.update_ping_button_styles()
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
@@ -874,6 +882,7 @@ class SimpleWindow(QMainWindow):
         # Re-apply theme to ensure all child widgets get the new style
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
+            self.update_ping_button_styles()
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
     def on_custom_theme_toggled(self, state: int):
@@ -1101,12 +1110,14 @@ class SimpleWindow(QMainWindow):
                     self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
                     self.watchlist = settings.get("watchlist", ["hellfire", "rpg"])
                     self.play_sound_on_found = settings.get("play_sound_on_found", False)
+                    self.selected_sound = settings.get("selected_sound", "ping1.mp3")
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
             self.last_tab_index = 0
             self.character_path = ""
             self.message_hotkeys = {}
             self.custom_theme_enabled = False
+            self.selected_sound = "ping1.mp3"
             self.play_sound_on_found = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
             self.automation_settings = {}
@@ -1165,7 +1176,8 @@ class SimpleWindow(QMainWindow):
                 }
             },
             "watchlist": self.watchlist,
-            "play_sound_on_found": self.lobby_placeholder_checkbox.isChecked()
+            "play_sound_on_found": self.lobby_placeholder_checkbox.isChecked(),
+            "selected_sound": self.selected_sound
         }
         with open(settings_path, 'w') as f:
             json.dump(settings, f, indent=4)
@@ -1687,15 +1699,7 @@ class SimpleWindow(QMainWindow):
 
     def play_notification_sound(self):
         """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
-        try:
-            sound_file_path = os.path.join(get_base_path(), "contents", "ping.mp3")
-            if os.path.exists(sound_file_path):
-                self.player.setSource(QUrl.fromLocalFile(sound_file_path))
-                self.player.play()
-            else:
-                QApplication.beep() # Fallback if ping.mp3 is missing
-        except Exception:
-            QApplication.beep()
+        self.play_specific_sound(self.selected_sound)
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
