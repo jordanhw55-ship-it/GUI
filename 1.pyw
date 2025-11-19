@@ -1465,7 +1465,10 @@ class SimpleWindow(QMainWindow):
         """Updates the UI once a hotkey has been captured by the worker."""
         # Re-enable the message box now that capture is complete
         self.message_edit.setEnabled(True)
-        self.hotkey_capture_btn.setText(hotkey)
+        if hotkey == 'esc':
+            self.hotkey_capture_btn.setText("Click to set")
+        else:
+            self.hotkey_capture_btn.setText(hotkey)
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
 
