@@ -949,27 +949,29 @@ class SimpleWindow(QMainWindow):
         if not selected_item:
             return
         recipe_name = selected_item.text()
-        self._add_recipe_by_name(recipe_name)
-        self.save_settings()
+        if self._add_recipe_by_name(recipe_name):
+            self.save_settings()
 
     def _add_recipe_by_name(self, recipe_name: str):
         """Helper to add a recipe to the in-progress list by its name."""
         if recipe_name in self.in_progress_recipes:
             # Don't show a message box when loading from settings, just skip.
             # QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
-            return
+            return False
 
         # Find the full recipe object from the database
         recipe = next((r for r in self.item_database.recipes_data if r["name"] == recipe_name), None)
         if not recipe:
-            return # Recipe not found in database
+            return False # Recipe not found in database
 
         recipe_name = recipe["name"]
         self.in_progress_recipes[recipe_name] = recipe
         item = QListWidgetItem(recipe_name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Unchecked)
+        item.checkStateChanged.connect(self.on_recipe_check_changed)
         self.in_progress_recipes_list.addItem(item)
+        return True
 
     def remove_recipe_from_progress(self):
         selected_item = self.in_progress_recipes_list.currentItem()
@@ -978,7 +980,6 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-        self.save_settings()
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -1207,13 +1208,14 @@ class SimpleWindow(QMainWindow):
     # Tab select logic
     def on_main_tab_selected(self, index: int):
         self.stacked_widget.setCurrentIndex(index)
-        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0)
-        elif self.tab_names[index] == "Lobbies":
-            self.refresh_lobbies()
-        elif self.tab_names[index] == "Recipes":
-            self.filter_recipes_list()
-            self._rebuild_materials_table()
+        tab_name = self.tab_names[index]
+        if tab_name == "Items" and not self.item_database.all_items_data:
+            self.switch_items_sub_tab(0) # Lazy load
+        elif tab_name == "Lobbies":
+            self.refresh_lobbies() # Refresh when tab is viewed
+        elif tab_name == "Recipes":
+            self.filter_recipes_list() # Ensure recipe list is populated
+            self._rebuild_materials_table() # Rebuild materials when tab is viewed
 
     # --- Automation: AHK-style behavior ---
     def pause_all_automation(self):
