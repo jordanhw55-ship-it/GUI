@@ -15,6 +15,7 @@ DARK_STYLE = """
         color: #F0F0F0;
         font-family: 'Segoe UI';
         font-size: 14px;
+        outline: none; /* Remove focus outline */
     }
     QMainWindow {
         background-color: #1C1C1E;
@@ -56,6 +57,7 @@ LIGHT_STYLE = """
         color: #2E3440; /* nord0 */
         font-family: 'Segoe UI';
         font-size: 14px;
+        outline: none; /* Remove focus outline */
     }
     QMainWindow {
         background-color: #ECEFF4;
