@@ -13,9 +13,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QColorDialog, QCheckBox
 )
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
-from PySide6.QtGui import QMouseEvent, QColor
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 
-import keyboard
 import pyautogui  # type: ignore
 import win32gui   # type: ignore
 
@@ -213,64 +212,6 @@ class LobbyFetcher(QObject):
             self.error.emit(f"Network error: {e}")
 
 
-class HotkeyCaptureWorker(QObject):
-    hotkey_captured = Signal(str)
-    def run(self):
-        try:
-            hotkey = keyboard.read_hotkey(suppress=True)
-            self.hotkey_captured.emit(hotkey)
-        except Exception as e:
-            print(f"Error capturing hotkey: {e}")
-
-
-class AutomationWorker(QObject):
-    finished = Signal()
-    error = Signal(str)
-    def __init__(self, game_title: str, action: str, message: str = ""):
-        super().__init__()
-        self.game_title = game_title
-        self.action = action
-        self.message = message
-    def run(self):
-        try:
-            hwnd = win32gui.FindWindow(None, self.game_title)
-            if hwnd == 0:
-                print(f"'{self.game_title}' window not found.")
-                return
-            pyautogui.press('enter')
-            pyautogui.write(self.message if self.action == "chat" else self.action, interval=0.05)
-            pyautogui.press('enter')
-        finally:
-            self.finished.emit()
-
-
-class ChatMessageWorker(QObject):
-    finished = Signal()
-    error = Signal(str)
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-    def run(self):
-        try:
-            hwnd = win32gui.FindWindow(None, self.game_title)
-            if hwnd == 0:
-                self.error.emit(f"Window '{self.game_title}' not found")
-                return
-            try:
-                win32gui.SetForegroundWindow(hwnd)
-            except Exception:
-                pass
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        except Exception as e:
-            self.error.emit(str(e))
-        finally:
-            self.finished.emit()
-
-
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
         super().__init__(text)
@@ -412,7 +353,10 @@ class SimpleWindow(QMainWindow):
             {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False},
         ]
 
-        self.load_settings()
+        # Automation state flags
+        self.automation_timers = {}
+        self.is_automation_running = False
+        self.custom_action_running = False
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -468,7 +412,6 @@ class SimpleWindow(QMainWindow):
         self.char_content_box.setFontFamily("Consolas"); self.char_content_box.setFontPointSize(10)
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
         load_layout.addLayout(content_layout)
-        self.load_path_edit.setText(self.character_path); self.load_characters()
         self.stacked_widget.addWidget(load_tab_content)
 
         # Items tab
@@ -530,8 +473,6 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(recipes_tab_content)
 
         # Automation tab
-        self.automation_timers = {}
-        self.is_automation_running = False
         automation_tab_content = QWidget()
         automation_main_layout = QHBoxLayout(automation_tab_content)
 
@@ -539,24 +480,30 @@ class SimpleWindow(QMainWindow):
         automation_keys_group = QGroupBox("Key Automation"); automation_grid = QGridLayout()
         automationKeys = ["q", "w", "e", "r", "d", "f", "t", "z", "x", "Complete Quest"]
         self.automation_key_ctrls = {}; row, col = 0, 0
+
+        # Use checkboxes for stable toggling; add numeric validators to intervals
+        int_validator = QIntValidator(50, 600000, self)  # 50 ms to 10 min
         for key in automationKeys:
-            btn = QPushButton(key.upper() if key != "Complete Quest" else "Complete Quest"); btn.setCheckable(True)
-            edit = QLineEdit("15000" if key == "Complete Quest" else "500"); edit.setFixedWidth(60)
-            automation_grid.addWidget(btn, row, col * 2); automation_grid.addWidget(edit, row, col * 2 + 1)
-            self.automation_key_ctrls[key] = {"btn": btn, "edit": edit}
+            chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
+            edit = QLineEdit("15000" if key == "Complete Quest" else "500"); edit.setFixedWidth(70); edit.setValidator(int_validator)
+            automation_grid.addWidget(chk, row, col * 2); automation_grid.addWidget(edit, row, col * 2 + 1)
+            self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
             col += 1
             if col > 1: col = 0; row += 1
-        self.custom_action_btn = QPushButton("Custom Action"); self.custom_action_btn.setCheckable(True)
-        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(60)
+
+        self.custom_action_btn = QCheckBox("Custom Action")
+        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70); self.custom_action_edit1.setValidator(int_validator)
         self.custom_action_edit2 = QLineEdit("-save x")
         custom_action_layout = QHBoxLayout()
         custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); row += 1
+
         automation_keys_group.setLayout(automation_grid); left_layout.addWidget(automation_keys_group)
         self.start_automation_btn = QPushButton("Start (F5)"); self.start_automation_btn.clicked.connect(self.toggle_automation)
         left_layout.addWidget(self.start_automation_btn)
-        interval_note = QLabel("Interval delay default 0.5 seconds (500ms)"); left_layout.addWidget(interval_note); left_layout.addStretch()
+        interval_note = QLabel("Intervals are in ms. Example: 500 = 0.5s"); left_layout.addWidget(interval_note); left_layout.addStretch()
 
+        # Placeholder right panel (message hotkeys section left as-is)
         msg_hotkey_group = QGroupBox("Custom Message Hotkeys"); right_layout = QVBoxLayout(msg_hotkey_group)
         self.msg_hotkey_table = QTableWidget(); self.msg_hotkey_table.setColumnCount(2)
         self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
@@ -565,23 +512,6 @@ class SimpleWindow(QMainWindow):
         self.msg_hotkey_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         right_layout.addWidget(self.msg_hotkey_table)
-
-        msg_form_layout = QGridLayout()
-        msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0)
-        self.hotkey_capture_btn = QPushButton("Click to set")
-        self.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
-        msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1)
-        msg_form_layout.addWidget(QLabel("Message:"), 1, 0)
-        self.message_edit = QLineEdit()
-        msg_form_layout.addWidget(self.message_edit, 1, 1)
-        right_layout.addLayout(msg_form_layout)
-
-        msg_btn_layout = QHBoxLayout()
-        self.add_msg_btn = QPushButton("Add"); self.add_msg_btn.clicked.connect(self.add_message_hotkey)
-        self.update_msg_btn = QPushButton("Update"); self.update_msg_btn.clicked.connect(self.update_message_hotkey)
-        self.delete_msg_btn = QPushButton("Delete"); self.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
-        msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn)
-        right_layout.addLayout(msg_btn_layout)
 
         automation_main_layout.addWidget(left_panel, 1)
         automation_main_layout.addWidget(msg_hotkey_group, 1)
@@ -674,23 +604,17 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(reset_tab_content)
 
         # Finalize
-        self.label = QLabel("This is a placeholder label.")
-
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
-        # Initial setup
-        self.load_message_hotkeys()
-        self.on_main_tab_selected(0)
         # Apply preset or custom theme depending on the flag
         if self.custom_theme_enabled:
             self.apply_custom_theme()
         else:
             self.apply_theme(self.current_theme_index)
+
+        # Initialize some tabs
         self.refresh_lobbies()
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
-
-        # Global hotkey for automation toggle
-        self.register_global_hotkeys()
 
     # Core helpers
     def _create_item_table(self, headers: list) -> QTableWidget:
@@ -744,15 +668,12 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        self.save_settings()
-        self.update_materials_table_colors()
 
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
         bg = self.custom_theme["bg"]
         fg = self.custom_theme["fg"]
         accent = self.custom_theme["accent"]
-        # Generate a minimal, consistent CSS using custom colours
         return f"""
         QWidget {{
             background-color: {bg};
@@ -805,7 +726,6 @@ class SimpleWindow(QMainWindow):
     def apply_custom_theme(self):
         self.custom_theme_enabled = True
         self.setStyleSheet(self.build_custom_stylesheet())
-        # For tab bar styling, approximate using custom colours
         self.custom_tab_bar.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.custom_theme['bg']};
@@ -824,11 +744,6 @@ class SimpleWindow(QMainWindow):
                 border-color: {self.custom_theme['accent']};
             }}
         """)
-        # Update preview borders (remove highlight since custom overrides)
-        for preview in self.theme_previews:
-            preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {self.custom_theme['bg']}; }}")
-        self.save_settings()
-        self.update_materials_table_colors()
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
@@ -842,28 +757,8 @@ class SimpleWindow(QMainWindow):
         color = QColorDialog.getColor(initial, self, f"Pick {key} color")
         if color.isValid():
             self.custom_theme[key] = color.name()
-            # If custom is enabled, live-apply
             if self.custom_theme_enabled:
                 self.apply_custom_theme()
-
-    def reset_custom_theme_to_defaults(self):
-        self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
-        if self.custom_theme_enabled:
-            self.apply_custom_theme()
-        self.save_settings()
-
-    def update_materials_table_colors(self):
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        for row in range(self.materials_table.rowCount()):
-            is_checked = self.materials_table.item(row, 4).text() == "1"
-            if not is_checked:
-                new_color = self.palette().color(self.foregroundRole())
-                for col in range(self.materials_table.columnCount()):
-                    itm = self.materials_table.item(row, col)
-                    if itm:
-                        itm.setForeground(new_color)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
         confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
@@ -874,42 +769,12 @@ class SimpleWindow(QMainWindow):
 
     def reset_state(self):
         self.resize(700, 800)
-        self.label.setText("Hello! Click the button.")
         self.custom_theme_enabled = False
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = self.load_watchlist()
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
-        self.save_settings()
-
-    # Settings persistence
-    def load_settings(self):
-        try:
-            if os.path.exists("settings.json"):
-                with open("settings.json", 'r') as f:
-                    settings = json.load(f)
-                    self.current_theme_index = settings.get("theme_index", 0)
-                    self.character_path = settings.get("character_path", "")
-                    self.message_hotkeys = settings.get("message_hotkeys", {})
-                    # Custom theme
-                    self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
-                    self.custom_theme = settings.get("custom_theme", self.custom_theme)
-        except (IOError, json.JSONDecodeError):
-            self.current_theme_index = 0
-            self.character_path = ""
-            self.message_hotkeys = {}
-
-    def save_settings(self):
-        settings = {
-            "theme_index": self.current_theme_index,
-            "character_path": self.character_path,
-            "message_hotkeys": self.message_hotkeys,
-            "custom_theme_enabled": self.custom_theme_enabled,
-            "custom_theme": self.custom_theme
-        }
-        with open("settings.json", 'w') as f:
-            json.dump(settings, f, indent=4)
 
     # Watchlist
     def load_watchlist(self):
@@ -940,97 +805,6 @@ class SimpleWindow(QMainWindow):
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
         self.save_watchlist()
         self.filter_lobbies(self.lobby_search_bar.text())
-
-    # Recipes
-    def filter_recipes_list(self):
-        query = self.recipe_search_box.text().lower()
-        self.available_recipes_list.clear()
-        for recipe in self.item_database.recipes_data:
-            if query in recipe["name"].lower():
-                item = QListWidgetItem(recipe["name"])
-                item.setData(Qt.ItemDataRole.UserRole, recipe)
-                self.available_recipes_list.addItem(item)
-    def add_recipe_to_progress(self):
-        selected_item = self.available_recipes_list.currentItem()
-        if not selected_item: return
-        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
-        recipe_name = recipe["name"]
-        if recipe_name in self.in_progress_recipes:
-            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
-            return
-        self.in_progress_recipes[recipe_name] = recipe
-        self.in_progress_recipes_list.addItem(recipe_name)
-        for component_str in recipe["components"]:
-            self._add_component_to_materials(component_str)
-        self._rebuild_materials_table()
-    def remove_recipe_from_progress(self):
-        selected_item = self.in_progress_recipes_list.currentItem()
-        if not selected_item: return
-        recipe_name = selected_item.text()
-        recipe = self.in_progress_recipes.pop(recipe_name, None)
-        if recipe:
-            for component_str in recipe["components"]:
-                self._remove_component_from_materials(component_str)
-        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
-        self._rebuild_materials_table()
-    def _add_component_to_materials(self, component_str: str):
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] += quantity
-        else:
-            if not self.item_database.all_items_data:
-                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-            self.material_list_data[name] = {
-                "Material": name,
-                "#": quantity,
-                "Unit": drop_info["Unit"] if drop_info else "?",
-                "Location": drop_info["Location"] if drop_info else "?"
-            }
-    def _remove_component_from_materials(self, component_str: str):
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] -= quantity
-            if self.material_list_data[name]["#"] <= 0:
-                del self.material_list_data[name]
-    def _rebuild_materials_table(self):
-        self.materials_table.setSortingEnabled(False)
-        self.materials_table.setRowCount(0)
-        for row, item_data in enumerate(self.material_list_data.values()):
-            self._add_row_to_materials_table(row, item_data)
-    def _add_row_to_materials_table(self, row_num, item_data):
-        self.materials_table.insertRow(row_num)
-        material_item = QTableWidgetItem(item_data["Material"])
-        material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-        material_item.setCheckState(Qt.CheckState.Unchecked)
-        self.materials_table.setItem(row_num, 0, material_item)
-        quantity_item = AlignedTableWidgetItem(str(item_data["#"]))
-        self.materials_table.setItem(row_num, 1, quantity_item)
-        self.materials_table.setItem(row_num, 2, QTableWidgetItem(item_data["Unit"]))
-        self.materials_table.setItem(row_num, 3, QTableWidgetItem(item_data["Location"]))
-        checked_item = QTableWidgetItem("0")
-        self.materials_table.setItem(row_num, 4, checked_item)
-    def on_material_checked(self, item: QTableWidgetItem):
-        if item.column() != 0: return
-        is_checked = item.checkState() == Qt.CheckState.Checked
-        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        for col in range(self.materials_table.columnCount()):
-            table_item = self.materials_table.item(item.row(), col)
-            if table_item: table_item.setForeground(color)
-        sort_item = self.materials_table.item(item.row(), 4)
-        if sort_item: sort_item.setText("1" if is_checked else "0")
-        self.materials_table.setSortingEnabled(True)
-        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
 
     # Items
     def filter_current_item_view(self):
@@ -1067,9 +841,105 @@ class SimpleWindow(QMainWindow):
             self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
         self.filter_current_item_view()
 
+    # Recipes
+    def filter_recipes_list(self):
+        if not self.item_database.recipes_data:
+            self.item_database.load_recipes()
+        query = self.recipe_search_box.text().lower()
+        self.available_recipes_list.clear()
+        for recipe in self.item_database.recipes_data:
+            if query in recipe["name"].lower():
+                item = QListWidgetItem(recipe["name"])
+                item.setData(Qt.ItemDataRole.UserRole, recipe)
+                self.available_recipes_list.addItem(item)
+
+    def add_recipe_to_progress(self):
+        selected_item = self.available_recipes_list.currentItem()
+        if not selected_item: return
+        recipe = selected_item.data(Qt.ItemDataRole.UserRole)
+        recipe_name = recipe["name"]
+        if recipe_name in self.in_progress_recipes:
+            QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
+            return
+        self.in_progress_recipes[recipe_name] = recipe
+        self.in_progress_recipes_list.addItem(recipe_name)
+        for component_str in recipe["components"]:
+            self._add_component_to_materials(component_str)
+        self._rebuild_materials_table()
+
+    def remove_recipe_from_progress(self):
+        selected_item = self.in_progress_recipes_list.currentItem()
+        if not selected_item: return
+        recipe_name = selected_item.text()
+        recipe = self.in_progress_recipes.pop(recipe_name, None)
+        if recipe:
+            for component_str in recipe["components"]:
+                self._remove_component_from_materials(component_str)
+        self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+        self._rebuild_materials_table()
+
+    def _add_component_to_materials(self, component_str: str):
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] += quantity
+        else:
+            if not self.item_database.all_items_data:
+                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
+            self.material_list_data[name] = {
+                "Material": name,
+                "#": quantity,
+                "Unit": drop_info["Unit"] if drop_info else "?",
+                "Location": drop_info["Location"] if drop_info else "?"
+            }
+
+    def _remove_component_from_materials(self, component_str: str):
+        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+        if match:
+            name, quantity = match.group(1).strip(), int(match.group(2))
+        else:
+            name, quantity = component_str.strip(), 1
+        if name in self.material_list_data:
+            self.material_list_data[name]["#"] -= quantity
+            if self.material_list_data[name]["#"] <= 0:
+                del self.material_list_data[name]
+
+    def _rebuild_materials_table(self):
+        self.materials_table.setSortingEnabled(False)
+        self.materials_table.setRowCount(0)
+        for row, item_data in enumerate(self.material_list_data.values()):
+            self.materials_table.insertRow(row)
+            material_item = QTableWidgetItem(item_data["Material"])
+            material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+            material_item.setCheckState(Qt.CheckState.Unchecked)
+            self.materials_table.setItem(row, 0, material_item)
+            self.materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
+            self.materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
+            self.materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
+            self.materials_table.setItem(row, 4, QTableWidgetItem("0"))
+        self.materials_table.setSortingEnabled(True)
+
+    def on_material_checked(self, item: QTableWidgetItem):
+        if item.column() != 0: return
+        is_checked = item.checkState() == Qt.CheckState.Checked
+        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
+        for col in range(self.materials_table.columnCount()):
+            table_item = self.materials_table.item(item.row(), col)
+            if table_item: table_item.setForeground(color)
+        sort_item = self.materials_table.item(item.row(), 4)
+        if sort_item: sort_item.setText("1" if is_checked else "0")
+        self.materials_table.setSortingEnabled(True)
+        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
+        self.materials_table.itemChanged.connect(self.on_material_checked)
+
     # Character loading
     def on_path_changed(self, new_path: str):
-        self.character_path = new_path; self.save_settings()
+        self.character_path = new_path
     def select_character_path(self):
         default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
         new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
@@ -1188,208 +1058,99 @@ class SimpleWindow(QMainWindow):
             self.switch_items_sub_tab(0)
         elif self.tab_names[index] == "Lobbies":
             self.refresh_lobbies()
-        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
-            self.item_database.load_recipes(); self.filter_recipes_list()
-        elif self.tab_names[index] == "Automation":
-            self.load_message_hotkeys()
+        elif self.tab_names[index] == "Recipes":
+            self.filter_recipes_list()
 
-    # Automation helpers
-    def _run_automation_action(self, action, message=""):
-        worker = AutomationWorker(self.game_title, action, message)
-        thread = QThread(); worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.start()
+    # --- Automation: AHK-style behavior ---
+    def pause_all_automation(self):
+        for timer in self.automation_timers.values():
+            timer.stop()
+
+    def resume_all_automation(self):
+        for timer in self.automation_timers.values():
+            timer.start()
+
+    def run_complete_quest(self):
+        # If custom action is running, wait then retry
+        if self.custom_action_running:
+            QTimer.singleShot(2500, self.run_complete_quest)
+            return
+        # Pause QWERDFZX timers
+        self.pause_all_automation()
+        # Sequence: y -> 50ms -> e -> 50ms -> esc
+        pyautogui.press('y')
+        QTimer.singleShot(50, lambda: pyautogui.press('e'))
+        QTimer.singleShot(100, lambda: pyautogui.press('esc'))
+        # Resume after ~2s
+        QTimer.singleShot(2100, self.resume_all_automation)
+
+    def run_custom_action(self, message: str):
+        # Highest priority, pauses everything including complete quest
+        self.custom_action_running = True
+        self.pause_all_automation()
+        def type_message():
+            pyautogui.press('enter')
+            pyautogui.write(message, interval=0.03)
+            pyautogui.press('enter')
+        # Wait 2s, type, then wait 2s more and resume
+        QTimer.singleShot(2000, type_message)
+        QTimer.singleShot(4000, self._end_custom_action)
+
+    def _end_custom_action(self):
+        self.custom_action_running = False
+        self.resume_all_automation()
+
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
             self.start_automation_btn.setText("Stop (F5)")
             self.start_automation_btn.setStyleSheet("background-color: #B00000;")
+            # Start timers
             for key, ctrls in self.automation_key_ctrls.items():
-                if ctrls["btn"].isChecked():
+                if ctrls["chk"].isChecked():
+                    interval_text = ctrls["edit"].text().strip()
+                    if not interval_text:
+                        continue
                     try:
-                        interval = int(ctrls["edit"].text())
+                        interval = int(interval_text)
                         timer = QTimer(self)
-                        action = f"-{key}" if key != "Complete Quest" else "-c quest"
-                        timer.timeout.connect(lambda act=action: self._run_automation_action(act))
+                        if key == "Complete Quest":
+                            timer.timeout.connect(self.run_complete_quest)
+                        else:
+                            # Raw key presses (no typing into chat)
+                            timer.timeout.connect(lambda k=key: pyautogui.press(k))
                         timer.start(interval)
                         self.automation_timers[key] = timer
                     except ValueError:
-                        print(f"Invalid interval for '{key}'. Must be an integer.")
+                        QMessageBox.warning(self, "Invalid interval", f"Interval for '{key}' must be a number in ms.")
+            # Custom Action timer
             if self.custom_action_btn.isChecked():
-                try:
-                    interval = int(self.custom_action_edit1.text())
-                    message = self.custom_action_edit2.text()
-                    timer = QTimer(self)
-                    timer.timeout.connect(lambda msg=message: self._run_automation_action("chat", msg))
-                    timer.start(interval)
-                    self.automation_timers["custom"] = timer
-                except ValueError:
-                    print("Invalid interval for 'Custom Action'. Must be an integer.")
+                interval_text = self.custom_action_edit1.text().strip()
+                if interval_text:
+                    try:
+                        interval = int(interval_text)
+                        message = self.custom_action_edit2.text()
+                        timer = QTimer(self)
+                        timer.timeout.connect(lambda msg=message: self.run_custom_action(msg))
+                        timer.start(interval)
+                        self.automation_timers["custom"] = timer
+                    except ValueError:
+                        QMessageBox.warning(self, "Invalid interval", "Interval for 'Custom Action' must be a number in ms.")
         else:
             self.start_automation_btn.setText("Start (F5)"); self.start_automation_btn.setStyleSheet("")
             for timer in self.automation_timers.values():
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
 
-    # Hotkey capture and registration
-    def capture_message_hotkey(self):
-        self.message_edit.setEnabled(False)
-        self.hotkey_capture_btn.setText("[Press a key...]")
-        self.hotkey_capture_btn.setEnabled(False)
-        keyboard.unhook_all()
-        self.capture_thread = QThread()
-        self.capture_worker = HotkeyCaptureWorker()
-        self.capture_worker.moveToThread(self.capture_thread)
-        self.capture_thread.started.connect(self.capture_worker.run)
-        self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
-        self.capture_thread.start()
-
-    def on_hotkey_captured(self, hotkey: str):
-        is_valid = True
-        if '+' in hotkey:
-            parts = hotkey.split('+')
-            for part in parts[:-1]:
-                if part.strip().lower() not in keyboard.all_modifiers:
-                    is_valid = False
-                    break
-        self.message_edit.setEnabled(True)
-        if not is_valid or hotkey == 'esc':
-            self.hotkey_capture_btn.setText("Click to set")
-            self.hotkey_capture_btn.setEnabled(True)
-        else:
-            self.hotkey_capture_btn.setText(hotkey)
-            self.hotkey_capture_btn.setEnabled(True)
-        self.capture_thread.quit()
-        self.capture_thread.wait()
-        self.register_all_message_hotkeys()
-
-    def load_message_hotkeys(self):
-        self.msg_hotkey_table.setRowCount(0)
-        if not isinstance(self.message_hotkeys, dict):
-            self.message_hotkeys = {}
-        for hotkey, message in self.message_hotkeys.items():
-            row_position = self.msg_hotkey_table.rowCount()
-            self.msg_hotkey_table.insertRow(row_position)
-            self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
-            self.msg_hotkey_table.setItem(row_position, 1, QTableWidgetItem(message))
-        self.register_all_message_hotkeys()
-
-    def add_message_hotkey(self):
-        hotkey = self.hotkey_capture_btn.text()
-        message = self.message_edit.text()
-        if hotkey == "Click to set" or not message:
-            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
-            return
-        if hotkey in self.message_hotkeys:
-            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
-            return
-        self.message_hotkeys[hotkey] = message
-        self.save_settings()
-        self.load_message_hotkeys()
-        self.hotkey_capture_btn.setText("Click to set")
-        self.hotkey_capture_btn.setEnabled(True)
-        self.message_edit.clear()
-
-    def update_message_hotkey(self):
-        selected_items = self.msg_hotkey_table.selectedItems()
-        if not selected_items:
-            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to update.")
-            return
-        selected_row = selected_items[0].row()
-        old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
-        new_hotkey = self.hotkey_capture_btn.text()
-        new_message = self.message_edit.text()
-        if new_hotkey == "Click to set" or not new_message:
-            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
-            return
-        if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
-            QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
-            return
-        if old_hotkey in self.hotkey_ids:
-            try: keyboard.remove_hotkey(self.hotkey_ids[old_hotkey])
-            except Exception: pass
-            self.hotkey_ids.pop(old_hotkey, None)
-        self.message_hotkeys.pop(old_hotkey, None)
-        self.message_hotkeys[new_hotkey] = new_message
-        self.save_settings()
-        self.load_message_hotkeys()
-        self.hotkey_capture_btn.setText("Click to set")
-        self.hotkey_capture_btn.setEnabled(True)
-        self.message_edit.clear()
-
-    def delete_message_hotkey(self):
-        selected_items = self.msg_hotkey_table.selectedItems()
-        if not selected_items:
-            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
-            return
-        selected_row = selected_items[0].row()
-        hotkey_to_delete = self.msg_hotkey_table.item(selected_row, 0).text()
-        confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
-        if confirm == QMessageBox.StandardButton.Yes:
-            if hotkey_to_delete in self.hotkey_ids:
-                try: keyboard.remove_hotkey(self.hotkey_ids[hotkey_to_delete])
-                except Exception: pass
-                self.hotkey_ids.pop(hotkey_to_delete, None)
-            self.message_hotkeys.pop(hotkey_to_delete, None)
-            self.save_settings()
-            self.msg_hotkey_table.removeRow(selected_row)
-            self.hotkey_capture_btn.setText("Click to set")
-            self.hotkey_capture_btn.setEnabled(True)
-            self.message_edit.clear()
-
-    def register_global_hotkeys(self):
+    # Ensure timers are cleaned up on exit
+    def closeEvent(self, event):
         try:
-            f5_id = keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
-            self.hotkey_ids['f5'] = f5_id
-        except Exception as e:
-            print(f"Failed to register F5 hotkey: {e}")
-
-    def register_all_message_hotkeys(self):
-        for hk, hk_id in list(self.hotkey_ids.items()):
-            if hk != 'f5':
-                try: keyboard.remove_hotkey(hk_id)
-                except Exception: pass
-                self.hotkey_ids.pop(hk, None)
-        for hotkey, message in self.message_hotkeys.items():
-            def callback(h=hotkey, msg=message):
-                self.send_chat_message(h, msg)
-            try:
-                hk_id = keyboard.add_hotkey(hotkey, callback, suppress=True)
-                self.hotkey_ids[hotkey] = hk_id
-            except Exception as e:
-                print(f"Failed to register hotkey '{hotkey}': {e}")
-
-    def send_chat_message(self, hotkey_pressed: str, message: str):
-        try:
-            game_hwnd = win32gui.FindWindow(None, self.game_title)
-            is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
+            for timer in self.automation_timers.values():
+                timer.stop(); timer.deleteLater()
+            self.automation_timers.clear()
         except Exception:
-            is_game_active = False
-        if not is_game_active:
-            try: keyboard.send(hotkey_pressed)
-            except Exception: pass
-            return
-        if self.is_sending_message:
-            return
-        self.is_sending_message = True
-        worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-        thread = QThread()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(lambda: self.cleanup_chat_thread(thread, worker))
-        worker.error.connect(lambda e: self.cleanup_chat_thread(thread, worker))
-        thread.start()
-
-    def cleanup_chat_thread(self, thread: QThread, worker: ChatMessageWorker):
-        self.is_sending_message = False
-        try: worker.deleteLater()
-        except Exception: pass
-        try:
-            thread.quit(); thread.wait(); thread.deleteLater()
-        except Exception: pass
+            pass
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":
