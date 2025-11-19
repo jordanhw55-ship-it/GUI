@@ -920,6 +920,10 @@ class CustomTabBar(QWidget):
             """)
 
 if __name__ == "__main__":
+    # Set this environment variable to prevent Qt from trying to set
+    # the DPI awareness, which can suppress the "Access is denied" warning.
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
+
     app = QApplication(sys.argv)
     window = SimpleWindow()
     window.show()
