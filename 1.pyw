@@ -88,30 +88,30 @@ LIGHT_STYLE = """
 """
 
 FOREST_STYLE = """
-    /* Forest Theme */
+    /* Black/Blue Theme */
     QWidget {
-        background-color: #2F4F2F; /* Dark Sea Green */
-        color: #E0E0E0;
+        background-color: #121212; /* Very dark grey */
+        color: #EAEAEA;
         font-family: 'Segoe UI';
         font-size: 14px;
         outline: none;
     }
-    QMainWindow, #CustomTitleBar { background-color: #2A402A; }
-    #CustomTitleBar QLabel { color: #E0E0E0; }
-    #CustomTitleBar QPushButton:hover { background-color: #556B2F; } /* Olive Drab */
+    QMainWindow, #CustomTitleBar { background-color: #1F1F1F; }
+    #CustomTitleBar QLabel { color: #EAEAEA; }
+    #CustomTitleBar QPushButton:hover { background-color: #4682B4; } /* SteelBlue */
     QPushButton {
-        background-color: #556B2F;
-        border: 1px solid #6B8E23; /* Olive Drab */
+        background-color: #1E90FF; /* DodgerBlue */
+        border: 1px solid #4169E1; /* RoyalBlue */
         padding: 5px;
         border-radius: 6px;
     }
-    QHeaderView::section { background-color: #2A402A; border: 1px solid #6B8E23; }
+    QHeaderView::section { background-color: #1F1F1F; border: 1px solid #4169E1; }
 """
 
 OCEAN_STYLE = """
-    /* Ocean Theme */
+    /* White/Blue Theme */
     QWidget {
-        background-color: #E0FFFF; /* Light Cyan */
+        background-color: #F0F8FF; /* AliceBlue */
         color: #000080; /* Navy */
         font-family: 'Segoe UI';
         font-size: 14px;
@@ -119,10 +119,10 @@ OCEAN_STYLE = """
     }
     QMainWindow, #CustomTitleBar { background-color: #ADD8E6; } /* Light Blue */
     #CustomTitleBar QLabel { color: #000080; }
-    #CustomTitleBar QPushButton:hover { background-color: #B0E0E6; } /* Powder Blue */
+    #CustomTitleBar QPushButton:hover { background-color: #87CEFA; } /* LightSkyBlue */
     QPushButton {
-        background-color: #B0E0E6;
-        border: 1px solid #87CEEB; /* Sky Blue */
+        background-color: #87CEEB; /* SkyBlue */
+        border: 1px solid #4682B4; /* SteelBlue */
         padding: 5px;
         border-radius: 6px;
     }
@@ -194,12 +194,12 @@ class SimpleWindow(QMainWindow):
                 "preview_color": "#FFC0CB", "is_dark": False
             },
             {
-                "name": "Forest", "style": FOREST_STYLE,
-                "preview_color": "#2F4F2F", "is_dark": True
+                "name": "Black/Blue", "style": FOREST_STYLE,
+                "preview_color": "#1E90FF", "is_dark": True
             },
             {
-                "name": "Ocean", "style": OCEAN_STYLE,
-                "preview_color": "#E0FFFF", "is_dark": False
+                "name": "White/Blue", "style": OCEAN_STYLE,
+                "preview_color": "#87CEEB", "is_dark": False
             }
         ]
 
