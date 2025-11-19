@@ -656,7 +656,7 @@ class SimpleWindow(QMainWindow):
         }
         for sound, btn in self.ping_buttons.items():
             btn.setCheckable(True)
-            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s))
+            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s)) # type: ignore
             ping_buttons_layout.addWidget(btn)
 
         watchlist_controls_layout.addLayout(ping_buttons_layout)
@@ -813,16 +813,14 @@ class SimpleWindow(QMainWindow):
             fg_match = re.search(r"QWidget\s*{\s*.*?color:\s*([^;]+);", theme['style'])
             base_bg = bg_match.group(1) if bg_match else "#FFFFFF"
             base_fg = fg_match.group(1) if fg_match else "#000000"
-            checked_fg = "#000000" if theme['is_dark'] else "#FFFFFF"
-
-        # Apply a unified stylesheet that handles both checked and unchecked states
-        stylesheet = f"""
-            QPushButton {{ background-color: {accent_color}; color: {base_fg}; }}
-            QPushButton:checked {{ background-color: {accent_color}; color: {checked_fg}; }}
-        """
+            checked_fg = "#000000" if not theme['is_dark'] else "#FFFFFF"
 
         for sound, btn in self.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
+            if sound == self.selected_sound:
+                btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg};")
+            else:
+                btn.setStyleSheet("") # Revert to parent stylesheet
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
@@ -1749,6 +1747,7 @@ class SimpleWindow(QMainWindow):
             self.custom_action_btn.setChecked(False)
             self.custom_action_edit1.setText("30000")
             self.custom_action_edit2.setText("-save x")
+
     def register_global_hotkeys(self):
         """Registers all hotkeys, including global controls and custom messages."""
         keyboard.unhook_all()
