@@ -1137,11 +1137,15 @@ class SimpleWindow(QMainWindow):
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
-        worker.finished.connect(lambda: self.cleanup_chat_thread(thread, worker))
-        worker.error.connect(lambda e: self.cleanup_chat_thread(thread, worker))
+        worker.finished.connect(lambda: self.cleanup_chat_thread(thread))
+        worker.error.connect(self.on_chat_send_error)
+        worker.error.connect(lambda: self.cleanup_chat_thread(thread))
         thread.start()
 
-    def cleanup_chat_thread(self, thread: QThread, worker: ChatMessageWorker):
+    def on_chat_send_error(self, error_message: str):
+        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
+
+    def cleanup_chat_thread(self, thread: QThread):
         self.is_sending_message = False
         try: worker.deleteLater(); thread.quit(); thread.wait(); thread.deleteLater()
         except Exception: pass
