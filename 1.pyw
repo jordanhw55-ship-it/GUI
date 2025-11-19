@@ -884,9 +884,15 @@ class SimpleWindow(QMainWindow):
         self.custom_theme_enabled = False
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
-        self.custom_tab_bar._on_button_clicked(0)  # type: ignore
+        self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = ["hellfire", "rpg"]
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
+        
+        # Also reset recipes and automation settings
+        self.in_progress_recipes.clear()
+        self.in_progress_recipes_list.clear()
+        self._rebuild_materials_table()
+        self._reset_automation_ui()
 
     # Settings
     def capture_message_hotkey(self):
@@ -1237,11 +1243,18 @@ class SimpleWindow(QMainWindow):
 
     def reset_recipes(self):
         """Clears all in-progress recipes and the materials list."""
-        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to clear all in-progress recipes?")
+        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to clear all in-progress recipes?",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                       QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             self.in_progress_recipes.clear()
             self.in_progress_recipes_list.clear()
             self._rebuild_materials_table()
+
+    def _reset_automation_ui(self):
+        """Resets the automation UI controls to their default values without confirmation."""
+        self.reset_automation_settings(confirm=False)
+
 
     def _add_component_to_materials(self, component_str: str):
         match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
@@ -1578,10 +1591,14 @@ class SimpleWindow(QMainWindow):
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
 
-    def reset_automation_settings(self):
+    def reset_automation_settings(self, confirm=True):
         """Resets all automation settings in the UI to their defaults."""
-        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all automation settings to their defaults?")
-        if confirm == QMessageBox.StandardButton.Yes:
+        do_reset = False
+        if not confirm:
+            do_reset = True
+        elif QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all automation settings to their defaults?") == QMessageBox.StandardButton.Yes:
+            do_reset = True
+        if do_reset:
             # Reset key automation
             for key, ctrls in self.automation_key_ctrls.items():
                 ctrls["chk"].setChecked(False)
