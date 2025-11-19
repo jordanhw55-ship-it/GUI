@@ -307,10 +307,16 @@ class HotkeyCaptureWorker(QObject):
 
     def run(self):
         """Waits for and reads a single hotkey press."""
+        # This is a more robust way to capture a single hotkey and avoid
+        # carrying over state from previous captures. It waits for the next
+        # single 'down' event, converts it to a hotkey name, and then stops.
         try:
-            # read_hotkey blocks until a key is pressed
-            hotkey = keyboard.read_hotkey(suppress=True)
-            self.hotkey_captured.emit(hotkey)
+            while True:
+                event = keyboard.read_event(suppress=True)
+                if event.event_type == keyboard.KEY_DOWN:
+                    hotkey = keyboard.get_hotkey_name([event])
+                    self.hotkey_captured.emit(hotkey)
+                    break # Stop after the first key down event
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
 
@@ -659,8 +665,6 @@ class SimpleWindow(QMainWindow):
         self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
         self.msg_hotkey_table.verticalHeader().setVisible(False)
         self.msg_hotkey_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.msg_hotkey_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         right_layout.addWidget(self.msg_hotkey_table)
 
         msg_form_layout = QGridLayout()
@@ -1449,9 +1453,7 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
-        # Reset keyboard listener state to prevent combining previous presses.
-        keyboard.press_and_release('esc')
-
+        # Disable the message box to prevent it from receiving the keypress
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
         self.hotkey_capture_btn.setEnabled(False)
@@ -1527,9 +1529,6 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys[new_hotkey] = new_message
         self.save_settings()
         self.load_message_hotkeys()
-        # Reset input fields after update
-        self.hotkey_capture_btn.setText("Click to set")
-        self.message_edit.clear()
 
     def delete_message_hotkey(self):
         """Deletes the selected hotkey."""
