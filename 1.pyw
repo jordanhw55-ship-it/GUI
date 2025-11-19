@@ -1545,9 +1545,12 @@ class SimpleWindow(QMainWindow):
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
             if hotkey_to_delete in self.message_hotkeys:
+                # Unhook only the specific hotkey to avoid side effects
+                keyboard.remove_hotkey(hotkey_to_delete)
                 del self.message_hotkeys[hotkey_to_delete]
                 self.save_settings()
-                self.load_message_hotkeys()
+                # Just remove the row from the table, no need to reload everything
+                self.msg_hotkey_table.removeRow(selected_items[0].row())
 
     def register_all_message_hotkeys(self):
         """Registers all loaded hotkeys with the keyboard listener."""
