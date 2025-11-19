@@ -977,7 +977,9 @@ class SimpleWindow(QMainWindow):
 
         color = QColor("gray") if item.checkState() == Qt.CheckState.Checked else self.palette().color(self.foregroundRole())
         for col in range(self.materials_table.columnCount()):
-            self.materials_table.item(item.row(), col).setForeground(color)
+            table_item = self.materials_table.item(item.row(), col)
+            if table_item: # Add a check to ensure the item exists before modifying it
+                table_item.setForeground(color)
 
     def filter_current_item_view(self):
         """Filters the currently visible item table based on the search query."""
