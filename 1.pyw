@@ -1572,13 +1572,20 @@ class SimpleWindow(QMainWindow):
         keyboard.unhook_all() # Clear previous hooks
         for hotkey, message in self.message_hotkeys.items():
             # Create a closure to capture the correct message for the callback
-            callback = (lambda msg: lambda: self.send_chat_message(msg))(message)
+            callback = (lambda h, msg: lambda: self.send_chat_message(h, msg))(hotkey, message)
             keyboard.add_hotkey(hotkey, callback, suppress=True)
 
-    def send_chat_message(self, message: str):
+    def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game window is active."""
         try:
-            if win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title):
+            game_hwnd = win32gui.FindWindow(None, self.game_title)
+            is_game_active = win32gui.GetForegroundWindow() == game_hwnd
+
+            if not is_game_active:
+                # If the game is not active, re-send the suppressed keypress
+                # so it can be used in other applications (like this GUI).
+                keyboard.send(hotkey_pressed)
+            else:
                 pyautogui.press('enter')
                 pyautogui.write(message, interval=0.01)
                 pyautogui.press('enter')
