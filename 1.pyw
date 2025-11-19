@@ -12,8 +12,9 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QComboBox,
     QListWidgetItem, QColorDialog, QCheckBox
 )
-from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
+from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer, QUrl
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
 import pyautogui  # type: ignore
@@ -403,6 +404,11 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Hellfire Helper")
         # Load settings first, which will overwrite the defaults above if a file exists
         self.load_settings()
+
+        # Initialize media player for custom sounds
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
 
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
@@ -1656,13 +1662,15 @@ class SimpleWindow(QMainWindow):
             print(f"Failed to register hotkey '{hotkey}': {e}")
 
     def play_notification_sound(self):
-        """Plays a system sound. Tries winsound first, falls back to QApplication.beep()."""
+        """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
         try:
-            # Generate a direct beep sound (Frequency in Hz, Duration in ms)
-            # This is more reliable than PlaySound as it doesn't depend on system sound schemes.
-            winsound.Beep(1000, 300) # 1000 Hz for 300 ms
-        except NameError:
-            # Fallback for non-Windows or if winsound failed to import
+            sound_file_path = os.path.join(get_base_path(), "contents", "ping.mp3")
+            if os.path.exists(sound_file_path):
+                self.player.setSource(QUrl.fromLocalFile(sound_file_path))
+                self.player.play()
+            else:
+                QApplication.beep() # Fallback if ping.mp3 is missing
+        except Exception:
             QApplication.beep()
 
     # Ensure timers are cleaned up on exit
