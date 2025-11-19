@@ -87,11 +87,20 @@ OCEAN_STYLE = """
     QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
 """
 
+def get_base_path():
+    """ Get absolute path to resource, works for dev and for PyInstaller/Nuitka """
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return os.path.dirname(sys.executable)
+    else:
+        # The application is not frozen
+        # Change this to the directory of your main script
+        return os.path.dirname(os.path.abspath(__file__))
 
 class ItemDatabase:
     """Handles loading and searching item data from text files."""
     def __init__(self):
-        self.base_path = os.path.join(os.path.dirname(__file__), "contents")
+        self.base_path = os.path.join(get_base_path(), "contents")
         self.all_items_data = []
         self.drops_data = []
         self.raid_data = []
@@ -335,7 +344,7 @@ class SimpleWindow(QMainWindow):
 
         self.old_pos = None
         self.all_lobbies = []
-        self.thread = None
+        self.thread = None # type: ignore
         self.watchlist_file = "watchlist.json"
         self.watchlist = self.load_watchlist()
         self.character_path = ""
@@ -789,15 +798,17 @@ class SimpleWindow(QMainWindow):
 
     # Watchlist
     def load_watchlist(self):
+        watchlist_path = os.path.join(get_base_path(), self.watchlist_file)
         try:
-            if os.path.exists(self.watchlist_file):
-                with open(self.watchlist_file, 'r') as f:
+            if os.path.exists(watchlist_path):
+                with open(watchlist_path, 'r') as f:
                     return json.load(f)
         except (IOError, json.JSONDecodeError) as e:
             print(f"Error loading watchlist: {e}")
         return ["legion", "hellgate"]
     def save_watchlist(self):
-        with open(self.watchlist_file, 'w') as f:
+        watchlist_path = os.path.join(get_base_path(), self.watchlist_file)
+        with open(watchlist_path, 'w') as f:
             json.dump(self.watchlist, f, indent=4)
     def add_to_watchlist(self):
         keyword = self.watchlist_input.text().strip().lower()
