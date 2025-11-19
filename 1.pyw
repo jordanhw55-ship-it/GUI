@@ -339,13 +339,6 @@ class SimpleWindow(QMainWindow):
             "accent": "#FF7F50"
         }
 
-        self.setWindowTitle("Hellfire Helper")
-        # Load settings first, which will overwrite the defaults above if a file exists
-        self.load_settings()
-
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(700, 800)
-
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
@@ -359,18 +352,25 @@ class SimpleWindow(QMainWindow):
         self.is_sending_message = False
         self.game_title = "Warcraft III"
 
+        # Automation state flags
+        self.automation_timers = {}
+        self.is_automation_running = False
+        self.automation_settings = {} # To hold loaded settings
+        self.custom_action_running = False
+
+        self.setWindowTitle("Hellfire Helper")
+        # Load settings first, which will overwrite the defaults above if a file exists
+        self.load_settings()
+
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.resize(700, 800)
+
         self.themes = [
             {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
             {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False},
             {"name": "Black/Blue", "style": FOREST_STYLE, "preview_color": "#1E90FF", "is_dark": True},
             {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False},
         ]
-
-        # Automation state flags
-        self.automation_timers = {}
-        self.is_automation_running = False
-        self.automation_settings = {} # To hold loaded settings
-        self.custom_action_running = False
 
         self.is_fetching_lobbies = False # Add a flag to prevent concurrent refreshes
         main_layout = QVBoxLayout()
