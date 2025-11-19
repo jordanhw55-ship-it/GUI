@@ -341,6 +341,38 @@ class AutomationWorker(QObject):
         finally:
             self.finished.emit()
 
+class ChatMessageWorker(QObject):
+    """
+    A dedicated worker to send a chat message and handle key suppression.
+    This worker is created for each hotkey press to ensure a clean state.
+    """
+    finished = Signal()
+
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+
+    def run(self):
+        """Blocks the original key, sends the message, then unblocks."""
+        key_to_block = self.hotkey_pressed.split('+')[-1].strip()
+        try:
+            # Block the original key to prevent it from reaching the game.
+            keyboard.block_key(key_to_block)
+
+            # Send the chat message.
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+
+        except Exception as e:
+            print(f"Error in ChatMessageWorker: {e}")
+        finally:
+            # ALWAYS unblock the key, even if an error occurred.
+            keyboard.unblock_key(key_to_block)
+            self.finished.emit()
+
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
         super().__init__(text)
@@ -1586,14 +1618,17 @@ class SimpleWindow(QMainWindow):
                 # used in other applications (like this GUI's input fields).
                 keyboard.send(hotkey_pressed)
             else:
-                # Create a new worker and thread for each hotkey press to ensure a clean state.
-                worker = AutomationWorker(self.game_title, "chat", message)
+                # Create a new, specialized worker and thread for each hotkey press.
+                # This ensures a clean state and reliable key suppression.
+                worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
                 thread = QThread()
                 worker.moveToThread(thread)
+
                 thread.started.connect(worker.run)
                 worker.finished.connect(thread.quit)
                 worker.finished.connect(worker.deleteLater)
                 thread.finished.connect(thread.deleteLater)
+
                 thread.start()
         except Exception as e:
             print(f"Error sending chat message: {e}")
