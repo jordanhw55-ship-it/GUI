@@ -301,6 +301,19 @@ class LobbyFetcher(QObject):
         except requests.exceptions.RequestException as e:
             self.error.emit(f"Network error: {e}")
 
+class HotkeyCaptureWorker(QObject):
+    """Worker to capture a hotkey in a separate thread to avoid freezing the GUI."""
+    hotkey_captured = Signal(str)
+
+    def run(self):
+        """Waits for and reads a single hotkey press."""
+        try:
+            # read_hotkey blocks until a key is pressed
+            hotkey = keyboard.read_hotkey(suppress=False)
+            self.hotkey_captured.emit(hotkey)
+        except Exception as e:
+            print(f"Error capturing hotkey: {e}")
+
 class AutomationWorker(QObject):
     """Worker to perform automation tasks in a separate thread."""
     finished = Signal()
@@ -650,6 +663,7 @@ class SimpleWindow(QMainWindow):
         msg_form_layout = QGridLayout()
         msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0)
         self.hotkey_capture_btn = QPushButton("Click to set")
+        self.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
         msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1)
         msg_form_layout.addWidget(QLabel("Message:"), 1, 0)
         self.message_edit = QLineEdit()
@@ -1429,6 +1443,26 @@ class SimpleWindow(QMainWindow):
                 for col in range(self.lobbies_table.columnCount()):
                     self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B")) # A dark green color
         self.lobbies_table.setSortingEnabled(True)
+
+    def capture_message_hotkey(self):
+        """Initiates the process of capturing a new hotkey."""
+        self.hotkey_capture_btn.setText("[Press a key...]")
+        self.hotkey_capture_btn.setEnabled(False)
+
+        self.capture_thread = QThread()
+        self.capture_worker = HotkeyCaptureWorker()
+        self.capture_worker.moveToThread(self.capture_thread)
+
+        self.capture_thread.started.connect(self.capture_worker.run)
+        self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
+
+        self.capture_thread.start()
+
+    def on_hotkey_captured(self, hotkey: str):
+        """Updates the UI once a hotkey has been captured by the worker."""
+        self.hotkey_capture_btn.setText(hotkey)
+        self.hotkey_capture_btn.setEnabled(True)
+        self.capture_thread.quit()
 
     def load_message_hotkeys(self):
         """Loads hotkeys from settings and populates the table."""
