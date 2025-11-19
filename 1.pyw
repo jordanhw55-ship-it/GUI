@@ -786,6 +786,10 @@ class SimpleWindow(QMainWindow):
         self.load_message_hotkeys()
         self.on_main_tab_selected(0)
 
+        # Register global hotkeys for automation start/stop
+        keyboard.add_hotkey('f5', self.toggle_automation)
+
+
         # Apply the initial theme and set button text
         self.apply_theme(self.current_theme_index)
 
@@ -852,33 +856,6 @@ class SimpleWindow(QMainWindow):
                 timer.deleteLater()
             self.automation_timers.clear()
             print("Automation Stopped")
-
-    def on_main_tab_selected(self, index: int):
-        """Handles logic when a main tab is selected."""
-        self.stacked_widget.setCurrentIndex(index)
-        # Lazy load item data only when the "Items" tab is first clicked
-        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0) # This will trigger the data load
-        elif self.tab_names[index] == "Lobbies":
-            self.refresh_lobbies()
-        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
-            self.item_database.load_recipes()
-            self.filter_recipes_list()
-        elif self.tab_names[index] == "Automation":
-            self.load_message_hotkeys()
-
-    def _create_item_table(self, headers: list) -> QTableWidget:
-        """Factory function to create and configure an item table."""
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Item name
-        for i in range(1, len(headers)):
-            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
-        table.setSortingEnabled(True)
-        return table
 
     def create_theme_grid(self, layout: QGridLayout):
         """Creates and populates the theme selection grid."""
@@ -1467,7 +1444,7 @@ class SimpleWindow(QMainWindow):
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
-        """Updates the UI once a hotkey has been captured by the worker."""
+        """Updates the UI once a hotkey has been captured by the worker. This is the callback for the HotkeyCaptureWorker."""
         is_valid = True
         if '+' in hotkey:
             parts = hotkey.split('+')
@@ -1491,10 +1468,7 @@ class SimpleWindow(QMainWindow):
 
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
-        # Unhook the temporary capture listener and re-register only the saved hotkeys.
-        # This is the most reliable way to clear the keyboard library's internal state.
         self.register_all_message_hotkeys()
-
     def load_message_hotkeys(self):
         """Loads hotkeys from settings and populates the table."""
         self.msg_hotkey_table.setRowCount(0)
@@ -1504,6 +1478,7 @@ class SimpleWindow(QMainWindow):
             self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
             self.msg_hotkey_table.setItem(row_position, 1, QTableWidgetItem(message))
         self.register_all_message_hotkeys()
+
 
     def add_message_hotkey(self):
         """Adds a new hotkey and message to the list."""
@@ -1559,16 +1534,15 @@ class SimpleWindow(QMainWindow):
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
             if hotkey_to_delete in self.message_hotkeys:
-                # Unhook only the specific hotkey to avoid side effects
-                keyboard.remove_hotkey(hotkey_to_delete)
                 del self.message_hotkeys[hotkey_to_delete]
                 self.save_settings()
-                # Just remove the row from the table, no need to reload everything
-                self.msg_hotkey_table.removeRow(selected_items[0].row())
+                self.load_message_hotkeys() # Reload and re-register all
 
     def register_all_message_hotkeys(self):
         """Registers all loaded hotkeys with the keyboard listener."""
         keyboard.unhook_all() # Clear previous hooks
+        # Re-register global hotkeys
+        keyboard.add_hotkey('f5', self.toggle_automation)
         # Use a copy of the items to avoid issues if the dict is modified elsewhere.
         for hotkey, message in self.message_hotkeys.items():
             # Create a closure to capture the correct message and hotkey for the callback.
@@ -1776,6 +1750,37 @@ if __name__ == "__main__":
         
         layout.setRowStretch(row + 1, 1)
         layout.setColumnStretch(col + 1, 1)
+
+    def on_main_tab_selected(self, index: int):
+        """Handles logic when a main tab is selected."""
+        self.stacked_widget.setCurrentIndex(index)
+        # Lazy load item data only when the "Items" tab is first clicked
+        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
+            self.switch_items_sub_tab(0) # This will trigger the data load
+        elif self.tab_names[index] == "Lobbies":
+            self.refresh_lobbies()
+        elif self.tab_names[index] == "Recipes" and not self.item_database.recipes_data:
+            self.item_database.load_recipes()
+            self.filter_recipes_list()
+        elif self.tab_names[index] == "Automation":
+            self.load_message_hotkeys()
+
+    def _create_item_table(self, headers: list) -> QTableWidget:
+        """Factory function to create and configure an item table."""
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Item name
+        for i in range(1, len(headers)):
+            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        table.setSortingEnabled(True)
+        return table
+
+
+
+
 
 
     def mousePressEvent(self, event: QMouseEvent):
