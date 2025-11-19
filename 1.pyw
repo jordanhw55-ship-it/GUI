@@ -1469,12 +1469,27 @@ class SimpleWindow(QMainWindow):
 
     def on_hotkey_captured(self, hotkey: str):
         """Updates the UI once a hotkey has been captured by the worker."""
+        is_valid = True
+        if '+' in hotkey:
+            parts = hotkey.split('+')
+            # For a combination like "ctrl+shift+a", all parts except the last must be modifiers.
+            # This prevents combinations like "a+b" or "2+3".
+            for part in parts[:-1]:
+                if part.strip().lower() not in keyboard.all_modifiers:
+                    is_valid = False
+                    break
+
         # Re-enable the message box now that capture is complete
         self.message_edit.setEnabled(True)
-        if hotkey == 'esc':
+
+        if not is_valid:
+            QMessageBox.warning(self, "Invalid Hotkey", f"The hotkey '{hotkey}' is not a valid combination. Please use a single key or modifier combinations (e.g., Ctrl+C).")
+            self.hotkey_capture_btn.setText("Click to set")
+        elif hotkey == 'esc':
             self.hotkey_capture_btn.setText("Click to set")
         else:
             self.hotkey_capture_btn.setText(hotkey)
+
         self.hotkey_capture_btn.setEnabled(True)
         self.capture_thread.quit()
         # Unhook the temporary capture listener and re-register only the saved hotkeys.
