@@ -529,7 +529,8 @@ class SimpleWindow(QMainWindow):
         self.in_progress_recipes_list = QListWidget()
         self.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
         recipes_top_layout.addLayout(recipes_list_layout); recipes_top_layout.addLayout(add_remove_layout); recipes_top_layout.addWidget(self.in_progress_recipes_list)
-        recipes_main_layout.addLayout(recipes_top_layout)
+        # Add top layout with a smaller stretch factor (1)
+        recipes_main_layout.addLayout(recipes_top_layout, 1)
         self.materials_table = QTableWidget()
         self.materials_table.setColumnCount(5)
         self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
@@ -538,7 +539,8 @@ class SimpleWindow(QMainWindow):
         self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.materials_table.setSortingEnabled(True)
         self.materials_table.itemChanged.connect(self.on_material_checked)
-        recipes_main_layout.addWidget(self.materials_table)
+        # Add materials table with a larger stretch factor (3)
+        recipes_main_layout.addWidget(self.materials_table, 3)
         self.stacked_widget.addWidget(recipes_tab_content)
 
         # Automation tab
@@ -632,12 +634,15 @@ class SimpleWindow(QMainWindow):
         add_watchlist_button = QPushButton("Add"); add_watchlist_button.clicked.connect(self.add_to_watchlist)
         watchlist_controls_layout.addWidget(add_watchlist_button)
         remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
-        watchlist_controls_layout.addWidget(remove_watchlist_button)
-
-        self.sound_select_dropdown = QComboBox()
-        self.sound_select_dropdown.addItems(["Ping 1", "Ping 2", "Ping 3"])
-        watchlist_controls_layout.addWidget(self.sound_select_dropdown)
-        watchlist_controls_layout.addStretch()
+        watchlist_controls_layout.addWidget(remove_watchlist_button); watchlist_controls_layout.addStretch()
+        
+        # Add the new checkbox and dropdown
+        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
+        test_sound_button = QPushButton("Test Sound")
+        test_sound_button.clicked.connect(self.play_notification_sound)
+        sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
+        watchlist_controls_layout.addLayout(sound_layout)
+        self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
 
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
@@ -776,17 +781,6 @@ class SimpleWindow(QMainWindow):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
-        # Apply specific styling to the sound dropdown to prevent selection highlighting
-        accent_color = "#FF7F50" # Default for Black/Orange
-        if theme['name'] == "White/Pink": accent_color = "#DB7093"
-        elif theme['name'] == "Black/Blue": accent_color = "#4682B4"
-        elif theme['name'] == "White/Blue": accent_color = "#4682B4"
-        self.sound_select_dropdown.setStyleSheet(f"""
-            QComboBox#SoundSelect QAbstractItemView {{
-                selection-background-color: {accent_color};
-            }}
-        """)
-
     # Custom theme builder
     def build_custom_stylesheet(self) -> str:
         bg = self.custom_theme["bg"]
@@ -843,20 +837,6 @@ class SimpleWindow(QMainWindow):
             border: 1px solid {fg};
             background-color: {bg};
         }}
-        QComboBox#SoundSelect {{
-            border: 1px solid {fg};
-            background-color: {bg};
-        }}
-        QComboBox#SoundSelect {{
-            border: 1px solid {fg};
-            background-color: {bg};
-            color: {fg};
-        }}
-        QComboBox#SoundSelect QAbstractItemView {{
-            background-color: {bg};
-            color: {fg};
-            selection-background-color: {accent};
-        }}
         """
 
     def apply_custom_theme(self):
@@ -884,14 +864,6 @@ class SimpleWindow(QMainWindow):
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        
-        # Also apply specific styling to the sound dropdown to prevent selection highlighting
-        self.sound_select_dropdown.setStyleSheet(f"""
-            QComboBox#SoundSelect QAbstractItemView {{
-                selection-background-color: {self.custom_theme['accent']};
-                selection-color: {self.custom_theme['bg']};
-            }}
-        """)
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
