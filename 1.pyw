@@ -558,7 +558,9 @@ class SimpleWindow(QMainWindow):
 
         automation_keys_group.setLayout(automation_grid); left_layout.addWidget(automation_keys_group)
         self.start_automation_btn = QPushButton("Start (F5)"); self.start_automation_btn.clicked.connect(self.toggle_automation)
+        reset_automation_btn = QPushButton("Reset Automation"); reset_automation_btn.clicked.connect(self.reset_automation_settings)
         left_layout.addWidget(self.start_automation_btn)
+        left_layout.addWidget(reset_automation_btn)
         interval_note = QLabel("Intervals are in ms. Example: 500 = 0.5s"); left_layout.addWidget(interval_note); left_layout.addStretch()
 
         # Placeholder right panel (message hotkeys section left as-is)
@@ -1559,6 +1561,19 @@ class SimpleWindow(QMainWindow):
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
 
+    def reset_automation_settings(self):
+        """Resets all automation settings in the UI to their defaults."""
+        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all automation settings to their defaults?")
+        if confirm == QMessageBox.StandardButton.Yes:
+            # Reset key automation
+            for key, ctrls in self.automation_key_ctrls.items():
+                ctrls["chk"].setChecked(False)
+                default_interval = "15000" if key == "Complete Quest" else "500"
+                ctrls["edit"].setText(default_interval)
+            # Reset custom action
+            self.custom_action_btn.setChecked(False)
+            self.custom_action_edit1.setText("30000")
+            self.custom_action_edit2.setText("-save x")
     def register_global_hotkeys(self):
         """Registers all hotkeys, including global controls and custom messages."""
         keyboard.unhook_all()
