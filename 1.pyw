@@ -96,9 +96,15 @@ FOREST_STYLE = """
         font-size: 14px;
         outline: none;
     }
-    QMainWindow, #CustomTitleBar { background-color: #1F1F1F; }
-    #CustomTitleBar QLabel { color: #EAEAEA; }
-    #CustomTitleBar QPushButton:hover { background-color: #4682B4; } /* SteelBlue */
+    QMainWindow { background-color: #1F1F1F; }
+    #CustomTitleBar { background-color: #1F1F1F; }
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
+        color: #EAEAEA;
+        background-color: transparent;
+    }
+    #CustomTitleBar QPushButton:hover {
+        background-color: #4682B4; /* SteelBlue */
+    }
     QPushButton {
         background-color: #1E90FF; /* DodgerBlue */
         border: 1px solid #4169E1; /* RoyalBlue */
@@ -117,9 +123,15 @@ OCEAN_STYLE = """
         font-size: 14px;
         outline: none;
     }
-    QMainWindow, #CustomTitleBar { background-color: #ADD8E6; } /* Light Blue */
-    #CustomTitleBar QLabel { color: #000080; }
-    #CustomTitleBar QPushButton:hover { background-color: #87CEFA; } /* LightSkyBlue */
+    QMainWindow { background-color: #ADD8E6; }
+    #CustomTitleBar { background-color: #ADD8E6; } /* Light Blue */
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
+        color: #000080; /* Navy */
+        background-color: transparent;
+    }
+    #CustomTitleBar QPushButton:hover {
+        background-color: #87CEFA; /* LightSkyBlue */
+    }
     QPushButton {
         background-color: #87CEEB; /* SkyBlue */
         border: 1px solid #4682B4; /* SteelBlue */
