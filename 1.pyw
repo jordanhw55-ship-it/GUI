@@ -759,8 +759,8 @@ class SimpleWindow(QMainWindow):
 
         self.items_stacked_widget.setCurrentIndex(index)
         
-        # Show search box for all except Vendor tab (index 3)
-        self.items_search_box.setVisible(index != 3)
+        # Show search box for all item tabs
+        self.items_search_box.setVisible(True)
 
         # Lazy load data
         if index == 0 and not self.item_database.all_items_data:
