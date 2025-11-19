@@ -4,7 +4,7 @@ import json
 import os
 import re
 from datetime import datetime
-from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem
+from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem, QMenu
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor
@@ -300,6 +300,31 @@ class LobbyFetcher(QObject):
         except requests.exceptions.RequestException as e:
             self.error.emit(f"Network error: {e}")
 
+class AutomationWorker(QObject):
+    """Worker to perform automation tasks in a separate thread."""
+    finished = Signal()
+    error = Signal(str)
+
+    def __init__(self, game_title: str, action: str, message: str = ""):
+        super().__init__()
+        self.game_title = game_title
+        self.action = action
+        self.message = message
+
+    def run(self):
+        """Finds the game window and performs the action."""
+        try:
+            hwnd = win32gui.FindWindow(None, self.game_title)
+            if hwnd == 0:
+                # Don't emit an error for every single timer tick
+                print(f"'{self.game_title}' window not found.")
+                return
+
+            pyautogui.press('enter')
+            pyautogui.write(self.message if self.action == "chat" else self.action, interval=0.05)
+            pyautogui.press('enter')
+        finally:
+            self.finished.emit()
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -325,6 +350,7 @@ class SimpleWindow(QMainWindow):
         self.character_path = ""
         self.previous_watched_lobbies = set()
         self.theme_previews = []
+        self.game_title = "Warcraft III" # Configurable game window title
 
         self.themes = [
             {
@@ -749,18 +775,56 @@ class SimpleWindow(QMainWindow):
         self.refresh_timer.timeout.connect(self.refresh_lobbies)
         self.refresh_timer.start()
 
+    def _run_automation_action(self, action, message=""):
+        """Helper to run a single automation task in a thread."""
+        # This worker will be short-lived and clean itself up.
+        worker = AutomationWorker(self.game_title, action, message)
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
             self.start_automation_btn.setText("Stop (F5)")
             self.start_automation_btn.setStyleSheet("background-color: #B00000;") # Red for running
-            # Logic to start timers would go here
             print("Automation Started")
+
+            # Iterate through key automations
+            for key, ctrls in self.automation_key_ctrls.items():
+                if ctrls["btn"].isChecked():
+                    try:
+                        interval = int(ctrls["edit"].text())
+                        timer = QTimer(self)
+                        action = f"-{key}" if key != "Complete Quest" else "-c quest"
+                        timer.timeout.connect(lambda act=action: self._run_automation_action(act))
+                        timer.start(interval)
+                        self.automation_timers[key] = timer
+                    except ValueError:
+                        print(f"Invalid interval for '{key}'. Must be an integer.")
+
+            # Handle Custom Action
+            if self.custom_action_btn.isChecked():
+                try:
+                    interval = int(self.custom_action_edit1.text())
+                    message = self.custom_action_edit2.text()
+                    timer = QTimer(self)
+                    timer.timeout.connect(lambda msg=message: self._run_automation_action("chat", msg))
+                    timer.start(interval)
+                    self.automation_timers["custom"] = timer
+                except ValueError:
+                    print("Invalid interval for 'Custom Action'. Must be an integer.")
         else:
             self.start_automation_btn.setText("Start (F5)")
-            # Reset to theme color
             self.start_automation_btn.setStyleSheet("")
-            # Logic to stop timers would go here
+            for timer in self.automation_timers.values():
+                timer.stop()
+                timer.deleteLater()
+            self.automation_timers.clear()
             print("Automation Stopped")
 
     def on_main_tab_selected(self, index: int):
