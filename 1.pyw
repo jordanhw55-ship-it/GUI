@@ -68,6 +68,7 @@ LIGHT_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         background-color: transparent;
         color: #000000;
+        border: none;
         font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
@@ -101,6 +102,7 @@ FOREST_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         color: #EAEAEA;
         background-color: transparent;
+        border: none;
         font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
@@ -129,6 +131,7 @@ OCEAN_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         color: #000080; /* Navy */
         background-color: transparent;
+        border: none;
         font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
