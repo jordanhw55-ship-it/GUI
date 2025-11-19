@@ -41,9 +41,11 @@ DARK_STYLE = """
         background-color: #FFA64D;
     }
     QPushButton {
+        background-color: #FF7F50; /* Coral */
         border: 1px solid #444444;
         padding: 5px;
         border-radius: 6px;
+        color: #000000; /* Black text for better contrast on orange */
     }
     QHeaderView::section {
         background-color: #1F1F1F;
