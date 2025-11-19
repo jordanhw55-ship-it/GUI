@@ -638,11 +638,15 @@ class SimpleWindow(QMainWindow):
         
         # Add the three new placeholder boxes
         new_boxes_layout = QHBoxLayout()
-        new_boxes_layout.addWidget(QPushButton("Box 1"))
-        new_boxes_layout.addWidget(QPushButton("Box 2"))
-        new_boxes_layout.addWidget(QPushButton("Box 3"))
+        ping1_btn = QPushButton("Ping 1"); ping1_btn.clicked.connect(lambda: self.play_specific_sound("ping1.mp3"))
+        ping2_btn = QPushButton("Ping 2"); ping2_btn.clicked.connect(lambda: self.play_specific_sound("ping2.mp3"))
+        ping3_btn = QPushButton("Ping 3"); ping3_btn.clicked.connect(lambda: self.play_specific_sound("ping3.mp3"))
+        new_boxes_layout.addWidget(ping1_btn)
+        new_boxes_layout.addWidget(ping2_btn)
+        new_boxes_layout.addWidget(ping3_btn)
         watchlist_controls_layout.addLayout(new_boxes_layout)
 
+        # Add the sound controls
         self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
         test_sound_button = QPushButton("Test Sound")
         test_sound_button.clicked.connect(self.play_notification_sound)
@@ -1666,6 +1670,20 @@ class SimpleWindow(QMainWindow):
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
+
+    def play_specific_sound(self, sound_file: str):
+        """Plays a specific sound file from the contents/sounds directory."""
+        try:
+            sound_file_path = os.path.join(get_base_path(), "contents", "sounds", sound_file)
+            if os.path.exists(sound_file_path):
+                self.player.setSource(QUrl.fromLocalFile(sound_file_path))
+                self.player.play()
+            else:
+                print(f"Sound file not found: {sound_file_path}")
+                QApplication.beep()
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+            QApplication.beep()
 
     def play_notification_sound(self):
         """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
