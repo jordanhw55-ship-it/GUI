@@ -32,12 +32,12 @@ DARK_STYLE = """
         background-color: transparent;
         border: none;
         color: #F0F0F0;
+        font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
         background-color: #FFA64D;
     }
     QPushButton {
-        background-color: #FF7F50;
         border: 1px solid #444444;
         padding: 5px;
         border-radius: 6px;
@@ -101,6 +101,7 @@ FOREST_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         color: #EAEAEA;
         background-color: transparent;
+        font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
         background-color: #4682B4; /* SteelBlue */
@@ -128,6 +129,7 @@ OCEAN_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         color: #000080; /* Navy */
         background-color: transparent;
+        font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
         background-color: #87CEFA; /* LightSkyBlue */
@@ -702,6 +704,7 @@ class CustomTabBar(QWidget):
                     padding: 8px;
                     border-radius: 6px;
                     color: #F0F0F0;
+                    font-size: 16px;
                 }
                 QPushButton:hover {
                     background-color: #FFA64D;
