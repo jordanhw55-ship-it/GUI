@@ -543,6 +543,7 @@ class SimpleWindow(QMainWindow):
         self.materials_table.setColumnCount(5) # Add a hidden column for sorting
         self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
         self.materials_table.setColumnHidden(4, True) # Hide the 'Checked' column
+        self.materials_table.verticalHeader().setVisible(False) # Hide row numbers
         self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.materials_table.setSortingEnabled(True)
         self.materials_table.itemChanged.connect(self.on_material_checked)
