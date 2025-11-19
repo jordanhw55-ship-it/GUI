@@ -63,11 +63,11 @@ LIGHT_STYLE = """
         background-color: #ECEFF4;
     }
     #CustomTitleBar {
-        background-color: #C11C84;
+        background-color: #FFFFFF;
     }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton {
         background-color: transparent;
-        color: #FFFFFF;
+        color: #000000;
         font-size: 16px;
     }
     #CustomTitleBar QPushButton:hover {
