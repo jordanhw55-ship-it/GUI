@@ -1525,6 +1525,9 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys[new_hotkey] = new_message
         self.save_settings()
         self.load_message_hotkeys()
+        # Reset input fields after update
+        self.hotkey_capture_btn.setText("Click to set")
+        self.message_edit.clear()
 
     def delete_message_hotkey(self):
         """Deletes the selected hotkey."""
