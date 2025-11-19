@@ -369,6 +369,7 @@ class SimpleWindow(QMainWindow):
         # Automation state flags
         self.automation_timers = {}
         self.is_automation_running = False
+        self.automation_settings = {} # To hold loaded settings
         self.custom_action_running = False
 
         self.is_fetching_lobbies = False # Add a flag to prevent concurrent refreshes
@@ -536,6 +537,9 @@ class SimpleWindow(QMainWindow):
         automation_main_layout.addWidget(left_panel, 1)
         automation_main_layout.addWidget(msg_hotkey_group, 1)
         self.stacked_widget.addWidget(automation_tab_content)
+
+        # Apply loaded automation settings after UI is created
+        self.apply_automation_settings()
 
         # Hotkey tab placeholder
         hotkey_tab_content = QWidget()
@@ -835,6 +839,7 @@ class SimpleWindow(QMainWindow):
                     self.character_path = settings.get("character_path", "")
                     self.message_hotkeys = settings.get("message_hotkeys", {})
                     self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
+                    self.automation_settings = settings.get("automation", {})
                     self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
@@ -842,6 +847,27 @@ class SimpleWindow(QMainWindow):
             self.message_hotkeys = {}
             self.custom_theme_enabled = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
+            self.automation_settings = {}
+
+    def apply_automation_settings(self):
+        """Applies loaded automation settings to the UI controls."""
+        if not self.automation_settings:
+            return
+
+        key_settings = self.automation_settings.get("keys", {})
+        for key, settings in key_settings.items():
+            if key in self.automation_key_ctrls:
+                self.automation_key_ctrls[key]["chk"].setChecked(settings.get("checked", False))
+                self.automation_key_ctrls[key]["edit"].setText(settings.get("interval", "500"))
+
+        custom_settings = self.automation_settings.get("custom", {})
+        if custom_settings:
+            self.custom_action_btn.setChecked(custom_settings.get("checked", False))
+            self.custom_action_edit1.setText(custom_settings.get("interval", "30000"))
+            self.custom_action_edit2.setText(custom_settings.get("message", "-save x"))
+
+
+
 
     def load_saved_recipes(self):
         """Loads and populates the in-progress recipes from settings."""
@@ -862,7 +888,18 @@ class SimpleWindow(QMainWindow):
             "message_hotkeys": self.message_hotkeys,
             "custom_theme_enabled": self.custom_theme_enabled,
             "custom_theme": self.custom_theme,
-            "in_progress_recipes": [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())]
+            "in_progress_recipes": [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())],
+            "automation": {
+                "keys": {
+                    key: {"checked": ctrls["chk"].isChecked(), "interval": ctrls["edit"].text()}
+                    for key, ctrls in self.automation_key_ctrls.items()
+                },
+                "custom": {
+                    "checked": self.custom_action_btn.isChecked(),
+                    "interval": self.custom_action_edit1.text(),
+                    "message": self.custom_action_edit2.text()
+                }
+            }
         }
         with open(settings_path, 'w') as f:
             json.dump(settings, f, indent=4)
