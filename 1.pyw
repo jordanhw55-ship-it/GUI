@@ -15,11 +15,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 
+import keyboard   # type: ignore
 import pyautogui  # type: ignore
 import win32gui   # type: ignore
 
 
-DARK_STYLE = """ 
+DARK_STYLE = """
     /* Black/Orange Theme */
     QWidget {
         background-color: #121212;
@@ -220,6 +221,42 @@ class LobbyFetcher(QObject):
         except requests.exceptions.RequestException as e:
             self.error.emit(f"Network error: {e}")
 
+
+class HotkeyCaptureWorker(QObject):
+    """Runs in a separate thread to capture a hotkey without freezing the GUI."""
+    hotkey_captured = Signal(str)
+    def run(self):
+        try:
+            # Capture a single hotkey string, suppress so it doesn't leak into GUI
+            hotkey = keyboard.read_hotkey(suppress=True)
+            self.hotkey_captured.emit(hotkey)
+        except Exception as e:
+            print(f"Error capturing hotkey: {e}")
+
+
+class ChatMessageWorker(QObject):
+    """Runs in a separate thread to send a chat message without freezing the GUI."""
+    finished = Signal()
+    error = Signal(str)
+    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+        super().__init__()
+        self.game_title = game_title
+        self.hotkey_pressed = hotkey_pressed
+        self.message = message
+    def run(self):
+        try:
+            hwnd = win32gui.FindWindow(None, self.game_title)
+            if hwnd == 0:
+                self.error.emit(f"Window '{self.game_title}' not found")
+                return
+            # No need to set foreground, pyautogui handles it
+            pyautogui.press('enter')
+            pyautogui.write(self.message, interval=0.01)
+            pyautogui.press('enter')
+        except Exception as e:
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -534,6 +571,23 @@ class SimpleWindow(QMainWindow):
         self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         right_layout.addWidget(self.msg_hotkey_table)
 
+        msg_form_layout = QGridLayout()
+        msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0)
+        self.hotkey_capture_btn = QPushButton("Click to set")
+        self.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
+        msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1)
+        msg_form_layout.addWidget(QLabel("Message:"), 1, 0)
+        self.message_edit = QLineEdit()
+        msg_form_layout.addWidget(self.message_edit, 1, 1)
+        right_layout.addLayout(msg_form_layout)
+
+        msg_btn_layout = QHBoxLayout()
+        self.add_msg_btn = QPushButton("Add"); self.add_msg_btn.clicked.connect(self.add_message_hotkey)
+        self.update_msg_btn = QPushButton("Update"); self.update_msg_btn.clicked.connect(self.update_message_hotkey)
+        self.delete_msg_btn = QPushButton("Delete"); self.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
+        msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn)
+        right_layout.addLayout(msg_btn_layout)
+
         automation_main_layout.addWidget(left_panel, 1)
         automation_main_layout.addWidget(msg_hotkey_group, 1)
         self.stacked_widget.addWidget(automation_tab_content)
@@ -644,6 +698,9 @@ class SimpleWindow(QMainWindow):
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
         self.load_saved_recipes()
+
+        # Register global hotkeys (F5 for automation, etc.)
+        self.register_global_hotkeys()
 
     # Core helpers
     def _create_item_table(self, headers: list) -> QTableWidget:
@@ -828,6 +885,158 @@ class SimpleWindow(QMainWindow):
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
 
     # Settings
+    def capture_message_hotkey(self):
+        """Starts a worker thread to capture a key combination."""
+        self.message_edit.setEnabled(False)
+        self.hotkey_capture_btn.setText("[Press a key...]")
+        self.hotkey_capture_btn.setEnabled(False)
+
+        # Unhook all keyboard listeners to ensure a clean capture
+        keyboard.unhook_all()
+
+        self.capture_thread = QThread()
+        self.capture_worker = HotkeyCaptureWorker()
+        self.capture_worker.moveToThread(self.capture_thread)
+        self.capture_thread.started.connect(self.capture_worker.run)
+        self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
+        self.capture_thread.start()
+
+    def on_hotkey_captured(self, hotkey: str):
+        """Handles the captured hotkey string from the worker."""
+        is_valid = True
+        if '+' in hotkey:
+            parts = hotkey.split('+')
+            # Ensure modifiers are valid and not something like "2+3"
+            for part in parts[:-1]:
+                if part.strip().lower() not in keyboard.all_modifiers:
+                    is_valid = False
+                    break
+
+        self.message_edit.setEnabled(True)
+
+        if not is_valid or hotkey == 'esc':
+            self.hotkey_capture_btn.setText("Click to set")
+        else:
+            self.hotkey_capture_btn.setText(hotkey)
+        
+        self.hotkey_capture_btn.setEnabled(True)
+
+        # Stop the capture thread and re-register all hotkeys
+        self.capture_thread.quit()
+        self.capture_thread.wait()
+        self.register_global_hotkeys()
+
+    def load_message_hotkeys(self):
+        """Populates the hotkey table from the loaded settings."""
+        self.msg_hotkey_table.setRowCount(0)
+        if not isinstance(self.message_hotkeys, dict):
+            self.message_hotkeys = {}
+        for hotkey, message in self.message_hotkeys.items():
+            row_position = self.msg_hotkey_table.rowCount()
+            self.msg_hotkey_table.insertRow(row_position)
+            self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
+            self.msg_hot_table.setItem(row_position, 1, QTableWidgetItem(message))
+
+    def add_message_hotkey(self):
+        """Adds a new hotkey and message to the system."""
+        hotkey = self.hotkey_capture_btn.text()
+        message = self.message_edit.text()
+
+        if hotkey == "Click to set" or not message:
+            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
+            return
+        if hotkey in self.message_hotkeys:
+            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
+            return
+
+        self.message_hotkeys[hotkey] = message
+        self.load_message_hotkeys()
+        self.register_global_hotkeys() # Re-register all to include the new one
+
+        # Reset UI
+        self.hotkey_capture_btn.setText("Click to set")
+        self.message_edit.clear()
+
+    def update_message_hotkey(self):
+        """Updates an existing hotkey."""
+        selected_items = self.msg_hotkey_table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to update.")
+            return
+        
+        selected_row = selected_items[0].row()
+        old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
+
+        new_hotkey = self.hotkey_capture_btn.text()
+        new_message = self.message_edit.text()
+
+        if new_hotkey == "Click to set" or not new_message:
+            QMessageBox.warning(self, "Input Error", "Please set a new hotkey and enter a message.")
+            return
+        if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
+            QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
+            return
+
+        # Update the dictionary
+        self.message_hotkeys.pop(old_hotkey, None)
+        self.message_hotkeys[new_hotkey] = new_message
+        
+        self.load_message_hotkeys()
+        self.register_global_hotkeys() # Re-register all
+
+        # Reset UI
+        self.hotkey_capture_btn.setText("Click to set")
+        self.message_edit.clear()
+
+    def delete_message_hotkey(self):
+        """Deletes a selected hotkey."""
+        selected_items = self.msg_hotkey_table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
+            return
+        
+        selected_row = selected_items[0].row()
+        hotkey_to_delete = self.msg_hotkey_table.item(selected_row, 0).text()
+
+        confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
+        if confirm == QMessageBox.StandardButton.Yes:
+            self.message_hotkeys.pop(hotkey_to_delete, None)
+            self.msg_hotkey_table.removeRow(selected_row)
+            self.register_global_hotkeys() # Re-register to remove the deleted one
+
+            # Reset UI
+            self.hotkey_capture_btn.setText("Click to set")
+            self.message_edit.clear()
+
+    def send_chat_message(self, hotkey_pressed: str, message: str):
+        """Sends a chat message if the game is active, otherwise passes the keypress through."""
+        try:
+            game_hwnd = win32gui.FindWindow(None, self.game_title)
+            is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
+        except Exception:
+            is_game_active = False
+
+        if not is_game_active:
+            try: keyboard.send(hotkey_pressed)
+            except Exception: pass
+            return
+
+        if self.is_sending_message: return
+        self.is_sending_message = True
+
+        worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(lambda: self.cleanup_chat_thread(thread, worker))
+        worker.error.connect(lambda e: self.cleanup_chat_thread(thread, worker))
+        thread.start()
+
+    def cleanup_chat_thread(self, thread: QThread, worker: ChatMessageWorker):
+        self.is_sending_message = False
+        try: worker.deleteLater(); thread.quit(); thread.wait(); thread.deleteLater()
+        except Exception: pass
+
     def load_settings(self):
         """Loads settings from a JSON file."""
         settings_path = os.path.join(get_base_path(), "settings.json")
@@ -1249,15 +1458,29 @@ class SimpleWindow(QMainWindow):
         elif tab_name == "Lobbies":
             self.refresh_lobbies() # Refresh when tab is viewed
         elif tab_name == "Recipes":
-            self.filter_recipes_list() # Ensure recipe list is populated
+            if not self.item_database.recipes_data: self.item_database.load_recipes()
+            self.filter_recipes_list()
             self._rebuild_materials_table() # Rebuild materials when tab is viewed
+        elif tab_name == "Automation":
+            self.load_message_hotkeys()
 
     # --- Automation: AHK-style behavior ---
     def pause_all_automation(self):
+        # Unhook message hotkeys temporarily to prevent them from firing
+        for hk, hk_id in list(self.hotkey_ids.items()):
+            if hk not in ['f5']: # Keep global toggle active
+                try: keyboard.remove_hotkey(hk_id)
+                except Exception: pass
+
         for timer in self.automation_timers.values():
             timer.stop()
 
     def resume_all_automation(self):
+        # Re-register message hotkeys
+        for hotkey, message in self.message_hotkeys.items():
+            if hotkey not in self.hotkey_ids:
+                self.register_single_hotkey(hotkey, message)
+
         for timer in self.automation_timers.values():
             timer.start()
 
@@ -1333,6 +1556,30 @@ class SimpleWindow(QMainWindow):
                 timer.stop(); timer.deleteLater()
             self.automation_timers.clear()
 
+    def register_global_hotkeys(self):
+        """Registers all hotkeys, including global controls and custom messages."""
+        keyboard.unhook_all()
+        self.hotkey_ids.clear()
+
+        # Register global F5 for automation toggle
+        try:
+            f5_id = keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
+            self.hotkey_ids['f5'] = f5_id
+        except Exception as e:
+            print(f"Failed to register F5 hotkey: {e}")
+
+        # Register all custom message hotkeys
+        for hotkey, message in self.message_hotkeys.items():
+            self.register_single_hotkey(hotkey, message)
+
+    def register_single_hotkey(self, hotkey: str, message: str):
+        """Helper to register a single message hotkey."""
+        try:
+            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=True)
+            self.hotkey_ids[hotkey] = hk_id
+        except (ValueError, ImportError) as e:
+            print(f"Failed to register hotkey '{hotkey}': {e}")
+
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.save_settings() # Save all settings on exit
@@ -1342,6 +1589,7 @@ class SimpleWindow(QMainWindow):
             self.automation_timers.clear()
         except Exception:
             pass
+        keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
 
