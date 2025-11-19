@@ -391,7 +391,7 @@ class SimpleWindow(QMainWindow):
         self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}       # {hotkey_str: message_str}
-        self.watchlist = ["legion", "hellgate"] # Default, will be overwritten by load_settings
+        self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
 
 
         self.setWindowTitle("Hellfire Helper")
@@ -879,13 +879,14 @@ class SimpleWindow(QMainWindow):
         self.custom_theme_enabled = False
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
-        self.custom_tab_bar._on_button_clicked(0) # type: ignore
-        self.watchlist = self.load_watchlist()
+        self.custom_tab_bar._on_button_clicked(0)  # type: ignore
+        self.watchlist = ["hellfire", "rpg"]
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
 
     # Settings
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
+
         self.message_edit.setEnabled(False)
         self.hotkey_capture_btn.setText("[Press a key...]")
         self.hotkey_capture_btn.setEnabled(False)
@@ -1049,7 +1050,7 @@ class SimpleWindow(QMainWindow):
                     self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
                     self.automation_settings = settings.get("automation", {})
                     self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
-                    self.watchlist = settings.get("watchlist", ["legion", "hellgate"])
+                    self.watchlist = settings.get("watchlist", ["hellfire", "rpg"])
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
             self.character_path = ""
@@ -1057,7 +1058,7 @@ class SimpleWindow(QMainWindow):
             self.custom_theme_enabled = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
             self.automation_settings = {}
-            self.watchlist = ["legion", "hellgate"]
+            self.watchlist = ["hellfire", "rpg"]
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
