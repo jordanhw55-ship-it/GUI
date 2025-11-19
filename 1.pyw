@@ -1533,23 +1533,6 @@ class SimpleWindow(QMainWindow):
                 for col in range(self.lobbies_table.columnCount()):
                     self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
         self.lobbies_table.setSortingEnabled(True)
-
-    # Tab select logic
-    def on_main_tab_selected(self, index: int):
-        self.stacked_widget.setCurrentIndex(index)
-        tab_name = self.tab_names[index]
-        if tab_name == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0) # Lazy load
-        elif tab_name == "Lobbies":
-            self.refresh_lobbies() # Refresh when tab is viewed
-        elif tab_name == "Recipes":
-            if not self.item_database.recipes_data: self.item_database.load_recipes()
-            self.filter_recipes_list()
-            self._rebuild_materials_table() # Rebuild materials when tab is viewed
-        elif tab_name == "Automation":
-            self.load_message_hotkeys()
-
-    # --- Automation: AHK-style behavior ---
     def pause_all_automation(self):
         # Unhook message hotkeys temporarily to prevent them from firing
         for hk, hk_id in list(self.hotkey_ids.items()):
