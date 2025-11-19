@@ -1446,6 +1446,7 @@ class SimpleWindow(QMainWindow):
 
     def capture_message_hotkey(self):
         """Initiates the process of capturing a new hotkey."""
+        self.hotkey_capture_btn.setFocus() # Move focus away from the message box
         self.hotkey_capture_btn.setText("[Press a key...]")
         self.hotkey_capture_btn.setEnabled(False)
 
