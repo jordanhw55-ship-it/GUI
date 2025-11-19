@@ -970,12 +970,14 @@ class SimpleWindow(QMainWindow):
         item = QListWidgetItem(recipe_name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Unchecked)
+        # No need to connect a signal here, the list widget's itemChanged handles it
         self.in_progress_recipes_list.addItem(item)
         return True
 
     def remove_recipe_from_progress(self):
         selected_item = self.in_progress_recipes_list.currentItem()
-        if not selected_item: return
+        if not selected_item:
+            return
         recipe_name = selected_item.text()
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
@@ -1014,57 +1016,48 @@ class SimpleWindow(QMainWindow):
 
     def _rebuild_materials_table(self):
         """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
+        # Disconnect signals to prevent loops during update
         self.materials_table.setSortingEnabled(False)
         self.materials_table.itemChanged.disconnect(self.on_material_checked)
         self.materials_table.setRowCount(0)
-
-        checked_recipes = []
-        # Always recalculate all materials based on the current list
-        self.material_list_data.clear()
-        for i in range(self.in_progress_recipes_list.count()):
-            recipe_name = self.in_progress_recipes_list.item(i).text()
-            recipe = self.in_progress_recipes.get(recipe_name)
-            if recipe:
-                for component_str in recipe["components"]:
-                    self._add_component_to_materials(component_str)
-
-        # Filter materials to display based on checked recipes
+        
+        # Determine which recipes to calculate materials for
+        checked_recipe_names = []
         for i in range(self.in_progress_recipes_list.count()):
             item = self.in_progress_recipes_list.item(i)
             if item.checkState() == Qt.CheckState.Checked:
-                checked_recipes.append(item.text())
-
+                checked_recipe_names.append(item.text())
+        
+        # If no recipes are checked, use all recipes in the "In Progress" list
+        target_recipe_names = checked_recipe_names if checked_recipe_names else [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())]
+        
+        # Calculate materials needed for the target recipes
         materials_to_display = {}
-        if checked_recipes:
-            # If specific recipes are checked, calculate materials just for them
-            for recipe_name in checked_recipes:
-                recipe = self.in_progress_recipes.get(recipe_name)
-                if not recipe: continue
-
-                for component_str in recipe["components"]:
-                    match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-                    name, quantity = (match.group(1).strip(), int(match.group(2))) if match else (component_str.strip(), 1)
-
-                    if name in materials_to_display:
-                        materials_to_display[name]["#"] += quantity
-                    else:
-                        # Find drop info from the main item database
-                        drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-                        materials_to_display[name] = {"Material": name, "#": quantity, "Unit": drop_info["Unit"] if drop_info else "?", "Location": drop_info["Location"] if drop_info else "?"}
-        else:
-            # Otherwise, show all materials from the master list
-            materials_to_display = self.material_list_data
-
+        for recipe_name in target_recipe_names:
+            recipe = self.in_progress_recipes.get(recipe_name)
+            if not recipe: continue
+            
+            for component_str in recipe["components"]:
+                match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+                name, quantity = (match.group(1).strip(), int(match.group(2))) if match else (component_str.strip(), 1)
+                
+                if name in materials_to_display:
+                    materials_to_display[name]["#"] += quantity
+                else:
+                    drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
+                    materials_to_display[name] = {"Material": name, "#": quantity, "Unit": drop_info["Unit"] if drop_info else "?", "Location": drop_info["Location"] if drop_info else "?"}
+        
+        # Populate the table
         for row, item_data in enumerate(materials_to_display.values()):
             self.materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
-            material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            material_item.setCheckState(Qt.CheckState.Unchecked)
             self.materials_table.setItem(row, 0, material_item)
             self.materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
             self.materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
             self.materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
             self.materials_table.setItem(row, 4, QTableWidgetItem("0"))
+        
+        # Reconnect signals and enable sorting
         self.materials_table.itemChanged.connect(self.on_material_checked)
         self.materials_table.setSortingEnabled(True)
 
@@ -1085,6 +1078,7 @@ class SimpleWindow(QMainWindow):
     def on_recipe_check_changed(self, item: QListWidgetItem):
         """Called when any recipe's check state changes to rebuild the material list."""
         # This handler is now connected to QListWidget.itemChanged
+        self._rebuild_materials_table()
         self._rebuild_materials_table()
 
     # Character loading
