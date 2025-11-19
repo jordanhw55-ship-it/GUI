@@ -635,7 +635,7 @@ class SimpleWindow(QMainWindow):
         watchlist_controls_layout.addWidget(remove_watchlist_button)
 
         self.sound_select_dropdown = QComboBox()
-        self.sound_select_dropdown.addItems(["Placeholder 1", "Placeholder 2", "Placeholder 3"])
+        self.sound_select_dropdown.addItems(["Ping 1", "Ping 2", "Ping 3"])
         watchlist_controls_layout.addWidget(self.sound_select_dropdown)
         watchlist_controls_layout.addStretch()
 
