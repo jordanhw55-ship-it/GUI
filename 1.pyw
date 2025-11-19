@@ -693,11 +693,12 @@ class CustomTabBar(QWidget):
             self.current_index = index
             self.tab_selected.emit(index)
 
-    def apply_style(self, dark_mode: bool):
+    def apply_style(self, theme_name: str, dark_mode: bool):
         # This method applies specific styling for the buttons within this custom tab bar,
         # including the :checked state, overriding general QPushButton styles if necessary.
-        if dark_mode:
-            self.setStyleSheet(""" 
+        if theme_name == "Black/Orange":
+            # Specific style for Black/Orange
+            self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
                     background-color: #2A2A2C;
                     border: 1px solid #444444;
@@ -715,8 +716,28 @@ class CustomTabBar(QWidget):
                     border-color: #FF7F50;
                 }
             """)
+        elif dark_mode:
+            # Generic style for other dark themes (e.g., Black/Blue)
+            self.setStyleSheet("""
+                QPushButton { /* Tab buttons */
+                    background-color: #2A2A2C;
+                    border: 1px solid #444444;
+                    padding: 8px;
+                    border-radius: 6px;
+                    color: #EAEAEA;
+                    font-size: 16px;
+                }
+                QPushButton:hover {
+                    background-color: #4682B4; /* SteelBlue */
+                }
+                QPushButton:checked {
+                    background-color: #1E90FF; /* DodgerBlue */
+                    color: #EAEAEA;
+                    border-color: #4169E1; /* RoyalBlue */
+                }
+            """)
         else:
-            self.setStyleSheet(""" 
+            self.setStyleSheet("""
                 QPushButton { /* Tab buttons */
                     background-color: #FFC0CB; /* Pink */
                     border: 1px solid #E6A8B8; /* Darker pink border */
