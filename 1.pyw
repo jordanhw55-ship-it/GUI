@@ -1586,9 +1586,18 @@ class SimpleWindow(QMainWindow):
                 # so it can be used in other applications (like this GUI).
                 keyboard.send(hotkey_pressed)
             else:
+                # Forcefully suppress the key by temporarily unhooking all hotkeys
+                # during the message sending process. This prevents the original
+                # key press from reaching the game.
+                keyboard.unhook_all()
+
                 pyautogui.press('enter')
                 pyautogui.write(message, interval=0.01)
                 pyautogui.press('enter')
+
+                # Re-register all hotkeys immediately after sending the message.
+                # A small delay ensures the 'enter' key press is processed first.
+                QTimer.singleShot(50, self.register_all_message_hotkeys)
         except Exception as e:
             print(f"Error sending chat message: {e}")
 
