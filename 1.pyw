@@ -2,13 +2,14 @@ import sys
 import requests
 import json
 import os
+import re
 from datetime import datetime
 from PySide6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem
 from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer
 from typing import List
 from PySide6.QtGui import QMouseEvent, QColor
-import pyautogui
-import win32gui
+import pyautogui # type: ignore
+import win32gui # type: ignore
 
 
 DARK_STYLE = """ 
@@ -150,6 +151,80 @@ OCEAN_STYLE = """
     }
     QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
 """
+
+
+class ItemDatabase:
+    """Handles loading and searching item data from text files."""
+    def __init__(self):
+        self.base_path = os.path.join(os.path.dirname(__file__), "contents")
+        self.all_items_data = []
+        self.drops_data = []
+        self.raid_data = []
+        self.vendor_data = []
+
+    def _clean_item(self, raw_line: str) -> dict:
+        """Parses a raw line of text into an item object."""
+        line = raw_line.strip()
+        if not line:
+            return {}
+        
+        # Regex patterns to match item lines
+        patterns = [
+            r"^\s*\[([^\]]+)\]\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",  # [Tag] Name : X%
+            r"^\s*\[([^\]]+)\]\s*(.+)$",                          # [Tag] Name
+            r"^\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",                  # Name : X%
+        ]
+
+        for i, pattern in enumerate(patterns):
+            match = re.match(pattern, line)
+            if match:
+                if i == 0: return {"type": match.group(1), "name": match.group(2).strip(), "rate": f"{match.group(3)}%"}
+                if i == 1: return {"type": match.group(1), "name": match.group(2).strip(), "rate": ""}
+                if i == 2: return {"name": match.group(1).strip(), "rate": f"{match.group(2)}%"}
+        
+        return {"name": line, "rate": ""} # Fallback
+
+    def _load_item_data_from_folder(self, folder: str) -> list:
+        """Loads all item data from a specific subfolder."""
+        data = []
+        folder_path = os.path.join(self.base_path, folder)
+        if not os.path.isdir(folder_path):
+            return []
+
+        for filename in os.listdir(folder_path):
+            if not filename.endswith(".txt"):
+                continue
+            
+            file_path = os.path.join(folder_path, filename)
+            zone = os.path.splitext(filename)[0]
+            unit = "?"
+
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        
+                        zone_match = re.match(r"^Zone:\s*(.+)", line)
+                        unit_match = re.match(r"^\[Unit\]\s*(.+)", line)
+
+                        if zone_match:
+                            zone = zone_match.group(1).strip()
+                        elif unit_match:
+                            unit = unit_match.group(1).strip()
+                        else:
+                            item_obj = self._clean_item(line)
+                            if item_obj.get("name"):
+                                data.append({
+                                    "Item": item_obj["name"],
+                                    "Drop%": item_obj.get("rate", ""),
+                                    "Unit": unit,
+                                    "Location": zone
+                                })
+            except (IOError, OSError):
+                continue # Skip files that can't be read
+        return data
 
 
 class ThemePreview(QWidget):
@@ -333,13 +408,52 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(load_tab_content)
 
         # --- Create the "Items" tab ---
+        self.item_database = ItemDatabase()
         items_tab_content = QWidget()
-        items_layout = QVBoxLayout(items_tab_content)
-        self.label = QLabel("Hello! Click the button.")
-        items_layout.addWidget(self.label)
-        button = QPushButton("Click Me!")
-        button.clicked.connect(self.on_button_click) # Connect the click event to our method
-        items_layout.addWidget(button)
+        items_main_layout = QVBoxLayout(items_tab_content)
+
+        # Sub-tab and search layout
+        items_controls_layout = QHBoxLayout()
+        self.items_sub_tabs = QWidget()
+        self.items_sub_tabs_layout = QHBoxLayout(self.items_sub_tabs)
+        self.items_sub_tabs_layout.setContentsMargins(0,0,0,0)
+        self.items_sub_tabs_layout.setSpacing(5)
+        
+        self.item_tab_buttons = {}
+        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
+        for i, name in enumerate(item_tab_names):
+            btn = QPushButton(name)
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked, idx=i: self.switch_items_sub_tab(idx))
+            self.item_tab_buttons[i] = btn
+            self.items_sub_tabs_layout.addWidget(btn)
+
+        self.items_search_box = QLineEdit()
+        self.items_search_box.setPlaceholderText("Search...")
+        self.items_search_box.textChanged.connect(self.filter_current_item_view)
+
+        items_controls_layout.addWidget(self.items_sub_tabs)
+        items_controls_layout.addStretch()
+        items_controls_layout.addWidget(self.items_search_box)
+        items_main_layout.addLayout(items_controls_layout)
+
+        # Stacked widget for item tables
+        self.items_stacked_widget = QStackedWidget()
+        items_main_layout.addWidget(self.items_stacked_widget)
+
+        # Create the tables
+        self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.vendor_table = self._create_item_table(["Item", "Unit", "Location"])
+
+        self.items_stacked_widget.addWidget(self.all_items_table)
+        self.items_stacked_widget.addWidget(self.drops_table)
+        self.items_stacked_widget.addWidget(self.raid_items_table)
+        self.items_stacked_widget.addWidget(self.vendor_table)
+
+        self.switch_items_sub_tab(0) # Select "All Items" by default
+
         self.stacked_widget.addWidget(items_tab_content)
 
         # --- Create the "Recipes" tab ---
@@ -442,6 +556,20 @@ class SimpleWindow(QMainWindow):
         self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
+        # --- Finalize Setup ---
+        self.label = QLabel("This is a placeholder label.") # Keep a reference for reset_state
+
+        # Connect tab bar to a method that can handle special loading
+        self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
+
+        # Initial tab selection
+        self.on_main_tab_selected(0)
+
+        # Apply the initial theme and set button text
+        self.apply_theme(self.current_theme_index)
+
+
+
         # Apply the initial theme and set button text
         self.apply_theme(self.current_theme_index)
         self.refresh_lobbies() # Initial data load
@@ -451,6 +579,28 @@ class SimpleWindow(QMainWindow):
         self.refresh_timer.setInterval(30000)  # 30 seconds
         self.refresh_timer.timeout.connect(self.refresh_lobbies)
         self.refresh_timer.start()
+
+    def on_main_tab_selected(self, index: int):
+        """Handles logic when a main tab is selected."""
+        self.stacked_widget.setCurrentIndex(index)
+        # Lazy load item data only when the "Items" tab is first clicked
+        if self.tab_names[index] == "Items" and not self.item_database.all_items_data:
+            self.switch_items_sub_tab(0) # This will trigger the data load
+        elif self.tab_names[index] == "Lobbies":
+            self.refresh_lobbies()
+
+    def _create_item_table(self, headers: list) -> QTableWidget:
+        """Factory function to create and configure an item table."""
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch) # Item name
+        for i in range(1, len(headers)):
+            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        table.setSortingEnabled(True)
+        return table
 
     def create_theme_grid(self, layout: QGridLayout):
         """Creates and populates the theme selection grid."""
@@ -601,6 +751,69 @@ class SimpleWindow(QMainWindow):
             self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
         self.save_watchlist()
         self.filter_lobbies(self.lobby_search_bar.text()) # Re-filter to update highlighting
+
+    def switch_items_sub_tab(self, index: int):
+        """Switches the visible table in the Items tab and loads data."""
+        for i, btn in self.item_tab_buttons.items():
+            btn.setChecked(i == index)
+
+        self.items_stacked_widget.setCurrentIndex(index)
+        
+        # Show search box for all except Vendor tab (index 3)
+        self.items_search_box.setVisible(index != 3)
+
+        # Lazy load data
+        if index == 0 and not self.item_database.all_items_data:
+            self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+        elif index == 1 and not self.item_database.drops_data:
+            self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
+        elif index == 2 and not self.item_database.raid_data:
+            self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
+        elif index == 3 and not self.item_database.vendor_data:
+            self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
+        
+        self.filter_current_item_view()
+
+    def filter_current_item_view(self):
+        """Filters the currently visible item table based on the search query."""
+        query = self.items_search_box.text().lower()
+        current_index = self.items_stacked_widget.currentIndex()
+
+        data_source = []
+        table_widget = None
+
+        if current_index == 0:
+            data_source = self.item_database.all_items_data
+            table_widget = self.all_items_table
+        elif current_index == 1:
+            data_source = self.item_database.drops_data
+            table_widget = self.drops_table
+        elif current_index == 2:
+            data_source = self.item_database.raid_data
+            table_widget = self.raid_items_table
+        elif current_index == 3:
+            data_source = self.item_database.vendor_data
+            table_widget = self.vendor_table
+
+        if not table_widget:
+            return
+
+        table_widget.setSortingEnabled(False)
+        table_widget.setRowCount(0)
+
+        filtered_data = [
+            item for item in data_source
+            if query in item.get("Item", "").lower() or \
+               query in item.get("Unit", "").lower() or \
+               query in item.get("Location", "").lower()
+        ]
+
+        for row, item_data in enumerate(filtered_data):
+            table_widget.insertRow(row)
+            for col, header in enumerate([table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]):
+                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
+        
+        table_widget.setSortingEnabled(True)
 
     def on_path_changed(self, new_path: str):
         """Updates character path when the text is edited."""
@@ -809,7 +1022,7 @@ class CustomTabBar(QWidget):
         self.current_index = -1
 
         self.layout = QGridLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setContentsMargins(5, 0, 5, 0) # Add some horizontal margin
         self.layout.setSpacing(2) # Small spacing between buttons
 
         self._create_buttons()
