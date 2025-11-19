@@ -1049,6 +1049,7 @@ class SimpleWindow(QMainWindow):
                     self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
                     self.automation_settings = settings.get("automation", {})
                     self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
+                    self.watchlist = settings.get("watchlist", ["legion", "hellgate"])
         except (IOError, json.JSONDecodeError):
             self.current_theme_index = 0
             self.character_path = ""
@@ -1056,6 +1057,7 @@ class SimpleWindow(QMainWindow):
             self.custom_theme_enabled = False
             self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
             self.automation_settings = {}
+            self.watchlist = ["legion", "hellgate"]
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -1115,8 +1117,11 @@ class SimpleWindow(QMainWindow):
 
     # Watchlist
     def load_watchlist(self):
-        # This method is no longer needed as watchlist is loaded/saved via settings.json
-        pass
+        """Loads the watchlist from settings. This is now handled by load_settings()."""
+        # This method is kept for compatibility but logic is in load_settings()
+        # The watchlist is loaded with other settings at startup.
+        self.watchlist_widget.clear()
+        self.watchlist_widget.addItems(self.watchlist)
     def add_to_watchlist(self):
         keyword = self.watchlist_input.text().strip().lower()
         if keyword and keyword not in self.watchlist:
