@@ -376,6 +376,8 @@ class CustomTabBar(QWidget):
 
 
 class SimpleWindow(QMainWindow):
+    automation_toggled_signal = Signal()
+
     def __init__(self):
         super().__init__()
 
@@ -732,6 +734,9 @@ class SimpleWindow(QMainWindow):
 
         # Finalize
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
+
+        # Connect the thread-safe signal to the automation toggle slot
+        self.automation_toggled_signal.connect(self.toggle_automation)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
@@ -1751,7 +1756,7 @@ class SimpleWindow(QMainWindow):
 
         # Register global F5 for automation toggle
         try:
-            f5_id = keyboard.add_hotkey('f5', self.toggle_automation, suppress=True)
+            f5_id = keyboard.add_hotkey('f5', lambda: self.automation_toggled_signal.emit(), suppress=True)
             self.hotkey_ids['f5'] = f5_id
         except Exception as e:
             print(f"Failed to register F5 hotkey: {e}")
