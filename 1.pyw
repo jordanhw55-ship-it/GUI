@@ -892,8 +892,13 @@ class SimpleWindow(QMainWindow):
         if recipe_name in self.in_progress_recipes:
             QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
             return
+
+        # Add to UI and internal tracking
         self.in_progress_recipes[recipe_name] = recipe
-        self.in_progress_recipes_list.addItem(recipe_name)
+        item = QListWidgetItem(recipe_name)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setCheckState(Qt.CheckState.Unchecked)
+        self.in_progress_recipes_list.addItem(item)
         for component_str in recipe["components"]:
             self._add_component_to_materials(component_str)
         self._rebuild_materials_table()
@@ -940,9 +945,39 @@ class SimpleWindow(QMainWindow):
                 del self.material_list_data[name]
 
     def _rebuild_materials_table(self):
+        """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
         self.materials_table.setSortingEnabled(False)
+        self.materials_table.itemChanged.disconnect(self.on_material_checked)
         self.materials_table.setRowCount(0)
-        for row, item_data in enumerate(self.material_list_data.values()):
+
+        checked_recipes = []
+        for i in range(self.in_progress_recipes_list.count()):
+            item = self.in_progress_recipes_list.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                checked_recipes.append(item.text())
+
+        materials_to_display = {}
+        if checked_recipes:
+            # If specific recipes are checked, calculate materials just for them
+            for recipe_name in checked_recipes:
+                recipe = self.in_progress_recipes.get(recipe_name)
+                if not recipe: continue
+
+                for component_str in recipe["components"]:
+                    match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
+                    name, quantity = (match.group(1).strip(), int(match.group(2))) if match else (component_str.strip(), 1)
+
+                    if name in materials_to_display:
+                        materials_to_display[name]["#"] += quantity
+                    else:
+                        # Find drop info from the main item database
+                        drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
+                        materials_to_display[name] = {"Material": name, "#": quantity, "Unit": drop_info["Unit"] if drop_info else "?", "Location": drop_info["Location"] if drop_info else "?"}
+        else:
+            # Otherwise, show all materials from the master list
+            materials_to_display = self.material_list_data
+
+        for row, item_data in enumerate(materials_to_display.values()):
             self.materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
             material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
@@ -952,6 +987,7 @@ class SimpleWindow(QMainWindow):
             self.materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
             self.materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
             self.materials_table.setItem(row, 4, QTableWidgetItem("0"))
+        self.materials_table.itemChanged.connect(self.on_material_checked)
         self.materials_table.setSortingEnabled(True)
 
     def on_material_checked(self, item: QTableWidgetItem):
