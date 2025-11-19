@@ -307,20 +307,11 @@ class HotkeyCaptureWorker(QObject):
 
     def run(self):
         """Waits for and reads a single hotkey press."""
-        # This is a more robust way to capture a single hotkey and avoid
-        # carrying over state from previous captures. It waits for the next
-        # single 'down' event, converts it to a hotkey name, and then stops.
         try:
-            while True:
-                event = keyboard.read_event(suppress=True)
-                # Check if the event has a valid, non-empty name to avoid errors.
-                # Some keys can produce a name that is just whitespace.
-                if event.event_type == keyboard.KEY_DOWN and event.name and event.name.strip():
-                    hotkey = keyboard.get_hotkey_name([event])
-                    if hotkey == 'esc': # Allow 'esc' to cancel capture
-                        break
-                    self.hotkey_captured.emit(hotkey)
-                    break # Stop after the first key down event
+            # Reverting to read_hotkey() as it's more stable for getting a direct name,
+            # and is less likely to crash on keys without standard names.
+            hotkey = keyboard.read_hotkey(suppress=True)
+            self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
 
