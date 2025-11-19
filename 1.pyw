@@ -513,7 +513,8 @@ class SimpleWindow(QMainWindow):
         add_remove_layout = QVBoxLayout(); add_remove_layout.addStretch()
         add_recipe_btn = QPushButton("Add ->"); add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
         remove_recipe_btn = QPushButton("<- Remove"); remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
-        add_remove_layout.addWidget(add_recipe_btn); add_remove_layout.addWidget(remove_recipe_btn); add_remove_layout.addStretch()
+        reset_recipes_btn = QPushButton("Reset"); reset_recipes_btn.clicked.connect(self.reset_recipes)
+        add_remove_layout.addWidget(add_recipe_btn); add_remove_layout.addWidget(remove_recipe_btn); add_remove_layout.addWidget(reset_recipes_btn); add_remove_layout.addStretch()
         self.in_progress_recipes_list = QListWidget()
         self.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
         recipes_top_layout.addLayout(recipes_list_layout); recipes_top_layout.addLayout(add_remove_layout); recipes_top_layout.addWidget(self.in_progress_recipes_list)
@@ -1225,6 +1226,14 @@ class SimpleWindow(QMainWindow):
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
             self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+            self._rebuild_materials_table()
+
+    def reset_recipes(self):
+        """Clears all in-progress recipes and the materials list."""
+        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to clear all in-progress recipes?")
+        if confirm == QMessageBox.StandardButton.Yes:
+            self.in_progress_recipes.clear()
+            self.in_progress_recipes_list.clear()
             self._rebuild_materials_table()
 
     def _add_component_to_materials(self, component_str: str):
