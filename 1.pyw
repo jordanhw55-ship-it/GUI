@@ -366,6 +366,7 @@ class SimpleWindow(QMainWindow):
         self.previous_watched_lobbies = set()
         self.theme_previews = []
         self.message_hotkeys = {}
+        self.hotkeys_suppressed = False # Flag to control hotkey execution
         self.game_title = "Warcraft III" # Configurable game window title
 
         self.themes = [
@@ -1577,29 +1578,31 @@ class SimpleWindow(QMainWindow):
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game window is active."""
+        if self.hotkeys_suppressed:
+            return # Do nothing if hotkeys are temporarily suppressed
+
         try:
             game_hwnd = win32gui.FindWindow(None, self.game_title)
             is_game_active = win32gui.GetForegroundWindow() == game_hwnd
 
             if not is_game_active:
-                # If the game is not active, re-send the suppressed keypress
-                # so it can be used in other applications (like this GUI).
                 keyboard.send(hotkey_pressed)
             else:
-                # Forcefully suppress the key by temporarily unhooking all hotkeys
-                # during the message sending process. This prevents the original
-                # key press from reaching the game.
-                keyboard.unhook_all()
+                # Suppress hotkeys, send the message, then re-enable them.
+                self.hotkeys_suppressed = True
 
                 pyautogui.press('enter')
                 pyautogui.write(message, interval=0.01)
                 pyautogui.press('enter')
 
-                # Re-register all hotkeys immediately after sending the message.
-                # A small delay ensures the 'enter' key press is processed first.
-                QTimer.singleShot(50, self.register_all_message_hotkeys)
+                # Re-enable hotkeys after a short delay.
+                QTimer.singleShot(100, self.reenable_hotkeys)
         except Exception as e:
             print(f"Error sending chat message: {e}")
+
+    def reenable_hotkeys(self):
+        """Sets the suppression flag to False."""
+        self.hotkeys_suppressed = False
 
 class CustomTabBar(QWidget):
     """
