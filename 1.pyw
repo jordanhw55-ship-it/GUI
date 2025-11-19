@@ -789,23 +789,30 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        theme = self.themes[self.current_theme_index]
-        accent_color = self.custom_theme.get("accent", "#FF7F50")
-        
-        if not self.custom_theme_enabled:
-            if theme['name'] == "Black/Orange": accent_color = "#FF7F50"
-            elif theme['name'] == "White/Pink": accent_color = "#FFC0CB"
-            elif theme['name'] == "Black/Blue": accent_color = "#1E90FF"
-            elif theme['name'] == "White/Blue": accent_color = "#87CEEB"
+        # Determine the correct accent color from the current theme
+        if self.custom_theme_enabled:
+            accent_color = self.custom_theme.get("accent", "#FF7F50")
+            base_bg = self.custom_theme.get("bg", "#121212")
+            base_fg = self.custom_theme.get("fg", "#F0F0F0")
+            checked_fg = base_bg
+        else:
+            theme = self.themes[self.current_theme_index]
+            accent_color = theme.get("preview_color", "#FF7F50")
+            # Extract base colors from the theme's stylesheet string
+            bg_match = re.search(r"QWidget\s*{\s*background-color:\s*([^;]+);", theme['style'])
+            fg_match = re.search(r"QWidget\s*{\s*.*?color:\s*([^;]+);", theme['style'])
+            base_bg = bg_match.group(1) if bg_match else "#FFFFFF"
+            base_fg = fg_match.group(1) if fg_match else "#000000"
+            checked_fg = "#000000" if theme['is_dark'] else "#FFFFFF"
+
+        # Apply a unified stylesheet that handles both checked and unchecked states
+        stylesheet = f"""
+            QPushButton {{ background-color: {accent_color}; color: {base_fg}; }}
+            QPushButton:checked {{ background-color: {accent_color}; color: {checked_fg}; }}
+        """
 
         for sound, btn in self.ping_buttons.items():
-            if sound == self.selected_sound:
-                btn.setChecked(True)
-                # Use a more specific selector to override the default theme
-                btn.setStyleSheet(f"QPushButton {{ background-color: {accent_color}; color: black; }}")
-            else:
-                btn.setChecked(False)
-                btn.setStyleSheet("") # Revert to the parent stylesheet
+            btn.setChecked(sound == self.selected_sound)
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
