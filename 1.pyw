@@ -233,7 +233,7 @@ class SimpleWindow(QMainWindow):
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(0, 0, 0, 0)
+        title_bar_layout.setContentsMargins(5, 0, 0, 0)
         title_bar_layout.setSpacing(0)
 
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
