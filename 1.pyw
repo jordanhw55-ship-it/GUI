@@ -696,11 +696,19 @@ class SimpleWindow(QMainWindow):
         is_valid = True
         if '+' in hotkey:
             parts = hotkey.split('+')
-            # Ensure modifiers are valid and not something like "2+3"
-            for part in parts[:-1]:
-                if part.strip().lower() not in keyboard.all_modifiers:
+            # A valid combination must have at least one modifier.
+            # All parts except the last one MUST be a modifier.
+            # This prevents invalid combinations like "2+3" or "a+b".
+            if len(parts) > 1:
+                modifiers = parts[:-1]
+                non_modifier_found = False
+                for mod in modifiers:
+                    if mod.strip().lower() not in keyboard.all_modifiers:
+                        non_modifier_found = True
+                        break
+                if non_modifier_found:
                     is_valid = False
-                    break
+
 
         # The worker calls keyboard.unhook_all() in its 'finally' block.
         # We must now re-register our application's global hotkeys.
