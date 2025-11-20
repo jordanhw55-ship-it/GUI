@@ -22,7 +22,7 @@ from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
 from automation_manager import AutomationManager
-from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab
+from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab, QuickcastTab
 from ui_overlay import OverlayStatus
 
 try:
