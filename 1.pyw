@@ -920,20 +920,25 @@ QCheckBox::indicator {{
 
 
     def on_chat_send_error(self, error_message: str):
-        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}")
+        """Handles errors from the chat message worker."""
+        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}. Clearing thread reference.")
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
+        # Immediately clear the reference to allow the next hotkey press to succeed.
+        self.chat_thread = None
         print("[DEBUG] is_sending_message reset to False.")
 
     def on_chat_send_finished(self):
-        print("[DEBUG] on_chat_send_finished called.")
+        """Handles successful completion from the chat message worker."""
+        print("[DEBUG] on_chat_send_finished called. Clearing thread reference.")
         self.is_sending_message = False
+        # Immediately clear the reference to allow the next hotkey press to succeed.
+        self.chat_thread = None
         print("[DEBUG] is_sending_message reset to False.")
 
     def on_chat_thread_finished(self):
         """Clears references to the thread and worker after they have finished."""
         print("[DEBUG] Chat thread finished. Clearing references.")
-        self.chat_thread = None
         self.chat_worker = None
 
 
