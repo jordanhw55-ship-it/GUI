@@ -123,7 +123,6 @@ class AutomationTab(QWidget):
         self.hotkey_capture_btn = QPushButton("Click to set")
         self.message_edit = QLineEdit()
         self.add_msg_btn = QPushButton("Add")
-        self.update_msg_btn = QPushButton("Update")
         self.delete_msg_btn = QPushButton("Delete")
 
     def _create_layouts(self):
@@ -143,7 +142,7 @@ class AutomationTab(QWidget):
         left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addStretch()
         right_layout = QVBoxLayout(self.msg_hotkey_group); right_layout.addWidget(self.msg_hotkey_table)
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
-        msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
+        msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
         main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_group, 1)
 
 
