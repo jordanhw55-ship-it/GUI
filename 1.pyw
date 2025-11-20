@@ -448,6 +448,18 @@ class SimpleWindow(QMainWindow):
         self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
+        watchlist_controls_layout.addStretch()
+
+        watchlist_layout.addLayout(watchlist_controls_layout); self.watchlist_group.setLayout(watchlist_layout)
+        lobbies_layout.addWidget(self.watchlist_group)
+        self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(4)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"]) # Added "Host"
+        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.lobbies_table.verticalHeader().setVisible(False)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        lobbies_layout.addWidget(self.lobbies_table)
         self.stacked_widget.addWidget(lobbies_tab_content)
         # Finalize
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
