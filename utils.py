@@ -16,17 +16,37 @@ DARK_STYLE = """
     #CustomTitleBar QPushButton { background-color: transparent; border: none; color: #F0F0F0; font-size: 16px; }
     #CustomTitleBar QPushButton:hover { background-color: #FFA64D; }
     QPushButton {
-        background-color: #FF7F50;
-        border: 1px solid #444444;
+        background-color: #FF7F50; /* accent */
+        border: 1px solid #FF7F50; /* accent */
         padding: 5px;
         border-radius: 6px;
         color: #000000;
     }
+    QPushButton:hover {
+        background-color: #121212; /* bg */
+        color: #FF7F50; /* accent */
+    }
     QHeaderView::section {
         background-color: #1F1F1F;
         padding: 4px;
-        border: 1px solid #444444;
+        border: 1px solid #FF7F50; /* accent */
         color: #F0F0F0;
+    }
+    QLineEdit, QTextEdit, QTableWidget, QListWidget {
+        background-color: #1F1F1F;
+        border: 1px solid #FF7F50; /* accent */
+        border-radius: 6px;
+    }
+    QGroupBox {
+        border: 1px solid #FF7F50; /* accent */
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top center;
+        padding: 0 10px;
+        font-weight: bold;
     }
 """
 
@@ -38,13 +58,36 @@ LIGHT_STYLE = """
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { background-color: transparent; color: #000000; border: none; font-size: 16px; }
     #CustomTitleBar QPushButton:hover { background-color: #DA3A9D; }
     QPushButton {
-        background-color: #FFC0CB;
-        border: 1px solid #E6A8B8;
+        background-color: #FFC0CB; /* accent */
+        border: 1px solid #FFC0CB; /* accent */
         padding: 5px;
         border-radius: 6px;
         color: #000000;
     }
-    QHeaderView::section { background-color: #FFC0CB; border: 1px solid #E6A8B8; color: #000000; }
+    QPushButton:hover {
+        background-color: #FFFFFF; /* bg */
+        color: #DA3A9D;
+    }
+    QHeaderView::section {
+        background-color: #FFC0CB; /* accent */
+        border: 1px solid #DA3A9D;
+        color: #000000;
+    }
+    QLineEdit, QTextEdit, QTableWidget, QListWidget {
+        border: 1px solid #DA3A9D;
+        border-radius: 6px;
+    }
+    QGroupBox {
+        border: 1px solid #DA3A9D;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+    QGroupBox::title {
+        subcontrol-origin: margin;
+        subcontrol-position: top center;
+        padding: 0 10px;
+        font-weight: bold;
+    }
 """
 
 FOREST_STYLE = """
@@ -54,8 +97,28 @@ FOREST_STYLE = """
     #CustomTitleBar { background-color: #1F1F1F; }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #EAEAEA; background-color: transparent; border: none; font-size: 16px; }
     #CustomTitleBar QPushButton:hover { background-color: #4682B4; }
-    QPushButton { background-color: #1E90FF; border: 1px solid #4169E1; padding: 5px; border-radius: 6px; }
+    QPushButton {
+        background-color: #1E90FF; /* accent */
+        border: 1px solid #1E90FF; /* accent */
+        padding: 5px;
+        border-radius: 6px;
+    }
+    QPushButton:hover {
+        background-color: #121212; /* bg */
+        color: #1E90FF; /* accent */
+    }
     QHeaderView::section { background-color: #1F1F1F; border: 1px solid #4169E1; }
+    QLineEdit, QTextEdit, QTableWidget, QListWidget {
+        background-color: #1F1F1F;
+        border: 1px solid #4169E1;
+        border-radius: 6px;
+    }
+    QGroupBox {
+        border: 1px solid #4169E1;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
 
 OCEAN_STYLE = """
@@ -65,8 +128,27 @@ OCEAN_STYLE = """
     #CustomTitleBar { background-color: #F0F8FF; }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #000080; background-color: transparent; border: none; font-size: 16px; }
     #CustomTitleBar QPushButton:hover { background-color: #87CEFA; }
-    QPushButton { background-color: #87CEEB; border: 1px solid #4682B4; padding: 5px; border-radius: 6px; }
+    QPushButton {
+        background-color: #87CEEB; /* accent */
+        border: 1px solid #87CEEB; /* accent */
+        padding: 5px;
+        border-radius: 6px;
+    }
+    QPushButton:hover {
+        background-color: #F0F8FF; /* bg */
+        color: #000080;
+    }
     QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
+    QLineEdit, QTextEdit, QTableWidget, QListWidget {
+        border: 1px solid #87CEEB;
+        border-radius: 6px;
+    }
+    QGroupBox {
+        border: 1px solid #87CEEB;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
 
 def get_base_path():
