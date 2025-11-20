@@ -161,6 +161,51 @@ class AutomationTab(QWidget):
         main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_group, 1)
 
 
+class QuickcastTab(QWidget):
+    """A widget for the 'Quickcast' tab, for setting up key quickcasts."""
+    def __init__(self, parent_window):
+        super().__init__()
+        self._create_layouts()
+
+    def _create_layouts(self):
+        """Creates and arranges the layouts for the tab."""
+        quickcast_layout = QVBoxLayout(self)
+        
+        # --- Main Keys Grid ---
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(15) # Add some space between controls
+
+        keys = ['Q', 'W', 'E', 'R', 'D', 'F', 'T', 'A']
+        
+        row, col = 0, 0
+        for key in keys:
+            key_layout = QHBoxLayout()
+            button = QPushButton(key)
+            button.setFixedSize(40, 40)
+            checkbox = QCheckBox()
+            checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
+            key_layout.addWidget(button)
+            key_layout.addWidget(checkbox)
+            grid_layout.addLayout(key_layout, row, col)
+            col += 1
+            if col >= 4: col, row = 0, row + 1
+        quickcast_layout.addLayout(grid_layout)
+
+        quickcast_layout.addSpacing(20)
+
+        # --- Numpad Grid ---
+        numpad_grid_layout = QGridLayout()
+        numpad_grid_layout.setSpacing(15)
+        numpad_keys = ['7', '8', '4', '5', '1', '2']
+        for i, key in enumerate(numpad_keys):
+            key_layout = QHBoxLayout()
+            button = QPushButton(key); button.setFixedSize(40, 40)
+            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
+            key_layout.addWidget(button); key_layout.addWidget(checkbox)
+            numpad_grid_layout.addLayout(key_layout, i // 2, i % 2)
+        quickcast_layout.addLayout(numpad_grid_layout)
+        quickcast_layout.addStretch()
+
 class ItemsTab(QWidget):
     """A widget for the 'Items' tab, including sub-tabs for different item categories."""
     def __init__(self, parent_window):
