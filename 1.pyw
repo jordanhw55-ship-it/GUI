@@ -194,20 +194,16 @@ class SimpleWindow(QMainWindow):
         self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
-
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        
+        # Set window flags to be a frameless, always-on-top HUD
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
-        # Center the window on the primary screen
-        screen = QApplication.primaryScreen()
-        if screen:
-            center_point = screen.geometry().center()
-            frame_geometry = self.frameGeometry()
-            frame_geometry.moveCenter(center_point)
-            self.move(frame_geometry.topLeft())
+        # Position the window in the top-left corner
+        self.move(0, 0)
 
         self.themes = [
             {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
