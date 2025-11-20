@@ -46,9 +46,9 @@ class SettingsManager:
             "in_progress_recipes": [window_instance.recipes_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.recipes_tab.in_progress_recipes_list.count())],
             "automation": window_instance.get_automation_settings_from_ui(),
             "watchlist": window_instance.watchlist,
-            "play_sound_on_found": window_instance.lobby_placeholder_checkbox.isChecked(),
-            "selected_sound": window_instance.selected_sound,
-            "volume": window_instance.volume
+            "play_sound_on_found": window_instance.lobby_placeholder_checkbox.isChecked(), # This seems to be a placeholder name
+            "selected_sound": window_instance.selected_sound, # Already being saved
+            "volume": window_instance.volume # Already being saved
         }
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)
