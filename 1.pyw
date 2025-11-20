@@ -667,12 +667,12 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
-        # Unhook all keyboard listeners to ensure a clean capture
+        # Unhook all global hotkeys to ensure the capture worker gets the keypress
         keyboard.unhook_all()
 
         self.capture_thread = QThread()
         self.capture_worker = HotkeyCaptureWorker()
-        self.capture_worker.moveToThread(self.capture_thread)
+        self.capture_worker.moveToThread(self.capture_thread) # type: ignore
         self.capture_thread.started.connect(self.capture_worker.run)
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
         self.capture_thread.start()
@@ -703,8 +703,6 @@ class SimpleWindow(QMainWindow):
             self.capture_thread.wait()
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
-
-
 
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
