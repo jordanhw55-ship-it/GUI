@@ -21,7 +21,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
-from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab
+from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab
 
 try:
     import win32gui # type: ignore
@@ -292,68 +292,22 @@ class SimpleWindow(QMainWindow):
         self.recipes_tab.materials_table.itemChanged.connect(self.on_material_checked)
 
         # Automation tab
-        automation_tab_content = QWidget()
-        automation_main_layout = QHBoxLayout(automation_tab_content)
+        self.automation_tab = AutomationTab(self)
+        self.stacked_widget.addWidget(self.automation_tab)
 
-        left_panel = QWidget(); left_layout = QVBoxLayout(left_panel)
-        automation_keys_group = QGroupBox("Key Automation"); automation_grid = QGridLayout()
-        automationKeys = ["q", "w", "e", "r", "d", "f", "t", "z", "x", "Complete Quest"]
-        self.automation_key_ctrls = {}; row, col = 0, 0
+        # Connect signals from the new AutomationTab
+        self.automation_tab.start_automation_btn.clicked.connect(self.toggle_automation)
+        self.automation_tab.reset_automation_btn.clicked.connect(self.reset_automation_settings)
+        self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
+        self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
+        self.automation_tab.update_msg_btn.clicked.connect(self.update_message_hotkey)
+        self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
 
-        # Use checkboxes for stable toggling; add numeric validators to intervals
-        int_validator = QIntValidator(50, 600000, self)  # 50 ms to 10 min
-        for key in automationKeys:
-            chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
-            edit = QLineEdit("15000" if key == "Complete Quest" else "500"); edit.setFixedWidth(70); edit.setValidator(int_validator)
-            automation_grid.addWidget(chk, row, col * 2); automation_grid.addWidget(edit, row, col * 2 + 1)
-            self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
-            col += 1
-            if col > 1: col = 0; row += 1
-
-        self.custom_action_btn = QCheckBox("Custom Action")
-        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70); self.custom_action_edit1.setValidator(int_validator)
-        self.custom_action_edit2 = QLineEdit("-save x")
-        custom_action_layout = QHBoxLayout()
-        custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
-        automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); row += 1
-
-        automation_keys_group.setLayout(automation_grid); left_layout.addWidget(automation_keys_group)
-        self.start_automation_btn = QPushButton("Start (F5)"); self.start_automation_btn.clicked.connect(self.toggle_automation)
-        reset_automation_btn = QPushButton("Reset Automation"); reset_automation_btn.clicked.connect(self.reset_automation_settings)
-        left_layout.addWidget(self.start_automation_btn)
-        left_layout.addWidget(reset_automation_btn)
-        interval_note = QLabel("Intervals are in ms. Example: 500 = 0.5s"); left_layout.addWidget(interval_note); left_layout.addStretch()
-
-        # Placeholder right panel (message hotkeys section left as-is)
-        msg_hotkey_group = QGroupBox("Custom Message Hotkeys"); right_layout = QVBoxLayout(msg_hotkey_group)
-        self.msg_hotkey_table = QTableWidget(); self.msg_hotkey_table.setColumnCount(2)
-        self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
-        self.msg_hotkey_table.verticalHeader().setVisible(False)
-        self.msg_hotkey_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.msg_hotkey_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        right_layout.addWidget(self.msg_hotkey_table)
-
-        msg_form_layout = QGridLayout()
-        msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0)
-        self.hotkey_capture_btn = QPushButton("Click to set")
-        self.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
-        msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1)
-        msg_form_layout.addWidget(QLabel("Message:"), 1, 0)
-        self.message_edit = QLineEdit()
-        msg_form_layout.addWidget(self.message_edit, 1, 1)
-        right_layout.addLayout(msg_form_layout)
-
-        msg_btn_layout = QHBoxLayout()
-        self.add_msg_btn = QPushButton("Add"); self.add_msg_btn.clicked.connect(self.add_message_hotkey)
-        self.update_msg_btn = QPushButton("Update"); self.update_msg_btn.clicked.connect(self.update_message_hotkey)
-        self.delete_msg_btn = QPushButton("Delete"); self.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
-        msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn)
-        right_layout.addLayout(msg_btn_layout)
-
-        automation_main_layout.addWidget(left_panel, 1)
-        automation_main_layout.addWidget(msg_hotkey_group, 1)
-        self.stacked_widget.addWidget(automation_tab_content)
+        # Add validators to the line edits in the new tab
+        int_validator = QIntValidator(50, 600000, self)
+        for ctrls in self.automation_tab.automation_key_ctrls.values():
+            ctrls["edit"].setValidator(int_validator)
+        self.automation_tab.custom_action_edit1.setValidator(int_validator)
 
         # Apply loaded automation settings after UI is created
         self.apply_automation_settings()
@@ -730,9 +684,9 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
-        self.message_edit.setEnabled(False)
-        self.hotkey_capture_btn.setText("[Press a key...]")
-        self.hotkey_capture_btn.setEnabled(False)
+        self.automation_tab.message_edit.setEnabled(False)
+        self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
+        self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
         # Unhook all keyboard listeners to ensure a clean capture
         keyboard.unhook_all()
@@ -754,13 +708,13 @@ class SimpleWindow(QMainWindow):
                 if part.strip().lower() not in keyboard.all_modifiers:
                     is_valid = False
                     break
-
-        self.message_edit.setEnabled(True)
+        
+        self.automation_tab.message_edit.setEnabled(True)
 
         if not is_valid or hotkey == 'esc':
-            self.hotkey_capture_btn.setText("Click to set")
+            self.automation_tab.hotkey_capture_btn.setText("Click to set")
         else:
-            self.hotkey_capture_btn.setText(hotkey)
+            self.automation_tab.hotkey_capture_btn.setText(hotkey)
         
         self.hotkey_capture_btn.setEnabled(True)
 
@@ -771,19 +725,20 @@ class SimpleWindow(QMainWindow):
 
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
-        self.msg_hotkey_table.setRowCount(0)
+        table = self.automation_tab.msg_hotkey_table
+        table.setRowCount(0)
         if not isinstance(self.message_hotkeys, dict):
             self.message_hotkeys = {}
         for hotkey, message in self.message_hotkeys.items():
-            row_position = self.msg_hotkey_table.rowCount()
-            self.msg_hotkey_table.insertRow(row_position)
-            self.msg_hotkey_table.setItem(row_position, 0, QTableWidgetItem(hotkey))
-            self.msg_hotkey_table.setItem(row_position, 1, QTableWidgetItem(message))
+            row_position = table.rowCount()
+            table.insertRow(row_position)
+            table.setItem(row_position, 0, QTableWidgetItem(hotkey))
+            table.setItem(row_position, 1, QTableWidgetItem(message))
 
     def add_message_hotkey(self):
         """Adds a new hotkey and message to the system."""
-        hotkey = self.hotkey_capture_btn.text()
-        message = self.message_edit.text()
+        hotkey = self.automation_tab.hotkey_capture_btn.text()
+        message = self.automation_tab.message_edit.text()
 
         if hotkey == "Click to set" or not message:
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
@@ -797,21 +752,22 @@ class SimpleWindow(QMainWindow):
         self.register_global_hotkeys() # Re-register all to include the new one
 
         # Reset UI
-        self.hotkey_capture_btn.setText("Click to set")
-        self.message_edit.clear()
+        self.automation_tab.hotkey_capture_btn.setText("Click to set")
+        self.automation_tab.message_edit.clear()
 
     def update_message_hotkey(self):
         """Updates an existing hotkey."""
-        selected_items = self.msg_hotkey_table.selectedItems()
+        table = self.automation_tab.msg_hotkey_table
+        selected_items = table.selectedItems()
         if not selected_items:
             QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to update.")
             return
         
         selected_row = selected_items[0].row()
-        old_hotkey = self.msg_hotkey_table.item(selected_row, 0).text()
+        old_hotkey = table.item(selected_row, 0).text()
 
-        new_hotkey = self.hotkey_capture_btn.text()
-        new_message = self.message_edit.text()
+        new_hotkey = self.automation_tab.hotkey_capture_btn.text()
+        new_message = self.automation_tab.message_edit.text()
 
         if new_hotkey == "Click to set" or not new_message:
             QMessageBox.warning(self, "Input Error", "Please set a new hotkey and enter a message.")
@@ -828,28 +784,29 @@ class SimpleWindow(QMainWindow):
         self.register_global_hotkeys() # Re-register all
 
         # Reset UI
-        self.hotkey_capture_btn.setText("Click to set")
-        self.message_edit.clear()
+        self.automation_tab.hotkey_capture_btn.setText("Click to set")
+        self.automation_tab.message_edit.clear()
 
     def delete_message_hotkey(self):
         """Deletes a selected hotkey."""
-        selected_items = self.msg_hotkey_table.selectedItems()
+        table = self.automation_tab.msg_hotkey_table
+        selected_items = table.selectedItems()
         if not selected_items:
             QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
             return
         
         selected_row = selected_items[0].row()
-        hotkey_to_delete = self.msg_hotkey_table.item(selected_row, 0).text()
+        hotkey_to_delete = table.item(selected_row, 0).text()
 
         confirm = QMessageBox.question(self, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?")
         if confirm == QMessageBox.StandardButton.Yes:
             self.message_hotkeys.pop(hotkey_to_delete, None)
-            self.msg_hotkey_table.removeRow(selected_row)
+            table.removeRow(selected_row)
             self.register_global_hotkeys() # Re-register to remove the deleted one
 
             # Reset UI
-            self.hotkey_capture_btn.setText("Click to set")
-            self.message_edit.clear()
+            self.automation_tab.hotkey_capture_btn.setText("Click to set")
+            self.automation_tab.message_edit.clear()
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
@@ -914,27 +871,27 @@ class SimpleWindow(QMainWindow):
 
         key_settings = self.automation_settings.get("keys", {})
         for key, settings in key_settings.items():
-            if key in self.automation_key_ctrls:
-                self.automation_key_ctrls[key]["chk"].setChecked(settings.get("checked", False)) # type: ignore
-                self.automation_key_ctrls[key]["edit"].setText(settings.get("interval", "500"))
+            if key in self.automation_tab.automation_key_ctrls:
+                self.automation_tab.automation_key_ctrls[key]["chk"].setChecked(settings.get("checked", False))
+                self.automation_tab.automation_key_ctrls[key]["edit"].setText(settings.get("interval", "500"))
 
         custom_settings = self.automation_settings.get("custom", {})
         if custom_settings:
-            self.custom_action_btn.setChecked(custom_settings.get("checked", False))
-            self.custom_action_edit1.setText(custom_settings.get("interval", "30000"))
-            self.custom_action_edit2.setText(custom_settings.get("message", "-save x"))
+            self.automation_tab.custom_action_btn.setChecked(custom_settings.get("checked", False))
+            self.automation_tab.custom_action_edit1.setText(custom_settings.get("interval", "30000"))
+            self.automation_tab.custom_action_edit2.setText(custom_settings.get("message", "-save x"))
 
     def get_automation_settings_from_ui(self):
         """Gathers automation settings from the UI controls."""
         return {
             "keys": {
                 key: {"checked": ctrls["chk"].isChecked(), "interval": ctrls["edit"].text()}
-                for key, ctrls in self.automation_key_ctrls.items()
+                for key, ctrls in self.automation_tab.automation_key_ctrls.items()
             },
             "custom": {
-                "checked": self.custom_action_btn.isChecked(),
-                "interval": self.custom_action_edit1.text(),
-                "message": self.custom_action_edit2.text()
+                "checked": self.automation_tab.custom_action_btn.isChecked(),
+                "interval": self.automation_tab.custom_action_edit1.text(),
+                "message": self.automation_tab.custom_action_edit2.text()
             }
         }
 
@@ -1378,19 +1335,19 @@ class SimpleWindow(QMainWindow):
         if self.custom_theme_enabled:
             accent_color = self.custom_theme.get("accent", "#FF7F50")
             text_color = self.custom_theme.get("bg", "#121212")
-            self.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
+            self.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
         else:
             # For preset themes, setting an empty stylesheet is enough to revert.
             # However, to be explicit and robust:
-            self.start_automation_btn.setStyleSheet("")
+            self.automation_tab.start_automation_btn.setStyleSheet("")
 
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
-            self.start_automation_btn.setText("Stop (F5)")
-            self.start_automation_btn.setStyleSheet("background-color: #B00000;")
+            self.automation_tab.start_automation_btn.setText("Stop (F5)")
+            self.automation_tab.start_automation_btn.setStyleSheet("background-color: #B00000;")
             # Start timers
-            for key, ctrls in self.automation_key_ctrls.items():
+            for key, ctrls in self.automation_tab.automation_key_ctrls.items():
                 if ctrls["chk"].isChecked():
                     interval_text = ctrls["edit"].text().strip()
                     if not interval_text:
@@ -1408,12 +1365,12 @@ class SimpleWindow(QMainWindow):
                     except ValueError:
                         QMessageBox.warning(self, "Invalid interval", f"Interval for '{key}' must be a number in ms.")
             # Custom Action timer
-            if self.custom_action_btn.isChecked():
-                interval_text = self.custom_action_edit1.text().strip()
+            if self.automation_tab.custom_action_btn.isChecked():
+                interval_text = self.automation_tab.custom_action_edit1.text().strip()
                 if interval_text:
                     try:
                         interval = int(interval_text)
-                        message = self.custom_action_edit2.text()
+                        message = self.automation_tab.custom_action_edit2.text()
                         timer = QTimer(self)
                         timer.timeout.connect(lambda msg=message: self.run_custom_action(msg))
                         timer.start(interval)
@@ -1421,7 +1378,7 @@ class SimpleWindow(QMainWindow):
                     except ValueError:
                         QMessageBox.warning(self, "Invalid interval", "Interval for 'Custom Action' must be a number in ms.")
         else:
-            self.start_automation_btn.setText("Start (F5)")
+            self.automation_tab.start_automation_btn.setText("Start (F5)")
             self._reset_automation_button_style()
             for timer in self.automation_timers.values():
                 timer.stop(); timer.deleteLater()
@@ -1436,14 +1393,14 @@ class SimpleWindow(QMainWindow):
             do_reset = True
         if do_reset:
             # Reset key automation
-            for key, ctrls in self.automation_key_ctrls.items():
+            for key, ctrls in self.automation_tab.automation_key_ctrls.items():
                 ctrls["chk"].setChecked(False)
                 default_interval = "15000" if key == "Complete Quest" else "500"
                 ctrls["edit"].setText(default_interval)
             # Reset custom action
-            self.custom_action_btn.setChecked(False)
-            self.custom_action_edit1.setText("30000")
-            self.custom_action_edit2.setText("-save x")
+            self.automation_tab.custom_action_btn.setChecked(False)
+            self.automation_tab.custom_action_edit1.setText("30000")
+            self.automation_tab.custom_action_edit2.setText("-save x")
 
     def register_global_hotkeys(self):
         """Registers all hotkeys, including global controls and custom messages."""

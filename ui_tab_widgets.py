@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
-    QListWidget, QTextEdit, QTableWidget, QHeaderView
+    QListWidget, QTextEdit, QTableWidget, QHeaderView, QGroupBox,
+    QGridLayout, QCheckBox, QLabel
 )
 from PySide6.QtCore import Qt
 
@@ -81,3 +82,66 @@ class RecipeTrackerTab(QWidget):
         top_layout.addLayout(recipes_list_layout); top_layout.addLayout(add_remove_layout); top_layout.addWidget(self.in_progress_recipes_list)
         main_layout.addLayout(top_layout); main_layout.addWidget(self.materials_table)
         main_layout.setStretchFactor(top_layout, 1); main_layout.setStretchFactor(self.materials_table, 3)
+
+
+class AutomationTab(QWidget):
+    """A widget for the 'Automation' tab, handling key automation and message hotkeys."""
+    def __init__(self, parent_window):
+        super().__init__()
+        self._create_widgets()
+        self._create_layouts()
+
+    def _create_widgets(self):
+        """Creates all the widgets for the tab."""
+        # --- Left Panel: Key Automation ---
+        self.automation_keys_group = QGroupBox("Key Automation")
+        self.automation_key_ctrls = {}
+        self.automationKeys = ["q", "w", "e", "r", "d", "f", "t", "z", "x", "Complete Quest"]
+        for key in self.automationKeys:
+            chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
+            edit = QLineEdit("15000" if key == "Complete Quest" else "500")
+            edit.setFixedWidth(70)
+            self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
+
+        self.custom_action_btn = QCheckBox("Custom Action")
+        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
+        self.custom_action_edit2 = QLineEdit("-save x")
+
+        self.start_automation_btn = QPushButton("Start (F5)")
+        self.reset_automation_btn = QPushButton("Reset Automation")
+
+        # --- Right Panel: Message Hotkeys ---
+        self.msg_hotkey_group = QGroupBox("Custom Message Hotkeys")
+        self.msg_hotkey_table = QTableWidget()
+        self.msg_hotkey_table.setColumnCount(2)
+        self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
+        self.msg_hotkey_table.verticalHeader().setVisible(False)
+        self.msg_hotkey_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.msg_hotkey_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.msg_hotkey_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+
+        self.hotkey_capture_btn = QPushButton("Click to set")
+        self.message_edit = QLineEdit()
+        self.add_msg_btn = QPushButton("Add")
+        self.update_msg_btn = QPushButton("Update")
+        self.delete_msg_btn = QPushButton("Delete")
+
+    def _create_layouts(self):
+        """Creates and arranges the layouts for the tab."""
+        main_layout = QHBoxLayout(self)
+        left_panel = QWidget(); left_layout = QVBoxLayout(left_panel)
+        automation_grid = QGridLayout()
+        row, col = 0, 0
+        for key in self.automationKeys:
+            ctrls = self.automation_key_ctrls[key]
+            automation_grid.addWidget(ctrls["chk"], row, col * 2); automation_grid.addWidget(ctrls["edit"], row, col * 2 + 1)
+            col += 1;
+            if col > 1: col = 0; row += 1
+        custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
+        automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); self.automation_keys_group.setLayout(automation_grid)
+        left_layout.addWidget(self.automation_keys_group); left_layout.addWidget(self.start_automation_btn); left_layout.addWidget(self.reset_automation_btn)
+        left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addStretch()
+        right_layout = QVBoxLayout(self.msg_hotkey_group); right_layout.addWidget(self.msg_hotkey_table)
+        msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
+        msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
+        main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_group, 1)
