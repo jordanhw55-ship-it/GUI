@@ -232,25 +232,24 @@ class SimpleWindow(QMainWindow):
         self.title_bar = QWidget()
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
-        # Use a QGridLayout to allow widgets to overlap/be layered
         title_bar_layout = QGridLayout(self.title_bar)
         title_bar_layout.setContentsMargins(5, 0, 5, 0)
         title_bar_layout.setSpacing(0)
 
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
+        close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
 
-        # Create a separate layout for the buttons
+        # Create a separate layout for the buttons (only minimize and close)
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(0)
-        min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
-        self.max_button = QPushButton("🗖"); self.max_button.setFixedSize(30, 30); self.max_button.clicked.connect(self.toggle_maximize_restore)
-        close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-        button_layout.addWidget(min_button); button_layout.addWidget(self.max_button); button_layout.addWidget(close_button)
+        button_layout.addWidget(min_button)
+        button_layout.addWidget(close_button)
 
-        title_bar_layout.addWidget(title_label, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight)
+        title_bar_layout.addWidget(title_label, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
+        title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
         main_layout.addWidget(self.title_bar)
 
         # Tabs
