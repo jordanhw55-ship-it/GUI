@@ -1047,6 +1047,16 @@ class SimpleWindow(QMainWindow):
         materials_table.itemChanged.connect(self.on_material_checked)
         materials_table.setSortingEnabled(True)
 
+    def on_recipe_check_changed(self, item: QListWidgetItem):
+        """Called when any recipe's check state changes to rebuild the material list."""
+        # This handler is now connected to QListWidget.itemChanged
+        self._rebuild_materials_table()
+
+    # Character loading
+    def on_path_changed(self, new_path: str):
+        self.character_path = new_path # Still need to update the main window's state
+
+    def on_material_checked(self, item: QTableWidgetItem):
         if item.column() != 0: return
         materials_table = self.recipes_tab.materials_table
         is_checked = item.checkState() == Qt.CheckState.Checked
@@ -1061,14 +1071,6 @@ class SimpleWindow(QMainWindow):
         materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
         materials_table.itemChanged.connect(self.on_material_checked)
 
-    def on_recipe_check_changed(self, item: QListWidgetItem):
-        """Called when any recipe's check state changes to rebuild the material list."""
-        # This handler is now connected to QListWidget.itemChanged
-        self._rebuild_materials_table()
-
-    # Character loading
-    def on_path_changed(self, new_path: str):
-        self.character_path = new_path # Still need to update the main window's state
     def select_character_path(self):
         default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
         new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
