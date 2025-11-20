@@ -706,7 +706,7 @@ QCheckBox::indicator {{
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = ["hellfire", "rpg"]
-        self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
+        self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
         self.volume_slider.setValue(100)
         
         # Also reset recipes and automation settings
