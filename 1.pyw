@@ -697,12 +697,13 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Always stop the capture thread and re-register all hotkeys to restore state.
+        # Always stop the capture thread and re-register all hotkeys to restore state
         if self.capture_thread and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
-            # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
-            self.register_global_hotkeys()
+        # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
+        self.register_global_hotkeys()
+
 
 
     def load_message_hotkeys(self):
