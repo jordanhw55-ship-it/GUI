@@ -377,19 +377,17 @@ class SimpleWindow(QMainWindow):
         custom_box = QGroupBox("Custom theme")
         custom_v_layout = QVBoxLayout(custom_box)
 
-        self.bg_color_btn = QPushButton("Pick background")
+        self.bg_color_btn = QPushButton("Background")
         self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
-        self.fg_color_btn = QPushButton("Pick text")
+        self.fg_color_btn = QPushButton("Text")
         self.fg_color_btn.clicked.connect(lambda: self.pick_color('fg'))
-        self.accent_color_btn = QPushButton("Pick accent")
+        self.accent_color_btn = QPushButton("Accent")
         self.accent_color_btn.clicked.connect(lambda: self.pick_color('accent'))
 
         pick_buttons_h_layout = QHBoxLayout()
-        pick_buttons_h_layout.addStretch()
         pick_buttons_h_layout.addWidget(self.bg_color_btn)
         pick_buttons_h_layout.addWidget(self.fg_color_btn)
         pick_buttons_h_layout.addWidget(self.accent_color_btn)
-        pick_buttons_h_layout.addStretch()
 
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
