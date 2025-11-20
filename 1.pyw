@@ -726,7 +726,7 @@ QCheckBox::indicator {{
         
         # Also reset recipes and automation settings
         self.in_progress_recipes.clear()
-        self.in_progress_recipes_list.clear()
+        self.recipes_tab.in_progress_recipes_list.clear()
         self._rebuild_materials_table()
         self._reset_automation_ui()
 
