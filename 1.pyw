@@ -296,6 +296,7 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
+        self.automation_manager.log_message.connect(self.update_automation_log)
 
         # Add validators to the line edits in the new tab
         int_validator = QIntValidator(50, 600000, self)
@@ -459,6 +460,10 @@ class SimpleWindow(QMainWindow):
             self.apply_custom_theme()
         else:
             self.apply_theme(self.current_theme_index)
+
+    def update_automation_log(self, message: str):
+        """Appends a message to the automation log text box."""
+        self.automation_tab.automation_log_box.append(message)
 
     # Core helpers
     def create_theme_grid(self, layout: QGridLayout):

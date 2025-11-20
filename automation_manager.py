@@ -1,5 +1,5 @@
 import time
-from PySide6.QtCore import QTimer, QObject
+from PySide6.QtCore import QTimer, QObject, Signal
 from PySide6.QtWidgets import QMessageBox
 
 try:
@@ -13,6 +13,8 @@ except ImportError:
 
 
 class AutomationManager(QObject):
+    log_message = Signal(str)
+
     def __init__(self, parent_window):
         super().__init__()
         self.parent = parent_window
@@ -47,7 +49,9 @@ class AutomationManager(QObject):
 
     def _log(self, *args):
         if self.debug:
-            print("[DEBUG]", *args)
+            message = " ".join(map(str, args))
+            print("[DEBUG]", message)
+            self.log_message.emit(message)
 
     def _fmt_due(self, due):
         return "None" if due is None else f"{due:.3f}"

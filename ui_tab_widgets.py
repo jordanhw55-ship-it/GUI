@@ -107,9 +107,11 @@ class AutomationTab(QWidget):
         self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
         self.custom_action_edit2 = QLineEdit("-save x")
 
-        # New box below Key Automation
-        self.new_feature_group = QGroupBox("New Feature")
-        self.new_feature_group.setMinimumHeight(200) # Set a larger minimum height
+        # Automation log box
+        self.automation_log_group = QGroupBox("Automation Log")
+        self.automation_log_group.setMinimumHeight(200) # Set a larger minimum height
+        self.automation_log_box = QTextEdit()
+        self.automation_log_box.setReadOnly(True)
 
         self.start_automation_btn = QPushButton("Start")
         self.stop_automation_btn = QPushButton("Stop")
@@ -145,9 +147,12 @@ class AutomationTab(QWidget):
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); self.automation_keys_group.setLayout(automation_grid)
         automation_actions_layout = QHBoxLayout()
         automation_actions_layout.addWidget(self.start_automation_btn); automation_actions_layout.addWidget(self.stop_automation_btn); automation_actions_layout.addWidget(self.reset_automation_btn)
+        log_layout = QVBoxLayout(self.automation_log_group)
+        log_layout.addWidget(self.automation_log_box)
         left_layout.addWidget(self.automation_keys_group);
         left_layout.addLayout(automation_actions_layout)
-        left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addWidget(self.new_feature_group); left_layout.addStretch()
+        left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s"))
+        left_layout.addWidget(self.automation_log_group); left_layout.addStretch()
         right_layout = QVBoxLayout(self.msg_hotkey_group)
         right_layout.addWidget(self.msg_hotkey_table)
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
