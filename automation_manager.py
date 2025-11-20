@@ -114,10 +114,12 @@ class AutomationManager(QObject):
         if self.custom_action_running:
             return
 
+        self.pause_all_automation()
         self.control_send_key('y')
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
-
+        # After the sequence, resume other automations.
+        QTimer.singleShot(300, self.resume_all_automation)
     def run_custom_action(self, message: str):
         self.custom_action_running = True
         self.pause_all_automation()
