@@ -112,8 +112,8 @@ class AutomationTab(QWidget):
         self.automation_log_box = QTextEdit()
         self.automation_log_box.setReadOnly(True)
 
-        self.start_automation_btn = QPushButton("Start")
-        self.stop_automation_btn = QPushButton("Stop")
+        self.start_automation_btn = QPushButton("Start/F5")
+        self.stop_automation_btn = QPushButton("Stop/F6")
         self.reset_automation_btn = QPushButton("Reset Automation")
 
         # --- Right Panel: Message Hotkeys ---

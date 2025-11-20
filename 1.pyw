@@ -148,7 +148,8 @@ class CustomTabBar(QWidget):
 
 
 class SimpleWindow(QMainWindow):
-    automation_toggled_signal = Signal()
+    start_automation_signal = Signal()
+    stop_automation_signal = Signal()
     load_character_signal = Signal()
 
     def __init__(self):
@@ -447,7 +448,8 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
         # Connect the thread-safe signal to the automation toggle slot
-        self.automation_toggled_signal.connect(self.automation_manager.toggle_automation)
+        self.start_automation_signal.connect(self.automation_manager.start_automation)
+        self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
 
         # Set initial values from loaded settings
@@ -1289,12 +1291,19 @@ QCheckBox::indicator {{
         keyboard.unhook_all()
         self.hotkey_ids.clear()
 
-        # Register global F5 for automation toggle
+        # Register global F5 for starting automation
         try:
-            f5_id = keyboard.add_hotkey('f5', lambda: self.automation_toggled_signal.emit(), suppress=True)
+            f5_id = keyboard.add_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True)
             self.hotkey_ids['f5'] = f5_id
         except Exception as e:
             print(f"Failed to register F5 hotkey: {e}")
+
+        # Register global F6 for stopping automation
+        try:
+            f6_id = keyboard.add_hotkey('f6', lambda: self.stop_automation_signal.emit(), suppress=True)
+            self.hotkey_ids['f6'] = f6_id
+        except Exception as e:
+            print(f"Failed to register F6 hotkey: {e}")
 
         # Register global F3 for loading character
         try:
