@@ -572,23 +572,17 @@ QLineEdit, QTextEdit, QListWidget, QTableWidget {{
     padding: 6px;
 }}
 
-QGroupBox {{
-    border: none;
+QGroupBox, QWidget#Section {{
+    background-color: #1A1A1A;
+    border-radius: 8px;
+    padding: 10px;
     margin-top: 10px;
 }}
 
 QGroupBox::title {{
     subcontrol-origin: margin;
-    subcontrol-position: top left;
-    padding: 0 5px;
-    font-weight: bold;
-}}
-
-QHeaderView::section {{
-    background-color: #2E2E2E;
-    color: {fg};
-    border: none;
-    padding: 4px;
+    subcontrol-position: top center;
+    padding: 0 10px;
 }}
 
 QTableWidget::item {{

@@ -111,7 +111,7 @@ class AutomationTab(QWidget):
         self.reset_automation_btn = QPushButton("Reset Automation")
 
         # --- Right Panel: Message Hotkeys ---
-        self.msg_hotkey_panel = QWidget() # Use a simple QWidget instead of QGroupBox
+        self.msg_hotkey_group = QGroupBox("Custom Message Hotkeys")
         self.msg_hotkey_table = QTableWidget()
         self.msg_hotkey_table.setColumnCount(2)
         self.msg_hotkey_table.setHorizontalHeaderLabels(["Hotkey", "Message"])
@@ -128,25 +128,24 @@ class AutomationTab(QWidget):
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        left_panel = QWidget(); left_layout = QVBoxLayout(left_panel)
+        left_layout = QVBoxLayout()
         automation_grid = QGridLayout()
         row, col = 0, 0
         for key in self.automationKeys:
             ctrls = self.automation_key_ctrls[key]
             automation_grid.addWidget(ctrls["chk"], row, col * 2); automation_grid.addWidget(ctrls["edit"], row, col * 2 + 1)
             col += 1;
-            if col > 1: col = 0; row += 1
+            if col > 1: col, row = 0, row + 1
         custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); self.automation_keys_group.setLayout(automation_grid)
         left_layout.addWidget(self.automation_keys_group); left_layout.addWidget(self.start_automation_btn); left_layout.addWidget(self.reset_automation_btn)
-        left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addStretch()        
-        # Right panel layout for message hotkeys
-        right_layout = QVBoxLayout(self.msg_hotkey_panel)
-        right_layout.addWidget(QLabel("Custom Message Hotkeys")) # Add a simple label as a title
+        left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addStretch()
+        right_layout = QVBoxLayout(self.msg_hotkey_group)
         right_layout.addWidget(self.msg_hotkey_table)
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
         msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
-        main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_panel, 1)
+        left_panel = QWidget(); left_panel.setLayout(left_layout)
+        main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_group, 1)
 
 
 class ItemsTab(QWidget):
