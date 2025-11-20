@@ -678,7 +678,7 @@ class SimpleWindow(QMainWindow):
 
         self.capture_thread = QThread()
         self.capture_worker = HotkeyCaptureWorker()
-        self.capture_worker.moveToThread(self.capture_thread) # type: ignore
+        self.capture_worker.moveToThread(self.capture_thread)
         self.capture_thread.started.connect(self.capture_worker.run)
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
         self.capture_thread.start()
@@ -707,8 +707,10 @@ class SimpleWindow(QMainWindow):
         if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
+        if hasattr(self, 'capture_worker'):
+            self.capture_worker.deleteLater()
+        if hasattr(self, 'capture_thread'):
             self.capture_thread.deleteLater()
-            del self.capture_thread
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
 
@@ -756,7 +758,7 @@ class SimpleWindow(QMainWindow):
         if not selected_items:
             QMessageBox.warning(self, "Selection Error", "Please select a hotkey from the list to delete.")
             return
-        
+
         selected_row = selected_items[0].row()
         hotkey_to_delete = table.item(selected_row, 0).text()
 
@@ -782,7 +784,7 @@ class SimpleWindow(QMainWindow):
 
         if not is_game_active:
             try: keyboard.send(hotkey_pressed)
-            except Exception: pass
+            except Exception: pass # type: ignore
             return # type: ignore
 
         if self.is_sending_message: return
@@ -791,21 +793,21 @@ class SimpleWindow(QMainWindow):
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         thread = QThread()
         worker.moveToThread(thread)
-
-        # Ensure both worker and thread are cleaned up
+ 
+ # Ensure both worker and thread are cleaned up
         worker.finished.connect(thread.quit)
         worker.error.connect(thread.quit)
         thread.finished.connect(thread.deleteLater)
         worker.finished.connect(worker.deleteLater)
         worker.error.connect(worker.deleteLater)
-
+ 
         thread.started.connect(worker.run)
         worker.finished.connect(self.on_chat_send_finished)
         worker.error.connect(self.on_chat_send_error)
         thread.start()
 
-    def on_chat_send_error(self, error_message: str): # type: ignore
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}") # type: ignore
+    def on_chat_send_error(self, error_message: str):
+        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
 
     def on_chat_send_finished(self):
