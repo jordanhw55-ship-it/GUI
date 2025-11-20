@@ -171,7 +171,6 @@ class ItemsTab(QWidget):
 
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
-        self.search_box.setObjectName("ItemSearchBox")
 
         self.stacked_widget = QStackedWidget()
         self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])

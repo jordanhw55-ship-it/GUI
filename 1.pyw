@@ -526,95 +526,53 @@ class SimpleWindow(QMainWindow):
         fg = self.custom_theme["fg"]
         accent = self.custom_theme["accent"]
         return f"""
-QWidget {{
-    background-color: {bg};
-    color: {fg};
-    font-family: 'Segoe UI';
-    font-size: 14px;
-}}
-
-QMainWindow {{
-    background-color: {bg};
-}}
-
-#CustomTitleBar {{
-    background-color: {bg};
-}}
-
-#CustomTitleBar QLabel, #CustomTitleBar QPushButton {{
-    background-color: transparent;
-    border: none;
-    color: {fg};
-    font-size: 16px;
-}}
-
-#CustomTitleBar QPushButton:hover {{
-    background-color: {accent};
-}}
-
-QPushButton {{
-    background-color: {accent};
-    color: {bg};
-    border: none;
-    border-radius: 8px;
-    padding: 6px 12px;
-}}
-
-QPushButton:hover {{
-    background-color: #ff9966;
-}}
-
-QLineEdit, QTextEdit, QListWidget, QTableWidget {{
-    background-color: #2E2E2E;
-    color: {fg};
-    border: none;
-    border-radius: 6px;
-    padding: 6px;
-}}
-
-QLineEdit:focus {{
-    border: 1px solid {accent};
-    padding: 5px;
-}}
-
-#ItemSearchBox {{
-    border: 1px solid {accent};
-    padding: 5px; /* Adjust padding to prevent text from touching the border */
-}}
-
-QGroupBox, QWidget#Section {{
-    background-color: #1A1A1A;
-    border-radius: 8px;
-    padding: 10px;
-    margin-top: 10px;
-}}
-
-QGroupBox::title {{
-    subcontrol-origin: margin;
-    subcontrol-position: top center;
-    padding: 0 10px;
-}}
-
-QTableWidget::item {{
-    padding: 6px;
-}}
-
-QCheckBox {{
-    spacing: 6px;
-}}
-
-QCheckBox::indicator {{
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    border: 1px solid {fg};
-    background-color: #2E2E2E;
-}}
-
-QCheckBox::indicator:checked {{
-    background-color: {accent};
-    border: 1px solid {accent};
-}}
+        QWidget {{
+            background-color: {bg}; 
+            color: {fg};
+            font-family: 'Segoe UI';
+            font-size: 14px;
+            outline: none;
+            border: none;
+        }}
+        QMainWindow {{ background-color: {bg}; }}
+        #CustomTitleBar {{
+            background-color: {bg};
+        }}
+        #CustomTitleBar QLabel, #CustomTitleBar QPushButton {{
+            background-color: transparent; border: none;
+            color: {fg};
+            font-size: 16px;
+        }}
+        #CustomTitleBar QPushButton:hover {{
+            background-color: {accent};
+        }}
+        QGroupBox {{
+            background-color: #2E2E2E; /* A slightly different shade for depth */
+            border-radius: 8px;
+            border: none;
+            margin-top: 10px; /* Space for title */
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            subcontrol-position: top center; /* Center the title */
+            padding: 0 5px;
+        }}
+        QPushButton {{
+            background-color: {accent};
+            border: 1px solid {fg};
+            padding: 5px;
+            border-radius: 6px;
+            color: {bg};
+        }}
+        QHeaderView::section {{
+            background-color: {bg}; border: none;
+            color: {fg};
+        }}
+        QLineEdit, QTextEdit, QListWidget, QTableWidget {{
+            background-color: #2E2E2E; /* Subtle background for input fields */
+            color: {fg}; border: none;
+            border-radius: 5px;
+        }}
         """
 
     def apply_custom_theme(self):
