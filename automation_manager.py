@@ -1,7 +1,15 @@
 import time
-import pyautogui
 from PySide6.QtCore import QTimer, QObject
 from PySide6.QtWidgets import QMessageBox
+
+try:
+    import win32gui
+    import win32api
+    import win32con
+except ImportError:
+    win32gui = None
+    win32api = None
+    win32con = None
 
 
 class AutomationManager(QObject):
@@ -47,7 +55,6 @@ class AutomationManager(QObject):
     # Public control
     # -------------------------
     def toggle_automation(self):
-        """Wrapper for GUI wiring: toggles between start and stop."""
         if self.is_automation_running:
             self.stop_automation()
         else:
@@ -142,9 +149,9 @@ class AutomationManager(QObject):
         self.sequence_lock = True
         self._log("QUEST start")
 
-        pyautogui.press('y')
-        QTimer.singleShot(100, lambda: pyautogui.press('e'))
-        QTimer.singleShot(200, lambda: pyautogui.press('esc'))
+        self._send_key('y')
+        QTimer.singleShot(100, lambda: self._send_key('e'))
+        QTimer.singleShot(200, lambda: self._send_key('esc'))
         QTimer.singleShot(400, self._end_complete_quest)
 
     def _end_complete_quest(self):
@@ -157,9 +164,10 @@ class AutomationManager(QObject):
         self._log(f"CUSTOM start (msg='{message}')")
 
         def type_message():
-            pyautogui.press('enter')
-            pyautogui.write(message, interval=0.03)
-            pyautogui.press('enter')
+            self._send_key('enter')
+            for ch in message:
+                self._send_char(ch)
+            self._send_key('enter')
             self._log("CUSTOM typed")
 
         QTimer.singleShot(200, type_message)
@@ -169,3 +177,39 @@ class AutomationManager(QObject):
         self.custom_action_running = False
         self.sequence_lock = False
         self._log("CUSTOM end")
+
+    # -------------------------
+    # Low-level send to WC3
+    # -------------------------
+    def _send_key(self, key: str):
+        if not win32gui or not win32api or not win32con:
+            self._log(f"send_key '{key}' skipped: Windows API unavailable")
+            return
+
+        hwnd = win32gui.FindWindow(None, self.game_title)
+        if hwnd == 0:
+            self._log(f"send_key '{key}' skipped: window not found")
+            return
+
+        vk_map = {
+            'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52,
+            'd': 0x44, 'f': 0x46, 't': 0x54,
+            'z': 0x5A, 'x': 0x58, 'y': 0x59,
+            'esc': win32con.VK_ESCAPE, 'enter': win32con.VK_RETURN
+        }
+        vk_code = vk_map.get(key.lower())
+        if vk_code is None:
+            self._log(f"send_key '{key}' skipped: VK code not found")
+            return
+
+        win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+        win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+        self._log(f"send_key '{key}' sent")
+
+    def _send_char(self, ch: str):
+        if not win32gui or not win32api or not win32con:
+            return
+        hwnd = win32gui.FindWindow(None, self.game_title)
+        if hwnd == 0:
+            return
+        win32api.PostMessage(hwnd, win32con.WM_CHAR, ord(ch), 0)
