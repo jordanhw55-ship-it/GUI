@@ -250,9 +250,12 @@ class SimpleWindow(QMainWindow):
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
+        self.max_button = QPushButton("🗖"); self.max_button.setFixedSize(30, 30); self.max_button.clicked.connect(self.toggle_maximize_restore)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
         title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label); title_bar_layout.addStretch()
-        title_bar_layout.addWidget(min_button); title_bar_layout.addWidget(close_button)
+        title_bar_layout.addWidget(min_button)
+        title_bar_layout.addWidget(self.max_button)
+        title_bar_layout.addWidget(close_button)
         main_layout.addWidget(self.title_bar)
 
         # Tabs
@@ -587,6 +590,15 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.resizing = False
         self.resize_edge = None
+
+    def toggle_maximize_restore(self):
+        """Toggles the window between maximized and normal states."""
+        if self.isMaximized():
+            self.showNormal()
+            self.max_button.setText("🗖") # Restore icon
+        else:
+            self.showMaximized()
+            self.max_button.setText("🗗") # Maximize icon
 
     def is_on_edge(self, pos: QPoint) -> bool:
         return (pos.x() < self.grip_size or pos.x() > self.width() - self.grip_size or
