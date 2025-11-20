@@ -1,5 +1,6 @@
 import time
 import pyautogui
+import traceback
 from PySide6.QtCore import QTimer, QObject
 from PySide6.QtWidgets import QMessageBox
 
@@ -45,6 +46,9 @@ class AutomationManager(QObject):
         # Cached message
         self.custom_message = ""
 
+        # Debounce guard
+        self.last_toggle_time = 0
+
     def _log(self, *args):
         if self.debug:
             print("[DEBUG]", *args)
@@ -56,6 +60,16 @@ class AutomationManager(QObject):
     # Public control
     # -------------------------
     def toggle_automation(self):
+        # Stack trace debug
+        self._log("toggle_automation called from:\n", "".join(traceback.format_stack(limit=3)))
+
+        # Debounce guard
+        now = time.monotonic()
+        if now - self.last_toggle_time < 1.0:
+            self._log("toggle_automation ignored (debounce)")
+            return
+        self.last_toggle_time = now
+
         self.is_automation_running = not self.is_automation_running
         self._log("toggle_automation ->", self.is_automation_running)
 
@@ -109,7 +123,6 @@ class AutomationManager(QObject):
         if self.custom_action_running or self.sequence_lock:
             return
 
-        # Both due -> custom replaces quest
         if quest_due and custom_due:
             self._log("Both due -> CUSTOM replaces QUEST")
             self._run_custom_action(self.custom_message)
@@ -136,7 +149,6 @@ class AutomationManager(QObject):
         self.sequence_lock = True
         self._log("QUEST start")
 
-        # Use pyautogui for reliability
         pyautogui.press('y')
         QTimer.singleShot(100, lambda: pyautogui.press('e'))
         QTimer.singleShot(200, lambda: pyautogui.press('esc'))
