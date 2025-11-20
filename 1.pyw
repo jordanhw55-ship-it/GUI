@@ -168,13 +168,6 @@ class SimpleWindow(QMainWindow):
             "accent": "#FF7F50"
         })
 
-        # For resizing
-        self.grip_size = 8
-        self.grips = []
-        self.resizing = False
-        self.resize_edge = None
-
-
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
@@ -206,10 +199,6 @@ class SimpleWindow(QMainWindow):
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
 
-        # Enable mouse tracking to detect mouse movements even when a button is not pressed.
-        # This is crucial for changing the cursor when hovering over the edges.
-        self.setMouseTracking(True)
-
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
 
@@ -223,9 +212,6 @@ class SimpleWindow(QMainWindow):
             frame_geometry = self.frameGeometry()
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
-        
-        # Set a minimum size for the window to ensure the layout doesn't break
-        self.setMinimumSize(600, 500)
 
         self.themes = [
             {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
@@ -246,23 +232,13 @@ class SimpleWindow(QMainWindow):
         self.title_bar = QWidget()
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
-        title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(5, 0, 5, 0)
-        title_bar_layout.setSpacing(0)
-
+        title_bar_layout = QHBoxLayout(self.title_bar); title_bar_layout.setContentsMargins(5, 0, 0, 0)
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
-        self.max_button = QPushButton("🗖"); self.max_button.setFixedSize(30, 30); self.max_button.clicked.connect(self.toggle_maximize_restore)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-
-        title_bar_layout.addStretch(1)
-        title_bar_layout.addWidget(title_label, 0, Qt.AlignmentFlag.AlignCenter)
-        title_bar_layout.addStretch(1)
-        title_bar_layout.addWidget(min_button, 0, Qt.AlignmentFlag.AlignRight)
-        title_bar_layout.addWidget(self.max_button, 0, Qt.AlignmentFlag.AlignRight)
-        title_bar_layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignRight)
+        title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label); title_bar_layout.addStretch()
+        title_bar_layout.addWidget(min_button); title_bar_layout.addWidget(close_button)
         main_layout.addWidget(self.title_bar)
 
         # Tabs
@@ -559,86 +535,16 @@ class SimpleWindow(QMainWindow):
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton and not self.isMaximized():
-            if self.is_on_edge(event.position().toPoint()):
-                self.resizing = True
-                self.resize_edge = self.get_edge(event.position().toPoint())
-                self.old_pos = event.globalPosition().toPoint()
-            elif self.title_bar.underMouse():
-                self.old_pos = event.globalPosition().toPoint()
-
-    def mouseMoveEvent(self, event: QMouseEvent):
-        pos = event.position().toPoint()
-
-        # Always start with the default cursor, then override if needed
-        self.setCursor(Qt.CursorShape.ArrowCursor)
-
-        if self.isMaximized():
-            return # No resizing or special cursors when maximized
-
-        # If currently resizing, continue resizing and set appropriate cursor
-        if self.resizing and self.old_pos and event.buttons() == Qt.MouseButton.LeftButton:
-            delta = event.globalPosition().toPoint() - self.old_pos
-            self.resize_window(delta)
+        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
             self.old_pos = event.globalPosition().toPoint()
-            # Keep the resize cursor active during the drag
-            edge = self.resize_edge
-            if edge in [("left", "top"), ("right", "bottom")]: self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-            elif edge in [("right", "top"), ("left", "bottom")]: self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-            elif "left" in edge or "right" in edge: self.setCursor(Qt.CursorShape.SizeHorCursor)
-            elif "top" in edge or "bottom" in edge: self.setCursor(Qt.CursorShape.SizeVerCursor)
-            return
-
-        # If dragging title bar, continue dragging
-        if self.old_pos and not self.resizing and self.title_bar.underMouse() and event.buttons() == Qt.MouseButton.LeftButton:
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
             delta = event.globalPosition().toPoint() - self.old_pos
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.old_pos = event.globalPosition().toPoint()
-            return
-
-        # If no mouse button is pressed, update cursor based on position for hovering
-        if event.buttons() == Qt.MouseButton.NoButton and self.is_on_edge(pos):
-            edge = self.get_edge(pos)
-            if edge in [("left", "top"), ("right", "bottom")]: self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-            elif edge in [("right", "top"), ("left", "bottom")]: self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-            elif "left" in edge or "right" in edge: self.setCursor(Qt.CursorShape.SizeHorCursor)
-            elif "top" in edge or "bottom" in edge: self.setCursor(Qt.CursorShape.SizeVerCursor)
-
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
-        self.resizing = False
-        self.resize_edge = None
-        self.setCursor(Qt.CursorShape.ArrowCursor) # Reset cursor on release
 
-    def toggle_maximize_restore(self):
-        """Toggles the window between maximized and normal states."""
-        if self.isMaximized():
-            self.showNormal()
-            self.max_button.setText("🗖") # Restore icon
-        else:
-            self.showMaximized()
-            self.max_button.setText("🗗") # Maximize icon
-
-    def is_on_edge(self, pos: QPoint) -> bool:
-        return (pos.x() < self.grip_size or pos.x() > self.width() - self.grip_size or
-                pos.y() < self.grip_size or pos.y() > self.height() - self.grip_size)
-
-    def get_edge(self, pos: QPoint) -> tuple:
-        edges = []
-        if pos.x() < self.grip_size: edges.append("left")
-        if pos.x() > self.width() - self.grip_size: edges.append("right")
-        if pos.y() < self.grip_size: edges.append("top")
-        if pos.y() > self.height() - self.grip_size: edges.append("bottom")
-        return tuple(edges)
-
-    def resize_window(self, delta: QPoint):
-        rect = self.geometry()
-        if "left" in self.resize_edge: rect.setLeft(rect.left() + delta.x())
-        if "right" in self.resize_edge: rect.setRight(rect.right() + delta.x())
-        if "top" in self.resize_edge: rect.setTop(rect.top() + delta.y())
-        if "bottom" in self.resize_edge: rect.setBottom(rect.bottom() + delta.y())
-        self.setGeometry(rect)
-        
     # Preset themes
     def apply_theme(self, theme_index: int):
         self.current_theme_index = theme_index
