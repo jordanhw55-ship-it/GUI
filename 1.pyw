@@ -572,6 +572,11 @@ QLineEdit, QTextEdit, QListWidget, QTableWidget {{
     padding: 6px;
 }}
 
+QLineEdit:focus {{
+    border: 1px solid {accent};
+    padding: 5px;
+}}
+
 #ItemSearchBox {{
     border: 1px solid {accent};
     padding: 5px; /* Adjust padding to prevent text from touching the border */
