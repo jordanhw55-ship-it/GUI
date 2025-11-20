@@ -1332,7 +1332,7 @@ QCheckBox::indicator {{
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
-        self.automation_manager._stop_timers()
+        self.automation_manager.stop_automation()
         keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
