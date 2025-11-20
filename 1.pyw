@@ -246,16 +246,23 @@ class SimpleWindow(QMainWindow):
         self.title_bar = QWidget()
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
-        title_bar_layout = QHBoxLayout(self.title_bar); title_bar_layout.setContentsMargins(5, 0, 0, 0)
+        title_bar_layout = QHBoxLayout(self.title_bar)
+        title_bar_layout.setContentsMargins(5, 0, 5, 0)
+        title_bar_layout.setSpacing(0)
+
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         self.max_button = QPushButton("🗖"); self.max_button.setFixedSize(30, 30); self.max_button.clicked.connect(self.toggle_maximize_restore)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-        title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label); title_bar_layout.addStretch()
-        title_bar_layout.addWidget(min_button)
-        title_bar_layout.addWidget(self.max_button)
-        title_bar_layout.addWidget(close_button)
+
+        title_bar_layout.addStretch(1)
+        title_bar_layout.addWidget(title_label, 0, Qt.AlignmentFlag.AlignCenter)
+        title_bar_layout.addStretch(1)
+        title_bar_layout.addWidget(min_button, 0, Qt.AlignmentFlag.AlignRight)
+        title_bar_layout.addWidget(self.max_button, 0, Qt.AlignmentFlag.AlignRight)
+        title_bar_layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignRight)
         main_layout.addWidget(self.title_bar)
 
         # Tabs
@@ -572,24 +579,26 @@ class SimpleWindow(QMainWindow):
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.old_pos = event.globalPosition().toPoint()
         else:
-            # Update cursor when hovering over edges
-            if self.is_on_edge(pos):
-                edge = self.get_edge(pos)
-                if edge in [("left", "top"), ("right", "bottom")]:
-                    self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-                elif edge in [("right", "top"), ("left", "bottom")]:
-                    self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-                elif "left" in edge or "right" in edge:
-                    self.setCursor(Qt.CursorShape.SizeHorCursor)
+            # Only update cursor when no mouse button is pressed
+            if event.buttons() == Qt.MouseButton.NoButton:
+                if self.is_on_edge(pos):
+                    edge = self.get_edge(pos)
+                    if edge in [("left", "top"), ("right", "bottom")]:
+                        self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+                    elif edge in [("right", "top"), ("left", "bottom")]:
+                        self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+                    elif "left" in edge or "right" in edge:
+                        self.setCursor(Qt.CursorShape.SizeHorCursor)
+                    else:
+                        self.setCursor(Qt.CursorShape.SizeVerCursor)
                 else:
-                    self.setCursor(Qt.CursorShape.SizeVerCursor)
-            else:
-                self.setCursor(Qt.CursorShape.ArrowCursor)
+                    self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
         self.resizing = False
         self.resize_edge = None
+        self.setCursor(Qt.CursorShape.ArrowCursor) # Reset cursor on release
 
     def toggle_maximize_restore(self):
         """Toggles the window between maximized and normal states."""
