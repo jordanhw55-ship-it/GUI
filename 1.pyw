@@ -21,6 +21,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
+from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab
 
 try:
@@ -172,10 +173,7 @@ class SimpleWindow(QMainWindow):
         self.game_title = "Warcraft III"
 
         # Automation state flags
-        self.automation_timers = {}
-        self.is_automation_running = False
         self.automation_settings = {} # To hold loaded settings
-        self.custom_action_running = False
         self.is_capturing_hotkey = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
@@ -184,6 +182,9 @@ class SimpleWindow(QMainWindow):
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
+
+        # Initialize the automation manager
+        self.automation_manager = AutomationManager(self)
 
         self.setWindowTitle("Hellfire Helper")
         self.apply_loaded_settings()
@@ -289,7 +290,7 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(self.automation_tab)
 
         # Connect signals from the new AutomationTab
-        self.automation_tab.start_automation_btn.clicked.connect(self.toggle_automation)
+        self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.toggle_automation)
         self.automation_tab.reset_automation_btn.clicked.connect(self.reset_automation_settings)
         self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
@@ -432,7 +433,7 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
         # Connect the thread-safe signal to the automation toggle slot
-        self.automation_toggled_signal.connect(self.toggle_automation)
+        self.automation_toggled_signal.connect(self.automation_manager.toggle_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
 
         # Set initial selected ping sound
@@ -1015,7 +1016,7 @@ QCheckBox::indicator {{
 
     def _reset_automation_ui(self):
         """Resets the automation UI controls to their default values without confirmation."""
-        self.reset_automation_settings(confirm=False)
+        self.automation_manager.reset_settings(confirm=False)
 
     def _rebuild_materials_table(self):
         """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
@@ -1238,156 +1239,14 @@ QCheckBox::indicator {{
         elif tab_name == "Automation":
             self.load_message_hotkeys()
 
-    def control_send_key(self, key: str):
-        """Sends a key press to the game window without activating it."""
-        if not win32gui or not win32api or not win32con:
-            print("ControlSend functionality is only available on Windows.")
-            return
-
-        hwnd = win32gui.FindWindow(None, self.game_title)
-        if hwnd == 0:
-            # Silently fail if the window is not found, to avoid spamming messages.
-            # The user will see that the automation isn't working.
-            return
-
-        # Virtual-Key Codes mapping
-        vk_code = {
-            'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52, 'd': 0x44, 'f': 0x46,
-            't': 0x54, 'z': 0x5A, 'x': 0x58, 'y': 0x59, 'esc': win32con.VK_ESCAPE
-        }.get(key.lower())
-
-        if vk_code is None:
-            print(f"No virtual key code found for key: {key}")
-            return
-
-        # PostMessage is asynchronous and non-blocking
-        win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-        # Add a small delay before sending the key up message
-        QTimer.singleShot(50, lambda: self._control_send_key_up(hwnd, vk_code))
-
-    def _control_send_key_up(self, hwnd, vk_code):
-        """Helper to send the WM_KEYUP message."""
-        if not win32api or not win32con:
-            return
-        # The lparam for key up includes flags indicating the key is being released.
-        lparam = (1 << 31) | (1 << 30)
-        win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, lparam)
-
-    def pause_all_automation(self):
-        # Unhook message hotkeys temporarily to prevent them from firing
-        for hk, hk_id in list(self.hotkey_ids.items()):
-            if hk not in ['f5']: # Keep global toggle active
-                try: keyboard.remove_hotkey(hk_id)
-                except Exception: pass
-
-        for timer in self.automation_timers.values():
-            timer.stop()
-
-    def resume_all_automation(self):
-        # Re-register message hotkeys
-        for hotkey, message in self.message_hotkeys.items():
-            if hotkey not in self.hotkey_ids:
-                self.register_single_hotkey(hotkey, message)
-
-        for timer in self.automation_timers.values():
-            timer.start()
-
-    def run_complete_quest(self):
-        # If custom action is running, wait then retry
-        if self.custom_action_running:
-            QTimer.singleShot(2500, self.run_complete_quest)
-            return
-        # Pause QWERDFZX timers
-        self.pause_all_automation()
-        # Sequence: y -> 100ms -> e -> 100ms -> esc
-        self.control_send_key('y')
-        QTimer.singleShot(100, lambda: self.control_send_key('e'))
-        QTimer.singleShot(200, lambda: self.control_send_key('esc'))
-        # Resume after ~2.1s to allow keys to be processed
-        QTimer.singleShot(2100, self.resume_all_automation)
-
-    def run_custom_action(self, message: str):
-        # Highest priority, pauses everything including complete quest
-        self.custom_action_running = True
-        self.pause_all_automation()
-        def type_message():
-            pyautogui.press('enter')
-            pyautogui.write(message, interval=0.03)
-            pyautogui.press('enter')
-        # Wait 2s, type, then wait 2s more and resume
-        QTimer.singleShot(2000, type_message)
-        QTimer.singleShot(4000, self._end_custom_action)
-
-    def _end_custom_action(self):
-        self.custom_action_running = False
-        self.resume_all_automation()
-
     def _reset_automation_button_style(self):
         """Resets the automation button to its default theme color."""
         accent_color = self.custom_theme.get("accent", "#FF7F50")
         text_color = self.custom_theme.get("bg", "#121212")
         self.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
 
-    def toggle_automation(self):
-        self.is_automation_running = not self.is_automation_running
-        if self.is_automation_running:
-            self.automation_tab.start_automation_btn.setText("Stop (F5)")
-            self.automation_tab.start_automation_btn.setStyleSheet("background-color: #B00000;")
-            # Start timers
-            for key, ctrls in self.automation_tab.automation_key_ctrls.items():
-                if ctrls["chk"].isChecked():
-                    interval_text = ctrls["edit"].text().strip()
-                    if not interval_text:
-                        continue
-                    try:
-                        interval = int(interval_text)
-                        timer = QTimer(self)
-                        if key == "Complete Quest":
-                            timer.timeout.connect(self.run_complete_quest)
-                        else:
-                            # Raw key presses (no typing into chat)
-                            timer.timeout.connect(lambda k=key: self.control_send_key(k))
-                        timer.start(interval)
-                        self.automation_timers[key] = timer
-                    except ValueError:
-                        QMessageBox.warning(self, "Invalid interval", f"Interval for '{key}' must be a number in ms.")
-            # Custom Action timer
-            if self.automation_tab.custom_action_btn.isChecked():
-                interval_text = self.automation_tab.custom_action_edit1.text().strip()
-                if interval_text:
-                    try:
-                        interval = int(interval_text)
-                        message = self.automation_tab.custom_action_edit2.text()
-                        timer = QTimer(self)
-                        timer.timeout.connect(lambda msg=message: self.run_custom_action(msg))
-                        timer.start(interval)
-                        self.automation_timers["custom"] = timer
-                    except ValueError:
-                        QMessageBox.warning(self, "Invalid interval", "Interval for 'Custom Action' must be a number in ms.")
-        else:
-            self.automation_tab.start_automation_btn.setText("Start (F5)")
-            self._reset_automation_button_style()
-            for timer in self.automation_timers.values():
-                timer.stop(); timer.deleteLater()
-            self.automation_timers.clear()
-
     def reset_automation_settings(self, confirm=True):
-        """Resets all automation settings in the UI to their defaults."""
-        do_reset = False
-        if not confirm:
-            do_reset = True
-        elif QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all automation settings to their defaults?") == QMessageBox.StandardButton.Yes:
-            do_reset = True
-        if do_reset:
-            # Reset key automation
-            for key, ctrls in self.automation_tab.automation_key_ctrls.items():
-                ctrls["chk"].setChecked(False)
-                default_interval = "15000" if key == "Complete Quest" else "500"
-                ctrls["edit"].setText(default_interval)
-            # Reset custom action
-            self.automation_tab.custom_action_btn.setChecked(False)
-            self.automation_tab.custom_action_edit1.setText("30000")
-            self.automation_tab.custom_action_edit2.setText("-save x")
+        self.automation_manager.reset_settings(confirm)
 
     def register_global_hotkeys(self):
         """Registers all hotkeys, including global controls and custom messages."""
@@ -1441,12 +1300,7 @@ QCheckBox::indicator {{
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
-        try:
-            for timer in self.automation_timers.values():
-                timer.stop(); timer.deleteLater()
-            self.automation_timers.clear()
-        except Exception:
-            pass
+        self.automation_manager._stop_timers()
         keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
