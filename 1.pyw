@@ -389,6 +389,16 @@ class SimpleWindow(QMainWindow):
         pick_buttons_h_layout.addWidget(self.fg_color_btn)
         pick_buttons_h_layout.addWidget(self.accent_color_btn)
 
+        # Create a live preview widget for the custom theme
+        self.custom_theme_preview = QWidget()
+        self.custom_theme_preview.setObjectName("CustomThemePreview")
+        preview_layout = QVBoxLayout(self.custom_theme_preview)
+        self.preview_label = QLabel("Sample Text")
+        self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_button = QPushButton("Accent Button")
+        preview_layout.addWidget(self.preview_label)
+        preview_layout.addWidget(self.preview_button)
+
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
         self.reset_custom_btn = QPushButton("Reset custom")
@@ -399,6 +409,7 @@ class SimpleWindow(QMainWindow):
         action_buttons_h_layout.addWidget(self.reset_custom_btn)
 
         custom_v_layout.addLayout(pick_buttons_h_layout)
+        custom_v_layout.addWidget(self.custom_theme_preview)
         custom_v_layout.addStretch()
         custom_v_layout.addLayout(action_buttons_h_layout)
 
@@ -611,6 +622,13 @@ QCheckBox::indicator {{
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        
+        # Update the live preview for the custom theme
+        bg, fg, accent = self.custom_theme['bg'], self.custom_theme['fg'], self.custom_theme['accent']
+        self.custom_theme_preview.setStyleSheet(f"#CustomThemePreview {{ background-color: {bg}; border: 1px solid {accent}; border-radius: 8px; }}")
+        self.preview_label.setStyleSheet(f"color: {fg}; background-color: transparent; border: none;")
+        self.preview_button.setStyleSheet(f"background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px;")
+
         self.update_ping_button_styles()
 
     def pick_color(self, key: str):
