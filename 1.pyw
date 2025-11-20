@@ -189,9 +189,6 @@ class SimpleWindow(QMainWindow):
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
 
-        self.setWindowTitle("Hellfire Helper")
-        self.apply_loaded_settings()
-
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
@@ -199,6 +196,9 @@ class SimpleWindow(QMainWindow):
 
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
+
+        self.setWindowTitle("Hellfire Helper")
+        self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
         # Center the window on the primary screen
         screen = QApplication.primaryScreen()
@@ -449,6 +449,9 @@ class SimpleWindow(QMainWindow):
         # Connect the thread-safe signal to the automation toggle slot
         self.automation_toggled_signal.connect(self.automation_manager.toggle_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
+
+        # Set initial values from loaded settings
+        self.volume_slider.setValue(self.volume)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
@@ -886,7 +889,7 @@ QCheckBox::indicator {{
         self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
         self.selected_sound = self.settings_manager.get("selected_sound")
         self.volume = self.settings_manager.get("volume", 100)
-        self.volume_slider.setValue(self.volume)
+        # self.volume_slider.setValue(self.volume) # This will be set after the UI is created
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -1333,7 +1336,7 @@ QCheckBox::indicator {{
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
-        self.automation_manager.stop_automation()
+        self.automation_manager.stop_automation() # This was already here
         keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
