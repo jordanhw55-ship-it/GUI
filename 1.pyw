@@ -7,10 +7,10 @@ from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
-    QListWidgetItem, QColorDialog, QCheckBox
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog,
+    QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
-from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl
+from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
@@ -182,6 +182,7 @@ class SimpleWindow(QMainWindow):
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
+        self.volume = self.settings_manager.get("volume", 100)
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
@@ -353,6 +354,15 @@ class SimpleWindow(QMainWindow):
         test_sound_button.clicked.connect(self.play_notification_sound)
         sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
         watchlist_controls_layout.addLayout(sound_layout)
+
+        # Add volume slider
+        volume_layout = QHBoxLayout()
+        volume_label = QLabel("Volume:")
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        volume_layout.addWidget(volume_label); volume_layout.addWidget(self.volume_slider)
+        watchlist_controls_layout.addLayout(volume_layout)
         self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
         watchlist_controls_layout.addStretch()
 
@@ -457,13 +467,21 @@ class SimpleWindow(QMainWindow):
         # Apply theme last to ensure all widgets are styled correctly on startup
         # A theme index of -1 indicates a custom theme was last used.
         if self.current_theme_index == -1:
+            # Apply custom theme and update its preview
             self.apply_custom_theme()
+            self.update_custom_theme_preview()
         else:
             self.apply_theme(self.current_theme_index)
 
     def update_automation_log(self, message: str):
         """Appends a message to the automation log text box."""
         self.automation_tab.automation_log_box.append(message)
+
+    def set_volume(self, value: int):
+        """Sets the media player volume from the slider (0-100)."""
+        self.volume = value
+        volume_float = value / 100.0
+        self.audio_output.setVolume(volume_float)
 
     # Core helpers
     def create_theme_grid(self, layout: QGridLayout):
@@ -865,6 +883,7 @@ QCheckBox::indicator {{
         self.watchlist = self.settings_manager.get("watchlist")
         self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
         self.selected_sound = self.settings_manager.get("selected_sound")
+        self.volume = self.settings_manager.get("volume", 100)
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""

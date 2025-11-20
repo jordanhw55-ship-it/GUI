@@ -18,7 +18,8 @@ class SettingsManager:
             "automation": {},
             "watchlist": ["hellfire", "rpg"],
             "play_sound_on_found": False,
-            "selected_sound": "ping1.mp3"
+            "selected_sound": "ping1.mp3",
+            "volume": 100
         }
         self.settings = self.defaults.copy()
         self.load()
@@ -48,7 +49,8 @@ class SettingsManager:
             "automation": window_instance.get_automation_settings_from_ui(),
             "watchlist": window_instance.watchlist,
             "play_sound_on_found": window_instance.lobby_placeholder_checkbox.isChecked(),
-            "selected_sound": window_instance.selected_sound
+            "selected_sound": window_instance.selected_sound,
+            "volume": window_instance.volume
         }
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)
