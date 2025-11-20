@@ -44,7 +44,7 @@ class SettingsManager:
             "message_hotkeys": window_instance.message_hotkeys,
             "custom_theme_enabled": window_instance.custom_theme_enabled,
             "custom_theme": window_instance.custom_theme,
-            "in_progress_recipes": [window_instance.in_progress_recipes_list.item(i).text() for i in range(window_instance.in_progress_recipes_list.count())],
+            "in_progress_recipes": [window_instance.recipes_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.recipes_tab.in_progress_recipes_list.count())],
             "automation": window_instance.get_automation_settings_from_ui(),
             "watchlist": window_instance.watchlist,
             "play_sound_on_found": window_instance.lobby_placeholder_checkbox.isChecked(),

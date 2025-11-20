@@ -21,7 +21,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
-from ui_tabs import LoadTab
+from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab
 
 try:
     import win32gui # type: ignore
@@ -236,7 +236,7 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
-        self.load_tab = LoadTab(self)
+        self.load_tab = CharacterLoadTab(self)
         self.stacked_widget.addWidget(self.load_tab)
 
         # Connect signals from the new LoadTab
@@ -246,7 +246,7 @@ class SimpleWindow(QMainWindow):
         self.load_tab.load_char_btn.clicked.connect(self.load_selected_character)
         self.load_tab.refresh_chars_btn.clicked.connect(self.load_characters)
         self.load_tab.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
-        
+
         # Set initial path and load characters
         self.load_tab.load_path_edit.setText(self.settings_manager.get("character_path"))
         # Items tab
@@ -280,36 +280,16 @@ class SimpleWindow(QMainWindow):
 
         # Recipes tab
         self.in_progress_recipes = {}
-        self.material_list_data = {}
-        recipes_tab_content = QWidget()
-        recipes_main_layout = QVBoxLayout(recipes_tab_content)
-        recipes_top_layout = QHBoxLayout()
-        recipes_list_layout = QVBoxLayout()
-        self.recipe_search_box = QLineEdit(); self.recipe_search_box.setPlaceholderText("Search Recipes...")
-        self.recipe_search_box.textChanged.connect(self.filter_recipes_list)
-        self.available_recipes_list = QListWidget()
-        recipes_list_layout.addWidget(self.recipe_search_box); recipes_list_layout.addWidget(self.available_recipes_list)
-        add_remove_layout = QVBoxLayout(); add_remove_layout.addStretch()
-        add_recipe_btn = QPushButton("Add ->"); add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
-        remove_recipe_btn = QPushButton("<- Remove"); remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
-        reset_recipes_btn = QPushButton("Reset"); reset_recipes_btn.clicked.connect(self.reset_recipes)
-        add_remove_layout.addWidget(add_recipe_btn); add_remove_layout.addWidget(remove_recipe_btn); add_remove_layout.addWidget(reset_recipes_btn); add_remove_layout.addStretch()
-        self.in_progress_recipes_list = QListWidget()
-        self.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
-        recipes_top_layout.addLayout(recipes_list_layout); recipes_top_layout.addLayout(add_remove_layout); recipes_top_layout.addWidget(self.in_progress_recipes_list)
-        recipes_main_layout.addLayout(recipes_top_layout)
-        recipes_main_layout.setStretchFactor(recipes_top_layout, 1)
-        self.materials_table = QTableWidget()
-        self.materials_table.setColumnCount(5)
-        self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
-        self.materials_table.setColumnHidden(4, True)
-        self.materials_table.verticalHeader().setVisible(False)
-        self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.materials_table.setSortingEnabled(True)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-        recipes_main_layout.addWidget(self.materials_table)
-        recipes_main_layout.setStretchFactor(self.materials_table, 3)
-        self.stacked_widget.addWidget(recipes_tab_content)
+        self.recipes_tab = RecipeTrackerTab(self)
+        self.stacked_widget.addWidget(self.recipes_tab)
+
+        # Connect signals from the new RecipeTrackerTab
+        self.recipes_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list)
+        self.recipes_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
+        self.recipes_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
+        self.recipes_tab.reset_recipes_btn.clicked.connect(self.reset_recipes)
+        self.recipes_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
+        self.recipes_tab.materials_table.itemChanged.connect(self.on_material_checked)
 
         # Automation tab
         automation_tab_content = QWidget()
@@ -1027,12 +1007,12 @@ class SimpleWindow(QMainWindow):
         if not self.item_database.recipes_data:
             self.item_database.load_recipes()
         query = self.recipe_search_box.text().lower()
-        self.available_recipes_list.clear()
+        self.recipes_tab.available_recipes_list.clear()
         for recipe in self.item_database.recipes_data:
             if query in recipe["name"].lower():
                 item = QListWidgetItem(recipe["name"])
                 item.setData(Qt.ItemDataRole.UserRole, recipe)
-                self.available_recipes_list.addItem(item)
+                self.recipes_tab.available_recipes_list.addItem(item)
 
     def add_recipe_to_progress(self):
         """Adds a recipe to the 'in-progress' list from the UI selection."""
@@ -1061,18 +1041,18 @@ class SimpleWindow(QMainWindow):
         item = QListWidgetItem(recipe_name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(Qt.CheckState.Unchecked)
-        # No need to connect a signal here, the list widget's itemChanged handles it
-        self.in_progress_recipes_list.addItem(item)
+        self.recipes_tab.in_progress_recipes_list.addItem(item)
         return True
 
     def remove_recipe_from_progress(self):
-        selected_item = self.in_progress_recipes_list.currentItem()
+        selected_item = self.recipes_tab.in_progress_recipes_list.currentItem()
         if not selected_item:
             return
         recipe_name = selected_item.text()
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
-            self.in_progress_recipes_list.takeItem(self.in_progress_recipes_list.row(selected_item))
+            list_widget = self.recipes_tab.in_progress_recipes_list
+            list_widget.takeItem(list_widget.row(selected_item))
             self._rebuild_materials_table()
 
     def reset_recipes(self):
@@ -1082,50 +1062,23 @@ class SimpleWindow(QMainWindow):
                                        QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             self.in_progress_recipes.clear()
-            self.in_progress_recipes_list.clear()
+            self.recipes_tab.in_progress_recipes_list.clear()
             self._rebuild_materials_table()
 
     def _reset_automation_ui(self):
         """Resets the automation UI controls to their default values without confirmation."""
         self.reset_automation_settings(confirm=False)
 
-
-    def _add_component_to_materials(self, component_str: str):
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] += quantity
-        else:
-            if not self.item_database.all_items_data:
-                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-            drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-            self.material_list_data[name] = {
-                "Material": name,
-                "#": quantity,
-                "Unit": drop_info["Unit"] if drop_info else "?",
-                "Location": drop_info["Location"] if drop_info else "?"
-            }
-
-    def _remove_component_from_materials(self, component_str: str):
-        match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-        if match:
-            name, quantity = match.group(1).strip(), int(match.group(2))
-        else:
-            name, quantity = component_str.strip(), 1
-        if name in self.material_list_data:
-            self.material_list_data[name]["#"] -= quantity
-            if self.material_list_data[name]["#"] <= 0:
-                del self.material_list_data[name]
-
     def _rebuild_materials_table(self):
         """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
         # Disconnect signals to prevent loops during update
-        self.materials_table.setSortingEnabled(False)
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        self.materials_table.setRowCount(0)
+        materials_table = self.recipes_tab.materials_table
+        materials_table.setSortingEnabled(False)
+        try:
+            materials_table.itemChanged.disconnect(self.on_material_checked)
+        except RuntimeError: # Already disconnected
+            pass
+        materials_table.setRowCount(0)
         
         # Determine which recipes to calculate materials for
         checked_recipe_names = []
@@ -1135,7 +1088,8 @@ class SimpleWindow(QMainWindow):
                 checked_recipe_names.append(item.text())
         
         # If no recipes are checked, use all recipes in the "In Progress" list
-        target_recipe_names = checked_recipe_names if checked_recipe_names else [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())]
+        in_progress_list = self.recipes_tab.in_progress_recipes_list
+        target_recipe_names = checked_recipe_names if checked_recipe_names else [in_progress_list.item(i).text() for i in range(in_progress_list.count())]
         
         # Calculate materials needed for the target recipes
         materials_to_display = {}
@@ -1155,31 +1109,32 @@ class SimpleWindow(QMainWindow):
         
         # Populate the table
         for row, item_data in enumerate(materials_to_display.values()):
-            self.materials_table.insertRow(row)
+            materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
-            self.materials_table.setItem(row, 0, material_item)
-            self.materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
-            self.materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
-            self.materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
-            self.materials_table.setItem(row, 4, QTableWidgetItem("0"))
+            materials_table.setItem(row, 0, material_item)
+            materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
+            materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
+            materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
+            materials_table.setItem(row, 4, QTableWidgetItem("0"))
         
         # Reconnect signals and enable sorting
-        self.materials_table.itemChanged.connect(self.on_material_checked)
-        self.materials_table.setSortingEnabled(True)
+        materials_table.itemChanged.connect(self.on_material_checked)
+        materials_table.setSortingEnabled(True)
 
     def on_material_checked(self, item: QTableWidgetItem):
         if item.column() != 0: return
+        materials_table = self.recipes_tab.materials_table
         is_checked = item.checkState() == Qt.CheckState.Checked
         color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
-        self.materials_table.itemChanged.disconnect(self.on_material_checked)
-        for col in range(self.materials_table.columnCount()):
-            table_item = self.materials_table.item(item.row(), col)
+        materials_table.itemChanged.disconnect(self.on_material_checked)
+        for col in range(materials_table.columnCount()):
+            table_item = materials_table.item(item.row(), col)
             if table_item: table_item.setForeground(color)
-        sort_item = self.materials_table.item(item.row(), 4)
+        sort_item = materials_table.item(item.row(), 4)
         if sort_item: sort_item.setText("1" if is_checked else "0")
-        self.materials_table.setSortingEnabled(True)
-        self.materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
-        self.materials_table.itemChanged.connect(self.on_material_checked)
+        materials_table.setSortingEnabled(True)
+        materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
+        materials_table.itemChanged.connect(self.on_material_checked)
 
     def on_recipe_check_changed(self, item: QListWidgetItem):
         """Called when any recipe's check state changes to rebuild the material list."""
