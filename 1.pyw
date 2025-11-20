@@ -1448,16 +1448,10 @@ class SimpleWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    # Set DPI awareness to prevent scaling issues and the "Access is denied" warning on Windows.
-    # This must be done before the QApplication is created.
-    if sys.platform == "win32":
-        try:
-            import ctypes
-            # Set process to be per-monitor DPI aware (Windows 8.1+)
-            ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except (AttributeError, OSError):
-            # Fallback for older Windows versions
-            ctypes.windll.user32.SetProcessDPIAware()
+    # Set the DPI awareness policy directly via Qt's attribute.
+    # This must be done before the QApplication is created and is a more robust
+    # way to handle scaling, which can prevent the "Access is denied" warning.
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
 
     app = QApplication(sys.argv)
     window = SimpleWindow()
