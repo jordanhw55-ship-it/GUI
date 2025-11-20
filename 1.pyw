@@ -1279,6 +1279,11 @@ QCheckBox::indicator {{
                     self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
         self.lobbies_table.setSortingEnabled(True)
 
+    def toggle_watchlist_visibility(self):
+        """Shows or hides the watchlist group box."""
+        is_visible = self.watchlist_group.isVisible()
+        self.watchlist_group.setVisible(not is_visible)
+
     # Tab select logic
     def on_main_tab_selected(self, index: int):
         self.stacked_widget.setCurrentIndex(index)
