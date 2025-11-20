@@ -202,8 +202,16 @@ class AutomationManager(QObject):
             self._log(f"send_key '{key}' skipped: VK code not found")
             return
 
+        # Send down
         win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+
+        # For letters, also send WM_CHAR so WC3 sees it even backgrounded
+        if key.lower() in ['q','w','e','r','d','f','t','z','x','y']:
+            win32api.PostMessage(hwnd, win32con.WM_CHAR, ord(key.lower()), 0)
+
+        # Send up
         win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, 0)
+
         self._log(f"send_key '{key}' sent")
 
     def _send_char(self, ch: str):
