@@ -45,10 +45,6 @@ class HotkeyCaptureWorker(QObject):
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
             self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
-        finally:
-            # Crucially, unhook all keyboard listeners here to reset the state
-            # before the main thread tries to re-register its own hotkeys.
-            keyboard.unhook_all()
 
 
 class ChatMessageWorker(QObject):

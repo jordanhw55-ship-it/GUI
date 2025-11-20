@@ -747,22 +747,27 @@ QCheckBox::indicator {{
         if self.is_capturing_hotkey:
             return
             
+        # If a previous thread is still cleaning up, do not start a new one.
+        if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
+            print("[DEBUG] Hotkey capture aborted: previous capture thread still running.")
+            return
+
+        self.is_capturing_hotkey = True
         # Properly clean up any previous capture thread that might exist
         if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
 
 
-        self.is_capturing_hotkey = True
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
         # Unhook all main hotkeys before starting the capture thread.
-        # The worker will handle its own unhooking upon completion.
         keyboard.unhook_all()
         
         # Create and start a new thread and worker for this capture
+        # These will be instance attributes to manage their lifecycle correctly
         self.capture_thread = QThread() 
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -770,35 +775,38 @@ QCheckBox::indicator {{
         # Connections
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
         self.capture_thread.started.connect(self.capture_worker.run)
+        
+        # When the worker emits the hotkey, it's done. Quit the thread.
+        self.capture_worker.hotkey_captured.connect(self.capture_thread.quit)
+
+        # When the thread finishes, schedule both for deletion and clear references.
+        self.capture_thread.finished.connect(self.on_capture_thread_finished)
+        self.capture_thread.finished.connect(self.capture_worker.deleteLater)
+        self.capture_thread.finished.connect(self.capture_thread.deleteLater)
 
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
         is_valid = hotkey != 'esc'
-
-        # The worker calls keyboard.unhook_all() in its 'finally' block.
-        # We must now re-register our application's global hotkeys.
-        self.register_global_hotkeys()
-
+        
         # Update UI
         self.automation_tab.message_edit.setEnabled(True)
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
         self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid and hotkey != 'esc' else "Click to set")
 
-        # Clean up the thread and worker that just finished.
-        self.capture_thread.quit()
-        self.capture_thread.wait() # Wait for the thread to fully terminate
-        self.capture_worker.deleteLater()
-        self.capture_thread.deleteLater()
-        
-        # Set references to None to prevent RuntimeError
-        self.capture_worker = None # type: ignore
-        self.capture_thread = None # type: ignore
+        # Re-register all application hotkeys now that capture is complete.
+        # The keyboard library's internal state is now clean.
+        keyboard.unhook_all()
+        self.register_global_hotkeys()
 
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
 
+    def on_capture_thread_finished(self):
+        """Clears references to the hotkey capture thread and worker."""
+        self.capture_thread = None
+        self.capture_worker = None
 
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
