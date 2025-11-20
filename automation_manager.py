@@ -4,15 +4,6 @@ import traceback
 from PySide6.QtCore import QTimer, QObject
 from PySide6.QtWidgets import QMessageBox
 
-try:
-    import win32gui
-    import win32api
-    import win32con
-except ImportError:
-    win32gui = None
-    win32api = None
-    win32con = None
-
 
 class AutomationManager(QObject):
     def __init__(self, parent_window):
@@ -46,9 +37,6 @@ class AutomationManager(QObject):
         # Cached message
         self.custom_message = ""
 
-        # Debounce guard
-        self.last_toggle_time = 0
-
     def _log(self, *args):
         if self.debug:
             print("[DEBUG]", *args)
@@ -59,55 +47,54 @@ class AutomationManager(QObject):
     # -------------------------
     # Public control
     # -------------------------
-    def toggle_automation(self):
-        # Stack trace debug
-        self._log("toggle_automation called from:\n", "".join(traceback.format_stack(limit=3)))
-
-        # Debounce guard
-        now = time.monotonic()
-        if now - self.last_toggle_time < 1.0:
-            self._log("toggle_automation ignored (debounce)")
-            return
-        self.last_toggle_time = now
-
-        self.is_automation_running = not self.is_automation_running
-        self._log("toggle_automation ->", self.is_automation_running)
-
+    def start_automation(self):
         if self.is_automation_running:
-            try:
-                self.quest_interval_ms = int(self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
-            except Exception:
-                self.quest_interval_ms = 15000
+            self._log("start_automation ignored (already running)")
+            return
 
-            try:
-                self.custom_interval_ms = int(self.parent.automation_tab.custom_action_edit1.text().strip())
-            except Exception:
-                self.custom_interval_ms = 30000
+        self.is_automation_running = True
+        self._log("start_automation -> True")
 
-            self.custom_message = self.parent.automation_tab.custom_action_edit2.text().strip()
-            custom_enabled = self.parent.automation_tab.custom_action_btn.isChecked() and bool(self.custom_message)
+        try:
+            self.quest_interval_ms = int(self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
+        except Exception:
+            self.quest_interval_ms = 15000
 
-            if self.parent.automation_tab.custom_action_btn.isChecked() and not self.custom_message:
-                QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
-                custom_enabled = False
+        try:
+            self.custom_interval_ms = int(self.parent.automation_tab.custom_action_edit1.text().strip())
+        except Exception:
+            self.custom_interval_ms = 30000
 
-            now = time.monotonic()
-            quest_checked = self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["chk"].isChecked()
-            self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None
-            self.next_custom_due = (now + self.custom_interval_ms / 1000.0) if custom_enabled else None
+        self.custom_message = self.parent.automation_tab.custom_action_edit2.text().strip()
+        custom_enabled = self.parent.automation_tab.custom_action_btn.isChecked() and bool(self.custom_message)
 
-            self._log("Start automation")
-            self._log(f"Intervals: quest={self.quest_interval_ms}ms custom={self.custom_interval_ms}ms")
-            self._log(f"Initial due: quest={self._fmt_due(self.next_quest_due)} custom={self._fmt_due(self.next_custom_due)}")
+        if self.parent.automation_tab.custom_action_btn.isChecked() and not self.custom_message:
+            QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
+            custom_enabled = False
 
-            self.scheduler.start()
-        else:
-            self.scheduler.stop()
-            self.custom_action_running = False
-            self.sequence_lock = False
-            self.next_quest_due = None
-            self.next_custom_due = None
-            self._log("Stop automation")
+        now = time.monotonic()
+        quest_checked = self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["chk"].isChecked()
+        self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None
+        self.next_custom_due = (now + self.custom_interval_ms / 1000.0) if custom_enabled else None
+
+        self._log("Start automation")
+        self._log(f"Intervals: quest={self.quest_interval_ms}ms custom={self.custom_interval_ms}ms")
+        self._log(f"Initial due: quest={self._fmt_due(self.next_quest_due)} custom={self._fmt_due(self.next_custom_due)}")
+
+        self.scheduler.start()
+
+    def stop_automation(self):
+        if not self.is_automation_running:
+            self._log("stop_automation ignored (not running)")
+            return
+
+        self.is_automation_running = False
+        self.scheduler.stop()
+        self.custom_action_running = False
+        self.sequence_lock = False
+        self.next_quest_due = None
+        self.next_custom_due = None
+        self._log("stop_automation -> False")
 
     # -------------------------
     # Scheduler
