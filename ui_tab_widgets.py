@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QListWidget, QTextEdit, QTableWidget, QHeaderView, QGroupBox,
-    QGridLayout, QCheckBox, QLabel
+    QGridLayout, QCheckBox, QLabel, QStackedWidget
 )
 from PySide6.QtCore import Qt
 
@@ -145,3 +145,61 @@ class AutomationTab(QWidget):
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
         msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.update_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
         main_layout.addWidget(left_panel, 1); main_layout.addWidget(self.msg_hotkey_group, 1)
+
+
+class ItemsTab(QWidget):
+    """A widget for the 'Items' tab, including sub-tabs for different item categories."""
+    def __init__(self, parent_window):
+        super().__init__()
+        self._create_widgets()
+        self._create_layouts()
+
+    def _create_widgets(self):
+        """Creates all the widgets for the tab."""
+        self.sub_tabs_widget = QWidget()
+        self.sub_tabs_layout = QHBoxLayout(self.sub_tabs_widget)
+        self.sub_tabs_layout.setContentsMargins(0,0,0,0)
+        self.sub_tabs_layout.setSpacing(5)
+        self.item_tab_buttons = {}
+        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
+        for i, name in enumerate(item_tab_names):
+            btn = QPushButton(name)
+            btn.setCheckable(True)
+            self.item_tab_buttons[i] = btn
+            self.sub_tabs_layout.addWidget(btn)
+
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Search...")
+
+        self.stacked_widget = QStackedWidget()
+        self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
+        self.vendor_table = self._create_item_table(["Item", "Unit", "Location"])
+        self.stacked_widget.addWidget(self.all_items_table)
+        self.stacked_widget.addWidget(self.drops_table)
+        self.stacked_widget.addWidget(self.raid_items_table)
+        self.stacked_widget.addWidget(self.vendor_table)
+
+    def _create_layouts(self):
+        """Creates and arranges the layouts for the tab."""
+        main_layout = QVBoxLayout(self)
+        controls_layout = QHBoxLayout()
+        controls_layout.addWidget(self.sub_tabs_widget)
+        controls_layout.addStretch()
+        controls_layout.addWidget(self.search_box)
+        main_layout.addLayout(controls_layout)
+        main_layout.addWidget(self.stacked_widget)
+
+    def _create_item_table(self, headers: list) -> QTableWidget:
+        """Helper to create a standard QTableWidget for items."""
+        table = QTableWidget()
+        table.setColumnCount(len(headers))
+        table.setHorizontalHeaderLabels(headers)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        for i in range(1, len(headers)):
+            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
+        table.setSortingEnabled(True)
+        return table

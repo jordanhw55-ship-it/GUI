@@ -21,7 +21,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
-from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab
+from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab
 
 try:
     import win32gui # type: ignore
@@ -251,32 +251,16 @@ class SimpleWindow(QMainWindow):
         self.load_tab.load_path_edit.setText(self.settings_manager.get("character_path"))
         # Items tab
         self.item_database = ItemDatabase()
-        items_tab_content = QWidget()
-        items_main_layout = QVBoxLayout(items_tab_content)
-        items_controls_layout = QHBoxLayout()
-        self.items_sub_tabs = QWidget(); self.items_sub_tabs_layout = QHBoxLayout(self.items_sub_tabs)
-        self.items_sub_tabs_layout.setContentsMargins(0,0,0,0); self.items_sub_tabs_layout.setSpacing(5)
-        self.item_tab_buttons = {}
-        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
-        for i, name in enumerate(item_tab_names):
-            btn = QPushButton(name); btn.setCheckable(True)
+        self.items_tab = ItemsTab(self)
+        self.stacked_widget.addWidget(self.items_tab)
+
+        # Connect signals from the new ItemsTab
+        self.items_tab.search_box.textChanged.connect(self.filter_current_item_view)
+        for i, btn in self.items_tab.item_tab_buttons.items():
             btn.clicked.connect(lambda checked, idx=i: self.switch_items_sub_tab(idx))
-            self.item_tab_buttons[i] = btn; self.items_sub_tabs_layout.addWidget(btn)
-        self.items_search_box = QLineEdit(); self.items_search_box.setPlaceholderText("Search...")
-        self.items_search_box.textChanged.connect(self.filter_current_item_view)
-        items_controls_layout.addWidget(self.items_sub_tabs); items_controls_layout.addStretch(); items_controls_layout.addWidget(self.items_search_box)
-        items_main_layout.addLayout(items_controls_layout)
-        self.items_stacked_widget = QStackedWidget(); items_main_layout.addWidget(self.items_stacked_widget)
-        self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
-        self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
-        self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
-        self.vendor_table = self._create_item_table(["Item", "Unit", "Location"])
-        self.items_stacked_widget.addWidget(self.all_items_table)
-        self.items_stacked_widget.addWidget(self.drops_table)
-        self.items_stacked_widget.addWidget(self.raid_items_table)
-        self.items_stacked_widget.addWidget(self.vendor_table)
+
+        # Set initial state for the items tab
         self.switch_items_sub_tab(0)
-        self.stacked_widget.addWidget(items_tab_content)
 
         # Recipes tab
         self.in_progress_recipes = {}
@@ -453,18 +437,6 @@ class SimpleWindow(QMainWindow):
             self.apply_theme(self.current_theme_index)
 
     # Core helpers
-    def _create_item_table(self, headers: list) -> QTableWidget:
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for i in range(1, len(headers)):
-            table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
-        table.setSortingEnabled(True)
-        return table
-
     def create_theme_grid(self, layout: QGridLayout):
         row, col = 0, 0
         for i, theme in enumerate(self.themes):
@@ -926,13 +898,13 @@ class SimpleWindow(QMainWindow):
 
     # Items
     def filter_current_item_view(self):
-        query = self.items_search_box.text().lower()
-        current_index = self.items_stacked_widget.currentIndex()
+        query = self.items_tab.search_box.text().lower()
+        current_index = self.items_tab.stacked_widget.currentIndex()
         data_source, table_widget = [], None
-        if current_index == 0: data_source, table_widget = self.item_database.all_items_data, self.all_items_table
-        elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.drops_table
-        elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.raid_items_table
-        elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.vendor_table
+        if current_index == 0: data_source, table_widget = self.item_database.all_items_data, self.items_tab.all_items_table
+        elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.items_tab.drops_table
+        elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.items_tab.raid_items_table
+        elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.items_tab.vendor_table
         if not table_widget: return
         table_widget.setSortingEnabled(False); table_widget.setRowCount(0)
         filtered_data = [item for item in data_source if query in item.get("Item", "").lower() or
@@ -945,10 +917,10 @@ class SimpleWindow(QMainWindow):
         table_widget.setSortingEnabled(True)
 
     def switch_items_sub_tab(self, index: int):
-        for i, btn in self.item_tab_buttons.items():
+        for i, btn in self.items_tab.item_tab_buttons.items():
             btn.setChecked(i == index)
-        self.items_stacked_widget.setCurrentIndex(index)
-        self.items_search_box.setVisible(True)
+        self.items_tab.stacked_widget.setCurrentIndex(index)
+        self.items_tab.search_box.setVisible(True)
         if index == 0 and not self.item_database.all_items_data:
             self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
         elif index == 1 and not self.item_database.drops_data:
