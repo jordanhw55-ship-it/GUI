@@ -559,40 +559,50 @@ class SimpleWindow(QMainWindow):
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton:
-            pos = event.position().toPoint()
-            if self.is_on_edge(pos):
+        if event.button() == Qt.MouseButton.LeftButton and not self.isMaximized():
+            if self.is_on_edge(event.position().toPoint()):
                 self.resizing = True
-                self.resize_edge = self.get_edge(pos)
+                self.resize_edge = self.get_edge(event.position().toPoint())
                 self.old_pos = event.globalPosition().toPoint()
             elif self.title_bar.underMouse():
                 self.old_pos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event: QMouseEvent):
         pos = event.position().toPoint()
-        if self.resizing and self.old_pos:
+
+        # Always start with the default cursor, then override if needed
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+        if self.isMaximized():
+            return # No resizing or special cursors when maximized
+
+        # If currently resizing, continue resizing and set appropriate cursor
+        if self.resizing and self.old_pos and event.buttons() == Qt.MouseButton.LeftButton:
             delta = event.globalPosition().toPoint() - self.old_pos
             self.resize_window(delta)
             self.old_pos = event.globalPosition().toPoint()
-        elif self.old_pos and not self.resizing and self.title_bar.underMouse():
+            # Keep the resize cursor active during the drag
+            edge = self.resize_edge
+            if edge in [("left", "top"), ("right", "bottom")]: self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+            elif edge in [("right", "top"), ("left", "bottom")]: self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+            elif "left" in edge or "right" in edge: self.setCursor(Qt.CursorShape.SizeHorCursor)
+            elif "top" in edge or "bottom" in edge: self.setCursor(Qt.CursorShape.SizeVerCursor)
+            return
+
+        # If dragging title bar, continue dragging
+        if self.old_pos and not self.resizing and self.title_bar.underMouse() and event.buttons() == Qt.MouseButton.LeftButton:
             delta = event.globalPosition().toPoint() - self.old_pos
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.old_pos = event.globalPosition().toPoint()
-        else:
-            # Only update cursor when no mouse button is pressed
-            if event.buttons() == Qt.MouseButton.NoButton:
-                if self.is_on_edge(pos):
-                    edge = self.get_edge(pos)
-                    if edge in [("left", "top"), ("right", "bottom")]:
-                        self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-                    elif edge in [("right", "top"), ("left", "bottom")]:
-                        self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-                    elif "left" in edge or "right" in edge:
-                        self.setCursor(Qt.CursorShape.SizeHorCursor)
-                    else:
-                        self.setCursor(Qt.CursorShape.SizeVerCursor)
-                else:
-                    self.setCursor(Qt.CursorShape.ArrowCursor)
+            return
+
+        # If no mouse button is pressed, update cursor based on position for hovering
+        if event.buttons() == Qt.MouseButton.NoButton and self.is_on_edge(pos):
+            edge = self.get_edge(pos)
+            if edge in [("left", "top"), ("right", "bottom")]: self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+            elif edge in [("right", "top"), ("left", "bottom")]: self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+            elif "left" in edge or "right" in edge: self.setCursor(Qt.CursorShape.SizeHorCursor)
+            elif "top" in edge or "bottom" in edge: self.setCursor(Qt.CursorShape.SizeVerCursor)
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
