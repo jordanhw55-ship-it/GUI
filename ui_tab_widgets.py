@@ -191,18 +191,30 @@ class QuickcastTab(QWidget):
             if col >= 4: col, row = 0, row + 1
         quickcast_layout.addLayout(grid_layout)
 
-        quickcast_layout.addSpacing(20)
+        quickcast_layout.addSpacing(40) # Increased spacing to move the numpad down
 
         # --- Numpad Grid ---
         numpad_grid_layout = QGridLayout()
         numpad_grid_layout.setSpacing(15)
-        numpad_keys = ['7', '8', '4', '5', '1', '2']
-        for i, key in enumerate(numpad_keys):
+
+        # Keys arranged in columns for the new layout
+        numpad_keys_col1 = ['7', '4', '1']
+        numpad_keys_col2 = ['8', '5', '2']
+
+        for i, key in enumerate(numpad_keys_col1):
             key_layout = QHBoxLayout()
             button = QPushButton(key); button.setFixedSize(40, 40)
             checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
             key_layout.addWidget(button); key_layout.addWidget(checkbox)
-            numpad_grid_layout.addLayout(key_layout, i // 2, i % 2)
+            numpad_grid_layout.addLayout(key_layout, i, 0) # Add to column 0
+
+        for i, key in enumerate(numpad_keys_col2):
+            key_layout = QHBoxLayout()
+            button = QPushButton(key); button.setFixedSize(40, 40)
+            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
+            key_layout.addWidget(button); key_layout.addWidget(checkbox)
+            numpad_grid_layout.addLayout(key_layout, i, 1) # Add to column 1
+
         quickcast_layout.addLayout(numpad_grid_layout)
         quickcast_layout.addStretch()
 
