@@ -883,7 +883,10 @@ QCheckBox::indicator {{
         # This check prevents creating a new thread on top of an old one.
         if self.chat_thread and self.chat_thread.isRunning():
             print("[DEBUG] Aborting: Previous chat thread is still running.")
-            self.is_sending_message = False # Allow trying again shortly
+            # Reset the flag to allow the user to try again in a moment,
+            # once the previous thread has had time to clean up.
+            self.is_sending_message = False
+            print("[DEBUG] is_sending_message reset to False to allow retry.")
             return
 
         print("[DEBUG] Creating new ChatMessageWorker and QThread.")
