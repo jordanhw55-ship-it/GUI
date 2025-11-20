@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -229,13 +229,25 @@ class SimpleWindow(QMainWindow):
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(0, 0, 0, 0)
-        left_spacer = QWidget(); left_spacer.setFixedSize(60, 30); left_spacer.setStyleSheet("background-color: transparent;")
+        title_bar_layout.setContentsMargins(5, 0, 0, 0)
+
+        # Status box in top-left
+        self.status_box = QLabel("Automation: OFF", self)
+        self.status_box.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        self.status_box.setFixedSize(130, 24)
+        self.status_box.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_box.setAutoFillBackground(True)
+        self.status_box.setStyleSheet("border-radius: 5px;")
+        self.set_automation_status(False) # Set initial OFF state
+
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-        title_bar_layout.addWidget(left_spacer); title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label)
+
+        title_bar_layout.addWidget(self.status_box)
+        title_bar_layout.addStretch()
+        title_bar_layout.addWidget(title_label)
         title_bar_layout.addStretch(); title_bar_layout.addWidget(min_button); title_bar_layout.addWidget(close_button)
         main_layout.addWidget(self.title_bar)
 
@@ -451,6 +463,7 @@ class SimpleWindow(QMainWindow):
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
+        self.automation_manager.status_changed.connect(self.set_automation_status)
 
         # Set initial values from loaded settings
         self.volume_slider.setValue(self.volume)
@@ -479,6 +492,22 @@ class SimpleWindow(QMainWindow):
             self.update_custom_theme_preview()
         else:
             self.apply_theme(self.current_theme_index)
+
+    def update_automation_log(self, message: str):
+        """Appends a message to the automation log text box."""
+        self.automation_tab.automation_log_box.append(message)
+
+    def set_automation_status(self, enabled: bool):
+        palette = self.status_box.palette()
+        if enabled:
+            self.status_box.setText("Automation: ON")
+            palette.setColor(QPalette.Window, QColor("#228B22")) # ForestGreen
+            palette.setColor(QPalette.WindowText, QColor("white"))
+        else:
+            self.status_box.setText("Automation: OFF")
+            palette.setColor(QPalette.Window, QColor("#B22222")) # FireBrick
+            palette.setColor(QPalette.WindowText, QColor("white"))
+        self.status_box.setPalette(palette)
 
     def update_automation_log(self, message: str):
         """Appends a message to the automation log text box."""
