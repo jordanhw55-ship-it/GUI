@@ -886,6 +886,7 @@ QCheckBox::indicator {{
         self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
         self.selected_sound = self.settings_manager.get("selected_sound")
         self.volume = self.settings_manager.get("volume", 100)
+        self.volume_slider.setValue(self.volume)
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -1332,7 +1333,7 @@ QCheckBox::indicator {{
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
-        self.automation_manager.stop_automation() # This was already here
+        self.automation_manager.stop_automation()
         keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
