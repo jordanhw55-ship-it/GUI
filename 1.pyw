@@ -332,6 +332,15 @@ class SimpleWindow(QMainWindow):
         quickcast_tab_content = QWidget()
         quickcast_layout = QVBoxLayout(quickcast_tab_content)
         quickcast_layout.addWidget(QLabel("This is the 'Quickcast' tab."))
+
+        controls_layout = QHBoxLayout()
+        q_button = QPushButton("Q")
+        q_checkbox = QCheckBox()
+        controls_layout.addWidget(q_button)
+        controls_layout.addWidget(q_checkbox)
+        controls_layout.addStretch()
+
+        quickcast_layout.addLayout(controls_layout)
         quickcast_layout.addStretch()
         self.stacked_widget.addWidget(quickcast_tab_content)
 
