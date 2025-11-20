@@ -688,7 +688,7 @@ class SimpleWindow(QMainWindow):
         else:
             self.automation_tab.hotkey_capture_btn.setText(hotkey)
         
-        self.hotkey_capture_btn.setEnabled(True)
+        self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
         # Stop the capture thread and re-register all hotkeys
         self.capture_thread.quit()
