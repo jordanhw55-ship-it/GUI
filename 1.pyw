@@ -693,22 +693,7 @@ class SimpleWindow(QMainWindow):
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
         print(f"[DEBUG] on_hotkey_captured: Received hotkey '{hotkey}'.")
-        is_valid = True
-        if '+' in hotkey:
-            parts = hotkey.split('+')
-            # A valid combination must have at least one modifier.
-            # All parts except the last one MUST be a modifier.
-            # This prevents invalid combinations like "2+3" or "a+b".
-            if len(parts) > 1:
-                modifiers = parts[:-1]
-                non_modifier_found = False
-                for mod in modifiers:
-                    if mod.strip().lower() not in keyboard.all_modifiers:
-                        non_modifier_found = True
-                        break
-                if non_modifier_found:
-                    is_valid = False
-
+        is_valid = hotkey != 'esc'
 
         # The worker calls keyboard.unhook_all() in its 'finally' block.
         # We must now re-register our application's global hotkeys.

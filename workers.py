@@ -33,10 +33,15 @@ class HotkeyCaptureWorker(QObject):
 
     def run(self):
         try:
-            # Capture a single hotkey string, suppress so it doesn't leak into GUI
-            # This is a blocking call.
-            hotkey = keyboard.read_hotkey(suppress=True)
-            self.hotkey_captured.emit(hotkey)
+            # Wait for a single key down event. This prevents combinations like "2+3".
+            # It will correctly handle modifier combinations like "ctrl+s".
+            while True:
+                event = keyboard.read_event(suppress=True)
+                if event.event_type == keyboard.KEY_DOWN:
+                    # keyboard.get_hotkey_name() correctly formats combinations with modifiers.
+                    hotkey_name = keyboard.get_hotkey_name()
+                    self.hotkey_captured.emit(hotkey_name)
+                    break
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
             self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
