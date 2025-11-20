@@ -332,7 +332,7 @@ class SimpleWindow(QMainWindow):
         quickcast_tab_content = QWidget()
         quickcast_layout = QVBoxLayout(quickcast_tab_content)
         
-        # Use a grid layout for the key controls
+        # --- Main Keys Grid ---
         grid_layout = QGridLayout()
         grid_layout.setSpacing(15) # Add some space between controls
 
@@ -356,6 +356,34 @@ class SimpleWindow(QMainWindow):
             if col >= 4: col, row = 0, row + 1
 
         quickcast_layout.addLayout(grid_layout)
+
+        # Add a spacer
+        quickcast_layout.addSpacing(20)
+
+        # --- Numpad Grid ---
+        numpad_grid_layout = QGridLayout()
+        numpad_grid_layout.setSpacing(15)
+
+        numpad_keys = ['7', '8', '4', '5', '1', '2']
+        
+        row, col = 0, 0
+        for key in numpad_keys:
+            key_layout = QHBoxLayout()
+
+            button = QPushButton(key)
+            button.setFixedSize(40, 40)
+            
+            checkbox = QCheckBox()
+            checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
+
+            key_layout.addWidget(button)
+            key_layout.addWidget(checkbox)
+            numpad_grid_layout.addLayout(key_layout, row, col)
+            
+            col += 1
+            if col >= 2: col, row = 0, row + 1
+
+        quickcast_layout.addLayout(numpad_grid_layout)
         quickcast_layout.addStretch()
         self.stacked_widget.addWidget(quickcast_tab_content)
 
