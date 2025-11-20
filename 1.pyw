@@ -180,6 +180,7 @@ class SimpleWindow(QMainWindow):
         self.is_capturing_hotkey = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
+        self.dark_mode = True # Initialize with a default
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
@@ -590,6 +591,11 @@ QCheckBox::indicator {{
 
     def apply_custom_theme(self):
         self.custom_theme_enabled = True
+
+        # Determine if the custom theme is dark or light based on background color
+        bg_color = QColor(self.custom_theme.get("bg", "#121212"))
+        self.dark_mode = bg_color.lightness() < 128
+
         self.setStyleSheet(self.build_custom_stylesheet())
         self.custom_tab_bar.setStyleSheet(f"""            
             QPushButton {{
@@ -679,6 +685,12 @@ QCheckBox::indicator {{
         # Prevent starting a new capture if one is already in progress.
         if self.is_capturing_hotkey:
             return
+            
+        # Properly clean up any previous capture thread that might exist
+        if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
+            self.capture_thread.quit()
+            self.capture_thread.wait()
+
 
         self.is_capturing_hotkey = True
         self.automation_tab.message_edit.setEnabled(False)
