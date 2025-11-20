@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QListWidget, QTextEdit, QTableWidget, QHeaderView, QGroupBox,
-    QGridLayout, QCheckBox, QLabel, QStackedWidget
+    QGridLayout, QCheckBox, QLabel, QStackedWidget, QSlider
 )
 from PySide6.QtCore import Qt
 
