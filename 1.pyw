@@ -171,6 +171,8 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
+        self.chat_worker = None
+        self.chat_thread = None
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
@@ -872,21 +874,25 @@ QCheckBox::indicator {{
         if self.is_sending_message: return
         self.is_sending_message = True
 
-        worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-        thread = QThread()
-        worker.moveToThread(thread)
+        # Make worker and thread instance attributes to prevent premature garbage collection
+        self.chat_worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
+        self.chat_thread = QThread()
+        self.chat_worker.moveToThread(self.chat_thread)
  
- # Ensure both worker and thread are cleaned up
-        worker.finished.connect(thread.quit)
-        worker.error.connect(thread.quit)
-        thread.finished.connect(thread.deleteLater)
-        worker.finished.connect(worker.deleteLater)
-        worker.error.connect(worker.deleteLater)
+        # Ensure both worker and thread are cleaned up
+        self.chat_worker.finished.connect(self.on_chat_send_finished)
+        self.chat_worker.error.connect(self.on_chat_send_error)
+
+        # When the worker is done, quit the thread
+        self.chat_worker.finished.connect(self.chat_thread.quit)
+        self.chat_worker.error.connect(self.chat_thread.quit)
+
+        # When the thread finishes, schedule both for deletion
+        self.chat_thread.finished.connect(self.chat_thread.deleteLater)
+        self.chat_thread.finished.connect(self.chat_worker.deleteLater)
  
-        thread.started.connect(worker.run)
-        worker.finished.connect(self.on_chat_send_finished)
-        worker.error.connect(self.on_chat_send_error)
-        thread.start()
+        self.chat_thread.started.connect(self.chat_worker.run)
+        self.chat_thread.start()
 
     def on_chat_send_error(self, error_message: str):
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
