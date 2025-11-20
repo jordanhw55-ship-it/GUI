@@ -663,20 +663,19 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
-        # Ensure any previous capture thread is stopped before starting a new one.
+        # If a capture is already in progress, do nothing.
         if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
+            return
 
-
+        # Disable UI to indicate capture mode
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
         # Unhook all global hotkeys to ensure the capture worker gets the keypress
         keyboard.unhook_all()
-
-        self.capture_thread = QThread()
+        
+        self.capture_thread = QThread() # Create a new thread for this capture
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
         self.capture_thread.started.connect(self.capture_worker.run)
