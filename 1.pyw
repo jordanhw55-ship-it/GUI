@@ -1011,8 +1011,9 @@ class SimpleWindow(QMainWindow):
         
         # Determine which recipes to calculate materials for
         checked_recipe_names = []
-        for i in range(self.in_progress_recipes_list.count()):
-            item = self.in_progress_recipes_list.item(i)
+        in_progress_list = self.recipes_tab.in_progress_recipes_list
+        for i in range(in_progress_list.count()):
+            item = in_progress_list.item(i)
             if item.checkState() == Qt.CheckState.Checked:
                 checked_recipe_names.append(item.text())
         
