@@ -172,8 +172,6 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
-        self.chat_worker = None
-        self.chat_thread = None
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
@@ -889,7 +887,6 @@ QCheckBox::indicator {{
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
-        print(f"[DEBUG] send_chat_message called for hotkey: {hotkey_pressed}")
         print(f"[DEBUG] send_chat_message triggered for hotkey: '{hotkey_pressed}'")
         if not win32gui:
             return
@@ -900,56 +897,20 @@ QCheckBox::indicator {{
             is_game_active = False
 
         if not is_game_active:
-            print("[DEBUG] Game not active. Simulating keypress.")
             print(f"[DEBUG] Game not active. Simulating original keypress for '{hotkey_pressed}'.")
             try: keyboard.send(hotkey_pressed)
             except Exception: pass # type: ignore
             return # type: ignore
 
         if self.is_sending_message:
-            print("[DEBUG] Aborting: is_sending_message is already True.")
             print("[DEBUG] Message sending is already in progress. Ignoring new request.")
             return
         self.is_sending_message = True
-        print("[DEBUG] is_sending_message set to True.")
         print(f"[DEBUG] is_sending_message -> True. Emitting signal to worker with message: '{message}'")
         self.send_message_signal.emit(message)
 
-        # If a previous thread is still finishing, let it finish.
-        # This check prevents creating a new thread on top of an old one.
-        if self.chat_thread and self.chat_thread.isRunning():
-            print("[DEBUG] Aborting: Previous chat thread is still running.")
-            # Reset the flag to allow the user to try again in a moment,
-            # once the previous thread has had time to clean up.
-            self.is_sending_message = False
-            print("[DEBUG] is_sending_message reset to False to allow retry.")
-            return
-
-        print("[DEBUG] Creating new ChatMessageWorker and QThread.")
-        self.chat_worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-        self.chat_thread = QThread()
-        self.chat_worker.moveToThread(self.chat_thread)
- 
-        # Ensure both worker and thread are cleaned up
-        self.chat_worker.finished.connect(self.on_chat_send_finished)
-        self.chat_worker.error.connect(self.on_chat_send_error)
-
-        # When the worker is done, quit the thread
-        self.chat_worker.finished.connect(self.chat_thread.quit)
-        self.chat_worker.error.connect(self.chat_thread.quit)
-
-        # When the thread finishes, schedule both for deletion
-        self.chat_thread.finished.connect(self.on_chat_thread_finished)
-        self.chat_thread.finished.connect(self.chat_thread.deleteLater)
-        self.chat_thread.finished.connect(self.chat_worker.deleteLater)
- 
-        self.chat_thread.started.connect(self.chat_worker.run)
-        self.chat_thread.start()
-
-
     def on_chat_send_error(self, error_message: str):
         """Handles errors from the chat message worker."""
-        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}.")
         print(f"[DEBUG] on_chat_send_error called. Error: {error_message}. Resetting flag.")
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
@@ -957,18 +918,9 @@ QCheckBox::indicator {{
 
     def on_chat_send_finished(self):
         """Handles successful completion from the chat message worker."""
-        print("[DEBUG] on_chat_send_finished called.")
         print("[DEBUG] on_chat_send_finished called. Resetting flag.")
         self.is_sending_message = False
         print("[DEBUG] is_sending_message reset to False.")
-
-    def on_chat_thread_finished(self):
-        """Clears references to the thread and worker after they have finished."""
-        print("[DEBUG] Chat thread finished. Clearing references.")
-        # This is the only safe place to clear these references.
-        self.chat_thread = None
-        self.chat_worker = None
-
 
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""

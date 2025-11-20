@@ -50,24 +50,26 @@ class HotkeyCaptureWorker(QObject):
 class ChatMessageWorker(QObject):
     """Runs in a separate thread to send a chat message without freezing the GUI."""
     finished = Signal()
-    error = Signal(str)
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
+    error = Signal(str) 
+
+    def __init__(self, game_title: str):
         super().__init__()
         self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-    def run(self):
+
+    def sendMessage(self, message: str):
+        """This slot receives the message and performs the blocking IO."""
+        print(f"[DEBUG] ChatMessageWorker (id: {id(self)}) received message: '{message}'")
         if not win32gui:
             self.error.emit("win32gui not available on this system.")
             return
         try:
             hwnd = win32gui.FindWindow(None, self.game_title)
             if hwnd == 0:
-                self.error.emit(f"Window '{self.game_title}' not found")
+                # This is not a fatal error for the worker, just for this message attempt.
+                print(f"[DEBUG] ChatMessageWorker: Window '{self.game_title}' not found. Skipping message.")
                 return
-            # No need to set foreground, pyautogui handles it
             pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
+            pyautogui.write(message, interval=0.01)
             pyautogui.press('enter')
         except Exception as e:
             self.error.emit(str(e))
