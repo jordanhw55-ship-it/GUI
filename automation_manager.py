@@ -112,36 +112,40 @@ class AutomationManager(QObject):
 
     def run_complete_quest(self):
         # If the higher-priority custom action is running, skip this execution.
-        if self.custom_action_running or self.sequence_lock:
+        if self.sequence_lock:
+            return
+
+        self.pause_all_automation()
+        
+        # After pausing, check again. This gives run_custom_action a chance to have run and set the lock.
+        if self.sequence_lock:
+            self.resume_all_automation() # Abort and resume immediately
             return
 
         self.sequence_lock = True # Acquire the lock
-        self.pause_all_automation()
         self.control_send_key('y')
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
         
         # After the sequence, release the lock and resume other automations.
-        QTimer.singleShot(400, self._end_complete_quest)
+        QTimer.singleShot(500, self._end_complete_quest)
 
     def _end_complete_quest(self):
         self.sequence_lock = False # Release the lock
         self.resume_all_automation()
 
     def run_custom_action(self, message: str):
-        if self.sequence_lock and not self.custom_action_running:
-            # If another sequence is running, wait for the next timer cycle.
-            return
-
+        # This is the highest priority action. It doesn't need to check for other locks.
+        self.sequence_lock = True # Acquire the lock immediately
         self.custom_action_running = True
-        self.sequence_lock = True # Acquire the lock
         self.pause_all_automation()
+
         def type_message():
             pyautogui.press('enter')
             pyautogui.write(message, interval=0.03)
             pyautogui.press('enter')
-        QTimer.singleShot(500, type_message)
-        QTimer.singleShot(2500, self._end_custom_action)
+        QTimer.singleShot(200, type_message)
+        QTimer.singleShot(1000, self._end_custom_action)
 
     def _end_custom_action(self):
         self.custom_action_running = False
