@@ -1,6 +1,5 @@
 import time
 import pyautogui
-import traceback
 from PySide6.QtCore import QTimer, QObject
 from PySide6.QtWidgets import QMessageBox
 
@@ -47,6 +46,13 @@ class AutomationManager(QObject):
     # -------------------------
     # Public control
     # -------------------------
+    def toggle_automation(self):
+        """Wrapper for GUI wiring: toggles between start and stop."""
+        if self.is_automation_running:
+            self.stop_automation()
+        else:
+            self.start_automation()
+
     def start_automation(self):
         if self.is_automation_running:
             self._log("start_automation ignored (already running)")
