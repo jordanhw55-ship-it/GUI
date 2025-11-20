@@ -107,6 +107,9 @@ class AutomationTab(QWidget):
         self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
         self.custom_action_edit2 = QLineEdit("-save x")
 
+        # New box below Key Automation
+        self.new_feature_group = QGroupBox("New Feature")
+
         self.start_automation_btn = QPushButton("Start")
         self.stop_automation_btn = QPushButton("Stop")
         self.reset_automation_btn = QPushButton("Reset Automation")
@@ -140,8 +143,9 @@ class AutomationTab(QWidget):
         custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4); self.automation_keys_group.setLayout(automation_grid)
         automation_actions_layout = QHBoxLayout()
-        automation_actions_layout.addWidget(self.start_automation_btn); automation_actions_layout.addWidget(self.stop_automation_btn)
-        left_layout.addWidget(self.automation_keys_group); left_layout.addLayout(automation_actions_layout); left_layout.addWidget(self.reset_automation_btn)
+        automation_actions_layout.addWidget(self.start_automation_btn); automation_actions_layout.addWidget(self.stop_automation_btn); automation_actions_layout.addWidget(self.reset_automation_btn)
+        left_layout.addWidget(self.automation_keys_group)
+        left_layout.addWidget(self.new_feature_group); left_layout.addLayout(automation_actions_layout)
         left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s")); left_layout.addStretch()
         right_layout = QVBoxLayout(self.msg_hotkey_group)
         right_layout.addWidget(self.msg_hotkey_table)
