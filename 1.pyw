@@ -572,6 +572,11 @@ QLineEdit, QTextEdit, QListWidget, QTableWidget {{
     padding: 6px;
 }}
 
+#ItemSearchBox {{
+    border: 1px solid {accent};
+    padding: 5px; /* Adjust padding to prevent text from touching the border */
+}}
+
 QGroupBox, QWidget#Section {{
     background-color: #1A1A1A;
     border-radius: 8px;
