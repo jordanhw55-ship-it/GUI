@@ -109,7 +109,6 @@ class AutomationTab(QWidget):
 
         # Automation log box
         self.automation_log_group = QGroupBox("Automation Log")
-        self.automation_log_group.setMinimumHeight(200) # Set a larger minimum height
         self.automation_log_box = QTextEdit()
         self.automation_log_box.setReadOnly(True)
 
@@ -152,7 +151,8 @@ class AutomationTab(QWidget):
         left_layout.addWidget(self.automation_keys_group);
         left_layout.addLayout(automation_actions_layout)
         left_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s"))
-        left_layout.addWidget(self.automation_log_group); left_layout.addStretch()
+        left_layout.addWidget(self.automation_log_group)
+        left_layout.setStretchFactor(self.automation_log_group, 1) # Make the log group expand
         right_layout = QVBoxLayout(self.msg_hotkey_group)
         right_layout.addWidget(self.msg_hotkey_table)
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
