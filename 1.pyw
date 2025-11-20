@@ -692,7 +692,6 @@ class SimpleWindow(QMainWindow):
 
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
-        print(f"[DEBUG] on_hotkey_captured: Received hotkey '{hotkey}'.")
         is_valid = hotkey != 'esc'
 
         # The worker calls keyboard.unhook_all() in its 'finally' block.
