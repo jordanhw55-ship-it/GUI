@@ -190,33 +190,23 @@ class QuickcastTab(QWidget):
             col += 1
             if col >= 4: col, row = 0, row + 1
         quickcast_layout.addLayout(grid_layout)
-
-        quickcast_layout.addSpacing(40) # Increased spacing to move the numpad down
-
-        # --- Numpad Grid ---
-        numpad_grid_layout = QGridLayout()
-        numpad_grid_layout.setSpacing(5)
+        grid_layout.setRowStretch(row + 1, 1) # Add space before numpad keys
 
         # Keys arranged in columns for the new layout
         numpad_keys_col1 = ['7', '4', '1']
         numpad_keys_col2 = ['8', '5', '2']
 
         for i, key in enumerate(numpad_keys_col1):
-            key_layout = QHBoxLayout()
-            button = QPushButton(key); button.setFixedSize(40, 40)
-            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
-            key_layout.addWidget(button); key_layout.addWidget(checkbox)
-            numpad_grid_layout.addLayout(key_layout, i, 0) # Add to column 0
+            key_layout = QHBoxLayout(); button = QPushButton(key); button.setFixedSize(40, 40)
+            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }"); key_layout.addWidget(button); key_layout.addWidget(checkbox)
+            grid_layout.addLayout(key_layout, i + row + 2, 0) # Add to column 0, below main keys
 
         for i, key in enumerate(numpad_keys_col2):
-            key_layout = QHBoxLayout()
-            button = QPushButton(key); button.setFixedSize(40, 40)
-            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
-            key_layout.addWidget(button); key_layout.addWidget(checkbox)
-            numpad_grid_layout.addLayout(key_layout, i, 1) # Add to column 1
+            key_layout = QHBoxLayout(); button = QPushButton(key); button.setFixedSize(40, 40)
+            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }"); key_layout.addWidget(button); key_layout.addWidget(checkbox)
+            grid_layout.addLayout(key_layout, i + row + 2, 1) # Add to column 1, below main keys
 
-        quickcast_layout.addLayout(numpad_grid_layout)
-        quickcast_layout.addStretch()
+        grid_layout.setRowStretch(i + row + 3, 10) # Add stretch to push everything up
 
 class ItemsTab(QWidget):
     """A widget for the 'Items' tab, including sub-tabs for different item categories."""
