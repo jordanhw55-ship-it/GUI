@@ -663,6 +663,12 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
+        # Ensure any previous capture thread is stopped before starting a new one.
+        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
+            self.capture_thread.quit()
+            self.capture_thread.wait()
+
+
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
@@ -697,10 +703,12 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Always stop the capture thread and re-register all hotkeys to restore state
-        if self.capture_thread and self.capture_thread.isRunning():
+        # Clean up the thread and re-register global hotkeys
+        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
+            self.capture_thread.deleteLater()
+            del self.capture_thread
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
 
@@ -724,6 +732,11 @@ class SimpleWindow(QMainWindow):
         if hotkey == "Click to set" or not message:
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
             return
+        
+        if hotkey in self.message_hotkeys:
+            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use. Delete the old one first.")
+            return
+
 
         # Overwrite if exists, add if new.
         self.message_hotkeys[hotkey] = message
