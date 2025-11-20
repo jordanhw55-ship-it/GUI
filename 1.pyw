@@ -858,6 +858,7 @@ QCheckBox::indicator {{
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
+        print(f"[DEBUG] send_chat_message called for hotkey: {hotkey_pressed}")
         if not win32gui:
             return
         try:
@@ -867,20 +868,25 @@ QCheckBox::indicator {{
             is_game_active = False
 
         if not is_game_active:
+            print("[DEBUG] Game not active. Simulating keypress.")
             try: keyboard.send(hotkey_pressed)
             except Exception: pass # type: ignore
             return # type: ignore
 
-        if self.is_sending_message: return
+        if self.is_sending_message:
+            print("[DEBUG] Aborting: is_sending_message is already True.")
+            return
         self.is_sending_message = True
+        print("[DEBUG] is_sending_message set to True.")
 
         # If a previous thread is still finishing, let it finish.
         # This check prevents creating a new thread on top of an old one.
         if self.chat_thread and self.chat_thread.isRunning():
+            print("[DEBUG] Aborting: Previous chat thread is still running.")
             self.is_sending_message = False # Allow trying again shortly
             return
 
-        # Make worker and thread instance attributes to prevent premature garbage collection
+        print("[DEBUG] Creating new ChatMessageWorker and QThread.")
         self.chat_worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         self.chat_thread = QThread()
         self.chat_worker.moveToThread(self.chat_thread)
@@ -901,11 +907,15 @@ QCheckBox::indicator {{
         self.chat_thread.start()
 
     def on_chat_send_error(self, error_message: str):
+        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}")
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
+        print("[DEBUG] is_sending_message reset to False.")
 
     def on_chat_send_finished(self):
+        print("[DEBUG] on_chat_send_finished called.")
         self.is_sending_message = False
+        print("[DEBUG] is_sending_message reset to False.")
 
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
