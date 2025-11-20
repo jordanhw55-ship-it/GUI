@@ -375,10 +375,11 @@ class SimpleWindow(QMainWindow):
         test_sound_button.clicked.connect(self.play_notification_sound)
         sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
         watchlist_controls_layout.addLayout(sound_layout)
-
+        
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
+
 
         # Preset themes grid
         self.create_theme_grid(settings_layout)
@@ -387,15 +388,6 @@ class SimpleWindow(QMainWindow):
         row_below = (len(self.themes) - 1) // 4 + 1
         custom_box = QGroupBox("Custom theme")
         custom_v_layout = QVBoxLayout(custom_box)
-
-        # Add volume slider
-        volume_layout = QHBoxLayout()
-        volume_label = QLabel("Volume:")
-        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
-        self.volume_slider.setRange(0, 100)
-        self.volume_slider.valueChanged.connect(self.set_volume)
-        volume_layout.addWidget(volume_label); volume_layout.addWidget(self.volume_slider)
-        custom_v_layout.addLayout(volume_layout)
 
         self.bg_color_btn = QPushButton("Background")
         self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
@@ -435,6 +427,15 @@ class SimpleWindow(QMainWindow):
 
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
 
+        # Add volume slider to settings tab
+        volume_layout = QHBoxLayout()
+        volume_label = QLabel("Volume:")
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        volume_layout.addWidget(volume_label); volume_layout.addWidget(self.volume_slider)
+        settings_layout.addLayout(volume_layout, row_below + 2, 0, 1, 4)
+
         self.stacked_widget.addWidget(settings_tab_content)
 
         # Reset tab
@@ -448,19 +449,6 @@ class SimpleWindow(QMainWindow):
         self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
-        watchlist_controls_layout.addStretch()
-
-        watchlist_layout.addLayout(watchlist_controls_layout); self.watchlist_group.setLayout(watchlist_layout)
-        lobbies_layout.addWidget(self.watchlist_group)
-        self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(4)
-        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"]) # Added "Host"
-        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.lobbies_table.verticalHeader().setVisible(False)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.lobbies_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        lobbies_layout.addWidget(self.lobbies_table)
-        self.stacked_widget.addWidget(lobbies_tab_content)
         # Finalize
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
