@@ -331,17 +331,31 @@ class SimpleWindow(QMainWindow):
         # Hotkey tab placeholder
         quickcast_tab_content = QWidget()
         quickcast_layout = QVBoxLayout(quickcast_tab_content)
+        
+        # Use a grid layout for the key controls
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(15) # Add some space between controls
 
-        controls_layout = QHBoxLayout()
-        q_button = QPushButton("Q")
-        q_button.setFixedSize(40, 40)
-        q_checkbox = QCheckBox()
-        q_checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
-        controls_layout.addWidget(q_button)
-        controls_layout.addWidget(q_checkbox)
-        controls_layout.addStretch()
+        keys = ['Q', 'W', 'E', 'R', 'D', 'F', 'T', 'A']
+        
+        row, col = 0, 0
+        for key in keys:
+            # Create a horizontal layout for each key pair
+            key_layout = QHBoxLayout()
 
-        quickcast_layout.addLayout(controls_layout)
+            button = QPushButton(key)
+            button.setFixedSize(40, 40)
+            
+            checkbox = QCheckBox()
+            checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
+
+            key_layout.addWidget(button)
+            key_layout.addWidget(checkbox)
+            grid_layout.addLayout(key_layout, row, col)
+            col += 1
+            if col >= 4: col, row = 0, row + 1
+
+        quickcast_layout.addLayout(grid_layout)
         quickcast_layout.addStretch()
         self.stacked_widget.addWidget(quickcast_tab_content)
 
