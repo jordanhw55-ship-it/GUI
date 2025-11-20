@@ -392,8 +392,8 @@ class SimpleWindow(QMainWindow):
         custom_layout.addWidget(self.bg_color_btn, 0, 0)
         custom_layout.addWidget(self.fg_color_btn, 0, 1)
         custom_layout.addWidget(self.accent_color_btn, 0, 2)
-        custom_layout.addWidget(self.apply_custom_btn, 1, 0, 1, 2)
-        custom_layout.addWidget(self.reset_custom_btn, 1, 2, 1, 2)
+        custom_layout.addWidget(self.apply_custom_btn, 2, 0, 1, 2)
+        custom_layout.addWidget(self.reset_custom_btn, 2, 2, 1, 2)
 
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
 
