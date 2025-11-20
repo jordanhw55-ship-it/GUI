@@ -38,8 +38,8 @@ class HotkeyCaptureWorker(QObject):
             while True:
                 event = keyboard.read_event(suppress=True)
                 if event.event_type == keyboard.KEY_DOWN:
-                    # keyboard.get_hotkey_name() correctly formats combinations with modifiers.
-                    hotkey_name = keyboard.get_hotkey_name()
+                    # Use the event’s key name directly
+                    hotkey_name = event.name
                     self.hotkey_captured.emit(hotkey_name)
                     break
         except Exception as e:
