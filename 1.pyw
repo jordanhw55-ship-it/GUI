@@ -967,9 +967,9 @@ QCheckBox::indicator {{
         keyword = self.lobbies_tab.watchlist_input.text().strip().lower()
         if keyword and keyword not in self.watchlist:
             self.watchlist.append(keyword)
-            self.watchlist_widget.addItem(keyword)
-            self.watchlist_input.clear()
-            self.filter_lobbies(self.lobby_search_bar.text())
+            self.lobbies_tab.watchlist_widget.addItem(keyword)
+            self.lobbies_tab.watchlist_input.clear()
+            self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
     def remove_from_watchlist(self):
         selected_items = self.lobbies_tab.watchlist_widget.selectedItems()
         if not selected_items:
@@ -977,7 +977,7 @@ QCheckBox::indicator {{
         for item in selected_items:
             self.watchlist.remove(item.text())
             self.lobbies_tab.watchlist_widget.takeItem(self.lobbies_tab.watchlist_widget.row(item))
-        self.filter_lobbies(self.lobby_search_bar.text())
+        self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
 
     # Items
     def filter_current_item_view(self):
