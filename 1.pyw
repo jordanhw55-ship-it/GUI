@@ -375,7 +375,7 @@ class SimpleWindow(QMainWindow):
         # Custom theme controls below presets
         row_below = (len(self.themes) - 1) // 4 + 1
         custom_box = QGroupBox("Custom theme")
-        custom_layout = QGridLayout(custom_box)
+        custom_v_layout = QVBoxLayout(custom_box)
 
         self.bg_color_btn = QPushButton("Pick background")
         self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
@@ -384,16 +384,25 @@ class SimpleWindow(QMainWindow):
         self.accent_color_btn = QPushButton("Pick accent")
         self.accent_color_btn.clicked.connect(lambda: self.pick_color('accent'))
 
+        pick_buttons_h_layout = QHBoxLayout()
+        pick_buttons_h_layout.addStretch()
+        pick_buttons_h_layout.addWidget(self.bg_color_btn)
+        pick_buttons_h_layout.addWidget(self.fg_color_btn)
+        pick_buttons_h_layout.addWidget(self.accent_color_btn)
+        pick_buttons_h_layout.addStretch()
+
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
         self.reset_custom_btn = QPushButton("Reset custom")
         self.reset_custom_btn.clicked.connect(self.reset_custom_theme_to_defaults)
 
-        custom_layout.addWidget(self.bg_color_btn, 0, 0)
-        custom_layout.addWidget(self.fg_color_btn, 0, 1)
-        custom_layout.addWidget(self.accent_color_btn, 0, 2)
-        custom_layout.addWidget(self.apply_custom_btn, 2, 0, 1, 2)
-        custom_layout.addWidget(self.reset_custom_btn, 2, 2, 1, 2)
+        action_buttons_h_layout = QHBoxLayout()
+        action_buttons_h_layout.addWidget(self.apply_custom_btn)
+        action_buttons_h_layout.addWidget(self.reset_custom_btn)
+
+        custom_v_layout.addLayout(pick_buttons_h_layout)
+        custom_v_layout.addStretch()
+        custom_v_layout.addLayout(action_buttons_h_layout)
 
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
 
