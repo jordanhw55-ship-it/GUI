@@ -21,6 +21,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
+from ui_tabs import LoadTab
 
 try:
     import win32gui # type: ignore
@@ -235,31 +236,19 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
-        load_tab_content = QWidget()
-        load_layout = QVBoxLayout(load_tab_content)
-        path_layout = QHBoxLayout()
-        self.load_path_edit = QLineEdit(); self.load_path_edit.setPlaceholderText("Character save path...")
-        self.load_path_edit.textChanged.connect(self.on_path_changed)
-        browse_btn = QPushButton("Browse..."); browse_btn.clicked.connect(self.select_character_path)
-        reset_path_btn = QPushButton("Reset Path"); reset_path_btn.clicked.connect(self.reset_character_path)
-        path_layout.addWidget(self.load_path_edit); path_layout.addWidget(browse_btn); path_layout.addWidget(reset_path_btn)
-        load_layout.addLayout(path_layout)
-        action_layout = QHBoxLayout()
-        load_char_btn = QPushButton("Load Character (F3)"); load_char_btn.clicked.connect(self.load_selected_character)
-        refresh_chars_btn = QPushButton("Refresh"); refresh_chars_btn.clicked.connect(self.load_characters)
-        action_layout.addWidget(load_char_btn); action_layout.addWidget(refresh_chars_btn); action_layout.addStretch()
-        load_layout.addLayout(action_layout)
-        content_layout = QHBoxLayout()
-        self.char_list_box = QListWidget(); self.char_list_box.setFixedWidth(200)
-        self.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
-        self.char_content_box = QTextEdit(); self.char_content_box.setReadOnly(True)
-        self.char_content_box.setFontFamily("Consolas"); self.char_content_box.setFontPointSize(10)
-        content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
-        load_layout.addLayout(content_layout)
-        self.stacked_widget.addWidget(load_tab_content)
+        self.load_tab = LoadTab(self)
+        self.stacked_widget.addWidget(self.load_tab)
+
+        # Connect signals from the new LoadTab
+        self.load_tab.load_path_edit.textChanged.connect(self.on_path_changed)
+        self.load_tab.browse_btn.clicked.connect(self.select_character_path)
+        self.load_tab.reset_path_btn.clicked.connect(self.reset_character_path)
+        self.load_tab.load_char_btn.clicked.connect(self.load_selected_character)
+        self.load_tab.refresh_chars_btn.clicked.connect(self.load_characters)
+        self.load_tab.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
         
         # Set initial path and load characters
-        self.load_path_edit.setText(self.settings_manager.get("character_path"))
+        self.load_tab.load_path_edit.setText(self.settings_manager.get("character_path"))
         # Items tab
         self.item_database = ItemDatabase()
         items_tab_content = QWidget()
@@ -1199,21 +1188,21 @@ class SimpleWindow(QMainWindow):
 
     # Character loading
     def on_path_changed(self, new_path: str):
-        self.character_path = new_path
+        self.character_path = new_path # Still need to update the main window's state
     def select_character_path(self):
         default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData")
         new_path = QFileDialog.getExistingDirectory(self, "Select the character data folder", dir=default_path)
         if new_path:
-            self.load_path_edit.setText(new_path); self.load_characters()
+            self.load_tab.load_path_edit.setText(new_path); self.load_characters()
     def reset_character_path(self):
         confirm_box = QMessageBox.question(self, "Confirm Reset", "Reset character path to default?",
                                            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                            QMessageBox.StandardButton.No)
         if confirm_box == QMessageBox.StandardButton.Yes:
             default_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
-            self.load_path_edit.setText(default_path); self.load_characters()
+            self.load_tab.load_path_edit.setText(default_path); self.load_characters()
     def load_characters(self):
-        self.char_list_box.clear(); self.char_content_box.clear()
+        self.load_tab.char_list_box.clear(); self.load_tab.char_content_box.clear()
         if not self.character_path or not os.path.isdir(self.character_path):
             if self.character_path:
                 QMessageBox.warning(self, "Error", f"Character save directory not found:\n{self.character_path}")
@@ -1232,25 +1221,25 @@ class SimpleWindow(QMainWindow):
         for char in sorted_chars:
             item = QListWidgetItem(char["name"])
             item.setData(Qt.ItemDataRole.UserRole, char["path"])
-            self.char_list_box.addItem(item)
-        if self.char_list_box.count() > 0:
-            self.char_list_box.setCurrentRow(0)
+            self.load_tab.char_list_box.addItem(item)
+        if self.load_tab.char_list_box.count() > 0:
+            self.load_tab.char_list_box.setCurrentRow(0)
     def show_character_file_contents(self, current_item: QListWidgetItem, previous_item: QListWidgetItem):
         if not current_item:
-            self.char_content_box.clear(); return
+            self.load_tab.char_content_box.clear(); return
         file_path = current_item.data(Qt.ItemDataRole.UserRole)
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                self.char_content_box.setText(f.read())
+                self.load_tab.char_content_box.setText(f.read())
         except (IOError, OSError) as e:
-            self.char_content_box.setText(f"Error reading file: {e}")
+            self.load_tab.char_content_box.setText(f"Error reading file: {e}")
     def load_selected_character(self):
         # This is now the core logic, can be called by button or hotkey handler
-        if not self.char_list_box.currentItem():
+        if not self.load_tab.char_list_box.currentItem():
             # If nothing is selected, try to select the first item
-            if self.char_list_box.count() > 0:
-                self.char_list_box.setCurrentRow(0)
-        current_item = self.char_list_box.currentItem()
+            if self.load_tab.char_list_box.count() > 0:
+                self.load_tab.char_list_box.setCurrentRow(0)
+        current_item = self.load_tab.char_list_box.currentItem()
         if not current_item:
             QMessageBox.warning(self, "No Character Selected", "Please select a character from the list."); return
         char_name = current_item.text()
