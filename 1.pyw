@@ -645,8 +645,8 @@ QCheckBox::indicator {{
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         }
-        if self.custom_theme_enabled:
-            self.apply_custom_theme()
+        self.custom_enable_checkbox.setChecked(True)
+        self.apply_custom_theme()
 
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
