@@ -195,7 +195,7 @@ class QuickcastTab(QWidget):
 
         # --- Numpad Grid ---
         numpad_grid_layout = QGridLayout()
-        numpad_grid_layout.setSpacing(15)
+        numpad_grid_layout.setSpacing(5)
 
         # Keys arranged in columns for the new layout
         numpad_keys_col1 = ['7', '4', '1']
