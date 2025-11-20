@@ -59,7 +59,7 @@ class AutomationManager(QObject):
             self.parent.automation_tab.custom_action_edit1.setText("30000")
             self.parent.automation_tab.custom_action_edit2.setText("-save x")
 
-            # Also stop any active timers immediately
+            # Stop timers and reset flags
             self._stop_timers()
             self.custom_action_running = False
             self.custom_action_pending = False
@@ -90,7 +90,6 @@ class AutomationManager(QObject):
             try:
                 interval = int(self.parent.automation_tab.custom_action_edit1.text().strip())
                 message = self.parent.automation_tab.custom_action_edit2.text()
-                # Guard: empty message isn't useful
                 if not message.strip():
                     QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
                 else:
@@ -148,8 +147,7 @@ class AutomationManager(QObject):
     # Sequences
     # -------------------------
     def run_complete_quest(self):
-        # Hard priority rules:
-        # - If custom action is running or pending, or another sequence holds the lock, skip.
+        # Skip if custom action is running, pending, or another sequence holds the lock
         if self.custom_action_running or self.custom_action_pending or self.sequence_lock:
             return
 
@@ -161,7 +159,6 @@ class AutomationManager(QObject):
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
 
-        # Release quickly to keep UI responsive, then resume
         QTimer.singleShot(400, self._end_complete_quest)
 
     def _end_complete_quest(self):
@@ -177,18 +174,26 @@ class AutomationManager(QObject):
         # Pause all other automation for exclusivity
         self.pause_all_automation()
 
+        # Explicitly stop Complete Quest timer if it exists
+        if "Complete Quest" in self.automation_timers:
+            self.automation_timers["Complete Quest"].stop()
+
         def type_message():
             pyautogui.press('enter')
             pyautogui.write(message, interval=0.03)
             pyautogui.press('enter')
 
-        # Small delay for reliability, then send message; end after a short window
         QTimer.singleShot(500, type_message)
         QTimer.singleShot(2500, self._end_custom_action)
 
     def _end_custom_action(self):
         self.custom_action_running = False
         self.sequence_lock = False
+
+        # Restart Complete Quest timer if it exists
+        if "Complete Quest" in self.automation_timers:
+            self.automation_timers["Complete Quest"].start()
+
         self.resume_all_automation()
 
     # -------------------------
