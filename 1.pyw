@@ -963,7 +963,7 @@ class SimpleWindow(QMainWindow):
     def filter_recipes_list(self):
         if not self.item_database.recipes_data:
             self.item_database.load_recipes()
-        query = self.recipe_search_box.text().lower()
+        query = self.recipes_tab.recipe_search_box.text().lower()
         self.recipes_tab.available_recipes_list.clear()
         for recipe in self.item_database.recipes_data:
             if query in recipe["name"].lower():
