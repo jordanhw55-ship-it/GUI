@@ -14,7 +14,6 @@ except ImportError:
 
 class AutomationManager(QObject):
     log_message = Signal(str)
-    status_changed = Signal(bool)
 
     def __init__(self, parent_window):
         super().__init__()
@@ -72,7 +71,6 @@ class AutomationManager(QObject):
             return
 
         self.is_automation_running = True
-        self.status_changed.emit(True)
         self._log("start_automation -> True")
 
         try:
@@ -124,7 +122,6 @@ class AutomationManager(QObject):
             return
 
         self.is_automation_running = False
-        self.status_changed.emit(False)
         self.scheduler.stop()
         self.custom_action_running = False
         self.sequence_lock = False
