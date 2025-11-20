@@ -18,6 +18,7 @@ class AutomationManager(QObject):
         self.automation_timers = {}
         self.is_automation_running = False
         self.custom_action_running = False
+        self.sequence_lock = False # Lock to prevent sequences from running over each other
         self.game_title = "Warcraft III"
 
     def toggle_automation(self):
@@ -111,27 +112,40 @@ class AutomationManager(QObject):
 
     def run_complete_quest(self):
         # If the higher-priority custom action is running, skip this execution.
-        if self.custom_action_running:
+        if self.custom_action_running or self.sequence_lock:
             return
 
+        self.sequence_lock = True # Acquire the lock
         self.pause_all_automation()
         self.control_send_key('y')
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
-        # After the sequence, resume other automations.
-        QTimer.singleShot(300, self.resume_all_automation)
+        
+        # After the sequence, release the lock and resume other automations.
+        QTimer.singleShot(400, self._end_complete_quest)
+
+    def _end_complete_quest(self):
+        self.sequence_lock = False # Release the lock
+        self.resume_all_automation()
+
     def run_custom_action(self, message: str):
+        if self.sequence_lock and not self.custom_action_running:
+            # If another sequence is running, wait for the next timer cycle.
+            return
+
         self.custom_action_running = True
+        self.sequence_lock = True # Acquire the lock
         self.pause_all_automation()
         def type_message():
             pyautogui.press('enter')
             pyautogui.write(message, interval=0.03)
             pyautogui.press('enter')
-        QTimer.singleShot(2000, type_message)
-        QTimer.singleShot(4000, self._end_custom_action)
+        QTimer.singleShot(500, type_message)
+        QTimer.singleShot(2500, self._end_custom_action)
 
     def _end_custom_action(self):
         self.custom_action_running = False
+        self.sequence_lock = False # Release the lock
         self.resume_all_automation()
 
     def reset_settings(self, confirm=True):
