@@ -177,6 +177,7 @@ class SimpleWindow(QMainWindow):
         self.is_automation_running = False
         self.automation_settings = {} # To hold loaded settings
         self.custom_action_running = False
+        self.is_capturing_hotkey = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
         self.message_hotkeys = {}       # {hotkey_str: message_str}
@@ -663,20 +664,20 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
-        # Ensure any previous capture thread is stopped and cleaned up before starting a new one.
-        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
+        # Prevent starting a new capture if one is already in progress.
+        if self.is_capturing_hotkey:
+            return
 
-        # Disable UI to indicate capture mode
+        self.is_capturing_hotkey = True
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
         # Unhook all global hotkeys to ensure the capture worker gets the keypress
         keyboard.unhook_all()
-
-        self.capture_thread = QThread() # Create a new thread for this capture
+        
+        # Create and start a new thread and worker for this capture
+        self.capture_thread = QThread() 
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
         self.capture_thread.started.connect(self.capture_worker.run)
@@ -703,13 +704,14 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Clean up the thread and worker that just finished.
-        # This is critical for preventing the RuntimeError.
-        self.capture_thread.quit()
-        self.capture_thread.wait()
-        self.capture_worker.deleteLater()
-        self.capture_thread.deleteLater()
-
+        # Clean up the thread and re-register global hotkeys
+        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
+            self.capture_thread.quit()
+            self.capture_thread.wait()
+        if hasattr(self, 'capture_worker'):
+            self.capture_worker.deleteLater()
+        if hasattr(self, 'capture_thread'):
+            self.capture_thread.deleteLater()
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
 
@@ -792,21 +794,21 @@ class SimpleWindow(QMainWindow):
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         thread = QThread()
         worker.moveToThread(thread)
-
-        # Ensure both worker and thread are cleaned up
+ 
+ # Ensure both worker and thread are cleaned up
         worker.finished.connect(thread.quit)
         worker.error.connect(thread.quit)
         thread.finished.connect(thread.deleteLater)
         worker.finished.connect(worker.deleteLater)
         worker.error.connect(worker.deleteLater)
-
+ 
         thread.started.connect(worker.run)
         worker.finished.connect(self.on_chat_send_finished)
         worker.error.connect(self.on_chat_send_error)
         thread.start()
 
-    def on_chat_send_error(self, error_message: str): # type: ignore
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}") # type: ignore
+    def on_chat_send_error(self, error_message: str):
+        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
 
     def on_chat_send_finished(self):
