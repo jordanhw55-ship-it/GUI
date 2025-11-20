@@ -623,11 +623,19 @@ QCheckBox::indicator {{
 
     def on_custom_theme_toggled(self, state: int):
         self.custom_theme_enabled = state == Qt.CheckState.Checked
-        
+
         if self.custom_theme_enabled:
             self.apply_custom_theme()
+            # When enabling custom theme, remove borders from all preset previews
+            for preview in self.theme_previews:
+                border_style = "border: 2px solid transparent;"
+                preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
         else:
             self.apply_theme(self.current_theme_index)
+            # When disabling, re-apply the border to the currently selected preset
+            for i, preview in enumerate(self.theme_previews):
+                border_style = "border: 2px solid #FF7F50;" if i == self.current_theme_index else "border: 2px solid transparent;"
+                preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
 
     def pick_color(self, key: str):
         initial = QColor(self.custom_theme[key])
