@@ -295,6 +295,25 @@ class LobbiesTab(QWidget):
         self.add_watchlist_button = QPushButton("Add")
         self.remove_watchlist_button = QPushButton("Remove")
 
+        # Sound controls
+        self.ping_buttons = {
+            "ping1.mp3": QPushButton("Ping 1"),
+            "ping2.mp3": QPushButton("Ping 2"),
+            "ping3.mp3": QPushButton("Ping 3"),
+        }
+        for btn in self.ping_buttons.values():
+            btn.setCheckable(True)
+
+        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
+        self.test_sound_button = QPushButton("Test Sound")
+
+        # Volume slider
+        self.volume_label = QLabel("Volume:")
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(0, 100)
+
+
+
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QVBoxLayout(self)
@@ -313,3 +332,19 @@ class LobbiesTab(QWidget):
         watchlist_controls_layout.addWidget(self.add_watchlist_button)
         watchlist_controls_layout.addWidget(self.remove_watchlist_button)
         watchlist_layout.addLayout(watchlist_controls_layout)
+
+        # Sound controls layout
+        ping_buttons_layout = QHBoxLayout()
+        for btn in self.ping_buttons.values():
+            ping_buttons_layout.addWidget(btn)
+        watchlist_layout.addLayout(ping_buttons_layout)
+
+        sound_options_layout = QHBoxLayout()
+        sound_options_layout.addWidget(self.lobby_placeholder_checkbox)
+        sound_options_layout.addWidget(self.test_sound_button)
+        watchlist_layout.addLayout(sound_options_layout)
+
+        volume_layout = QHBoxLayout()
+        volume_layout.addWidget(self.volume_label)
+        volume_layout.addWidget(self.volume_slider)
+        watchlist_layout.addLayout(volume_layout)

@@ -343,37 +343,18 @@ class SimpleWindow(QMainWindow):
         self.lobbies_tab.add_watchlist_button.clicked.connect(self.add_to_watchlist)
         self.lobbies_tab.remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
 
+        # Connect sound and volume controls from LobbiesTab
+        for sound, btn in self.lobbies_tab.ping_buttons.items():
+            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s))
+        self.lobbies_tab.test_sound_button.clicked.connect(self.play_notification_sound)
+        self.lobbies_tab.volume_slider.valueChanged.connect(self.set_volume)
+
         # Populate initial watchlist
         self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
-
-        # Add sound controls to the watchlist groupbox in the lobbies tab
-        watchlist_controls_layout = QVBoxLayout()
-        self.lobbies_tab.watchlist_group.layout().addLayout(watchlist_controls_layout)
-
-        ping_buttons_layout = QHBoxLayout()
-        self.ping_buttons = {
-            "ping1.mp3": QPushButton("Ping 1"),
-            "ping2.mp3": QPushButton("Ping 2"),
-            "ping3.mp3": QPushButton("Ping 3"),
-        }
-        for sound, btn in self.ping_buttons.items():
-            btn.setCheckable(True)
-            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s)) # type: ignore
-            ping_buttons_layout.addWidget(btn)
-
-        watchlist_controls_layout.addLayout(ping_buttons_layout)
-
-        # Add the sound controls
-        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
-        test_sound_button = QPushButton("Test Sound")
-        test_sound_button.clicked.connect(self.play_notification_sound)
-        sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
-        watchlist_controls_layout.addLayout(sound_layout)
 
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
-
 
         # Preset themes grid
         self.create_theme_grid(settings_layout)
@@ -420,15 +401,6 @@ class SimpleWindow(QMainWindow):
         custom_v_layout.addLayout(action_buttons_h_layout)
 
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
-
-        # Add volume slider to settings tab
-        volume_layout = QHBoxLayout()
-        volume_label = QLabel("Volume:")
-        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
-        self.volume_slider.setRange(0, 100)
-        self.volume_slider.valueChanged.connect(self.set_volume)
-        volume_layout.addWidget(volume_label); volume_layout.addWidget(self.volume_slider)
-        settings_layout.addLayout(volume_layout, row_below + 2, 0, 1, 4)
 
         self.stacked_widget.addWidget(settings_tab_content)
 
@@ -525,7 +497,7 @@ class SimpleWindow(QMainWindow):
         checked_fg = "#000000" if not is_dark else "#FFFFFF"
         if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
 
-        for sound, btn in self.ping_buttons.items():
+        for sound, btn in self.lobbies_tab.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
             if sound == self.selected_sound:
                 btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg}; border: 1px solid {accent_color};")
@@ -706,8 +678,8 @@ QCheckBox::indicator {{
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = ["hellfire", "rpg"]
-        self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
-        self.volume_slider.setValue(100)
+        self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
+        self.lobbies_tab.volume_slider.setValue(100)
         
         # Also reset recipes and automation settings
         self.in_progress_recipes.clear()
@@ -917,7 +889,6 @@ QCheckBox::indicator {{
         self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
         self.selected_sound = self.settings_manager.get("selected_sound")
         self.volume = self.settings_manager.get("volume", 100)
-        # self.volume_slider.setValue(self.volume) # This will be set after the UI is created
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -958,11 +929,11 @@ QCheckBox::indicator {{
 
     # Watchlist
     def load_watchlist(self):
-        """Loads the watchlist from settings. This is now handled by apply_loaded_settings()."""
+        """Loads the watchlist from settings. This is now handled by apply_loaded_settings().""" # type: ignore
         # This method is kept for compatibility but logic is in load_settings()
         # The watchlist is loaded with other settings at startup.
-        self.lobbies_tab.watchlist_widget.clear()
-        self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
+        self.lobbies_tab.watchlist_widget.clear() # type: ignore
+        self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
     def add_to_watchlist(self):
         keyword = self.lobbies_tab.watchlist_input.text().strip().lower()
         if keyword and keyword not in self.watchlist:
@@ -1252,7 +1223,7 @@ QCheckBox::indicator {{
             for keyword in self.watchlist:
                 if keyword in lobby_name or keyword in lobby_map:
                     current_watched_lobbies.add(lobby.get('name')); break
-        newly_found = current_watched_lobbies - self.previous_watched_lobbies
+        newly_found = current_watched_lobbies - self.previous_watched_lobbies # type: ignore
         if newly_found and self.lobby_placeholder_checkbox.isChecked():
             self.play_notification_sound()
         self.previous_watched_lobbies = current_watched_lobbies
