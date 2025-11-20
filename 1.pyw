@@ -945,7 +945,7 @@ class SimpleWindow(QMainWindow):
 
     def add_recipe_to_progress(self):
         """Adds a recipe to the 'in-progress' list from the UI selection."""
-        selected_item = self.available_recipes_list.currentItem()
+        selected_item = self.recipes_tab.available_recipes_list.currentItem()
         if not selected_item:
             return False
         if self._add_recipe_by_name(selected_item.text()):
