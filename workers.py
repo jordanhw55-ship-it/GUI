@@ -39,12 +39,9 @@ class HotkeyCaptureWorker(QObject):
                 event = keyboard.read_event(suppress=True)
                 if event.event_type == keyboard.KEY_DOWN:
                     # keyboard.get_hotkey_name() correctly formats combinations with modifiers.
-                    # It can return an empty string if only a modifier is pressed.
                     hotkey_name = keyboard.get_hotkey_name()
-                    if hotkey_name: # Ensure we don't emit an empty string
-                        self.hotkey_captured.emit(hotkey_name)
-                        break
-                    # If hotkey_name is empty, loop continues to wait for a valid key.
+                    self.hotkey_captured.emit(hotkey_name)
+                    break
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
             self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
