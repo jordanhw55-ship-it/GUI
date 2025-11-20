@@ -662,31 +662,32 @@ class SimpleWindow(QMainWindow):
 
     # Settings
     def capture_message_hotkey(self):
-        """Starts a worker thread to capture a key combination."""
-
-        print("[DEBUG] capture_message_hotkey: Function called.")
+        """
+        Starts a worker thread to capture a key combination, ensuring only one
+        capture operation can run at a time.
+        """
         # Prevent starting a new capture if one is already in progress.
         if self.is_capturing_hotkey:
-            print("[DEBUG] capture_message_hotkey: Capture already in progress. Aborting.")
             return
 
-        print("[DEBUG] capture_message_hotkey: Starting new capture. Setting flag to True.")
         self.is_capturing_hotkey = True
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
-        print("[DEBUG] capture_message_hotkey: Unhooking all global hotkeys.")
-        # Unhook all global hotkeys to ensure the capture worker gets the keypress
+        # Unhook all main hotkeys before starting the capture thread.
+        # The worker will handle its own unhooking upon completion.
         keyboard.unhook_all()
         
         # Create and start a new thread and worker for this capture
         self.capture_thread = QThread() 
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
-        self.capture_thread.started.connect(self.capture_worker.run) # type: ignore
+
+        # Connections
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
-        print("[DEBUG] capture_message_hotkey: Starting capture thread.")
+        self.capture_thread.started.connect(self.capture_worker.run)
+
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
@@ -700,29 +701,25 @@ class SimpleWindow(QMainWindow):
                 if part.strip().lower() not in keyboard.all_modifiers:
                     is_valid = False
                     break
-        
-        self.automation_tab.message_edit.setEnabled(True)
 
-        if not is_valid or hotkey == 'esc':
-            self.automation_tab.hotkey_capture_btn.setText("Click to set")
-        else:
-            self.automation_tab.hotkey_capture_btn.setText(hotkey)
-        
-        self.automation_tab.hotkey_capture_btn.setEnabled(True)
-
-        # Clean up the thread and re-register global hotkeys
-        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
-        if hasattr(self, 'capture_worker'):
-            self.capture_worker.deleteLater()
-        if hasattr(self, 'capture_thread'):
-            self.capture_thread.deleteLater()
-        # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
+        # The worker calls keyboard.unhook_all() in its 'finally' block.
+        # We must now re-register our application's global hotkeys.
         self.register_global_hotkeys()
+
+        # Update UI
+        self.automation_tab.message_edit.setEnabled(True)
+        self.automation_tab.hotkey_capture_btn.setEnabled(True)
+        self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid and hotkey != 'esc' else "Click to set")
+
+        # Clean up the thread and worker that just finished.
+        self.capture_thread.quit()
+        self.capture_thread.wait() # Wait for the thread to fully terminate
+        self.capture_worker.deleteLater()
+        self.capture_thread.deleteLater()
 
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
+
 
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
@@ -741,14 +738,13 @@ class SimpleWindow(QMainWindow):
         hotkey = self.automation_tab.hotkey_capture_btn.text()
         message = self.automation_tab.message_edit.text()
 
-        if hotkey == "Click to set" or not message:
+        if hotkey == "Click to set" or not message or hotkey == 'esc':
             QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
             return
         
         if hotkey in self.message_hotkeys:
             QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use. Delete the old one first.")
             return
-
 
         # Overwrite if exists, add if new.
         self.message_hotkeys[hotkey] = message
@@ -779,8 +775,7 @@ class SimpleWindow(QMainWindow):
             self.register_global_hotkeys() # Re-register to remove the deleted one
 
             # Reset UI
-            self.automation_tab.hotkey_capture_btn.setText("Click to set")
-            self.automation_tab.message_edit.clear()
+            self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
@@ -1011,7 +1006,6 @@ class SimpleWindow(QMainWindow):
             pass
         materials_table.setRowCount(0)
         
-        # Determine which recipes to calculate materials for
         checked_recipe_names = []
         in_progress_list = self.recipes_tab.in_progress_recipes_list
         for i in range(in_progress_list.count()):
@@ -1053,7 +1047,6 @@ class SimpleWindow(QMainWindow):
         materials_table.itemChanged.connect(self.on_material_checked)
         materials_table.setSortingEnabled(True)
 
-    def on_material_checked(self, item: QTableWidgetItem):
         if item.column() != 0: return
         materials_table = self.recipes_tab.materials_table
         is_checked = item.checkState() == Qt.CheckState.Checked

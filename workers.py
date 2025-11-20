@@ -30,6 +30,7 @@ class LobbyFetcher(QObject):
 class HotkeyCaptureWorker(QObject):
     """Runs in a separate thread to capture a hotkey without freezing the GUI."""
     hotkey_captured = Signal(str)
+
     def run(self):
         try:
             # Capture a single hotkey string, suppress so it doesn't leak into GUI
@@ -38,6 +39,7 @@ class HotkeyCaptureWorker(QObject):
             self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
+            self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
         finally:
             # Crucially, unhook all keyboard listeners here to reset the state
             # before the main thread tries to re-register its own hotkeys.
