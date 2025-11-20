@@ -1,5 +1,6 @@
 from PySide6.QtCore import QTimer, QObject
 from PySide6.QtWidgets import QMessageBox
+import time
 import pyautogui
 
 try:
@@ -16,11 +17,26 @@ class AutomationManager(QObject):
     def __init__(self, parent_window):
         super().__init__()
         self.parent = parent_window
-        self.automation_timers = {}          # {name: QTimer}
+
+        # State
         self.is_automation_running = False
-        self.custom_action_running = False   # True when the custom action sequence is in progress
-        self.custom_action_pending = False   # True when a custom action is scheduled by its timer
-        self.sequence_lock = False           # Prevents overlapping sequences
+        self.custom_action_running = False  # true while sending chat
+        self.sequence_lock = False          # prevents overlapping sequences
+
+        # Intervals (ms)
+        self.quest_interval_ms = 5000
+        self.custom_interval_ms = 10000
+
+        # Next due times (monotonic seconds)
+        self.next_quest_due = None
+        self.next_custom_due = None
+
+        # Scheduler tick
+        self.scheduler = QTimer(self)
+        self.scheduler.setInterval(100)  # 100 ms tick
+        self.scheduler.timeout.connect(self._tick)
+
+        # Game target
         self.game_title = "Warcraft III"
 
     # -------------------------
@@ -29,14 +45,49 @@ class AutomationManager(QObject):
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
         if self.is_automation_running:
+            # Read intervals from UI (with guards)
+            try:
+                self.quest_interval_ms = int(self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
+            except Exception:
+                self.quest_interval_ms = 15000  # sensible default
+
+            try:
+                self.custom_interval_ms = int(self.parent.automation_tab.custom_action_edit1.text().strip())
+            except Exception:
+                self.custom_interval_ms = 30000
+
+            message = self.parent.automation_tab.custom_action_edit2.text().strip()
+
+            # If custom action enabled but message is empty, warn and disable it
+            self.custom_enabled = self.parent.automation_tab.custom_action_btn.isChecked() and bool(message)
+            if self.parent.automation_tab.custom_action_btn.isChecked() and not message:
+                QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
+                self.custom_enabled = False
+
+            # UI
             self.parent.automation_tab.start_automation_btn.setText("Stop (F5)")
             self.parent.automation_tab.start_automation_btn.setStyleSheet("background-color: #B00000;")
-            self._start_timers()
+
+            # Initialize schedule aligned to start
+            now = time.monotonic()
+            # Only schedule quest if its checkbox is checked
+            quest_checked = self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["chk"].isChecked()
+            self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None
+            self.next_custom_due = (now + self.custom_interval_ms / 1000.0) if self.custom_enabled else None
+
+            # Store current custom message
+            self.custom_message = message
+
+            # Start ticking
+            self.scheduler.start()
         else:
             self.parent.automation_tab.start_automation_btn.setText("Start (F5)")
-            self.parent._reset_automation_button_style()
-            self.custom_action_pending = False
-            self._stop_timers()
+            self._reset_automation_button_style()
+            self.scheduler.stop()
+            self.custom_action_running = False
+            self.sequence_lock = False
+            self.next_quest_due = None
+            self.next_custom_due = None
 
     def reset_settings(self, confirm=True):
         do_reset = False
@@ -50,6 +101,7 @@ class AutomationManager(QObject):
             do_reset = True
 
         if do_reset:
+            # Reset UI fields
             for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
                 ctrls["chk"].setChecked(False)
                 default_interval = "15000" if key == "Complete Quest" else "500"
@@ -59,142 +111,85 @@ class AutomationManager(QObject):
             self.parent.automation_tab.custom_action_edit1.setText("30000")
             self.parent.automation_tab.custom_action_edit2.setText("-save x")
 
-            # Stop timers and reset flags
-            self._stop_timers()
-            self.custom_action_running = False
-            self.custom_action_pending = False
-            self.sequence_lock = False
+            # Stop automation
+            if self.is_automation_running:
+                self.toggle_automation()
+
+    def _reset_automation_button_style(self):
+        accent_color = self.parent.custom_theme.get("accent", "#FF7F50")
+        text_color = self.parent.custom_theme.get("bg", "#121212")
+        self.parent.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
 
     # -------------------------
-    # Timers
+    # Scheduler
     # -------------------------
-    def _start_timers(self):
-        # Key automation timers
-        for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
-            if ctrls["chk"].isChecked():
-                try:
-                    interval = int(ctrls["edit"].text().strip())
-                    timer = QTimer(self.parent)
-                    if key == "Complete Quest":
-                        timer.timeout.connect(self.run_complete_quest)
-                        self.automation_timers["Complete Quest"] = timer
-                    else:
-                        timer.timeout.connect(lambda k=key: self.control_send_key(k))
-                        self.automation_timers[key] = timer
-                    timer.start(interval)
-                except ValueError:
-                    QMessageBox.warning(self.parent, "Invalid interval", f"Interval for '{key}' must be a number in ms.")
+    def _tick(self):
+        if not self.is_automation_running:
+            return
 
-        # Custom action timer
-        if self.parent.automation_tab.custom_action_btn.isChecked():
-            try:
-                interval = int(self.parent.automation_tab.custom_action_edit1.text().strip())
-                message = self.parent.automation_tab.custom_action_edit2.text()
-                if not message.strip():
-                    QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
-                else:
-                    self.custom_action_pending = True
-                    timer = QTimer(self.parent)
-                    timer.timeout.connect(lambda msg=message: self.run_custom_action(msg))
-                    timer.start(interval)
-                    self.automation_timers["custom"] = timer
-            except ValueError:
-                QMessageBox.warning(self.parent, "Invalid interval", "Interval for 'Custom Action' must be a number in ms.")
+        now = time.monotonic()
 
-    def _stop_timers(self):
-        for timer in list(self.automation_timers.values()):
-            try:
-                timer.stop()
-                timer.deleteLater()
-            except Exception:
-                pass
-        self.automation_timers.clear()
+        # If a custom action is in progress, we skip quest execution
+        if self.custom_action_running or self.sequence_lock:
+            return
 
-    # -------------------------
-    # Priority management
-    # -------------------------
-    def pause_all_automation(self):
-        # Temporarily unhook message hotkeys (except F5)
-        for hk, hk_id in list(self.parent.hotkey_ids.items()):
-            if hk not in ['f5']:
-                try:
-                    import keyboard
-                    keyboard.remove_hotkey(hk_id)
-                except Exception:
-                    pass
+        quest_due = self.next_quest_due is not None and now >= self.next_quest_due
+        custom_due = self.next_custom_due is not None and now >= self.next_custom_due
 
-        # Stop all running timers but keep references so we can resume later
-        for name, timer in self.automation_timers.items():
-            try:
-                timer.stop()
-            except Exception:
-                pass
+        # Both due -> run custom, skip quest this cycle (advance quest schedule)
+        if quest_due and custom_due:
+            self._run_custom_action(self.custom_message)
+            # Advance both schedules
+            self.next_custom_due += self.custom_interval_ms / 1000.0
+            self.next_quest_due += self.quest_interval_ms / 1000.0
+            return
 
-    def resume_all_automation(self):
-        # Re-register message hotkeys
-        for hotkey, message in self.parent.message_hotkeys.items():
-            if hotkey not in self.parent.hotkey_ids:
-                self.parent.register_single_hotkey(hotkey, message)
+        # Custom due alone
+        if custom_due:
+            self._run_custom_action(self.custom_message)
+            self.next_custom_due += self.custom_interval_ms / 1000.0
+            return
 
-        # Restart timers (respect existing intervals)
-        for name, timer in self.automation_timers.items():
-            try:
-                timer.start()
-            except Exception:
-                pass
+        # Quest due alone
+        if quest_due:
+            self._run_complete_quest()
+            self.next_quest_due += self.quest_interval_ms / 1000.0
 
     # -------------------------
     # Sequences
     # -------------------------
-    def run_complete_quest(self):
-        # Skip if custom action is running, pending, or another sequence holds the lock
-        if self.custom_action_running or self.custom_action_pending or self.sequence_lock:
+    def _run_complete_quest(self):
+        # Safety: require Windows APIs
+        if not win32gui or not win32api or not win32con:
             return
 
         self.sequence_lock = True
-        self.pause_all_automation()
 
         # Sequence: y -> 100ms -> e -> 100ms -> esc
         self.control_send_key('y')
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
-
         QTimer.singleShot(400, self._end_complete_quest)
 
     def _end_complete_quest(self):
         self.sequence_lock = False
-        self.resume_all_automation()
 
-    def run_custom_action(self, message: str):
-        # Elevate custom action priority immediately
-        self.custom_action_pending = False
+    def _run_custom_action(self, message: str):
         self.custom_action_running = True
         self.sequence_lock = True
-
-        # Pause all other automation for exclusivity
-        self.pause_all_automation()
-
-        # Explicitly stop Complete Quest timer if it exists
-        if "Complete Quest" in self.automation_timers:
-            self.automation_timers["Complete Quest"].stop()
 
         def type_message():
             pyautogui.press('enter')
             pyautogui.write(message, interval=0.03)
             pyautogui.press('enter')
 
-        QTimer.singleShot(500, type_message)
-        QTimer.singleShot(2500, self._end_custom_action)
+        # Small delay helps reliability
+        QTimer.singleShot(200, type_message)
+        QTimer.singleShot(1200, self._end_custom_action)
 
     def _end_custom_action(self):
         self.custom_action_running = False
         self.sequence_lock = False
-
-        # Restart Complete Quest timer if it exists
-        if "Complete Quest" in self.automation_timers:
-            self.automation_timers["Complete Quest"].start()
-
-        self.resume_all_automation()
 
     # -------------------------
     # Low-level key send
