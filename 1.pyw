@@ -20,6 +20,7 @@ import pyautogui  # type: ignore
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
+from settings import SettingsManager
 
 try:
     import win32gui # type: ignore
@@ -175,6 +176,7 @@ class SimpleWindow(QMainWindow):
         self.custom_action_running = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
+        self.character_path = ""        # Initialize character_path
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
@@ -256,12 +258,9 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
         load_layout.addLayout(content_layout)
         self.stacked_widget.addWidget(load_tab_content)
-
+        
         # Set initial path and load characters
-        if not hasattr(self, 'character_path') or not self.character_path:
-            self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
         self.load_path_edit.setText(self.character_path)
-
         # Items tab
         self.item_database = ItemDatabase()
         items_tab_content = QWidget()
@@ -520,7 +519,7 @@ class SimpleWindow(QMainWindow):
         
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
-        self.load_saved_recipes()
+        self.apply_saved_recipes()
 
         # Register global hotkeys (F5 for automation, etc.)
         self.register_global_hotkeys()
@@ -903,50 +902,46 @@ class SimpleWindow(QMainWindow):
         self.is_sending_message = True
 
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-        self.chat_thread = QThread()
-        worker.moveToThread(self.chat_thread)
-        self.chat_thread.started.connect(worker.run)
-        worker.finished.connect(lambda: self.cleanup_chat_thread(self.chat_thread))
-        worker.error.connect(self.on_chat_send_error) # type: ignore
-        worker.error.connect(lambda: self.cleanup_chat_thread(self.chat_thread))
-        self.chat_thread.start()
+        thread = QThread()
+        worker.moveToThread(thread)
+
+        # Ensure both worker and thread are cleaned up
+        worker.finished.connect(thread.quit)
+        worker.error.connect(thread.quit)
+        thread.finished.connect(thread.deleteLater)
+        worker.finished.connect(worker.deleteLater)
+        worker.error.connect(worker.deleteLater)
+
+        thread.started.connect(worker.run)
+        worker.finished.connect(self.on_chat_send_finished)
+        worker.error.connect(self.on_chat_send_error)
+        thread.start()
 
     def on_chat_send_error(self, error_message: str): # type: ignore
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}") # type: ignore
-
-    def cleanup_chat_thread(self, thread: QThread):
         self.is_sending_message = False
-        try: thread.quit(); thread.wait()
-        except Exception: pass
+
+    def on_chat_send_finished(self):
+        self.is_sending_message = False
 
     def load_settings(self):
         """Loads settings from a JSON file."""
         settings_path = os.path.join(get_base_path(), "settings.json")
-        try:
-            if os.path.exists(settings_path):
-                with open(settings_path, 'r') as f:
-                    settings = json.load(f)
-                    self.current_theme_index = settings.get("theme_index", 0)
-                    self.last_tab_index = settings.get("last_tab_index", 0)
-                    self.character_path = settings.get("character_path", "")
-                    self.message_hotkeys = settings.get("message_hotkeys", {})
-                    self.custom_theme_enabled = settings.get("custom_theme_enabled", False)
-                    self.automation_settings = settings.get("automation", {})
-                    self.custom_theme = settings.get("custom_theme", {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"})
-                    self.watchlist = settings.get("watchlist", ["hellfire", "rpg"])
-                    self.play_sound_on_found = settings.get("play_sound_on_found", False)
-                    self.selected_sound = settings.get("selected_sound", "ping1.mp3")
-        except (IOError, json.JSONDecodeError):
-            self.current_theme_index = 0
-            self.last_tab_index = 0
-            self.character_path = ""
-            self.message_hotkeys = {}
-            self.custom_theme_enabled = False
-            self.selected_sound = "ping1.mp3"
-            self.play_sound_on_found = False
-            self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
-            self.automation_settings = {}
-            self.watchlist = ["hellfire", "rpg"]
+
+    def apply_loaded_settings(self):
+        """Applies settings from the SettingsManager to the application state."""
+        self.current_theme_index = self.settings_manager.get("theme_index")
+        self.last_tab_index = self.settings_manager.get("last_tab_index")
+        self.character_path = self.settings_manager.get("character_path")
+        if not self.character_path:
+             self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
+        self.message_hotkeys = self.settings_manager.get("message_hotkeys")
+        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled")
+        self.automation_settings = self.settings_manager.get("automation")
+        self.custom_theme = self.settings_manager.get("custom_theme")
+        self.watchlist = self.settings_manager.get("watchlist")
+        self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
+        self.selected_sound = self.settings_manager.get("selected_sound")
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -965,47 +960,25 @@ class SimpleWindow(QMainWindow):
             self.custom_action_edit1.setText(custom_settings.get("interval", "30000"))
             self.custom_action_edit2.setText(custom_settings.get("message", "-save x"))
 
-
-
-
-    def load_saved_recipes(self):
-        """Loads and populates the in-progress recipes from settings."""
-        settings_path = os.path.join(get_base_path(), "settings.json")
-        if not os.path.exists(settings_path): return
-        with open(settings_path, 'r') as f:
-            settings = json.load(f)
-            saved_recipes = settings.get("in_progress_recipes", [])
-            for recipe_name in saved_recipes:
-                self._add_recipe_by_name(recipe_name)
-
-    def save_settings(self):
-        """Saves current settings to a JSON file."""
-        settings_path = os.path.join(get_base_path(), "settings.json")
-        settings = {
-            "theme_index": self.current_theme_index,
-            "last_tab_index": self.stacked_widget.currentIndex(),
-            "character_path": self.character_path,
-            "message_hotkeys": self.message_hotkeys,
-            "custom_theme_enabled": self.custom_theme_enabled,
-            "custom_theme": self.custom_theme,
-            "in_progress_recipes": [self.in_progress_recipes_list.item(i).text() for i in range(self.in_progress_recipes_list.count())],
-            "automation": {
-                "keys": {
-                    key: {"checked": ctrls["chk"].isChecked(), "interval": ctrls["edit"].text()}
-                    for key, ctrls in self.automation_key_ctrls.items()
-                },
-                "custom": {
-                    "checked": self.custom_action_btn.isChecked(),
-                    "interval": self.custom_action_edit1.text(),
-                    "message": self.custom_action_edit2.text()
-                }
+    def get_automation_settings_from_ui(self):
+        """Gathers automation settings from the UI controls."""
+        return {
+            "keys": {
+                key: {"checked": ctrls["chk"].isChecked(), "interval": ctrls["edit"].text()}
+                for key, ctrls in self.automation_key_ctrls.items()
             },
-            "watchlist": self.watchlist,
-            "play_sound_on_found": self.lobby_placeholder_checkbox.isChecked(),
-            "selected_sound": self.selected_sound
+            "custom": {
+                "checked": self.custom_action_btn.isChecked(),
+                "interval": self.custom_action_edit1.text(),
+                "message": self.custom_action_edit2.text()
+            }
         }
-        with open(settings_path, 'w') as f:
-            json.dump(settings, f, indent=4)
+
+    def apply_saved_recipes(self):
+        """Loads and populates the in-progress recipes from settings."""
+        saved_recipes = self.settings_manager.get("in_progress_recipes", [])
+        for recipe_name in saved_recipes:
+            self._add_recipe_by_name(recipe_name)
 
     # Watchlist
     def load_watchlist(self):
