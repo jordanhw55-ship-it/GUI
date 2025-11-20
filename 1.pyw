@@ -233,19 +233,20 @@ class SimpleWindow(QMainWindow):
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(5, 0, 5, 0) # Set margins on both sides
+        title_bar_layout.setContentsMargins(0, 0, 0, 0)
         title_bar_layout.setSpacing(0)
 
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
-        # Assuming self.max_button was added in a previous step that was manually applied
-        if not hasattr(self, 'max_button'):
-             self.max_button = QPushButton("🗖"); self.max_button.setFixedSize(30, 30) # Placeholder
+        self.max_button = QPushButton("🗖")
+        self.max_button.setFixedSize(30, 30)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
 
-        title_bar_layout.addWidget(title_label, 1, Qt.AlignmentFlag.AlignCenter) # Give title stretch factor of 1
+        title_bar_layout.addStretch()
+        title_bar_layout.addWidget(title_label)
+        title_bar_layout.addStretch()
         title_bar_layout.addWidget(min_button, 0, Qt.AlignmentFlag.AlignRight)
         title_bar_layout.addWidget(self.max_button, 0, Qt.AlignmentFlag.AlignRight)
         title_bar_layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignRight)
