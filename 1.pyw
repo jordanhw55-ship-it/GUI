@@ -161,6 +161,7 @@ class SimpleWindow(QMainWindow):
         self.last_tab_index = self.settings_manager.get("last_tab_index")
         self.custom_theme = self.settings_manager.get("custom_theme", {
             "bg": "#121212",
+            # This attribute is for backward compatibility with old settings files and is no longer used.
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         })
@@ -183,6 +184,7 @@ class SimpleWindow(QMainWindow):
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
         self.volume = self.settings_manager.get("volume", 100)
+        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
