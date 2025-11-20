@@ -18,7 +18,7 @@ class AutomationManager(QObject):
         self.automation_timers = {}
         self.is_automation_running = False
         self.custom_action_running = False
-        self.sequence_lock = False # Lock to prevent sequences from running over each other
+        self.sequence_priority = "" # "", "Low", "High" - to manage sequence priority
         self.game_title = "Warcraft III"
 
     def toggle_automation(self):
@@ -111,41 +111,46 @@ class AutomationManager(QObject):
             timer.start()
 
     def run_complete_quest(self):
-        # If the higher-priority custom action is running, skip this execution.
-        if self.custom_action_running or self.sequence_lock:
+        # If a higher-priority sequence is running, exit immediately.
+        if self.sequence_priority == "High":
             return
 
-        # Immediately acquire the lock to prevent other low-priority tasks.
-        self.sequence_lock = True
+        self.sequence_priority = "Low" # Set low priority lock
 
-        # Pause all other automations. This is critical.
+        # Pause all other automation timers
         self.pause_all_automation()
 
-        self.control_send_key('y')
-        QTimer.singleShot(100, lambda: self.control_send_key('e'))
-        QTimer.singleShot(200, lambda: self.control_send_key('esc'))
-        
-        # After the sequence, release the lock and resume other automations.
-        QTimer.singleShot(400, self._end_complete_quest)
+        # Start the sequence, with checks for interruption
+        QTimer.singleShot(100, lambda: self._run_complete_quest_step(1))
 
-    def _end_complete_quest(self):
-        self.sequence_lock = False # Release the lock
-        self.resume_all_automation()
-
-    def run_custom_action(self, message: str):
-        # If another sequence somehow acquired the lock before this high-priority
-        # action could, wait for the next cycle. This is a defensive check.
-        if self.sequence_lock and not self.custom_action_running:
+    def _run_complete_quest_step(self, step):
+        # If a high-priority action interrupted, abort the sequence.
+        if self.sequence_priority != "Low":
+            self.resume_all_automation()
             return
 
-        # This is the highest priority action. It acquires the lock and sets its own flag.
-        self.sequence_lock = True
-        self.custom_action_running = True
+        if step == 1:
+            self.control_send_key('y')
+            QTimer.singleShot(100, lambda: self._run_complete_quest_step(2))
+        elif step == 2:
+            self.control_send_key('e')
+            QTimer.singleShot(100, lambda: self._run_complete_quest_step(3))
+        elif step == 3:
+            self.control_send_key('esc')
+            QTimer.singleShot(200, lambda: self._run_complete_quest_step(4))
+        elif step == 4:
+            # End of sequence
+            self.sequence_priority = "" # Release lock
+            self.resume_all_automation()
+
+    def run_custom_action(self, message: str):
+        self.sequence_priority = "High" # Set high priority lock
 
         # Pause all other automations to ensure it has exclusive control.
         self.pause_all_automation()
 
         def type_message():
+            if self.sequence_priority != "High": return # Abort if state changed
             pyautogui.press('enter')
             pyautogui.write(message, interval=0.03)
             pyautogui.press('enter')
@@ -154,8 +159,7 @@ class AutomationManager(QObject):
         QTimer.singleShot(2500, self._end_custom_action)
 
     def _end_custom_action(self):
-        self.custom_action_running = False
-        self.sequence_lock = False # Release the lock
+        self.sequence_priority = "" # Release lock
         self.resume_all_automation()
 
     def reset_settings(self, confirm=True):
