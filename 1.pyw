@@ -336,10 +336,14 @@ class SimpleWindow(QMainWindow):
         lobbies_layout = QVBoxLayout(lobbies_tab_content)
         controls_layout = QHBoxLayout()
         self.lobby_search_bar = QLineEdit(); self.lobby_search_bar.setPlaceholderText("Search by name or map…")
-        self.lobby_search_bar.textChanged.connect(self.filter_lobbies); controls_layout.addWidget(self.lobby_search_bar)
-        refresh_button = QPushButton("Refresh"); refresh_button.clicked.connect(self.refresh_lobbies); controls_layout.addWidget(refresh_button)
+        self.lobby_search_bar.textChanged.connect(self.filter_lobbies)
+        refresh_button = QPushButton("Refresh"); refresh_button.clicked.connect(self.refresh_lobbies)
+        self.toggle_watchlist_btn = QPushButton("Show/Hide Watchlist"); self.toggle_watchlist_btn.clicked.connect(self.toggle_watchlist_visibility)
+        controls_layout.addWidget(self.lobby_search_bar, 1) # Add stretch factor
+        controls_layout.addWidget(refresh_button)
+        controls_layout.addWidget(self.toggle_watchlist_btn)
         lobbies_layout.addLayout(controls_layout)
-        watchlist_group = QGroupBox("Watchlist"); watchlist_layout = QHBoxLayout()
+        self.watchlist_group = QGroupBox("Watchlist"); watchlist_layout = QHBoxLayout()
         self.watchlist_widget = QListWidget(); self.watchlist_widget.addItems(self.watchlist)
         watchlist_layout.addWidget(self.watchlist_widget)
         watchlist_controls_layout = QVBoxLayout()
@@ -382,8 +386,8 @@ class SimpleWindow(QMainWindow):
         self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
         watchlist_controls_layout.addStretch()
 
-        watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
-        lobbies_layout.addWidget(watchlist_group)
+        watchlist_layout.addLayout(watchlist_controls_layout); self.watchlist_group.setLayout(watchlist_layout)
+        lobbies_layout.addWidget(self.watchlist_group)
         self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(4)
         self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"]) # Added "Host"
         self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
