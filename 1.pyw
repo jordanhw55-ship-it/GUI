@@ -631,12 +631,22 @@ QCheckBox::indicator {{
 
         self.update_ping_button_styles()
 
+    def update_custom_theme_preview(self):
+        """Updates only the live preview widget with the current custom theme colors."""
+        bg = self.custom_theme.get('bg', '#121212')
+        fg = self.custom_theme.get('fg', '#F0F0F0')
+        accent = self.custom_theme.get('accent', '#FF7F50')
+        
+        self.custom_theme_preview.setStyleSheet(f"#CustomThemePreview {{ background-color: {bg}; border: 1px solid {accent}; border-radius: 8px; }}")
+        self.preview_label.setStyleSheet(f"color: {fg}; background-color: transparent; border: none;")
+        self.preview_button.setStyleSheet(f"background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px;")
+
     def pick_color(self, key: str):
         initial = QColor(self.custom_theme[key])
         color = QColorDialog.getColor(initial, self, f"Pick {key} color")
         if color.isValid():
             self.custom_theme[key] = color.name()
-            self.apply_custom_theme()
+            self.update_custom_theme_preview()
 
 
     def reset_custom_theme_to_defaults(self):
