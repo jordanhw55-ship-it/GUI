@@ -331,7 +331,6 @@ class SimpleWindow(QMainWindow):
         # Hotkey tab placeholder
         quickcast_tab_content = QWidget()
         quickcast_layout = QVBoxLayout(quickcast_tab_content)
-        quickcast_layout.addWidget(QLabel("This is the 'Quickcast' tab."))
 
         controls_layout = QHBoxLayout()
         q_button = QPushButton("Q")
