@@ -423,12 +423,16 @@ class SimpleWindow(QMainWindow):
         self.load_characters() # Load characters on startup
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
         
-        self.apply_saved_recipes()
+        # Load saved recipes after the UI is fully initialized
+        self.item_database.load_recipes()
+        self.apply_saved_recipes() # This call is now safe
+
         # Register global hotkeys (F5 for automation, etc.)
         self.register_global_hotkeys()
 
         # Apply theme last to ensure all widgets are styled correctly on startup
-        if self.custom_theme_enabled:
+        # A theme index of -1 indicates a custom theme was last used.
+        if self.current_theme_index == -1:
             self.apply_custom_theme()
         else:
             self.apply_theme(self.current_theme_index)
@@ -460,8 +464,11 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        accent_color = self.custom_theme.get("accent", "#FF7F50")
-        checked_fg = self.custom_theme.get("bg", "#121212")
+        theme = self.themes[self.current_theme_index] if self.current_theme_index != -1 else self.custom_theme
+        accent_color = theme.get("accent", theme.get("preview_color", "#FF7F50"))
+        is_dark = theme.get("is_dark", self.dark_mode)
+        checked_fg = "#000000" if not is_dark else "#FFFFFF"
+        if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
 
         for sound, btn in self.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
@@ -564,6 +571,9 @@ QCheckBox::indicator {{
 """
 
     def apply_custom_theme(self):
+        # Set current_theme_index to -1 to signify that a custom theme is active
+        self.current_theme_index = -1
+        
         # Determine if the custom theme is dark or light based on background color
         bg_color = QColor(self.custom_theme.get("bg", "#121212"))
         self.dark_mode = bg_color.lightness() < 128
