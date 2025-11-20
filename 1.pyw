@@ -257,7 +257,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Recipes", "Automation", "Hotkey", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "Recipes", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
@@ -329,11 +329,11 @@ class SimpleWindow(QMainWindow):
         self.apply_automation_settings()
 
         # Hotkey tab placeholder
-        hotkey_tab_content = QWidget()
-        hotkey_layout = QVBoxLayout(hotkey_tab_content)
-        hotkey_layout.addWidget(QLabel("This is the 'Hotkey' tab."))
-        hotkey_layout.addStretch()
-        self.stacked_widget.addWidget(hotkey_tab_content)
+        quickcast_tab_content = QWidget()
+        quickcast_layout = QVBoxLayout(quickcast_tab_content)
+        quickcast_layout.addWidget(QLabel("This is the 'Quickcast' tab."))
+        quickcast_layout.addStretch()
+        self.stacked_widget.addWidget(quickcast_tab_content)
 
         # Lobbies tab
         lobbies_tab_content = QWidget()
