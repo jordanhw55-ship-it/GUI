@@ -158,7 +158,6 @@ class SimpleWindow(QMainWindow):
         # Theme state
         self.current_theme_index = self.settings_manager.get("theme_index")
         self.last_tab_index = self.settings_manager.get("last_tab_index")
-        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled")
         self.custom_theme = self.settings_manager.get("custom_theme", {
             "bg": "#121212",
             "fg": "#F0F0F0",
@@ -378,11 +377,6 @@ class SimpleWindow(QMainWindow):
         custom_box = QGroupBox("Custom theme")
         custom_layout = QGridLayout(custom_box)
 
-        self.custom_enable_checkbox = QCheckBox("Enable custom theme (overrides preset)")
-        self.custom_enable_checkbox.setChecked(self.custom_theme_enabled)
-        self.custom_enable_checkbox.stateChanged.connect(self.on_custom_theme_toggled)
-        custom_layout.addWidget(self.custom_enable_checkbox, 0, 0, 1, 3)
-
         self.bg_color_btn = QPushButton("Pick background")
         self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
         self.fg_color_btn = QPushButton("Pick text")
@@ -390,16 +384,13 @@ class SimpleWindow(QMainWindow):
         self.accent_color_btn = QPushButton("Pick accent")
         self.accent_color_btn.clicked.connect(lambda: self.pick_color('accent'))
 
-        self.apply_custom_btn = QPushButton("Apply custom")
-        self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
         self.reset_custom_btn = QPushButton("Reset custom")
         self.reset_custom_btn.clicked.connect(self.reset_custom_theme_to_defaults)
 
-        custom_layout.addWidget(self.bg_color_btn, 1, 0)
-        custom_layout.addWidget(self.fg_color_btn, 1, 1)
-        custom_layout.addWidget(self.accent_color_btn, 1, 2)
-        custom_layout.addWidget(self.apply_custom_btn, 2, 0, 1, 2)
-        custom_layout.addWidget(self.reset_custom_btn, 2, 2)
+        custom_layout.addWidget(self.bg_color_btn, 0, 0)
+        custom_layout.addWidget(self.fg_color_btn, 0, 1)
+        custom_layout.addWidget(self.accent_color_btn, 0, 2)
+        custom_layout.addWidget(self.reset_custom_btn, 1, 0, 1, 3)
 
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
 
@@ -432,10 +423,7 @@ class SimpleWindow(QMainWindow):
         self.load_characters() # Load characters on startup
         self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
         
-        # Load saved recipes after the UI is fully initialized
-        self.item_database.load_recipes()
-        self.apply_saved_recipes() # This call is now safe
-
+        self.apply_saved_recipes()
         # Register global hotkeys (F5 for automation, etc.)
         self.register_global_hotkeys()
 
@@ -472,21 +460,8 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        # Determine the correct accent color from the current theme (logic simplified)
-        if self.custom_theme_enabled:
-            accent_color = self.custom_theme.get("accent", "#FF7F50")
-            checked_fg = self.custom_theme.get("bg", "#121212")
-        else:
-            theme = self.themes[self.current_theme_index]
-            accent_color = theme.get("preview_color", "#FF7F50")
-            # Simplified logic for text color on checked button
-            checked_fg = "#000000" if not theme.get('is_dark') else self.custom_theme.get('bg', '#121212')
-            if theme['name'] == 'Black/Orange':
-                checked_fg = '#000000'
-            elif theme['name'] == 'Black/Blue':
-                checked_fg = '#EAEAEA'
-            elif theme['name'] == 'White/Blue':
-                checked_fg = '#F0F8FF'
+        accent_color = self.custom_theme.get("accent", "#FF7F50")
+        checked_fg = self.custom_theme.get("bg", "#121212")
 
         for sound, btn in self.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
@@ -509,7 +484,6 @@ class SimpleWindow(QMainWindow):
 
     # Preset themes
     def apply_theme(self, theme_index: int):
-        self.custom_theme_enabled = False  # disable custom when preset applied
         self.current_theme_index = theme_index
         theme = self.themes[theme_index]
 
@@ -590,8 +564,6 @@ QCheckBox::indicator {{
 """
 
     def apply_custom_theme(self):
-        self.custom_theme_enabled = True
-
         # Determine if the custom theme is dark or light based on background color
         bg_color = QColor(self.custom_theme.get("bg", "#121212"))
         self.dark_mode = bg_color.lightness() < 128
@@ -621,29 +593,12 @@ QCheckBox::indicator {{
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
         self.update_ping_button_styles()
 
-    def on_custom_theme_toggled(self, state: int):
-        self.custom_theme_enabled = state == Qt.CheckState.Checked
-
-        if self.custom_theme_enabled:
-            self.apply_custom_theme()
-            # When enabling custom theme, remove borders from all preset previews
-            for preview in self.theme_previews:
-                border_style = "border: 2px solid transparent;"
-                preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        else:
-            self.apply_theme(self.current_theme_index)
-            # When disabling, re-apply the border to the currently selected preset
-            for i, preview in enumerate(self.theme_previews):
-                border_style = "border: 2px solid #FF7F50;" if i == self.current_theme_index else "border: 2px solid transparent;"
-                preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-
     def pick_color(self, key: str):
         initial = QColor(self.custom_theme[key])
         color = QColorDialog.getColor(initial, self, f"Pick {key} color")
         if color.isValid():
             self.custom_theme[key] = color.name()
-            if self.custom_theme_enabled:
-                self.apply_custom_theme()
+            self.apply_custom_theme()
 
 
     def reset_custom_theme_to_defaults(self):
@@ -653,7 +608,6 @@ QCheckBox::indicator {{
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         }
-        self.custom_enable_checkbox.setChecked(True)
         self.apply_custom_theme()
 
     def confirm_reset(self):
@@ -666,7 +620,6 @@ QCheckBox::indicator {{
 
     def reset_state(self):
         self.resize(700, 800)
-        self.custom_theme_enabled = False
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
@@ -848,7 +801,6 @@ QCheckBox::indicator {{
         if not self.character_path:
              self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
         self.message_hotkeys = self.settings_manager.get("message_hotkeys")
-        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled")
         self.automation_settings = self.settings_manager.get("automation")
         self.custom_theme = self.settings_manager.get("custom_theme")
         self.watchlist = self.settings_manager.get("watchlist")
@@ -1324,14 +1276,9 @@ QCheckBox::indicator {{
 
     def _reset_automation_button_style(self):
         """Resets the automation button to its default theme color."""
-        if self.custom_theme_enabled:
-            accent_color = self.custom_theme.get("accent", "#FF7F50")
-            text_color = self.custom_theme.get("bg", "#121212")
-            self.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
-        else:
-            # For preset themes, setting an empty stylesheet is enough to revert.
-            # However, to be explicit and robust:
-            self.automation_tab.start_automation_btn.setStyleSheet("")
+        accent_color = self.custom_theme.get("accent", "#FF7F50")
+        text_color = self.custom_theme.get("bg", "#121212")
+        self.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
 
     def toggle_automation(self):
         self.is_automation_running = not self.is_automation_running
