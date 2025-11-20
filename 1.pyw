@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -23,6 +23,7 @@ from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab
+from ui_overlay import OverlayStatus
 
 try:
     import win32gui # type: ignore
@@ -190,6 +191,9 @@ class SimpleWindow(QMainWindow):
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
 
+        # Initialize the floating status overlay
+        self.status_overlay = OverlayStatus()
+
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
         self.audio_output = QAudioOutput()
@@ -228,15 +232,13 @@ class SimpleWindow(QMainWindow):
         self.title_bar = QWidget()
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
-        title_bar_layout = QHBoxLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(0, 0, 0, 0)
-        left_spacer = QWidget(); left_spacer.setFixedSize(60, 30); left_spacer.setStyleSheet("background-color: transparent;")
+        title_bar_layout = QHBoxLayout(self.title_bar); title_bar_layout.setContentsMargins(5, 0, 0, 0)
         title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-        title_bar_layout.addWidget(left_spacer); title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label)
-        title_bar_layout.addStretch(); title_bar_layout.addWidget(min_button); title_bar_layout.addWidget(close_button)
+        title_bar_layout.addStretch(); title_bar_layout.addWidget(title_label); title_bar_layout.addStretch()
+        title_bar_layout.addWidget(min_button); title_bar_layout.addWidget(close_button)
         main_layout.addWidget(self.title_bar)
 
         # Tabs
@@ -451,6 +453,7 @@ class SimpleWindow(QMainWindow):
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
+        self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
         self.volume_slider.setValue(self.volume)
