@@ -1448,10 +1448,10 @@ class SimpleWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    # Set the DPI awareness policy directly via Qt's attribute.
-    # This must be done before the QApplication is created and is a more robust
-    # way to handle scaling, which can prevent the "Access is denied" warning.
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
+    # In Qt6, High DPI scaling is enabled by default. The following line can
+    # help prevent the "Access is denied" warning when running from some IDEs
+    # by telling Qt not to try and manage the DPI awareness itself.
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "0"
 
     app = QApplication(sys.argv)
     window = SimpleWindow()
