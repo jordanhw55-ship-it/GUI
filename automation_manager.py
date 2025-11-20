@@ -32,6 +32,7 @@ class AutomationManager(QObject):
         # Next due times
         self.next_quest_due = None
         self.next_custom_due = None
+        self.next_key_due = {}  # {key: next_due_time}
 
         # Scheduler tick
         self.scheduler = QTimer(self)
@@ -90,9 +91,24 @@ class AutomationManager(QObject):
         self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None
         self.next_custom_due = (now + self.custom_interval_ms / 1000.0) if custom_enabled else None
 
+        # Set up all other keys
+        self.next_key_due = {}
+        for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
+            if key == "Complete Quest":
+                continue
+            if ctrls["chk"].isChecked():
+                try:
+                    interval = int(ctrls["edit"].text().strip())
+                except Exception:
+                    interval = 500
+                self.next_key_due[key] = now + interval / 1000.0
+            else:
+                self.next_key_due[key] = None
+
         self._log("Start automation")
         self._log(f"Intervals: quest={self.quest_interval_ms}ms custom={self.custom_interval_ms}ms")
         self._log(f"Initial due: quest={self._fmt_due(self.next_quest_due)} custom={self._fmt_due(self.next_custom_due)}")
+        self._log(f"Key schedule: {self.next_key_due}")
 
         self.scheduler.start()
 
@@ -107,6 +123,7 @@ class AutomationManager(QObject):
         self.sequence_lock = False
         self.next_quest_due = None
         self.next_custom_due = None
+        self.next_key_due = {}
         self._log("stop_automation -> False")
 
     # -------------------------
@@ -141,6 +158,17 @@ class AutomationManager(QObject):
             self._run_complete_quest()
             self.next_quest_due += self.quest_interval_ms / 1000.0
             return
+
+        # Check all other keys
+        for key, due in self.next_key_due.items():
+            if due is not None and now >= due:
+                self._log(f"{key.upper()} due -> send")
+                self._send_key(key)
+                try:
+                    interval = int(self.parent.automation_tab.automation_key_ctrls[key]["edit"].text().strip())
+                except Exception:
+                    interval = 500
+                self.next_key_due[key] += interval / 1000.0
 
     # -------------------------
     # Sequences
@@ -216,8 +244,14 @@ class AutomationManager(QObject):
 
     def _send_char(self, ch: str):
         if not win32gui or not win32api or not win32con:
+            self._log(f"send_char '{ch}' skipped: Windows API unavailable")
             return
+
         hwnd = win32gui.FindWindow(None, self.game_title)
         if hwnd == 0:
+            self._log(f"send_char '{ch}' skipped: window not found")
             return
+
+        # Send the character as WM_CHAR
         win32api.PostMessage(hwnd, win32con.WM_CHAR, ord(ch), 0)
+        self._log(f"send_char '{ch}' sent")
