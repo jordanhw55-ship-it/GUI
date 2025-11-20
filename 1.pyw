@@ -903,11 +903,13 @@ QCheckBox::indicator {{
         self.chat_worker.error.connect(self.chat_thread.quit)
 
         # When the thread finishes, schedule both for deletion
+        self.chat_thread.finished.connect(self.on_chat_thread_finished)
         self.chat_thread.finished.connect(self.chat_thread.deleteLater)
         self.chat_thread.finished.connect(self.chat_worker.deleteLater)
  
         self.chat_thread.started.connect(self.chat_worker.run)
         self.chat_thread.start()
+
 
     def on_chat_send_error(self, error_message: str):
         print(f"[DEBUG] on_chat_send_error called. Error: {error_message}")
@@ -919,6 +921,13 @@ QCheckBox::indicator {{
         print("[DEBUG] on_chat_send_finished called.")
         self.is_sending_message = False
         print("[DEBUG] is_sending_message reset to False.")
+
+    def on_chat_thread_finished(self):
+        """Clears references to the thread and worker after they have finished."""
+        print("[DEBUG] Chat thread finished. Clearing references.")
+        self.chat_thread = None
+        self.chat_worker = None
+
 
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
