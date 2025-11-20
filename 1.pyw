@@ -195,6 +195,14 @@ class SimpleWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
 
+        # Center the window on the primary screen
+        screen = QApplication.primaryScreen()
+        if screen:
+            center_point = screen.geometry().center()
+            frame_geometry = self.frameGeometry()
+            frame_geometry.moveCenter(center_point)
+            self.move(frame_geometry.topLeft())
+
         self.themes = [
             {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
             {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False},
