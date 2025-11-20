@@ -703,15 +703,12 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Clean up the thread and worker safely.
-        if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
-        
+        # Clean up the thread and worker that just finished.
+        # This is critical for preventing the RuntimeError.
+        self.capture_thread.quit()
+        self.capture_thread.wait()
         self.capture_worker.deleteLater()
         self.capture_thread.deleteLater()
-        del self.capture_worker
-        del self.capture_thread
 
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
