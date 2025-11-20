@@ -334,7 +334,9 @@ class SimpleWindow(QMainWindow):
 
         controls_layout = QHBoxLayout()
         q_button = QPushButton("Q")
+        q_button.setFixedSize(40, 40)
         q_checkbox = QCheckBox()
+        q_checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
         controls_layout.addWidget(q_button)
         controls_layout.addWidget(q_checkbox)
         controls_layout.addStretch()
