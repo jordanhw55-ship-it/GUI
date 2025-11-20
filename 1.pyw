@@ -168,6 +168,13 @@ class SimpleWindow(QMainWindow):
             "accent": "#FF7F50"
         })
 
+        # For resizing
+        self.grip_size = 8
+        self.grips = []
+        self.resizing = False
+        self.resize_edge = None
+
+
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
@@ -199,6 +206,10 @@ class SimpleWindow(QMainWindow):
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
 
+        # Enable mouse tracking to detect mouse movements even when a button is not pressed.
+        # This is crucial for changing the cursor when hovering over the edges.
+        self.setMouseTracking(True)
+
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
 
@@ -212,6 +223,9 @@ class SimpleWindow(QMainWindow):
             frame_geometry = self.frameGeometry()
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
+        
+        # Set a minimum size for the window to ensure the layout doesn't break
+        self.setMinimumSize(600, 500)
 
         self.themes = [
             {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
@@ -535,16 +549,65 @@ class SimpleWindow(QMainWindow):
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
-            self.old_pos = event.globalPosition().toPoint()
+        if event.button() == Qt.MouseButton.LeftButton:
+            pos = event.position().toPoint()
+            if self.is_on_edge(pos):
+                self.resizing = True
+                self.resize_edge = self.get_edge(pos)
+                self.old_pos = event.globalPosition().toPoint()
+            elif self.title_bar.underMouse():
+                self.old_pos = event.globalPosition().toPoint()
+
     def mouseMoveEvent(self, event: QMouseEvent):
-        if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
+        pos = event.position().toPoint()
+        if self.resizing and self.old_pos:
+            delta = event.globalPosition().toPoint() - self.old_pos
+            self.resize_window(delta)
+            self.old_pos = event.globalPosition().toPoint()
+        elif self.old_pos and not self.resizing and self.title_bar.underMouse():
             delta = event.globalPosition().toPoint() - self.old_pos
             self.move(self.x() + delta.x(), self.y() + delta.y())
             self.old_pos = event.globalPosition().toPoint()
+        else:
+            # Update cursor when hovering over edges
+            if self.is_on_edge(pos):
+                edge = self.get_edge(pos)
+                if edge in [("left", "top"), ("right", "bottom")]:
+                    self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+                elif edge in [("right", "top"), ("left", "bottom")]:
+                    self.setCursor(Qt.CursorShape.SizeBDiagCursor)
+                elif "left" in edge or "right" in edge:
+                    self.setCursor(Qt.CursorShape.SizeHorCursor)
+                else:
+                    self.setCursor(Qt.CursorShape.SizeVerCursor)
+            else:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
+        self.resizing = False
+        self.resize_edge = None
 
+    def is_on_edge(self, pos: QPoint) -> bool:
+        return (pos.x() < self.grip_size or pos.x() > self.width() - self.grip_size or
+                pos.y() < self.grip_size or pos.y() > self.height() - self.grip_size)
+
+    def get_edge(self, pos: QPoint) -> tuple:
+        edges = []
+        if pos.x() < self.grip_size: edges.append("left")
+        if pos.x() > self.width() - self.grip_size: edges.append("right")
+        if pos.y() < self.grip_size: edges.append("top")
+        if pos.y() > self.height() - self.grip_size: edges.append("bottom")
+        return tuple(edges)
+
+    def resize_window(self, delta: QPoint):
+        rect = self.geometry()
+        if "left" in self.resize_edge: rect.setLeft(rect.left() + delta.x())
+        if "right" in self.resize_edge: rect.setRight(rect.right() + delta.x())
+        if "top" in self.resize_edge: rect.setTop(rect.top() + delta.y())
+        if "bottom" in self.resize_edge: rect.setBottom(rect.bottom() + delta.y())
+        self.setGeometry(rect)
+        
     # Preset themes
     def apply_theme(self, theme_index: int):
         self.current_theme_index = theme_index
