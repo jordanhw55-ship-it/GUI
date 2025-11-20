@@ -663,9 +663,10 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
-        # If a capture is already in progress, do nothing.
+        # Ensure any previous capture thread is stopped and cleaned up before starting a new one.
         if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
-            return
+            self.capture_thread.quit()
+            self.capture_thread.wait()
 
         # Disable UI to indicate capture mode
         self.automation_tab.message_edit.setEnabled(False)
@@ -674,7 +675,7 @@ class SimpleWindow(QMainWindow):
 
         # Unhook all global hotkeys to ensure the capture worker gets the keypress
         keyboard.unhook_all()
-        
+
         self.capture_thread = QThread() # Create a new thread for this capture
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
@@ -702,14 +703,16 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Clean up the thread and re-register global hotkeys
+        # Clean up the thread and worker safely.
         if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
-        if hasattr(self, 'capture_worker'):
-            self.capture_worker.deleteLater()
-        if hasattr(self, 'capture_thread'):
-            self.capture_thread.deleteLater()
+        
+        self.capture_worker.deleteLater()
+        self.capture_thread.deleteLater()
+        del self.capture_worker
+        del self.capture_thread
+
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
 
@@ -792,21 +795,21 @@ class SimpleWindow(QMainWindow):
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         thread = QThread()
         worker.moveToThread(thread)
- 
- # Ensure both worker and thread are cleaned up
+
+        # Ensure both worker and thread are cleaned up
         worker.finished.connect(thread.quit)
         worker.error.connect(thread.quit)
         thread.finished.connect(thread.deleteLater)
         worker.finished.connect(worker.deleteLater)
         worker.error.connect(worker.deleteLater)
- 
+
         thread.started.connect(worker.run)
         worker.finished.connect(self.on_chat_send_finished)
         worker.error.connect(self.on_chat_send_error)
         thread.start()
 
-    def on_chat_send_error(self, error_message: str):
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
+    def on_chat_send_error(self, error_message: str): # type: ignore
+        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}") # type: ignore
         self.is_sending_message = False
 
     def on_chat_send_finished(self):
