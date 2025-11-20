@@ -704,17 +704,18 @@ class SimpleWindow(QMainWindow):
         
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
-        # Clean up the thread and worker that just finished.
+        # Clean up the thread and re-register global hotkeys
         if hasattr(self, 'capture_thread') and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
+        if hasattr(self, 'capture_worker'):
             self.capture_worker.deleteLater()
+        if hasattr(self, 'capture_thread'):
             self.capture_thread.deleteLater()
-
         # Re-registering ensures that F3, F5, etc. are always active after a capture attempt.
         self.register_global_hotkeys()
 
-        # Allow a new capture to be started. This was the missing piece.
+        # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
 
     def load_message_hotkeys(self):
