@@ -1252,6 +1252,7 @@ QCheckBox::indicator {{
         self.automation_tab.start_automation_btn.setStyleSheet(f"background-color: {accent_color}; color: {text_color};")
 
     def reset_automation_settings(self, confirm=True):
+        """Resets all automation settings in the UI to their defaults."""
         self.automation_manager.reset_settings(confirm)
 
     def register_global_hotkeys(self):

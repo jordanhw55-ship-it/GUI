@@ -130,6 +130,25 @@ class AutomationManager(QObject):
         self.next_key_due = {}
         self._log("stop_automation -> False")
 
+    def reset_settings(self, confirm=True):
+        """Resets all automation settings in the UI to their defaults."""
+        do_reset = False
+        if not confirm:
+            do_reset = True
+        elif QMessageBox.question(self.parent, "Confirm Reset", "Are you sure you want to reset all automation settings to their defaults?") == QMessageBox.StandardButton.Yes:
+            do_reset = True
+
+        if do_reset:
+            self.stop_automation()
+            # Reset key automation UI
+            for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
+                ctrls["chk"].setChecked(False)
+                ctrls["edit"].setText("15000" if key == "Complete Quest" else "500")
+            # Reset custom action UI
+            self.parent.automation_tab.custom_action_btn.setChecked(False)
+            self.parent.automation_tab.custom_action_edit1.setText("30000")
+            self.parent.automation_tab.custom_action_edit2.setText("-save x")
+
     # -------------------------
     # Scheduler
     # -------------------------
