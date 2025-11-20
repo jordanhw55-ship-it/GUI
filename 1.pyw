@@ -1,23 +1,26 @@
 import sys
-import requests
 import json
 import os
 import re
 from typing import List
-from datetime import datetime
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QComboBox,
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
     QListWidgetItem, QColorDialog, QCheckBox
 )
-from PySide6.QtCore import Signal, Qt, QObject, QThread, QTimer, QUrl, QStandardPaths
+from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
 import pyautogui  # type: ignore
+
+from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
+from data import ItemDatabase
+from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
+
 try:
     import win32gui # type: ignore
     import win32api # type: ignore
@@ -26,185 +29,6 @@ except ImportError:
     win32gui = None
     win32api = None
     win32con = None
-try:
-    import winsound # type: ignore
-except ImportError:
-    winsound = None
-
-
-DARK_STYLE = """
-    /* Black/Orange Theme */
-    QWidget {
-        background-color: #121212;
-        color: #F0F0F0;
-        font-family: 'Segoe UI';
-        font-size: 14px;
-        outline: none;
-    }
-    QMainWindow { background-color: #1F1F1F; }
-    #CustomTitleBar { background-color: #1F1F1F; }
-    #CustomTitleBar QLabel { background-color: transparent; color: #F0F0F0; font-size: 16px; }
-    #CustomTitleBar QPushButton { background-color: transparent; border: none; color: #F0F0F0; font-size: 16px; }
-    #CustomTitleBar QPushButton:hover { background-color: #FFA64D; }
-    QPushButton {
-        background-color: #FF7F50;
-        border: 1px solid #444444;
-        padding: 5px;
-        border-radius: 6px;
-        color: #000000;
-    }
-    QHeaderView::section {
-        background-color: #1F1F1F;
-        padding: 4px;
-        border: 1px solid #444444;
-        color: #F0F0F0;
-    }
-"""
-
-LIGHT_STYLE = """
-    /* White/Pink Theme */
-    QWidget { background-color: #FFFFFF; color: #000000; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
-    QMainWindow { background-color: #ECEFF4; }
-    #CustomTitleBar { background-color: #FFFFFF; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { background-color: transparent; color: #000000; border: none; font-size: 16px; }
-    #CustomTitleBar QPushButton:hover { background-color: #DA3A9D; }
-    QPushButton {
-        background-color: #FFC0CB;
-        border: 1px solid #E6A8B8;
-        padding: 5px;
-        border-radius: 6px;
-        color: #000000;
-    }
-    QHeaderView::section { background-color: #FFC0CB; border: 1px solid #E6A8B8; color: #000000; }
-"""
-
-FOREST_STYLE = """
-    /* Black/Blue Theme */
-    QWidget { background-color: #121212; color: #EAEAEA; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
-    QMainWindow { background-color: #1F1F1F; }
-    #CustomTitleBar { background-color: #1F1F1F; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #EAEAEA; background-color: transparent; border: none; font-size: 16px; }
-    #CustomTitleBar QPushButton:hover { background-color: #4682B4; }
-    QPushButton { background-color: #1E90FF; border: 1px solid #4169E1; padding: 5px; border-radius: 6px; }
-    QHeaderView::section { background-color: #1F1F1F; border: 1px solid #4169E1; }
-"""
-
-OCEAN_STYLE = """
-    /* White/Blue Theme */
-    QWidget { background-color: #F0F8FF; color: #000080; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
-    QMainWindow { background-color: #F0F8FF; }
-    #CustomTitleBar { background-color: #F0F8FF; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #000080; background-color: transparent; border: none; font-size: 16px; }
-    #CustomTitleBar QPushButton:hover { background-color: #87CEFA; }
-    QPushButton { background-color: #87CEEB; border: 1px solid #4682B4; padding: 5px; border-radius: 6px; }
-    QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
-"""
-
-def get_base_path():
-    """ Get absolute path to resource, works for dev and for PyInstaller/Nuitka """
-    if getattr(sys, 'frozen', False):
-        # The application is frozen
-        return os.path.dirname(sys.executable)
-    else:
-        # The application is not frozen
-        # Change this to the directory of your main script
-        return os.path.dirname(os.path.abspath(__file__))
-
-class ItemDatabase:
-    """Handles loading and searching item data from text files."""
-    def __init__(self):
-        self.base_path = os.path.join(get_base_path(), "contents")
-        self.all_items_data = []
-        self.drops_data = []
-        self.raid_data = []
-        self.vendor_data = []
-        self.recipes_data = []
-
-    def _clean_item(self, raw_line: str) -> dict:
-        line = raw_line.strip()
-        if not line:
-            return {}
-        patterns = [
-            r"^\s*\[([^\]]+)\]\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",
-            r"^\s*\[([^\]]+)\]\s*(.+)$",
-            r"^\s*(.+?)\s*[:\-]\s*([\d\.]+)%\s*$",
-        ]
-        for i, pattern in enumerate(patterns):
-            match = re.match(pattern, line)
-            if match:
-                if i == 0: return {"type": match.group(1), "name": match.group(2).strip(), "rate": f"{match.group(3)}%"}
-                if i == 1: return {"type": match.group(1), "name": match.group(2).strip(), "rate": ""}
-                if i == 2: return {"name": match.group(1).strip(), "rate": f"{match.group(2)}%"}
-        return {"name": line, "rate": ""}
-
-    def _load_item_data_from_folder(self, folder: str) -> list:
-        data = []
-        folder_path = os.path.join(self.base_path, folder)
-        if not os.path.isdir(folder_path):
-            return []
-        for filename in os.listdir(folder_path):
-            if not filename.endswith(".txt"):
-                continue
-            file_path = os.path.join(folder_path, filename)
-            zone = os.path.splitext(filename)[0]
-            unit = "?"
-            try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    for raw in f:
-                        line = raw.strip()
-                        if not line:
-                            continue
-                        zone_match = re.match(r"^Zone:\s*(.+)", line)
-                        unit_match = re.match(r"^\[Unit\]\s*(.+)", line)
-                        if zone_match:
-                            zone = zone_match.group(1).strip()
-                        elif unit_match:
-                            unit = unit_match.group(1).strip()
-                        else:
-                            item_obj = self._clean_item(line)
-                            if item_obj.get("name"):
-                                data.append({
-                                    "Item": item_obj["name"],
-                                    "Drop%": item_obj.get("rate", ""),
-                                    "Unit": unit,
-                                    "Location": zone
-                                })
-            except (IOError, OSError):
-                continue
-        return data
-
-    def load_recipes(self):
-        if self.recipes_data:
-            return
-        file_path = os.path.join(self.base_path, "Recipes.txt")
-        if not os.path.exists(file_path):
-            return
-        self.recipes_data = []
-        current_recipe_name = ""
-        current_components = []
-        try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                for raw in f:
-                    line = raw.strip()
-                    if not line:
-                        if current_recipe_name:
-                            self.recipes_data.append({"name": current_recipe_name, "components": current_components})
-                            current_recipe_name = ""
-                            current_components = []
-                        continue
-                    material_match = re.match(r"^\s*Material\s*:\s*(.+)", line, re.IGNORECASE)
-                    if material_match:
-                        if current_recipe_name:
-                            current_components.append(material_match.group(1).strip())
-                    else:
-                        if current_recipe_name:
-                            self.recipes_data.append({"name": current_recipe_name, "components": current_components})
-                        current_recipe_name = line
-                        current_components = []
-            if current_recipe_name:
-                self.recipes_data.append({"name": current_recipe_name, "components": current_components})
-        except (IOError, OSError):
-            print(f"Could not read {file_path}")
 
 
 class ThemePreview(QWidget):
@@ -214,61 +38,6 @@ class ThemePreview(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
-
-
-class LobbyFetcher(QObject):
-    finished = Signal(list)
-    error = Signal(str)
-    def run(self):
-        try:
-            response = requests.get("https://api.wc3stats.com/gamelist", timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            if data.get("status") == "OK":
-                self.finished.emit(data.get("body", []))
-            else:
-                self.error.emit("API returned an unexpected status.")
-        except requests.exceptions.JSONDecodeError:
-            self.error.emit("Failed to parse server response.")
-        except requests.exceptions.RequestException as e:
-            self.error.emit(f"Network error: {e}")
-
-
-class HotkeyCaptureWorker(QObject):
-    """Runs in a separate thread to capture a hotkey without freezing the GUI."""
-    hotkey_captured = Signal(str)
-    def run(self):
-        try:
-            # Capture a single hotkey string, suppress so it doesn't leak into GUI
-            hotkey = keyboard.read_hotkey(suppress=True)
-            self.hotkey_captured.emit(hotkey)
-        except Exception as e:
-            print(f"Error capturing hotkey: {e}")
-
-
-class ChatMessageWorker(QObject):
-    """Runs in a separate thread to send a chat message without freezing the GUI."""
-    finished = Signal()
-    error = Signal(str)
-    def __init__(self, game_title: str, hotkey_pressed: str, message: str):
-        super().__init__()
-        self.game_title = game_title
-        self.hotkey_pressed = hotkey_pressed
-        self.message = message
-    def run(self):
-        try:
-            hwnd = win32gui.FindWindow(None, self.game_title)
-            if hwnd == 0:
-                self.error.emit(f"Window '{self.game_title}' not found")
-                return
-            # No need to set foreground, pyautogui handles it
-            pyautogui.press('enter')
-            pyautogui.write(self.message, interval=0.01)
-            pyautogui.press('enter')
-        except Exception as e:
-            self.error.emit(str(e))
-        finally:
-            self.finished.emit()
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -406,7 +175,6 @@ class SimpleWindow(QMainWindow):
         self.custom_action_running = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
-        self.character_path = ""        # Initialize character_path
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
@@ -488,9 +256,9 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
         load_layout.addLayout(content_layout)
         self.stacked_widget.addWidget(load_tab_content)
-        
+
         # Set initial path and load characters
-        if not self.character_path:
+        if not hasattr(self, 'character_path') or not self.character_path:
             self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
         self.load_path_edit.setText(self.character_path)
 
@@ -675,7 +443,7 @@ class SimpleWindow(QMainWindow):
         watchlist_layout.addLayout(watchlist_controls_layout); watchlist_group.setLayout(watchlist_layout)
         lobbies_layout.addWidget(watchlist_group)
         self.lobbies_table = QTableWidget(); self.lobbies_table.setColumnCount(4)
-        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"])
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"]) # Added "Host"
         self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.lobbies_table.verticalHeader().setVisible(False)
         self.lobbies_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -802,26 +570,26 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        # Determine the correct accent color from the current theme
+        # Determine the correct accent color from the current theme (logic simplified)
         if self.custom_theme_enabled:
             accent_color = self.custom_theme.get("accent", "#FF7F50")
-            base_bg = self.custom_theme.get("bg", "#121212")
-            base_fg = self.custom_theme.get("fg", "#F0F0F0")
-            checked_fg = base_bg
+            checked_fg = self.custom_theme.get("bg", "#121212")
         else:
             theme = self.themes[self.current_theme_index]
             accent_color = theme.get("preview_color", "#FF7F50")
-            # Extract base colors from the theme's stylesheet string
-            bg_match = re.search(r"QWidget\s*{\s*background-color:\s*([^;]+);", theme['style'])
-            fg_match = re.search(r"QWidget\s*{\s*.*?color:\s*([^;]+);", theme['style'])
-            base_bg = bg_match.group(1) if bg_match else "#FFFFFF"
-            base_fg = fg_match.group(1) if fg_match else "#000000"
-            checked_fg = "#000000" if not theme['is_dark'] else "#FFFFFF"
+            # Simplified logic for text color on checked button
+            checked_fg = "#000000" if not theme.get('is_dark') else self.custom_theme.get('bg', '#121212')
+            if theme['name'] == 'Black/Orange':
+                checked_fg = '#000000'
+            elif theme['name'] == 'Black/Blue':
+                checked_fg = '#EAEAEA'
+            elif theme['name'] == 'White/Blue':
+                checked_fg = '#F0F8FF'
 
         for sound, btn in self.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
             if sound == self.selected_sound:
-                btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg};")
+                btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg}; border: 1px solid {accent_color};")
             else:
                 btn.setStyleSheet("") # Revert to parent stylesheet
 
@@ -846,9 +614,9 @@ class SimpleWindow(QMainWindow):
         self.dark_mode = theme["is_dark"]
         self.setStyleSheet(theme["style"])
         self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
-        for i, preview in enumerate(self.theme_previews):
-            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
+        for i, preview in enumerate(self.theme_previews): # type: ignore
+            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;" # type: ignore
+            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}") # type: ignore
         self.update_ping_button_styles()
 
     # Custom theme builder
@@ -1129,26 +897,26 @@ class SimpleWindow(QMainWindow):
         if not is_game_active:
             try: keyboard.send(hotkey_pressed)
             except Exception: pass
-            return
+            return # type: ignore
 
         if self.is_sending_message: return
         self.is_sending_message = True
 
         worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
-        thread = QThread()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(lambda: self.cleanup_chat_thread(thread))
-        worker.error.connect(self.on_chat_send_error)
-        worker.error.connect(lambda: self.cleanup_chat_thread(thread))
-        thread.start()
+        self.chat_thread = QThread()
+        worker.moveToThread(self.chat_thread)
+        self.chat_thread.started.connect(worker.run)
+        worker.finished.connect(lambda: self.cleanup_chat_thread(self.chat_thread))
+        worker.error.connect(self.on_chat_send_error) # type: ignore
+        worker.error.connect(lambda: self.cleanup_chat_thread(self.chat_thread))
+        self.chat_thread.start()
 
-    def on_chat_send_error(self, error_message: str):
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
+    def on_chat_send_error(self, error_message: str): # type: ignore
+        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}") # type: ignore
 
     def cleanup_chat_thread(self, thread: QThread):
         self.is_sending_message = False
-        try: worker.deleteLater(); thread.quit(); thread.wait(); thread.deleteLater()
+        try: thread.quit(); thread.wait()
         except Exception: pass
 
     def load_settings(self):
