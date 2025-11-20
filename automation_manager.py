@@ -133,16 +133,13 @@ class AutomationManager(QObject):
     # Sequences
     # -------------------------
     def _run_complete_quest(self):
-        if not win32gui or not win32api or not win32con:
-            self._log("Quest skipped: Windows API unavailable")
-            return
-
         self.sequence_lock = True
         self._log("QUEST start")
 
-        self.control_send_key('y')
-        QTimer.singleShot(100, lambda: self.control_send_key('e'))
-        QTimer.singleShot(200, lambda: self.control_send_key('esc'))
+        # Use pyautogui for reliability
+        pyautogui.press('y')
+        QTimer.singleShot(100, lambda: pyautogui.press('e'))
+        QTimer.singleShot(200, lambda: pyautogui.press('esc'))
         QTimer.singleShot(400, self._end_complete_quest)
 
     def _end_complete_quest(self):
@@ -167,38 +164,3 @@ class AutomationManager(QObject):
         self.custom_action_running = False
         self.sequence_lock = False
         self._log("CUSTOM end")
-
-    # -------------------------
-    # Low-level key send
-    # -------------------------
-    def control_send_key(self, key: str):
-        if not win32gui or not win32api or not win32con:
-            self._log(f"send_key '{key}' skipped: Windows API unavailable")
-            return
-
-        hwnd = win32gui.FindWindow(None, self.game_title)
-        if hwnd == 0:
-            self._log(f"send_key '{key}' skipped: window not found")
-            return
-
-        # Ensure window is foreground
-        try:
-            win32gui.SetForegroundWindow(hwnd)
-        except Exception as e:
-            self._log("SetForegroundWindow failed:", e)
-
-        vk_code = {
-            'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52, 'd': 0x44, 'f': 0x46,
-            't': 0x54, 'z': 0x5A, 'x': 0x58, 'y': 0x59, 'esc': win32con.VK_ESCAPE
-        }.get(key.lower())
-
-        if vk_code is None:
-            self._log(f"send_key '{key}' skipped: VK code not found")
-            return
-
-        try:
-            win32api.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-            QTimer.singleShot(50, lambda: win32api.SendMessage(hwnd, win32con.WM_KEYUP, vk_code, 0))
-            self._log(f"send_key '{key}' sent")
-        except Exception as e:
-            self._log(f"send_key '{key}' error:", e)
