@@ -746,6 +746,10 @@ QCheckBox::indicator {{
         self.capture_thread.wait() # Wait for the thread to fully terminate
         self.capture_worker.deleteLater()
         self.capture_thread.deleteLater()
+        
+        # Set references to None to prevent RuntimeError
+        self.capture_worker = None # type: ignore
+        self.capture_thread = None # type: ignore
 
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
