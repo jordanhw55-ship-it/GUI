@@ -664,15 +664,19 @@ class SimpleWindow(QMainWindow):
     def capture_message_hotkey(self):
         """Starts a worker thread to capture a key combination."""
 
+        print("[DEBUG] capture_message_hotkey: Function called.")
         # Prevent starting a new capture if one is already in progress.
         if self.is_capturing_hotkey:
+            print("[DEBUG] capture_message_hotkey: Capture already in progress. Aborting.")
             return
 
+        print("[DEBUG] capture_message_hotkey: Starting new capture. Setting flag to True.")
         self.is_capturing_hotkey = True
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
+        print("[DEBUG] capture_message_hotkey: Unhooking all global hotkeys.")
         # Unhook all global hotkeys to ensure the capture worker gets the keypress
         keyboard.unhook_all()
         
@@ -680,12 +684,14 @@ class SimpleWindow(QMainWindow):
         self.capture_thread = QThread() 
         self.capture_worker = HotkeyCaptureWorker()
         self.capture_worker.moveToThread(self.capture_thread)
-        self.capture_thread.started.connect(self.capture_worker.run)
+        self.capture_thread.started.connect(self.capture_worker.run) # type: ignore
         self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
+        print("[DEBUG] capture_message_hotkey: Starting capture thread.")
         self.capture_thread.start()
 
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
+        print(f"[DEBUG] on_hotkey_captured: Received hotkey '{hotkey}'.")
         is_valid = True
         if '+' in hotkey:
             parts = hotkey.split('+')
