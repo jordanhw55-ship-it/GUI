@@ -332,6 +332,50 @@ class SimpleWindow(QMainWindow):
         self.quickcast_tab = QuickcastTab(self)
         self.stacked_widget.addWidget(self.quickcast_tab)
 
+        # Lobbies tab
+        lobbies_tab_content = QWidget()
+        lobbies_layout = QVBoxLayout(lobbies_tab_content)
+        controls_layout = QHBoxLayout()
+        self.lobby_search_bar = QLineEdit(); self.lobby_search_bar.setPlaceholderText("Search by name or map…")
+        self.lobby_search_bar.textChanged.connect(self.filter_lobbies)
+        refresh_button = QPushButton("Refresh"); refresh_button.clicked.connect(self.refresh_lobbies)
+        self.toggle_watchlist_btn = QPushButton("Show/Hide Watchlist"); self.toggle_watchlist_btn.clicked.connect(self.toggle_watchlist_visibility)
+        controls_layout.addWidget(self.lobby_search_bar, 1) # Add stretch factor
+        controls_layout.addWidget(refresh_button)
+        controls_layout.addWidget(self.toggle_watchlist_btn)
+        lobbies_layout.addLayout(controls_layout)
+        self.watchlist_group = QGroupBox("Watchlist"); watchlist_layout = QHBoxLayout()
+        self.watchlist_widget = QListWidget(); self.watchlist_widget.addItems(self.watchlist)
+        watchlist_layout.addWidget(self.watchlist_widget)
+        watchlist_controls_layout = QVBoxLayout()
+        self.watchlist_input = QLineEdit(); self.watchlist_input.setPlaceholderText("Add keyword...")
+        watchlist_controls_layout.addWidget(self.watchlist_input)
+        add_watchlist_button = QPushButton("Add"); add_watchlist_button.clicked.connect(self.add_to_watchlist)
+        watchlist_controls_layout.addWidget(add_watchlist_button)
+        remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
+        watchlist_controls_layout.addWidget(remove_watchlist_button)
+        
+        # Sound selection buttons
+        ping_buttons_layout = QHBoxLayout()
+        self.ping_buttons = {
+            "ping1.mp3": QPushButton("Ping 1"),
+            "ping2.mp3": QPushButton("Ping 2"),
+            "ping3.mp3": QPushButton("Ping 3"),
+        }
+        for sound, btn in self.ping_buttons.items():
+            btn.setCheckable(True)
+            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s)) # type: ignore
+            ping_buttons_layout.addWidget(btn)
+
+        watchlist_controls_layout.addLayout(ping_buttons_layout)
+
+        # Add the sound controls
+        self.lobby_placeholder_checkbox = QCheckBox("Play Sound When Game Found")
+        test_sound_button = QPushButton("Test Sound")
+        test_sound_button.clicked.connect(self.play_notification_sound)
+        sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
+        watchlist_controls_layout.addLayout(sound_layout)
+
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
@@ -343,6 +387,15 @@ class SimpleWindow(QMainWindow):
         row_below = (len(self.themes) - 1) // 4 + 1
         custom_box = QGroupBox("Custom theme")
         custom_v_layout = QVBoxLayout(custom_box)
+
+        # Add volume slider
+        volume_layout = QHBoxLayout()
+        volume_label = QLabel("Volume:")
+        self.volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.valueChanged.connect(self.set_volume)
+        volume_layout.addWidget(volume_label); volume_layout.addWidget(self.volume_slider)
+        custom_v_layout.addLayout(volume_layout)
 
         self.bg_color_btn = QPushButton("Background")
         self.bg_color_btn.clicked.connect(lambda: self.pick_color('bg'))
@@ -395,6 +448,7 @@ class SimpleWindow(QMainWindow):
         self.reset_layout.addStretch()
         self.stacked_widget.addWidget(reset_tab_content)
 
+        self.stacked_widget.addWidget(lobbies_tab_content)
         # Finalize
         self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
@@ -405,10 +459,12 @@ class SimpleWindow(QMainWindow):
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
+        self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
         self.volume_slider.setValue(self.volume)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
+
 
         # Apply preset or custom theme depending on the flag
         self.custom_tab_bar._on_button_clicked(self.last_tab_index)
@@ -657,6 +713,7 @@ QCheckBox::indicator {{
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = ["hellfire", "rpg"]
         self.watchlist_widget.clear(); self.watchlist_widget.addItems(self.watchlist)
+        self.volume_slider.setValue(100)
         
         # Also reset recipes and automation settings
         self.in_progress_recipes.clear()
