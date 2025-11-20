@@ -49,6 +49,9 @@ class AutomationManager(QObject):
         if self.debug:
             print("[DEBUG]", *args)
 
+    def _fmt_due(self, due):
+        return "None" if due is None else f"{due:.3f}"
+
     # -------------------------
     # Public control
     # -------------------------
@@ -81,7 +84,7 @@ class AutomationManager(QObject):
 
             self._log("Start automation")
             self._log(f"Intervals: quest={self.quest_interval_ms}ms custom={self.custom_interval_ms}ms")
-            self._log(f"Initial due: quest={self.next_quest_due:.3f} custom={self.next_custom_due:.3f}")
+            self._log(f"Initial due: quest={self._fmt_due(self.next_quest_due)} custom={self._fmt_due(self.next_custom_due)}")
 
             self.scheduler.start()
         else:
