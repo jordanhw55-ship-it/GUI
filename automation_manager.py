@@ -110,10 +110,10 @@ class AutomationManager(QObject):
             timer.start()
 
     def run_complete_quest(self):
+        # If the higher-priority custom action is running, skip this execution.
         if self.custom_action_running:
-            QTimer.singleShot(2500, self.run_complete_quest)
             return
-        self.pause_all_automation()
+
         self.control_send_key('y')
         QTimer.singleShot(100, lambda: self.control_send_key('e'))
         QTimer.singleShot(200, lambda: self.control_send_key('esc'))
