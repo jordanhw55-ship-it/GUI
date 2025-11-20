@@ -178,6 +178,12 @@ class AutomationManager(QObject):
             self._log(f"send_key '{key}' skipped: window not found")
             return
 
+        # Ensure window is foreground
+        try:
+            win32gui.SetForegroundWindow(hwnd)
+        except Exception as e:
+            self._log("SetForegroundWindow failed:", e)
+
         vk_code = {
             'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52, 'd': 0x44, 'f': 0x46,
             't': 0x54, 'z': 0x5A, 'x': 0x58, 'y': 0x59, 'esc': win32con.VK_ESCAPE
@@ -187,12 +193,9 @@ class AutomationManager(QObject):
             self._log(f"send_key '{key}' skipped: VK code not found")
             return
 
-        win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
-        QTimer.singleShot(50, lambda: self._control_send_key_up(hwnd, vk_code))
-        self._log(f"send_key '{key}' posted")
-
-    def _control_send_key_up(self, hwnd, vk_code):
-        if not win32api or not win32con:
-            return
-        lparam = (1 << 31) | (1 << 30)
-        win32api.PostMessage(hwnd, win32con.WM_KEYUP, vk_code, lparam)
+        try:
+            win32api.SendMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
+            QTimer.singleShot(50, lambda: win32api.SendMessage(hwnd, win32con.WM_KEYUP, vk_code, 0))
+            self._log(f"send_key '{key}' sent")
+        except Exception as e:
+            self._log(f"send_key '{key}' error:", e)
