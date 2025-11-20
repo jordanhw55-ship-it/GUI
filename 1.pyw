@@ -21,8 +21,8 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
-from automation_manager import AutomationManager
-from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab, QuickcastTab
+from automation_manager import AutomationManager, AutomationTab
+from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
 
 try:
@@ -333,29 +333,23 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(self.quickcast_tab)
 
         # Lobbies tab
-        lobbies_tab_content = QWidget()
-        lobbies_layout = QVBoxLayout(lobbies_tab_content)
-        controls_layout = QHBoxLayout()
-        self.lobby_search_bar = QLineEdit(); self.lobby_search_bar.setPlaceholderText("Search by name or map…")
-        self.lobby_search_bar.textChanged.connect(self.filter_lobbies)
-        refresh_button = QPushButton("Refresh"); refresh_button.clicked.connect(self.refresh_lobbies)
-        self.toggle_watchlist_btn = QPushButton("Show/Hide Watchlist"); self.toggle_watchlist_btn.clicked.connect(self.toggle_watchlist_visibility)
-        controls_layout.addWidget(self.lobby_search_bar, 1) # Add stretch factor
-        controls_layout.addWidget(refresh_button)
-        controls_layout.addWidget(self.toggle_watchlist_btn)
-        lobbies_layout.addLayout(controls_layout)
-        self.watchlist_group = QGroupBox("Watchlist"); watchlist_layout = QHBoxLayout()
-        self.watchlist_widget = QListWidget(); self.watchlist_widget.addItems(self.watchlist)
-        watchlist_layout.addWidget(self.watchlist_widget)
+        self.lobbies_tab = LobbiesTab(self)
+        self.stacked_widget.addWidget(self.lobbies_tab)
+
+        # Connect signals for the new LobbiesTab
+        self.lobbies_tab.lobby_search_bar.textChanged.connect(self.filter_lobbies)
+        self.lobbies_tab.refresh_button.clicked.connect(self.refresh_lobbies)
+        self.lobbies_tab.toggle_watchlist_btn.clicked.connect(self.toggle_watchlist_visibility)
+        self.lobbies_tab.add_watchlist_button.clicked.connect(self.add_to_watchlist)
+        self.lobbies_tab.remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
+
+        # Populate initial watchlist
+        self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
+
+        # Add sound controls to the watchlist groupbox in the lobbies tab
         watchlist_controls_layout = QVBoxLayout()
-        self.watchlist_input = QLineEdit(); self.watchlist_input.setPlaceholderText("Add keyword...")
-        watchlist_controls_layout.addWidget(self.watchlist_input)
-        add_watchlist_button = QPushButton("Add"); add_watchlist_button.clicked.connect(self.add_to_watchlist)
-        watchlist_controls_layout.addWidget(add_watchlist_button)
-        remove_watchlist_button = QPushButton("Remove"); remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
-        watchlist_controls_layout.addWidget(remove_watchlist_button)
-        
-        # Sound selection buttons
+        self.lobbies_tab.watchlist_group.layout().addLayout(watchlist_controls_layout)
+
         ping_buttons_layout = QHBoxLayout()
         self.ping_buttons = {
             "ping1.mp3": QPushButton("Ping 1"),
@@ -375,7 +369,7 @@ class SimpleWindow(QMainWindow):
         test_sound_button.clicked.connect(self.play_notification_sound)
         sound_layout = QHBoxLayout(); sound_layout.addWidget(self.lobby_placeholder_checkbox); sound_layout.addWidget(test_sound_button)
         watchlist_controls_layout.addLayout(sound_layout)
-        
+
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
@@ -964,25 +958,25 @@ QCheckBox::indicator {{
 
     # Watchlist
     def load_watchlist(self):
-        """Loads the watchlist from settings. This is now handled by load_settings()."""
+        """Loads the watchlist from settings. This is now handled by apply_loaded_settings()."""
         # This method is kept for compatibility but logic is in load_settings()
         # The watchlist is loaded with other settings at startup.
-        self.watchlist_widget.clear()
-        self.watchlist_widget.addItems(self.watchlist)
+        self.lobbies_tab.watchlist_widget.clear()
+        self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
     def add_to_watchlist(self):
-        keyword = self.watchlist_input.text().strip().lower()
+        keyword = self.lobbies_tab.watchlist_input.text().strip().lower()
         if keyword and keyword not in self.watchlist:
             self.watchlist.append(keyword)
             self.watchlist_widget.addItem(keyword)
             self.watchlist_input.clear()
             self.filter_lobbies(self.lobby_search_bar.text())
     def remove_from_watchlist(self):
-        selected_items = self.watchlist_widget.selectedItems()
+        selected_items = self.lobbies_tab.watchlist_widget.selectedItems()
         if not selected_items:
             return
         for item in selected_items:
             self.watchlist.remove(item.text())
-            self.watchlist_widget.takeItem(self.watchlist_widget.row(item))
+            self.lobbies_tab.watchlist_widget.takeItem(self.lobbies_tab.watchlist_widget.row(item))
         self.filter_lobbies(self.lobby_search_bar.text())
 
     # Items
@@ -1236,10 +1230,11 @@ QCheckBox::indicator {{
         if self.is_fetching_lobbies:
             return # Don't start a new refresh if one is already running
         self.is_fetching_lobbies = True
+        lobbies_table = self.lobbies_tab.lobbies_table
 
-        self.lobbies_table.setRowCount(0); self.lobbies_table.setRowCount(1)
+        lobbies_table.setRowCount(0); lobbies_table.setRowCount(1)
         loading_item = QTableWidgetItem("Fetching lobby data..."); loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lobbies_table.setItem(0, 0, loading_item); self.lobbies_table.setSpan(0, 0, 1, 3)
+        lobbies_table.setItem(0, 0, loading_item); lobbies_table.setSpan(0, 0, 1, 3)
         self.thread = QThread(); self.worker = LobbyFetcher(); self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.on_lobbies_fetched)
@@ -1261,42 +1256,44 @@ QCheckBox::indicator {{
         if newly_found and self.lobby_placeholder_checkbox.isChecked():
             self.play_notification_sound()
         self.previous_watched_lobbies = current_watched_lobbies
-        self.all_lobbies = lobbies # type: ignore
-        self.filter_lobbies(self.lobby_search_bar.text())
+        self.all_lobbies = lobbies
+        self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
     def on_lobbies_fetch_error(self, error_message: str):
         self.is_fetching_lobbies = False # Reset the flag
-        self.lobbies_table.setRowCount(1)
-        self.lobbies_table.setSpan(0, 0, 1, self.lobbies_table.columnCount())
+        lobbies_table = self.lobbies_tab.lobbies_table
+        lobbies_table.setRowCount(1)
+        lobbies_table.setSpan(0, 0, 1, lobbies_table.columnCount())
         error_item = QTableWidgetItem(f"Error: {error_message}")
         error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lobbies_table.setItem(0, 0, error_item)
+        lobbies_table.setItem(0, 0, error_item)
     def filter_lobbies(self, query: str):
-        self.lobbies_table.setRowCount(0); self.lobbies_table.setSortingEnabled(False)
+        lobbies_table = self.lobbies_tab.lobbies_table
+        lobbies_table.setRowCount(0); lobbies_table.setSortingEnabled(False)
         query = query.lower()
         filtered_lobbies = [l for l in self.all_lobbies if query in l.get('name', '').lower() or query in l.get('map', '').lower()]
         def is_watched(lobby):
             name = lobby.get('name', '').lower(); map_name = lobby.get('map', '').lower()
             return any(k in name or k in map_name for k in self.watchlist)
         sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
-        self.lobbies_table.setRowCount(len(sorted_lobbies))
+        lobbies_table.setRowCount(len(sorted_lobbies))
         for row, lobby in enumerate(sorted_lobbies):
             lobby_name = lobby.get('name', '').lower(); lobby_map = lobby.get('map', '').lower()
             watched = any(k in lobby_name or k in lobby_map for k in self.watchlist)
-            self.lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
-            self.lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
+            lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
+            lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
             players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            self.lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
+            lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
             host = lobby.get('host', lobby.get('server', 'N/A')) # Fallback to 'server' if 'host' is not present
-            self.lobbies_table.setItem(row, 3, AlignedTableWidgetItem(host))
+            lobbies_table.setItem(row, 3, AlignedTableWidgetItem(host))
             if watched:
-                for col in range(self.lobbies_table.columnCount()): # type: ignore
-                    self.lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
-        self.lobbies_table.setSortingEnabled(True)
+                for col in range(lobbies_table.columnCount()):
+                    lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
+        lobbies_table.setSortingEnabled(True)
 
     def toggle_watchlist_visibility(self):
         """Shows or hides the watchlist group box."""
-        is_visible = self.watchlist_group.isVisible()
-        self.watchlist_group.setVisible(not is_visible)
+        is_visible = self.lobbies_tab.watchlist_group.isVisible()
+        self.lobbies_tab.watchlist_group.setVisible(not is_visible)
 
     # Tab select logic
     def on_main_tab_selected(self, index: int):

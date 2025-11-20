@@ -264,3 +264,52 @@ class ItemsTab(QWidget):
             table.horizontalHeader().setSectionResizeMode(i, QHeaderView.ResizeMode.ResizeToContents)
         table.setSortingEnabled(True)
         return table
+
+class LobbiesTab(QWidget):
+    """A widget for the 'Lobbies' tab, for browsing game lobbies."""
+    def __init__(self, parent_window):
+        super().__init__()
+        self._create_widgets()
+        self._create_layouts()
+
+    def _create_widgets(self):
+        """Creates all the widgets for the tab."""
+        self.lobby_search_bar = QLineEdit()
+        self.lobby_search_bar.setPlaceholderText("Search by name or map…")
+        self.refresh_button = QPushButton("Refresh")
+        self.toggle_watchlist_btn = QPushButton("Show/Hide Watchlist")
+
+        self.lobbies_table = QTableWidget()
+        self.lobbies_table.setColumnCount(4)
+        self.lobbies_table.setHorizontalHeaderLabels(["Name", "Map", "Players", "Host"])
+        self.lobbies_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.lobbies_table.verticalHeader().setVisible(False)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.lobbies_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.lobbies_table.setSortingEnabled(True)
+
+        self.watchlist_group = QGroupBox("Watchlist")
+        self.watchlist_widget = QListWidget()
+        self.watchlist_input = QLineEdit()
+        self.watchlist_input.setPlaceholderText("Add keyword...")
+        self.add_watchlist_button = QPushButton("Add")
+        self.remove_watchlist_button = QPushButton("Remove")
+
+    def _create_layouts(self):
+        """Creates and arranges the layouts for the tab."""
+        main_layout = QVBoxLayout(self)
+        controls_layout = QHBoxLayout()
+        controls_layout.addWidget(self.lobby_search_bar, 1)
+        controls_layout.addWidget(self.refresh_button)
+        controls_layout.addWidget(self.toggle_watchlist_btn)
+        main_layout.addLayout(controls_layout)
+        main_layout.addWidget(self.lobbies_table)
+        main_layout.addWidget(self.watchlist_group) # Initially visible, can be hidden
+
+        watchlist_layout = QVBoxLayout(self.watchlist_group)
+        watchlist_layout.addWidget(self.watchlist_widget)
+        watchlist_controls_layout = QHBoxLayout()
+        watchlist_controls_layout.addWidget(self.watchlist_input)
+        watchlist_controls_layout.addWidget(self.add_watchlist_button)
+        watchlist_controls_layout.addWidget(self.remove_watchlist_button)
+        watchlist_layout.addLayout(watchlist_controls_layout)
