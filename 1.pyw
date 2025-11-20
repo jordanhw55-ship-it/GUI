@@ -425,8 +425,8 @@ class SimpleWindow(QMainWindow):
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
-        self.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
-        self.volume_slider.setValue(self.volume)
+        self.lobbies_tab.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
+        self.lobbies_tab.volume_slider.setValue(self.volume)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
@@ -1224,7 +1224,7 @@ QCheckBox::indicator {{
                 if keyword in lobby_name or keyword in lobby_map:
                     current_watched_lobbies.add(lobby.get('name')); break
         newly_found = current_watched_lobbies - self.previous_watched_lobbies # type: ignore
-        if newly_found and self.lobby_placeholder_checkbox.isChecked():
+        if newly_found and self.lobbies_tab.lobby_placeholder_checkbox.isChecked():
             self.play_notification_sound()
         self.previous_watched_lobbies = current_watched_lobbies
         self.all_lobbies = lobbies
