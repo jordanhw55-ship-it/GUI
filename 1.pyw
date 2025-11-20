@@ -151,6 +151,7 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
+    send_message_signal = Signal(str)
     load_character_signal = Signal()
 
     def __init__(self):
@@ -195,6 +196,9 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
+
+        # --- Setup Persistent Chat Worker ---
+        self.setup_chat_worker()
 
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
@@ -808,6 +812,25 @@ QCheckBox::indicator {{
         self.capture_thread = None
         self.capture_worker = None
 
+    def setup_chat_worker(self):
+        """Creates and configures the persistent worker for sending chat messages."""
+        print("[DEBUG] Setting up persistent chat worker...")
+        self.chat_thread = QThread()
+        self.chat_worker = ChatMessageWorker(self.game_title)
+        self.chat_worker.moveToThread(self.chat_thread)
+
+        # Connect signals
+        self.send_message_signal.connect(self.chat_worker.sendMessage)
+        self.chat_worker.finished.connect(self.on_chat_send_finished)
+        self.chat_worker.error.connect(self.on_chat_send_error)
+
+        # Clean up thread when application closes
+        self.chat_thread.finished.connect(self.chat_worker.deleteLater)
+        self.chat_thread.finished.connect(self.chat_thread.deleteLater)
+
+        self.chat_thread.start()
+        print(f"[DEBUG] Persistent Chat Thread (id: {id(self.chat_thread)}) started.")
+
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
         table = self.automation_tab.msg_hotkey_table
@@ -867,6 +890,7 @@ QCheckBox::indicator {{
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
         print(f"[DEBUG] send_chat_message called for hotkey: {hotkey_pressed}")
+        print(f"[DEBUG] send_chat_message triggered for hotkey: '{hotkey_pressed}'")
         if not win32gui:
             return
         try:
@@ -877,15 +901,19 @@ QCheckBox::indicator {{
 
         if not is_game_active:
             print("[DEBUG] Game not active. Simulating keypress.")
+            print(f"[DEBUG] Game not active. Simulating original keypress for '{hotkey_pressed}'.")
             try: keyboard.send(hotkey_pressed)
             except Exception: pass # type: ignore
             return # type: ignore
 
         if self.is_sending_message:
             print("[DEBUG] Aborting: is_sending_message is already True.")
+            print("[DEBUG] Message sending is already in progress. Ignoring new request.")
             return
         self.is_sending_message = True
         print("[DEBUG] is_sending_message set to True.")
+        print(f"[DEBUG] is_sending_message -> True. Emitting signal to worker with message: '{message}'")
+        self.send_message_signal.emit(message)
 
         # If a previous thread is still finishing, let it finish.
         # This check prevents creating a new thread on top of an old one.
@@ -922,6 +950,7 @@ QCheckBox::indicator {{
     def on_chat_send_error(self, error_message: str):
         """Handles errors from the chat message worker."""
         print(f"[DEBUG] on_chat_send_error called. Error: {error_message}.")
+        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}. Resetting flag.")
         QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
         self.is_sending_message = False
         print("[DEBUG] is_sending_message reset to False.")
@@ -929,6 +958,7 @@ QCheckBox::indicator {{
     def on_chat_send_finished(self):
         """Handles successful completion from the chat message worker."""
         print("[DEBUG] on_chat_send_finished called.")
+        print("[DEBUG] on_chat_send_finished called. Resetting flag.")
         self.is_sending_message = False
         print("[DEBUG] is_sending_message reset to False.")
 
@@ -1414,6 +1444,7 @@ QCheckBox::indicator {{
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation() # This was already here
+        self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
         event.accept()
 
