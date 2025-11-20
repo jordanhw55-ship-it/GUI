@@ -290,7 +290,8 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(self.automation_tab)
 
         # Connect signals from the new AutomationTab
-        self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.toggle_automation)
+        self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.start_automation)
+        self.automation_tab.stop_automation_btn.clicked.connect(self.automation_manager.stop_automation)
         self.automation_tab.reset_automation_btn.clicked.connect(self.reset_automation_settings)
         self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
