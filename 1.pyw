@@ -152,15 +152,17 @@ class SimpleWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.settings_manager = SettingsManager()
+
         # Theme state
-        self.current_theme_index = 0
-        self.last_tab_index = 0
-        self.custom_theme_enabled = False
-        self.custom_theme = {
+        self.current_theme_index = self.settings_manager.get("theme_index")
+        self.last_tab_index = self.settings_manager.get("last_tab_index")
+        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled")
+        self.custom_theme = self.settings_manager.get("custom_theme", {
             "bg": "#121212",
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
-        }
+        })
 
         self.old_pos = None
         self.all_lobbies = []
@@ -176,16 +178,13 @@ class SimpleWindow(QMainWindow):
         self.custom_action_running = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
-        self.character_path = ""        # Initialize character_path
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
-        self.selected_sound = "ping1.mp3" # Default, will be overwritten by load_settings
-
+        self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
 
         self.setWindowTitle("Hellfire Helper")
-        # Load settings first, which will overwrite the defaults above if a file exists
-        self.load_settings()
+        self.apply_loaded_settings()
 
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
@@ -260,7 +259,7 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(load_tab_content)
         
         # Set initial path and load characters
-        self.load_path_edit.setText(self.character_path)
+        self.load_path_edit.setText(self.settings_manager.get("character_path"))
         # Items tab
         self.item_database = ItemDatabase()
         items_tab_content = QWidget()
@@ -519,7 +518,7 @@ class SimpleWindow(QMainWindow):
         
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
-        self.apply_saved_recipes()
+        self.apply_saved_recipes() # This call is now safe
 
         # Register global hotkeys (F5 for automation, etc.)
         self.register_global_hotkeys()
@@ -923,10 +922,6 @@ class SimpleWindow(QMainWindow):
 
     def on_chat_send_finished(self):
         self.is_sending_message = False
-
-    def load_settings(self):
-        """Loads settings from a JSON file."""
-        settings_path = os.path.join(get_base_path(), "settings.json")
 
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
@@ -1557,7 +1552,7 @@ class SimpleWindow(QMainWindow):
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
-        self.save_settings() # Save all settings on exit
+        self.settings_manager.save(self) # Save all settings on exit
         try:
             for timer in self.automation_timers.values():
                 timer.stop(); timer.deleteLater()
