@@ -709,23 +709,28 @@ class SimpleWindow(QMainWindow):
 
     def add_message_hotkey(self):
         """Adds a new hotkey and message to the system."""
-        hotkey = self.automation_tab.hotkey_capture_btn.text()
-        message = self.automation_tab.message_edit.text()
+        # Unhook everything before we start modifying the dictionary
+        keyboard.unhook_all()
+        try:
+            hotkey = self.automation_tab.hotkey_capture_btn.text()
+            message = self.automation_tab.message_edit.text()
 
-        if hotkey == "Click to set" or not message:
-            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
-            return
-        if hotkey in self.message_hotkeys:
-            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
-            return
+            if hotkey == "Click to set" or not message:
+                QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
+                return
+            if hotkey in self.message_hotkeys:
+                QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use.")
+                return
 
-        self.message_hotkeys[hotkey] = message
-        self.load_message_hotkeys()
-        self.register_global_hotkeys() # Re-register all to include the new one
+            self.message_hotkeys[hotkey] = message
+            self.load_message_hotkeys()
 
-        # Reset UI
-        self.automation_tab.hotkey_capture_btn.setText("Click to set")
-        self.automation_tab.message_edit.clear()
+            # Reset UI only on success
+            self.automation_tab.hotkey_capture_btn.setText("Click to set")
+            self.automation_tab.message_edit.clear()
+        finally:
+            # ALWAYS re-register hotkeys to ensure the app is in a valid state
+            self.register_global_hotkeys()
 
     def update_message_hotkey(self):
         """Updates an existing hotkey."""
@@ -738,26 +743,31 @@ class SimpleWindow(QMainWindow):
         selected_row = selected_items[0].row()
         old_hotkey = table.item(selected_row, 0).text()
 
-        new_hotkey = self.automation_tab.hotkey_capture_btn.text()
-        new_message = self.automation_tab.message_edit.text()
+        # Unhook everything before we start modifying the dictionary
+        keyboard.unhook_all()
+        try:
+            new_hotkey = self.automation_tab.hotkey_capture_btn.text()
+            new_message = self.automation_tab.message_edit.text()
 
-        if new_hotkey == "Click to set" or not new_message:
-            QMessageBox.warning(self, "Input Error", "Please set a new hotkey and enter a message.")
-            return
-        if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
-            QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
-            return
+            if new_hotkey == "Click to set" or not new_message:
+                QMessageBox.warning(self, "Input Error", "Please set a new hotkey and enter a message.")
+                return
+            if new_hotkey != old_hotkey and new_hotkey in self.message_hotkeys:
+                QMessageBox.warning(self, "Duplicate Hotkey", "The new hotkey is already in use.")
+                return
 
-        # Update the dictionary
-        self.message_hotkeys.pop(old_hotkey, None)
-        self.message_hotkeys[new_hotkey] = new_message
-        
-        self.load_message_hotkeys()
-        self.register_global_hotkeys() # Re-register all
+            # Update the dictionary
+            self.message_hotkeys.pop(old_hotkey, None)
+            self.message_hotkeys[new_hotkey] = new_message
+            
+            self.load_message_hotkeys()
 
-        # Reset UI
-        self.automation_tab.hotkey_capture_btn.setText("Click to set")
-        self.automation_tab.message_edit.clear()
+            # Reset UI only on success
+            self.automation_tab.hotkey_capture_btn.setText("Click to set")
+            self.automation_tab.message_edit.clear()
+        finally:
+            # ALWAYS re-register hotkeys to ensure the app is in a valid state
+            self.register_global_hotkeys()
 
     def delete_message_hotkey(self):
         """Deletes a selected hotkey."""
