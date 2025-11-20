@@ -874,6 +874,12 @@ QCheckBox::indicator {{
         if self.is_sending_message: return
         self.is_sending_message = True
 
+        # If a previous thread is still finishing, let it finish.
+        # This check prevents creating a new thread on top of an old one.
+        if self.chat_thread and self.chat_thread.isRunning():
+            self.is_sending_message = False # Allow trying again shortly
+            return
+
         # Make worker and thread instance attributes to prevent premature garbage collection
         self.chat_worker = ChatMessageWorker(self.game_title, hotkey_pressed, message)
         self.chat_thread = QThread()
