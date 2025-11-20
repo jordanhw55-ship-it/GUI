@@ -33,10 +33,15 @@ class HotkeyCaptureWorker(QObject):
     def run(self):
         try:
             # Capture a single hotkey string, suppress so it doesn't leak into GUI
+            # This is a blocking call.
             hotkey = keyboard.read_hotkey(suppress=True)
             self.hotkey_captured.emit(hotkey)
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
+        finally:
+            # Crucially, unhook all keyboard listeners here to reset the state
+            # before the main thread tries to re-register its own hotkeys.
+            keyboard.unhook_all()
 
 
 class ChatMessageWorker(QObject):

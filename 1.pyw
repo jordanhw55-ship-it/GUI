@@ -676,10 +676,6 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
-        print("[DEBUG] capture_message_hotkey: Unhooking all global hotkeys.")
-        # Unhook all global hotkeys to ensure the capture worker gets the keypress
-        keyboard.unhook_all()
-        
         # Create and start a new thread and worker for this capture
         self.capture_thread = QThread() 
         self.capture_worker = HotkeyCaptureWorker()
