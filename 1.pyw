@@ -744,10 +744,15 @@ QCheckBox::indicator {{
         if self.is_capturing_hotkey:
             return
 
-        # Prevent starting a new capture if one is already in progress.
-        # Unhook all main hotkeys just before starting the capture thread
-        # to minimize the time hooks are disabled.
-        keyboard.unhook_all()
+        # Unhook all hotkeys to prepare for capture. This is a critical section
+        # where conflicts can occur.
+        try:
+            keyboard.unhook_all()
+            print("[INFO] All hotkeys unhooked for capture.")
+        except Exception as e:
+            print(f"[ERROR] Failed to unhook all hotkeys: {e}")
+            # Even if unhooking fails, we might proceed, but it's risky.
+
         # Add a small delay to allow the keyboard hook to fully release
         QTimer.singleShot(50, self._start_capture_thread)
             
@@ -1569,7 +1574,7 @@ QCheckBox::indicator {{
             try:
                 pid = self.ahk_process.pid
                 # Use taskkill with /F (force) and /T (tree) to kill the process and any children.
-                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=0x08000000) # CREATE_NO_WINDOW
                 print(f"[INFO] AHK Quickcast script (PID: {pid}) terminated via taskkill /T.")
             except (subprocess.CalledProcessError, FileNotFoundError, AttributeError) as e:
                 print(f"[WARNING] taskkill failed, falling back to terminate(): {e}")
@@ -1578,6 +1583,7 @@ QCheckBox::indicator {{
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
+                self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 return True
@@ -1590,11 +1596,23 @@ QCheckBox::indicator {{
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
             # If it's running, deactivate it. The helper function handles UI changes.
             self.deactivate_ahk_script_if_running(inform_user=True)
+            # Re-register F2 since AHK is now off.
+            if 'f2' in self.hotkey_ids:
+                keyboard.remove_hotkey(self.hotkey_ids['f2'])
+            self.hotkey_ids['f2'] = keyboard.add_hotkey('f2', self.toggle_ahk_quickcast, suppress=True)
         else:
-            self.quickcast_status_overlay.show_status(True)
+            # Before starting AHK, remove the F2 hotkey from the Python `keyboard` library
+            # to prevent conflicts.
+            if 'f2' in self.hotkey_ids:
+                try:
+                    keyboard.remove_hotkey(self.hotkey_ids['f2'])
+                except (KeyError, ValueError):
+                    print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
+
             # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
+                self.quickcast_status_overlay.show_status(True)
                 self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 
