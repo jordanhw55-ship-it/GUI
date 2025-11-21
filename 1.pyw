@@ -155,6 +155,7 @@ class SimpleWindow(QMainWindow):
     stop_automation_signal = Signal()
     send_message_signal = Signal(str)
     load_character_signal = Signal()
+    deactivate_ahk_signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -449,6 +450,7 @@ class SimpleWindow(QMainWindow):
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
+        self.deactivate_ahk_signal.connect(lambda: self.deactivate_ahk_script_if_running(inform_user=True))
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
@@ -1595,7 +1597,7 @@ QCheckBox::indicator {{
         # returns None if the process is still running.
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
             # If it's running, deactivate it. The helper function handles UI changes.
-            self.deactivate_ahk_script_if_running(inform_user=True)
+            self.deactivate_ahk_signal.emit()
         else:
             # Before starting AHK, remove the F2 hotkey from the Python `keyboard` library
             # to prevent conflicts.
