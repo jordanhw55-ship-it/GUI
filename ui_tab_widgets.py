@@ -153,7 +153,7 @@ class QuickcastTab(QWidget):
         main_layout = QHBoxLayout(self)
         left_panel = QWidget()
         right_panel = QWidget()
-        main_layout.addWidget(left_panel, 2)
+        main_layout.addWidget(left_panel, 1)
         main_layout.addWidget(right_panel, 1)
 
         # --- Left Panel (Remapping) ---
