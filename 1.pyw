@@ -1127,17 +1127,8 @@ QCheckBox::indicator {{
         for row, item_data in enumerate(materials_to_display.values()):
             materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
-            material_item.setFlags(material_item.flags() | Qt.ItemFlag.ItemIsUserCheckable) # type: ignore
-
-            # Restore the check state if the material was previously checked
-            if material_item.text() in checked_materials:
-                material_item.setCheckState(Qt.CheckState.Checked)
-                for col in range(materials_table.columnCount()):
-                    materials_table.setItem(row, col, QTableWidgetItem(item_data.get(["Material", "#", "Unit", "Location", "Checked"][col], "")))
-                    materials_table.item(row, col).setForeground(QColor("gray")) # type: ignore
-            else:
-                material_item.setCheckState(Qt.CheckState.Unchecked)
-
+            material_item.setFlags(material_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            material_item.setCheckState(Qt.CheckState.Unchecked)
             materials_table.setItem(row, 0, material_item)
             materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
             materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
