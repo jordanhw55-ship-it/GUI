@@ -142,6 +142,11 @@ class QuickcastTab(QWidget):
         
         self.activate_quickcast_btn = QPushButton("Activate Quickcast")
 
+        # --- AHK Installation ---
+        self.install_ahk_group = QGroupBox("Install AutoHotkey v2")
+        self.install_ahk_cmd_btn = QPushButton("Install via CMD")
+        self.install_ahk_web_btn = QPushButton("Install from Website")
+
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
@@ -164,12 +169,18 @@ class QuickcastTab(QWidget):
         settings_panel = QWidget()
         settings_panel_layout = QVBoxLayout(settings_panel)
         settings_panel_layout.addWidget(self.settings_group)
+        settings_panel_layout.addWidget(self.install_ahk_group)
         settings_panel_layout.addStretch()
         main_layout.addWidget(settings_panel, 1)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
         settings_v_layout.addWidget(self.reset_keybinds_btn)
+
+        install_ahk_layout = QVBoxLayout(self.install_ahk_group)
+        install_ahk_layout.addWidget(self.install_ahk_cmd_btn)
+        install_ahk_layout.addWidget(self.install_ahk_web_btn)
+
 
     def _create_key_button(self, default_text: str) -> QPushButton:
         """Helper to create a standard key button."""

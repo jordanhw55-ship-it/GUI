@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -402,6 +402,9 @@ class SimpleWindow(QMainWindow):
         self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
         # New connection for the Activate Quickcast button
         self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.toggle_ahk_quickcast)
+        # Connections for AHK installation buttons
+        self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.show_ahk_install_cmd)
+        self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.open_ahk_website)
 
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
@@ -1044,6 +1047,20 @@ QCheckBox::indicator {{
             # Re-apply the (now empty) settings, which will force the UI and hotkeys to reset to their defaults.
             self.apply_keybind_settings()
 
+    def open_ahk_website(self):
+        """Opens the AutoHotkey v2 download page in the default web browser."""
+        url = QUrl("https://www.autohotkey.com/v2/")
+        QDesktopServices.openUrl(url)
+
+    def show_ahk_install_cmd(self):
+        """Shows a message box with the winget command to install AHK."""
+        QMessageBox.information(
+            self,
+            "Install via Command Prompt",
+            "1. Open Command Prompt or PowerShell.\n"
+            "2. Copy and paste the following command:\n\n"
+            "<b>winget install AutoHotkey.AutoHotkey</b>"
+        )
 
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
