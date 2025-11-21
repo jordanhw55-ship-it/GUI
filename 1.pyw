@@ -1048,8 +1048,8 @@ QCheckBox::indicator {{
             self.apply_keybind_settings()
 
     def open_ahk_website(self):
-        """Opens the AutoHotkey v2 download page in the default web browser."""
-        url = QUrl("https://www.autohotkey.com/v2/")
+        """Opens the AutoHotkey download page in the default web browser."""
+        url = QUrl("https://www.autohotkey.com/")
         QDesktopServices.openUrl(url)
 
     def show_ahk_install_cmd(self):

@@ -169,8 +169,8 @@ class QuickcastTab(QWidget):
         settings_panel = QWidget()
         settings_panel_layout = QVBoxLayout(settings_panel)
         settings_panel_layout.addWidget(self.settings_group)
-        settings_panel_layout.addWidget(self.install_ahk_group)
         settings_panel_layout.addStretch()
+        settings_panel_layout.addWidget(self.install_ahk_group)
         main_layout.addWidget(settings_panel, 1)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
