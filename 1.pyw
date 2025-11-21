@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -1117,10 +1117,7 @@ QCheckBox::indicator {{
                 pyautogui.click(button=original_key)
             elif quickcast:
                 print("[DEBUG] Executing as QUICKCAST.")
-                vk_code = self.vk_map.get(original_key.lower())
-                print(f"[DEBUG] Mapped to vk_code: {vk_code} (0x{vk_code:X})" if vk_code else "[DEBUG] vk_code not found!")
-                if vk_code:
-                    self._send_quickcast_macro(vk_code)
+                self._send_quickcast_macro(original_key)
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
@@ -1645,67 +1642,25 @@ QCheckBox::indicator {{
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
-    def _send_quickcast_macro(self, vk_code):
-        """Sends the complete quickcast sequence using the more reliable SendInput."""
-        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
-        if not win32api or not win32con:
-            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
-            return
+    def _send_quickcast_macro(self, original_key: str):
+        # Prep sequence (like AHK’s Ctrl+9 0)
+        keyboard.press("ctrl")
+        keyboard.press_and_release("9")
+        keyboard.press_and_release("0")
+        keyboard.release("ctrl")
+        time.sleep(0.05)
 
-        # Define structures for inputs
-        PUL = ctypes.POINTER(ctypes.c_ulong)
-        class KeyBdInput(ctypes.Structure):
-            _fields_ = [("wVk", ctypes.c_ushort),
-                        ("wScan", ctypes.c_ushort),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
+        # Send the ability hotkey
+        keyboard.press_and_release(original_key)
+        time.sleep(0.05)
 
-        class MouseInput(ctypes.Structure):
-            _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
-                        ("mouseData", ctypes.c_ulong),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
+        # Immediately click at cursor
+        pyautogui.click()
+        time.sleep(0.05)
 
-        class Input_I(ctypes.Union):
-            _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
-
-        class Input(ctypes.Structure):
-            _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
-
-        def key_down(vk):
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
-
-        def key_up(vk):
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
-
-        def mouse_down():
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
-        def mouse_up():
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
-
-        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click, 90
-        inputs = [
-            key_down(win32con.VK_CONTROL),
-            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
-            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
-            key_up(win32con.VK_CONTROL),
-
-            key_down(vk_code), key_up(vk_code), # Original spell/item key
-
-            mouse_down(), mouse_up(), # Left Click
-        ]
-
-        print(f"[DEBUG] Sending {len(inputs)} inputs via SendInput...")
-        # Send all inputs in a single block for speed and reliability
-        input_array = (Input * len(inputs))(*inputs)
-        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
-        print("[DEBUG] SendInput call completed.")
+        # Cleanup sequence
+        keyboard.press_and_release("9")
+        keyboard.press_and_release("0")
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
