@@ -30,6 +30,7 @@ class LobbyHeartbeatChecker(QObject):
     """Checks if the wc3stats gamelist has been updated since the last check."""
     update_required = Signal()
     error = Signal(str)
+    finished = Signal()
 
     def __init__(self, last_seen_id: int):
         super().__init__()
@@ -44,6 +45,8 @@ class LobbyHeartbeatChecker(QObject):
                 self.update_required.emit()
         except requests.RequestException as e:
             self.error.emit(f"Heartbeat check failed: {e}")
+        finally:
+            self.finished.emit()
 
 
 class HotkeyCaptureWorker(QObject):
