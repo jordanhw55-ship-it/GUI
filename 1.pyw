@@ -626,7 +626,7 @@ QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top center;
     padding: 0 10px;
-    font-weight: bold;
+    background-color: {bg};
 }}
 QHeaderView::section {{
     background-color: #2E2E2E;
