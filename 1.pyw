@@ -1678,18 +1678,28 @@ QCheckBox::indicator {{
 
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
-        if self.ahk_process and self.ahk_process.poll() is None:
-            self.ahk_process.terminate()
-            self.ahk_process = None
-            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
-            print("[INFO] AHK Quickcast script deactivated.")
-            # Re-register Python hotkeys now that AHK is off
-            self.register_keybind_hotkeys()
-            if inform_user:
-                QMessageBox.information(self, "Script Deactivated", 
-                                        "Keybind configuration was changed.\nThe AHK script has been deactivated. Please click 'Activate Quickcast' again to apply your new settings.")
-            return True
+        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+            try:
+                # Use taskkill on Windows for a more reliable termination
+                pid = self.ahk_process.pid
+                subprocess.run(['taskkill', '/F', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                print(f"[INFO] AHK Quickcast script (PID: {pid}) terminated via taskkill.")
+            except (subprocess.CalledProcessError, FileNotFoundError, AttributeError) as e:
+                print(f"[WARNING] taskkill failed, falling back to terminate(): {e}")
+                self.ahk_process.terminate() # Fallback for other OS or if taskkill fails
+            finally:
+                self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
+                self.ahk_process = None
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
+                
+                # Re-register Python hotkeys now that AHK is off
+                self.register_keybind_hotkeys()
+                
+                if inform_user:
+                    QMessageBox.information(self, "Script Deactivated", 
+                                            "The AHK script has been deactivated. Python hotkeys are now active.")
+                return True
         return False
 
     def toggle_ahk_quickcast(self):
