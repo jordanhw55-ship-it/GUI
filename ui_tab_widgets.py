@@ -133,54 +133,74 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        self.remap_spells_group = QGroupBox("Remap Spells")
+        # --- Spell Remapping ---
+        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
+
+        # --- Inventory Remapping ---
+        # self.remap_inventory_group = QGroupBox("Remap Inventory") # Merged with spells
+
+        # --- Mouse Remapping ---
+        self.remap_mouse_group = QGroupBox("Remap Mouse")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
-        self.activate_quickcast_btn = QPushButton("Activate")
-
-        # --- AHK Installation ---
-        self.install_ahk_group = QGroupBox("Install AutoHotkey v2")
-        self.install_ahk_cmd_btn = QPushButton("Install via CMD")
-        self.install_ahk_web_btn = QPushButton("Install from Website")
+        # New button to activate the AHK script
+        self.activate_quickcast_btn = QPushButton("Activate Quickcast")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        
-        # --- Main Remapping Panel (Left) ---
-        remap_panel = QWidget()
-        remap_layout = QVBoxLayout(remap_panel)
-        remap_layout.addWidget(self.remap_spells_group)
-        main_layout.addWidget(remap_panel, 2) # Give it more space
+        left_panel = QWidget()
+        right_panel = QWidget()
+        main_layout.addWidget(left_panel, 2)
+        main_layout.addWidget(right_panel, 1)
 
-        spells_grid = QGridLayout(self.remap_spells_group)
+        # --- Left Panel ---
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.addWidget(self.remap_spells_group) # This now contains spells and inventory
+
+        # A single grid for all remappable keys
+        remap_grid = QGridLayout(self.remap_spells_group)
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
             row, col = i // 4, i % 4
+            # Create and add the remappable button
             self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
-            spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+            remap_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        # --- Settings Panel (Right) ---
-        settings_panel = QWidget()
-        settings_panel_layout = QVBoxLayout(settings_panel)
-        settings_panel_layout.addWidget(self.settings_group)
-        settings_panel_layout.addStretch()
-        settings_panel_layout.addWidget(self.install_ahk_group)
-        main_layout.addWidget(settings_panel, 1)
+        # Add a separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        remap_grid.addWidget(separator, (len(spell_keys) // 4), 0, 1, 4)
+
+        # Add inventory buttons to the same grid
+        for i in range(6):
+            row, col = (len(spell_keys) // 4) + 1 + (i // 4), i % 4
+            self.key_buttons[f"inv_{i+1}"] = self._create_key_button(str(i + 1))
+            remap_grid.addWidget(self.key_buttons[f"inv_{i+1}"], row, col)
+
+        # --- Right Panel ---
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.addWidget(self.remap_mouse_group)
+        right_layout.addWidget(self.settings_group)
+        right_layout.addStretch()
+
+        mouse_grid = QGridLayout(self.remap_mouse_group)
+        mouse_grid.addWidget(QLabel("Left Click"), 0, 0)
+        mouse_grid.addWidget(QLabel("Right Click"), 0, 1)
+        self.key_buttons["mouse_Left"] = self._create_key_button("LButton")
+        self.key_buttons["mouse_Right"] = self._create_key_button("RButton")
+        mouse_grid.addWidget(self.key_buttons["mouse_Left"], 1, 0)
+        mouse_grid.addWidget(self.key_buttons["mouse_Right"], 1, 1)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
         settings_v_layout.addWidget(self.reset_keybinds_btn)
-
-        install_ahk_layout = QVBoxLayout(self.install_ahk_group)
-        install_ahk_layout.addWidget(self.install_ahk_cmd_btn)
-        install_ahk_layout.addWidget(self.install_ahk_web_btn)
-
 
     def _create_key_button(self, default_text: str) -> QPushButton:
         """Helper to create a standard key button."""
