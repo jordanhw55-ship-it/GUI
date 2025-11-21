@@ -159,6 +159,7 @@ class QuickcastTab(QWidget):
         # --- Left Panel (Remapping) ---
         left_layout = QVBoxLayout(left_panel)
         left_layout.addWidget(self.remap_spells_group)
+        left_layout.addStretch() # Prevent the group box from expanding vertically
 
         spells_grid = QGridLayout(self.remap_spells_group)
         spells_grid.setSpacing(2) # Reduce space between buttons
@@ -188,7 +189,7 @@ class QuickcastTab(QWidget):
     def _create_key_button(self, default_text: str) -> QPushButton:
         """Helper to create a standard key button."""
         button = QPushButton(default_text)
-        button.setFixedSize(40, 40)
+        button.setFixedSize(50, 50)
         button.setCheckable(True) # To show "capture" state
         return button
 
