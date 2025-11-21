@@ -1127,13 +1127,21 @@ QCheckBox::indicator {{
         for row, item_data in enumerate(materials_to_display.values()):
             materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
-            material_item.setFlags(material_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            material_item.setCheckState(Qt.CheckState.Unchecked)
+            # Make the material item checkable but not editable
+            material_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
             materials_table.setItem(row, 0, material_item)
-            materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
-            materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
-            materials_table.setItem(row, 3, QTableWidgetItem(item_data["Location"]))
-            materials_table.setItem(row, 4, QTableWidgetItem("0"))
+
+            # Create and set non-editable items for other columns
+            for col, key in enumerate(["#", "Unit", "Location"], 1):
+                text = str(item_data.get(key, ""))
+                item = QTableWidgetItem(text)
+                item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled) # Not editable
+                materials_table.setItem(row, col, item)
+
+            # Hidden sort column
+            sort_item = QTableWidgetItem("0")
+            sort_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            materials_table.setItem(row, 4, sort_item)
         
         # Reconnect signals and enable sorting
         materials_table.itemChanged.connect(self.on_material_checked)
