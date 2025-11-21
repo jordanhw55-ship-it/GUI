@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -192,7 +192,6 @@ class SimpleWindow(QMainWindow):
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
         self.volume = self.settings_manager.get("volume", 100)
-        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
         self.keybinds = self.settings_manager.get("keybinds", {})
 
         # Keybind state
@@ -1071,11 +1070,7 @@ QCheckBox::indicator {{
  
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
-        """Applies loaded keybind settings to the UI and registers hotkeys."""
-        # Set checkbox states
-        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
-            is_enabled = self.keybinds.get("settings", {}).get(name, True)
-            checkbox.setChecked(is_enabled)
+        """Applies loaded keybind settings to the UI."""
 
         # Set button text and styles
         for name, button in self.quickcast_tab.key_buttons.items():
@@ -1568,6 +1563,7 @@ QCheckBox::indicator {{
 
     def register_global_hotkeys(self):
         """Registers all hotkeys, including global controls and custom messages."""
+
         # Register global F5 for starting automation
         try:
             f5_id = keyboard.add_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True)
@@ -1593,7 +1589,6 @@ QCheckBox::indicator {{
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
 
-    
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
@@ -1616,59 +1611,48 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
-                # Re-register only the global Python hotkeys now that AHK is off
-                self.register_global_hotkeys()
+                # Re-register Python hotkeys now that AHK is off
+                self.register_keybind_hotkeys()
 
                 if inform_user:
                     QMessageBox.information(self, "Script Deactivated", 
-                                            "The AHK script has been deactivated. Remapping is now off.")
+                                            "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
+        # Check if the AHK process exists and is currently running. The poll() method
+        # returns None if the process is still running.
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            # If it's running, deactivate it.
+            # If it's running, deactivate it. The helper function handles UI changes.
             self.deactivate_ahk_script_if_running(inform_user=True)
         else:
-            # If it's not running, generate and run the script.
+            # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
-                # Unregister all Python hotkeys to prevent conflicts
-                keyboard.unhook_all()
-                print("[INFO] All Python hotkeys unregistered to prevent conflicts with AHK.")
+                # On successful activation, update the button to show the "Deactivate" state.
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+                self.unregister_keybind_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
-        """Finds the path to the AutoHotkey executable, prioritizing a bundled version."""
-        # 1. Check for a bundled executable first.
-        # Assumes a 'vendor/ahk' directory relative to the application's base path.
-        bundled_path = os.path.join(get_base_path(), "vendor", "ahk", "AutoHotkey.exe")
-        if os.path.exists(bundled_path):
-            print(f"[INFO] Found bundled AutoHotkey at: {bundled_path}")
-            return bundled_path
-
-        # 2. Fallback to searching Program Files (for existing installations).
+        """Finds the path to the AutoHotkey executable."""
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
-        installed_paths = [
-             os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
-             os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
-             os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
-         ]
-        for path in installed_paths:
-             if os.path.exists(path):
-                print(f"[INFO] Found installed AutoHotkey at: {path}")
+        possible_paths = [
+            os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
                 return path
-
-        # 3. Fallback to searching the system PATH.
         try:
             result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            path_from_where = result.stdout.strip().split('\n')[0]
-            print(f"[INFO] Found AutoHotkey in system PATH: {path_from_where}")
-            return path_from_where
+            return result.stdout.strip().split('\n')[0]
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("[WARNING] AutoHotkey not found in bundled path, Program Files, or system PATH.")
             return None
 
     def generate_and_run_ahk_script(self):
@@ -1753,6 +1737,18 @@ remapMouse(button) {
         except Exception as e:
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
+
+    def unregister_keybind_hotkeys(self):
+        """Unregisters only the keybind-related hotkeys from the Python listener."""
+        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
+        for name, hk_id in list(self.hotkey_ids.items()):
+            # Only unregister keybinds, not global app hotkeys or message hotkeys
+            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
+                try:
+                    keyboard.remove_hotkey(hk_id)
+                    del self.hotkey_ids[name]
+                except (KeyError, ValueError):
+                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
