@@ -828,6 +828,14 @@ QCheckBox::indicator {{
 
         self.capture_thread.start()
 
+    def _get_default_key_for_control(self, control_name: str) -> str:
+        """Gets the default key for a given keybind control name."""
+        parts = control_name.split('_')
+        if parts[0] == "mouse":
+            return "LButton" if parts[1] == "Left" else "RButton"
+        else: # spell or inv
+            return parts[1]
+
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
         self.automation_tab.message_edit.setEnabled(True)
@@ -845,7 +853,13 @@ QCheckBox::indicator {{
                     self.keybinds[key_name] = {}
                 self.keybinds[key_name]["hotkey"] = hotkey
             else: # Capture was cancelled
-                button.setText(self.keybinds.get(self.capturing_for_control, {}).get("hotkey", "SET").upper())
+                # Revert to the default key for this control
+                key_name = self.capturing_for_control
+                default_key = self._get_default_key_for_control(key_name)
+                button.setText(default_key.upper())
+                if key_name in self.keybinds:
+                    # Set the hotkey back to the default in the data model
+                    self.keybinds[key_name]["hotkey"] = default_key
         else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
 
