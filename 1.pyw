@@ -1650,20 +1650,20 @@ QCheckBox::indicator {{
     F2:: {{
         ExitApp()
     }}
-remapSpellwQC(originalKey) {
-    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
-    SendInput("{" originalKey "}")
+remapSpellwQC(originalKey) {{
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{{" originalKey "}}}")
     MouseClick("Left")
-    SendInput("{9}{0}")
-}
+    SendInput("{{9}}{{0}}")
+}}
 
-remapSpellwoQC(originalKey) {
-    SendInput("{" originalKey "}")
-}
+remapSpellwoQC(originalKey) {{
+    SendInput("{{{" originalKey "}}}")
+}}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
-}
+}}
 """
 
         # Keep track of hotkeys already defined to prevent duplicates
