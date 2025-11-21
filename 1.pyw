@@ -258,7 +258,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast(NYI)", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
