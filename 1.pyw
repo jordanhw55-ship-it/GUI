@@ -1691,7 +1691,7 @@ QCheckBox::indicator {{
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
-                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
@@ -1704,16 +1704,17 @@ QCheckBox::indicator {{
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
-        # Check if the AHK process exists and is currently running.
+        # Check if the AHK process exists and is currently running. The poll() method
+        # returns None if the process is still running.
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            # If it's running, the user wants to deactivate it.
+            # If it's running, deactivate it. The helper function handles UI changes.
             self.deactivate_ahk_script_if_running(inform_user=True)
         else:
-            # If it's not running, the user wants to activate it.
-            # First, generate and run the AHK script.
+            # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
-                # If the script was successfully started, unregister the Python keybinds
-                # to prevent them from interfering with the AHK script.
+                # On successful activation, update the button to show the "Deactivate" state.
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 self.unregister_keybind_hotkeys()
 
     def _find_ahk_path(self) -> str | None:
@@ -1808,7 +1809,7 @@ remapMouse(button) {
             
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
             self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #4CAF50; color: white;") # Green
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
 
