@@ -1059,7 +1059,7 @@ QCheckBox::indicator {{
             "Install via Command Prompt",
             "1. Open Command Prompt or PowerShell.\n"
             "2. Copy and paste the following command:\n\n"
-            "<b>winget install AutoHotkey.AutoHotkey</b>"
+            "winget install AutoHotkey.AutoHotkey"
         )
 
     # Keybinds / Quickcast
