@@ -2,6 +2,7 @@ import sys
 import json
 import os
 import re
+import subprocess
 from typing import List
 
 from PySide6.QtWidgets import (
@@ -1137,11 +1138,7 @@ QCheckBox::indicator {{
                 pyautogui.click(button=original_key)
             elif quickcast:
                 print("[DEBUG] Executing as QUICKCAST.")
-                vk_code = self.vk_map.get(original_key.lower())
-                if vk_code:
-                    self._send_quickcast_macro(vk_code)
-                else:
-                    print(f"[ERROR] No virtual-key code found for '{original_key}'. Quickcast aborted.")
+                self._execute_ahk_quickcast(original_key)
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
@@ -1666,46 +1663,39 @@ QCheckBox::indicator {{
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
-    def _send_quickcast_macro(self, vk_code):
-        """Sends the complete quickcast sequence using the more reliable SendInput."""
-        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
-        if not win32api or not win32con:
-            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
+    def _find_ahk_path(self):
+        """Finds the path to the AutoHotkey executable."""
+        # Check common installation directories
+        program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+        possible_paths = [
+            os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        
+        # Fallback to checking the system's PATH environment variable
+        try:
+            result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            return result.stdout.strip().split('\n')[0]
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+
+    def _execute_ahk_quickcast(self, original_key: str):
+        """Executes the quickcast macro by calling an external AHK script."""
+        ahk_path = self._find_ahk_path()
+        if not ahk_path:
+            QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
             return
 
-        # Use the pre-defined ctypes structures from __init__
-        Input = self.Input
-        KeyBdInput = self.KeyBdInput
-        MouseInput = self.MouseInput
-        Input_I = self.Input_I
+        script_path = os.path.join(os.path.dirname(__file__), "quickcast.ahk")
+        if not os.path.exists(script_path):
+            QMessageBox.critical(self, "Script Not Found", f"The script 'quickcast.ahk' was not found in the application directory.")
+            return
 
-        def key_down(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
-
-        def key_up(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
-
-        def mouse_down():
-            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
-
-        def mouse_up():
-            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
-
-        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click
-        inputs = [
-            key_down(win32con.VK_CONTROL),
-            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
-            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
-            key_up(win32con.VK_CONTROL),
-
-            key_down(vk_code), key_up(vk_code), # Original spell/item key
-
-            mouse_down(), mouse_up(), # Left Click
-        ]
-
-        # Send all inputs in a single block for speed and reliability
-        input_array = (self.Input * len(inputs))(*inputs)
-        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
+        # Use Popen for a non-blocking call to launch the AHK script instantly.
+        subprocess.Popen([ahk_path, script_path, original_key])
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
