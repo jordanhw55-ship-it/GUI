@@ -1143,14 +1143,8 @@ QCheckBox::indicator {{
             if name.startswith("mouse_"):
                 print("[DEBUG] Executing as mouse click.")
                 pyautogui.click(button=original_key)
-            elif quickcast:
-                print("[DEBUG] Executing as QUICKCAST.")
-                # This is now handled by the external AHK script. Python no longer executes this.
-                vk_code = self.vk_map.get(original_key.lower())
-                if vk_code:
-                    self._send_quickcast_macro(vk_code)
-                else:
-                    print(f"[ERROR] No virtual-key code found for '{original_key}'. Quickcast aborted.")
+            elif quickcast: # This logic is now handled by the external AHK script
+                print("[DEBUG] Quickcast key pressed, but it should be handled by AHK script. No action taken in Python.")
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
@@ -1671,7 +1665,6 @@ QCheckBox::indicator {{
 
             # The check for the active window is now handled inside execute_keybind.
             hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
@@ -1683,11 +1676,14 @@ QCheckBox::indicator {{
             self.ahk_process.terminate()
             self.ahk_process = None
             self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default style
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
             print("[INFO] AHK Quickcast script deactivated.")
+            # Re-register Python hotkeys now that AHK is off
+            self.register_keybind_hotkeys()
         else:
-            # Process is not running, so generate and start it
-            self.generate_and_run_ahk_script()
+            if self.generate_and_run_ahk_script():
+                # Unregister Python hotkeys to prevent conflicts
+                self.unregister_keybind_hotkeys()
 
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
@@ -1711,49 +1707,14 @@ QCheckBox::indicator {{
         ahk_path = self._find_ahk_path()
         if not ahk_path:
             QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
-    def _send_quickcast_macro(self, vk_code):
-        """Sends the complete quickcast sequence using the more reliable SendInput."""
-        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
-        if not win32api or not win32con:
-            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
-            return
+            return False
 
         # --- AHK Script Generation ---
         script_content = f"""#Requires AutoHotkey v2.0
 #SingleInstance Force
 ProcessSetPriority("High")
-        # Use the pre-defined ctypes structures from __init__
-        Input = self.Input
-        KeyBdInput = self.KeyBdInput
-        MouseInput = self.MouseInput
-        Input_I = self.Input_I
-        # Define structures for inputs
-        PUL = ctypes.POINTER(ctypes.c_ulong)
-        class KeyBdInput(ctypes.Structure):
-            _fields_ = [("wVk", ctypes.c_ushort),
-                        ("wScan", ctypes.c_ushort),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
 
 HotIfWinActive("{self.game_title}")
-        class MouseInput(ctypes.Structure):
-            _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
-                        ("mouseData", ctypes.c_ulong),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
-
-        class Input_I(ctypes.Union):
-            _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
-
-        class Input(ctypes.Structure):
-            _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
-
-        def key_down(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
 
 """
         # Add the functions that will be called by the hotkeys
@@ -1764,43 +1725,25 @@ remapSpellwQC(originalKey) {
     MouseClick("Left")
     SendInput("{9}{0}")
 }
-        def key_up(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
 
 remapSpellwoQC(originalKey) {
     SendInput("{" originalKey "}")
 }
-        def mouse_down():
-            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
 
 remapMouse(button) {
     MouseClick(button)
 }
 """
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
-        def mouse_up():
-            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
 
         # Generate the hotkeys from Python's self.keybinds
         for name, key_info in self.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
-        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click
-        inputs = [
-            key_down(win32con.VK_CONTROL),
-            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
-            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
-            key_up(win32con.VK_CONTROL),
 
             category = name.split("_")[0]
+            if category == "inv": category = "inventory"
             is_enabled = self.keybinds.get("settings", {}).get(category, True)
             if not is_enabled: continue
-            key_down(vk_code), key_up(vk_code), # Original spell/item key
 
             original_key = ""
             if name.startswith("spell_"):
@@ -1809,15 +1752,8 @@ remapMouse(button) {
                 inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
                 inv_index = int(name.split("_")[1]) - 1
                 original_key = inv_map[inv_index]
-            mouse_down(), mouse_up(), # Left Click
-        ]
 
             if not original_key: continue
-        # Send all inputs in a single block for speed and reliability
-        input_array = (self.Input * len(inputs))(*inputs)
-        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
-        input_array = (Input * len(inputs))(*inputs)
-        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
 
             quickcast = key_info.get("quickcast", False)
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
@@ -1835,10 +1771,23 @@ remapMouse(button) {
             self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #4CAF50; color: white;") # Green
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
+            return True
 
         except Exception as e:
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
-            return
+            return False
+
+    def unregister_keybind_hotkeys(self):
+        """Unregisters only the keybind-related hotkeys from the Python listener."""
+        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
+        for name, hk_id in list(self.hotkey_ids.items()):
+            # Only unregister keybinds, not global app hotkeys or message hotkeys
+            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
+                try:
+                    keyboard.remove_hotkey(hk_id)
+                    del self.hotkey_ids[name]
+                except (KeyError, ValueError):
+                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
