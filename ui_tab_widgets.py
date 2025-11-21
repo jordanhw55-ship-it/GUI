@@ -218,8 +218,6 @@ class ItemsTab(QWidget):
         recipe_tracker_layout = QVBoxLayout(self.recipe_tracker_widget)
         recipe_tracker_layout.setContentsMargins(0,0,0,0)
         
-        self.recipe_search_box = QLineEdit()
-        self.recipe_search_box.setPlaceholderText("Search Recipes...")
         self.available_recipes_list = QListWidget()
         self.add_recipe_btn = QPushButton("Add ->")
         self.remove_recipe_btn = QPushButton("<- Remove")
@@ -234,7 +232,7 @@ class ItemsTab(QWidget):
         self.materials_table.setSortingEnabled(True)
 
         recipe_top_layout = QHBoxLayout()
-        recipes_list_layout = QVBoxLayout(); recipes_list_layout.addWidget(self.recipe_search_box); recipes_list_layout.addWidget(self.available_recipes_list)
+        recipes_list_layout = QVBoxLayout(); recipes_list_layout.addWidget(self.available_recipes_list)
         add_remove_layout = QVBoxLayout(); add_remove_layout.addStretch(); add_remove_layout.addWidget(self.add_recipe_btn); add_remove_layout.addWidget(self.remove_recipe_btn); add_remove_layout.addWidget(self.reset_recipes_btn); add_remove_layout.addStretch()
         recipe_top_layout.addLayout(recipes_list_layout); recipe_top_layout.addLayout(add_remove_layout); recipe_top_layout.addWidget(self.in_progress_recipes_list)
         recipe_tracker_layout.addLayout(recipe_top_layout); recipe_tracker_layout.addWidget(self.materials_table)

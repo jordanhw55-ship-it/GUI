@@ -297,12 +297,10 @@ class SimpleWindow(QMainWindow):
         self.in_progress_recipes = {}
 
         # Connect signals from the new RecipeTrackerTab
-        self.items_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list) # type: ignore
         self.items_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress) # type: ignore
         self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress) # type: ignore
         self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes) # type: ignore
         self.items_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed) # type: ignore
-        self.items_tab.materials_table.itemChanged.connect(self.on_material_checked) # type: ignore
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
@@ -976,14 +974,14 @@ QCheckBox::indicator {{
 
         if is_recipe_tab:
             self.items_tab.main_stack.setCurrentIndex(1) # type: ignore
-            self.items_tab.search_box.hide() # type: ignore
+            self.items_tab.search_box.setPlaceholderText("Search Recipes...") # type: ignore
             if not self.item_database.recipes_data:
                 self.item_database.load_recipes()
             self.filter_recipes_list()
             self._rebuild_materials_table()
         else:
             self.items_tab.main_stack.setCurrentIndex(0) # type: ignore
-            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore
+            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore # type: ignore
             self.items_tab.search_box.show() # type: ignore
 
             if index == 0 and not self.item_database.all_items_data:
@@ -998,7 +996,7 @@ QCheckBox::indicator {{
 
     # Recipes
     def filter_recipes_list(self):
-        query = self.items_tab.recipe_search_box.text().lower() # type: ignore
+        query = self.items_tab.search_box.text().lower() # type: ignore
         self.items_tab.available_recipes_list.clear() # type: ignore
         for recipe in self.item_database.recipes_data:
             if query in recipe["name"].lower():
