@@ -1680,10 +1680,10 @@ QCheckBox::indicator {{
         """Checks if the AHK script is running and deactivates it, informing the user."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
             try:
-                # Use taskkill on Windows for a more reliable termination
                 pid = self.ahk_process.pid
-                subprocess.run(['taskkill', '/F', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                print(f"[INFO] AHK Quickcast script (PID: {pid}) terminated via taskkill.")
+                # Use taskkill with /F (force) and /T (tree) to kill the process and any children.
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                print(f"[INFO] AHK Quickcast script (PID: {pid}) terminated via taskkill /T.")
             except (subprocess.CalledProcessError, FileNotFoundError, AttributeError) as e:
                 print(f"[WARNING] taskkill failed, falling back to terminate(): {e}")
                 self.ahk_process.terminate() # Fallback for other OS or if taskkill fails
@@ -1692,10 +1692,10 @@ QCheckBox::indicator {{
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
-                
+
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
-                
+
                 if inform_user:
                     QMessageBox.information(self, "Script Deactivated", 
                                             "The AHK script has been deactivated. Python hotkeys are now active.")
@@ -1902,7 +1902,7 @@ remapMouse(button) {
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
-
+ 
         # Ensure the AHK process is terminated on exit
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
             print("[INFO] closeEvent: Terminating AHK process...")
@@ -1917,6 +1917,7 @@ remapMouse(button) {
                 self.ahk_process.terminate() # Fallback
 
         event.accept()
+ 
 
 
 if __name__ == "__main__":
