@@ -1595,24 +1595,25 @@ QCheckBox::indicator {{
         if not win32api or not win32con:
             return
 
-        # This sequence mimics the AHK script: {Ctrl Down}90{Ctrl Up}, {originalKey}, {Click}, 90
+        # This sequence mimics the AHK script: {Ctrl Down}90{Ctrl Up}, {originalKey}, {Click}
+        # It uses virtual-key codes, which are more reliable for games.
         inputs = [
             # Ctrl Down
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(win32con.VK_CONTROL, 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
+            (win32con.INPUT_KEYBOARD, win32con.VK_CONTROL, 0, 0, 0),
             # 9 Down and Up
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['9'], 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['9'], 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            (win32con.INPUT_KEYBOARD, self.vk_map['9'], 0, 0, 0),
+            (win32con.INPUT_KEYBOARD, self.vk_map['9'], win32con.KEYEVENTF_KEYUP, 0, 0),
             # 0 Down and Up
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['0'], 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['0'], 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            (win32con.INPUT_KEYBOARD, self.vk_map['0'], 0, 0, 0),
+            (win32con.INPUT_KEYBOARD, self.vk_map['0'], win32con.KEYEVENTF_KEYUP, 0, 0),
             # Ctrl Up
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(win32con.VK_CONTROL, 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            (win32con.INPUT_KEYBOARD, win32con.VK_CONTROL, win32con.KEYEVENTF_KEYUP, 0, 0),
             # Original Key Down and Up
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(vk_code, 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
-            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(vk_code, 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            (win32con.INPUT_KEYBOARD, vk_code, 0, 0, 0),
+            (win32con.INPUT_KEYBOARD, vk_code, win32con.KEYEVENTF_KEYUP, 0, 0),
             # Left Mouse Down and Up
-            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, 0),
-            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, 0),
+            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0),
+            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0),
         ]
 
         # Send all inputs in a single block for speed and reliability
