@@ -1064,11 +1064,22 @@ QCheckBox::indicator {{
         if name.startswith("mouse_"):
             pyautogui.click(button=original_key)
         elif quickcast:
-            # The quickcast macro from the AHK script
-            pyautogui.keyDown('ctrl'); pyautogui.press('9'); pyautogui.press('0'); pyautogui.keyUp('ctrl')
-            pyautogui.press(original_key)
-            pyautogui.click()
-            pyautogui.press('9'); pyautogui.press('0')
+            # Use the more reliable win32api for game input, similar to AHK's SendInput
+            # This macro is based on the AHK script's quickcast logic.
+            if win32api and win32con:
+                # Send Ctrl+9, Ctrl+0
+                win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+                time.sleep(0.01)
+                self._send_vk_key(ord('9'))
+                self._send_vk_key(ord('0'))
+                time.sleep(0.01)
+                win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+                time.sleep(0.02)
+                # Send original spell key, then left click
+                self._send_vk_key(pyautogui.KEY_NAMES[original_key])
+                time.sleep(0.02)
+                pyautogui.click()
+
         else:
             # Normal remap
             pyautogui.press(original_key)
@@ -1571,6 +1582,20 @@ QCheckBox::indicator {{
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
+
+    def _send_vk_key(self, vk_code):
+        """Sends a key press and release using a virtual-key code."""
+        if not win32api or not win32con:
+            return
+        win32api.keybd_event(vk_code, 0, 0, 0)
+        time.sleep(0.01)
+        win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def _send_vk_char(self, char: str):
+        """Sends a character key press and release."""
+        if not win32api or not win32con:
+            return
+        self._send_vk_key(ord(char.upper()))
 
     def play_specific_sound(self, sound_file: str):
         """Plays a specific sound file from the contents/sounds directory."""
