@@ -153,6 +153,7 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
+    send_message_signal = Signal(str)
     load_character_signal = Signal()
     deactivate_ahk_signal = Signal()
 
@@ -1540,7 +1541,7 @@ QCheckBox::indicator {{
 
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, message)
+            self.register_single_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg))
 
     def register_single_hotkey(self, hotkey: str, callback, suppress=False, key_id=None):
         """Helper to register a single message hotkey."""
