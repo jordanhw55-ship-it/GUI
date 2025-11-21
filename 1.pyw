@@ -1538,6 +1538,13 @@ QCheckBox::indicator {{
         except Exception as e:
             print(f"Failed to register F3 hotkey: {e}")
 
+        # Register global F2 for toggling AHK quickcast
+        try:
+            f2_id = keyboard.add_hotkey('f2', self.toggle_ahk_quickcast, suppress=True)
+            self.hotkey_ids['f2'] = f2_id
+        except Exception as e:
+            print(f"Failed to register F2 hotkey: {e}")
+
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
@@ -1564,7 +1571,7 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 return True
@@ -1581,7 +1588,7 @@ QCheckBox::indicator {{
             # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 
     def _find_ahk_path(self) -> str | None:
@@ -1675,7 +1682,7 @@ remapMouse(button) {
                 f.write(script_content)
             
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
