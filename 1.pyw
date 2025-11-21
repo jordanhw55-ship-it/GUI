@@ -1698,20 +1698,21 @@ QCheckBox::indicator {{
 
                 if inform_user:
                     QMessageBox.information(self, "Script Deactivated", 
-                                            "The AHK script has been deactivated. Python hotkeys are now active.")
+                                            "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
-        # Always try to deactivate first to ensure a clean state.
-        # If the script is running, this will stop it and return True.
-        if self.deactivate_ahk_script_if_running(inform_user=False):
+        # If the script is currently running, deactivate_ahk_script_if_running will stop it and return True.
+        # In this case, the user's intent was to deactivate, so we should simply return.
+        if self.deactivate_ahk_script_if_running(inform_user=True):
             # The script was running and has now been stopped.
             # The user clicked "Deactivate", so we are done.
-            pass
+            return
         else:
-            # The script was not running, so the user wants to activate it.
+            # If the script was not running, it means the user clicked "Activate".
+            # We proceed to generate and run the script.
             if self.generate_and_run_ahk_script():
                 self.unregister_keybind_hotkeys()
 
