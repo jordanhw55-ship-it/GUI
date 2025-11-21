@@ -1146,8 +1146,12 @@ QCheckBox::indicator {{
             if name.startswith("mouse_"):
                 print("[DEBUG] Executing as mouse click.")
                 pyautogui.click(button=original_key)
-            elif quickcast: # This logic is now handled by the external AHK script
-                print("[DEBUG] Quickcast key pressed, but it should be handled by AHK script. No action taken in Python.")
+            elif quickcast:
+                # If AHK script is not running, Python handles the quickcast.
+                if not self.ahk_process or self.ahk_process.poll() is not None:
+                    print("[DEBUG] Executing as PYTHON QUICKCAST.")
+                    vk_code = self.vk_map.get(original_key.lower())
+                    if vk_code: self._send_quickcast_macro(vk_code)
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
@@ -1814,6 +1818,44 @@ remapMouse(button) {
                     del self.hotkey_ids[name]
                 except (KeyError, ValueError):
                     print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
+
+    def _send_quickcast_macro(self, vk_code):
+        """Sends the complete quickcast sequence using the more reliable SendInput."""
+        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
+        if not win32api or not win32con:
+            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
+            return
+
+        # Use the pre-defined ctypes structures from __init__
+        Input = self.Input
+        KeyBdInput = self.KeyBdInput
+        MouseInput = self.MouseInput
+        Input_I = self.Input_I
+
+        def key_down(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
+
+        def key_up(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
+
+        def mouse_down():
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
+
+        def mouse_up():
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
+
+        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click
+        inputs = [
+            key_down(win32con.VK_CONTROL),
+            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
+            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
+            key_up(win32con.VK_CONTROL),
+            key_down(vk_code), key_up(vk_code), # Original spell/item key
+            mouse_down(), mouse_up(), # Left Click
+        ]
+
+        input_array = (self.Input * len(inputs))(*inputs)
+        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
