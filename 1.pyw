@@ -208,13 +208,16 @@ class SimpleWindow(QMainWindow):
             'f8': 0x77, 'f9': 0x78, 'f10': 0x79, 'f11': 0x7A, 'f12': 0x7B,
             'enter': 0x0D, 'esc': 0x1B, 'space': 0x20, 'tab': 0x09, 'backspace': 0x08,
             'left': 0x25, 'up': 0x26, 'right': 0x27, 'down': 0x28,
-            'ctrl': 0x11, 'alt': 0x12, 'shift': 0x10,
+            'ctrl': win32con.VK_CONTROL, 'alt': 0x12, 'shift': 0x10,
             'lbutton': 0x01, 'rbutton': 0x02,
             # Add other keys as needed
         } if win32con else {}
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
+        # This new implementation is a much more faithful recreation of AHK's SendInput.
+        
+        # Define structures for inputs
 
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
@@ -281,7 +284,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast(NYI)", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 

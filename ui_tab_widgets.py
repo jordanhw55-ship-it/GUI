@@ -149,7 +149,7 @@ class QuickcastTab(QWidget):
         self.setting_checkboxes['spells'] = QCheckBox("Remap Spells")
         self.setting_checkboxes['inventory'] = QCheckBox("Remap Inventory")
         self.setting_checkboxes['mouse'] = QCheckBox("Remap Mouse")
-        self.reset_keybinds_btn = QPushButton("Reset Keybinds")
+        self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
