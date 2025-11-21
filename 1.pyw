@@ -1056,6 +1056,7 @@ QCheckBox::indicator {{
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
+        self.deactivate_ahk_script_if_running()
         if self.is_capturing_hotkey:
             return
 
@@ -1066,6 +1067,7 @@ QCheckBox::indicator {{
 
     def on_keybind_setting_changed(self, setting_name: str):
         """Handles when a keybind setting checkbox is changed."""
+        self.deactivate_ahk_script_if_running()
         if "settings" not in self.keybinds:
             self.keybinds["settings"] = {}
         
@@ -1075,6 +1077,7 @@ QCheckBox::indicator {{
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
+        self.deactivate_ahk_script_if_running()
         # Read current state, defaulting to False if it doesn't exist.
         current_state = self.keybinds.get(name, {}).get("quickcast", False)
         new_state = not current_state
@@ -1668,6 +1671,21 @@ QCheckBox::indicator {{
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
+
+    def deactivate_ahk_script_if_running(self):
+        """Checks if the AHK script is running and deactivates it, informing the user."""
+        if self.ahk_process and self.ahk_process.poll() is None:
+            self.ahk_process.terminate()
+            self.ahk_process = None
+            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
+            print("[INFO] AHK Quickcast script deactivated due to configuration change.")
+            # Re-register Python hotkeys now that AHK is off
+            self.register_keybind_hotkeys()
+            QMessageBox.information(self, "Script Deactivated", 
+                                    "Keybind configuration was changed.\nThe AHK script has been deactivated. Please click 'Activate Quickcast' again to apply your new settings.")
+            return True
+        return False
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
