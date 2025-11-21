@@ -560,17 +560,6 @@ class SimpleWindow(QMainWindow):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
 
-    def eventFilter(self, obj, event):
-        """Catch right-clicks on keybind buttons."""
-        if event.type() == QMouseEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.RightButton:
-            for name, button in self.quickcast_tab.key_buttons.items():
-                if button is obj:
-                    if name.startswith("spell_") or name.startswith("inv_"):
-                        self.toggle_quickcast(name)
-                        return True # Event handled
-        return super().eventFilter(obj, event)
-
-
 
 
     # Preset themes
