@@ -286,7 +286,7 @@ class SimpleWindow(QMainWindow):
         self.stacked_widget.addWidget(self.items_tab)
 
         # Connect signals from the new ItemsTab
-        self.items_tab.search_box.textChanged.connect(self.filter_current_item_view)
+        self.items_tab.search_box.textChanged.connect(self.on_item_search_changed)
         for i, btn in self.items_tab.item_tab_buttons.items():
             btn.clicked.connect(lambda checked, idx=i: self.switch_items_sub_tab(idx))
 
@@ -948,6 +948,14 @@ QCheckBox::indicator {{
         self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
 
     # Items
+    def on_item_search_changed(self):
+        """Decides which view to filter based on the active sub-tab."""
+        # If the recipe tracker is visible (index 1), filter recipes.
+        if self.items_tab.main_stack.currentIndex() == 1:
+            self.filter_recipes_list()
+        else: # Otherwise, filter the currently visible item table.
+            self.filter_current_item_view()
+
     def filter_current_item_view(self):
         query = self.items_tab.search_box.text().lower() # type: ignore
         current_index = self.items_tab.item_tables_stack.currentIndex() # type: ignore
