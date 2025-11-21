@@ -195,6 +195,7 @@ class SimpleWindow(QMainWindow):
 
         # Keybind state
         self.capturing_for_control = None
+        self.is_executing_keybind = False # Flag to prevent hotkey recursion
         self.vk_map = {
             'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44, 'e': 0x45, 'f': 0x46, 'g': 0x47, 'h': 0x48,
             'i': 0x49, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 'm': 0x4D, 'n': 0x4E, 'o': 0x4F, 'p': 0x50,
