@@ -217,6 +217,16 @@ class QuickcastTab(QWidget):
         button.setCheckable(True) # To show "capture" state
         return button
 
+    def reset_ui_to_defaults(self):
+        """Resets all buttons and checkboxes in this tab to their default visual state."""
+        for name, button in self.key_buttons.items():
+            parts = name.split('_')
+            default_text = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
+            button.setText(default_text.upper())
+            button.setStyleSheet("") # Revert to default stylesheet color
+        for checkbox in self.setting_checkboxes.values():
+            checkbox.setChecked(True)
+
 class ItemsTab(QWidget):
     """A widget for the 'Items' tab, including sub-tabs for different item categories."""
     def __init__(self, parent_window):
