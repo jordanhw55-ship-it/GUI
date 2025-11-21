@@ -1044,11 +1044,13 @@ QCheckBox::indicator {{
         if name not in self.keybinds:
             self.keybinds[name] = {}
 
+        # Get the current state, default to False if not set
         current_qc = self.keybinds[name].get("quickcast", False)
-        self.keybinds[name]["quickcast"] = not current_qc
+        new_qc_state = not current_qc
+        self.keybinds[name]["quickcast"] = new_qc_state
 
         button = self.quickcast_tab.key_buttons[name]
-        self.update_keybind_style(button, not current_qc)
+        self.update_keybind_style(button, new_qc_state)
         self.register_keybind_hotkeys()
 
     def update_keybind_style(self, button: QPushButton, quickcast: bool):
