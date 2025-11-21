@@ -1614,38 +1614,42 @@ QCheckBox::indicator {{
         if not win32api or not win32con:
             return
 
-        # This new implementation is a much more faithful recreation of AHK's SendInput.
-        
         # Define structures for inputs
         PUL = ctypes.POINTER(ctypes.c_ulong)
         class KeyBdInput(ctypes.Structure):
-            _fields_ = [("wVk", ctypes.c_ushort), # Virtual-key code
+            _fields_ = [("wVk", ctypes.c_ushort),
                         ("wScan", ctypes.c_ushort),
                         ("dwFlags", ctypes.c_ulong),
                         ("time", ctypes.c_ulong),
                         ("dwExtraInfo", PUL)]
 
         class MouseInput(ctypes.Structure):
-            _fields_ = [("dx", ctypes.c_long),
-                        ("dy", ctypes.c_long), # Coordinates
+            _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
                         ("mouseData", ctypes.c_ulong),
                         ("dwFlags", ctypes.c_ulong),
                         ("time", ctypes.c_ulong),
                         ("dwExtraInfo", PUL)]
 
         class Input_I(ctypes.Union):
-            _fields_ = [("ki", KeyBdInput),
-                        ("mi", MouseInput)]
+            _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
 
         class Input(ctypes.Structure):
-            _fields_ = [("type", ctypes.c_ulong),
-                        ("ii", Input_I)]
+            _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
 
         def key_down(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0)))
+            return Input(win32con.INPUT_KEYBOARD,
+                         Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
 
         def key_up(vk):
-            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0)))
+            return Input(win32con.INPUT_KEYBOARD,
+                         Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
+
+        def mouse_down():
+            return Input(win32con.INPUT_MOUSE,
+                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
+        def mouse_up():
+            return Input(win32con.INPUT_MOUSE,
+                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
 
         # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click, 90
         inputs = [
@@ -1656,11 +1660,7 @@ QCheckBox::indicator {{
 
             key_down(vk_code), key_up(vk_code), # Original spell/item key
 
-            Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0))),
-            Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0))),
-
-            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
-            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
+            mouse_down(), mouse_up(), # Left Click
         ]
 
         # Send all inputs in a single block for speed and reliability
