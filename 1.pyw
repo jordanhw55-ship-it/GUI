@@ -1611,15 +1611,15 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
-                # Re-register Python hotkeys now that AHK is off
-                self.register_keybind_hotkeys()
+                # Re-register only the global Python hotkeys (F3, F5, etc.) now that AHK is off
+                self.register_global_hotkeys()
 
                 if inform_user:
                     QMessageBox.information(self, "Script Deactivated", 
-                                            "The AHK script has been deactivated. Python-based hotkeys are now active.")
+                                            "The AHK script has been deactivated. Remapping is now off.")
                 return True
         return False
 
