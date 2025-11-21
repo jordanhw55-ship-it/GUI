@@ -301,6 +301,7 @@ class SimpleWindow(QMainWindow):
         self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress) # type: ignore
         self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes) # type: ignore
         self.items_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed) # type: ignore
+        self.items_tab.materials_table.itemChanged.connect(self.on_material_checked) # type: ignore
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
