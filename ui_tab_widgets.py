@@ -133,10 +133,13 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        self.remap_spells_group = QGroupBox("Remap Spells")
+        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
+        self.original_spells_group = QGroupBox("Original")
+        self.new_spells_group = QGroupBox("New")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
+        self.setting_checkboxes['spells'] = QCheckBox("Remap Spells")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
@@ -150,28 +153,40 @@ class QuickcastTab(QWidget):
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        
-        # --- Main Remapping Panel (Left) ---
-        remap_panel = QWidget()
-        remap_layout = QVBoxLayout(remap_panel)
-        remap_layout.addWidget(self.remap_spells_group)
-        main_layout.addWidget(remap_panel, 2) # Give it more space
+        left_panel = QWidget()
+        right_panel = QWidget()
+        main_layout.addWidget(left_panel, 2)
+        main_layout.addWidget(right_panel, 1)
 
-        spells_grid = QGridLayout(self.remap_spells_group)
+        # --- Left Panel (Remapping) ---
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.addWidget(self.remap_spells_group)
+
+        spells_layout = QHBoxLayout(self.remap_spells_group)
+        spells_layout.addWidget(self.original_spells_group)
+        spells_layout.addWidget(self.new_spells_group)
+
+        original_grid = QGridLayout(self.original_spells_group)
+        new_grid = QGridLayout(self.new_spells_group)
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
             row, col = i // 4, i % 4
+            # Original key (just a label)
+            original_label = QLabel(key)
+            original_label.setFixedSize(60, 60)
+            original_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            original_label.setFrameShape(QFrame.Shape.Box)
+            original_grid.addWidget(original_label, row, col)
+            # New key (button)
             self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
-            spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+            new_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        # --- Settings Panel (Right) ---
-        settings_panel = QWidget()
-        settings_panel_layout = QVBoxLayout(settings_panel)
-        settings_panel_layout.addWidget(self.settings_group)
-        settings_panel_layout.addStretch()
-        settings_panel_layout.addWidget(self.install_ahk_group)
-        main_layout.addWidget(settings_panel, 1)
+        # --- Right Panel (Settings) ---
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.addWidget(self.settings_group)
+        right_layout.addStretch()
+        right_layout.addWidget(self.install_ahk_group)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
