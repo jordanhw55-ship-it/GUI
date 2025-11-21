@@ -620,8 +620,7 @@ QLineEdit, QTextEdit, QListWidget, QTableWidget {{
 QGroupBox {{
     border: 1px solid {accent};
     border-radius: 8px;
-    margin-top: 10px;
-}}
+    margin-top: 
 QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top center;

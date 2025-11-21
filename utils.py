@@ -44,7 +44,7 @@ DARK_STYLE = """
     QGroupBox {
         border: 1px solid #FF7F50; /* accent */
         border-radius: 8px;
-        margin-top: 10px;
+        margin-top: 20px; /* Increased for two-line title */
     }
     QGroupBox::title {
         subcontrol-origin: margin;
@@ -88,7 +88,7 @@ LIGHT_STYLE = """
     QGroupBox {
         border: 1px solid #DA3A9D;
         border-radius: 8px;
-        margin-top: 10px;
+        margin-top: 20px; /* Increased for two-line title */
     }
     QGroupBox::title {
         subcontrol-origin: margin;
@@ -128,7 +128,7 @@ FOREST_STYLE = """
     QGroupBox {
         border: 1px solid #4169E1;
         border-radius: 8px;
-        margin-top: 10px;
+        margin-top: 20px; /* Increased for two-line title */
     }
     QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
@@ -162,7 +162,7 @@ OCEAN_STYLE = """
     QGroupBox {
         border: 1px solid #87CEEB;
         border-radius: 8px;
-        margin-top: 10px;
+        margin-top: 20px; /* Increased for two-line title */
     }
     QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
