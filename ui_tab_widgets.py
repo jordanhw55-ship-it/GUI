@@ -125,38 +125,69 @@ class QuickcastTab(QWidget):
     """A widget for the 'Quickcast' tab, for setting up key quickcasts."""
     def __init__(self, parent):
         super().__init__(parent)
+        self.key_buttons = {}
+        self.setting_checkboxes = {}
 
         self._create_widgets()
         self._create_layouts()
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        # --- Spell Remapping ---
-        self.remap_group = QGroupBox("Quickcast Activation")
+        self.remap_spells_group = QGroupBox("Remap Spells")
 
         # --- Settings ---
-        self.ahk_install_group = QGroupBox("AutoHotkey Not Found?")
-
-        # New button to activate the AHK script
+        self.settings_group = QGroupBox("Settings")
+        self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
+        self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
+        
         self.activate_quickcast_btn = QPushButton("Activate Quickcast")
+
+        # --- AHK Installation ---
+        self.install_ahk_group = QGroupBox("Install AutoHotkey v2")
+        self.install_ahk_cmd_btn = QPushButton("Install via CMD")
+        self.install_ahk_web_btn = QPushButton("Install from Website")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        left_panel = QWidget()
-        main_layout.addWidget(left_panel)
+        
+        # --- Main Remapping Panel (Left) ---
+        remap_panel = QWidget()
+        remap_layout = QVBoxLayout(remap_panel)
+        remap_layout.addWidget(self.remap_spells_group)
+        main_layout.addWidget(remap_panel, 2) # Give it more space
 
-        # --- Left Panel ---
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(self.remap_group)
-        left_layout.addWidget(self.ahk_install_group)
-        left_layout.addStretch()
+        spells_grid = QGridLayout(self.remap_spells_group)
 
-        remap_layout = QVBoxLayout(self.remap_group)
-        remap_layout.addWidget(self.activate_quickcast_btn)
+        spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
+        for i, key in enumerate(spell_keys):
+            row, col = i // 4, i % 4
+            self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
+            spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        ahk_layout = QVBoxLayout(self.ahk_install_group)
-        ahk_layout.addWidget(QLabel("If the 'Activate' button doesn't work, you may need to install AutoHotkey."))
+        # --- Settings Panel (Right) ---
+        settings_panel = QWidget()
+        settings_panel_layout = QVBoxLayout(settings_panel)
+        settings_panel_layout.addWidget(self.settings_group)
+        settings_panel_layout.addStretch()
+        settings_panel_layout.addWidget(self.install_ahk_group)
+        main_layout.addWidget(settings_panel, 1)
+
+        settings_v_layout = QVBoxLayout(self.settings_group)
+        settings_v_layout.addWidget(self.activate_quickcast_btn)
+        settings_v_layout.addWidget(self.reset_keybinds_btn)
+
+        install_ahk_layout = QVBoxLayout(self.install_ahk_group)
+        install_ahk_layout.addWidget(self.install_ahk_cmd_btn)
+        install_ahk_layout.addWidget(self.install_ahk_web_btn)
+
+
+    def _create_key_button(self, default_text: str) -> QPushButton:
+        """Helper to create a standard key button."""
+        button = QPushButton(default_text)
+        button.setFixedSize(60, 60)
+        button.setCheckable(True) # To show "capture" state
+        return button
 
     def reset_ui_to_defaults(self):
         """Resets all buttons and checkboxes in this tab to their default visual state."""
