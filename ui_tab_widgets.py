@@ -134,12 +134,10 @@ class QuickcastTab(QWidget):
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
         # --- Spell Remapping ---
-        self.remap_spells_group = QGroupBox("Remap Spells")
-        self.original_spells_group = QGroupBox("Original")
-        self.new_spells_group = QGroupBox("New")
+        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
 
         # --- Inventory Remapping ---
-        self.remap_inventory_group = QGroupBox("Remap Inventory")
+        # self.remap_inventory_group = QGroupBox("Remap Inventory") # Merged with spells
 
         # --- Mouse Remapping ---
         self.remap_mouse_group = QGroupBox("Remap Mouse")
@@ -165,40 +163,35 @@ class QuickcastTab(QWidget):
 
         # --- Left Panel ---
         left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(self.remap_spells_group)
+        left_layout.addWidget(self.remap_spells_group) # This now contains spells and inventory
 
-        spells_layout = QHBoxLayout(self.remap_spells_group)
-        spells_layout.addWidget(self.original_spells_group)
-        spells_layout.addWidget(self.new_spells_group)
-
-        original_grid = QGridLayout(self.original_spells_group)
-        new_grid = QGridLayout(self.new_spells_group)
+        # A single grid for all remappable keys
+        remap_grid = QGridLayout(self.remap_spells_group)
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
             row, col = i // 4, i % 4
-            # Original key (just a label)
-            original_label = QLabel(key)
-            original_label.setFixedSize(60, 60)
-            original_label.setAlignment(Qt.AlignCenter)
-            original_label.setFrameShape(QFrame.Shape.Box)
-            original_grid.addWidget(original_label, row, col)
-            # New key (button)
+            # Create and add the remappable button
             self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
-            new_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+            remap_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+
+        # Add a separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shape.Sunken)
+        remap_grid.addWidget(separator, (len(spell_keys) // 4), 0, 1, 4)
+
+        # Add inventory buttons to the same grid
+        for i in range(6):
+            row, col = (len(spell_keys) // 4) + 1 + (i // 4), i % 4
+            self.key_buttons[f"inv_{i+1}"] = self._create_key_button(str(i + 1))
+            remap_grid.addWidget(self.key_buttons[f"inv_{i+1}"], row, col)
 
         # --- Right Panel ---
         right_layout = QVBoxLayout(right_panel)
-        right_layout.addWidget(self.remap_inventory_group)
         right_layout.addWidget(self.remap_mouse_group)
         right_layout.addWidget(self.settings_group)
         right_layout.addStretch()
-
-        inventory_grid = QGridLayout(self.remap_inventory_group)
-        for i in range(6):
-            row, col = i // 2, i % 2
-            self.key_buttons[f"inv_{i+1}"] = self._create_key_button(str(i + 1))
-            inventory_grid.addWidget(self.key_buttons[f"inv_{i+1}"], row, col)
 
         mouse_grid = QGridLayout(self.remap_mouse_group)
         mouse_grid.addWidget(QLabel("Left Click"), 0, 0)
