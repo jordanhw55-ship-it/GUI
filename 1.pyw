@@ -1645,12 +1645,12 @@ ProcessSetPriority("High")
 
 HotIfWinActive("{self.game_title}")
 
+"""
 ; This hotkey allows the user to press F2 to exit the script,
 ; allowing the Python GUI to take back control of the hotkey.
-F2:: {
+F2:: {{
     ExitApp()
-}
-"""
+}}"""
         # Add the functions that will be called by the hotkeys
         script_content += """
 remapSpellwQC(originalKey) {
