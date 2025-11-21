@@ -257,7 +257,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
@@ -292,6 +292,14 @@ class SimpleWindow(QMainWindow):
 
         # Set initial state for the items tab
         self.switch_items_sub_tab(0)
+
+        # Placeholder Tab
+        placeholder_tab = QWidget()
+        placeholder_layout = QVBoxLayout(placeholder_tab)
+        placeholder_label = QLabel("This is a placeholder tab.")
+        placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        placeholder_layout.addWidget(placeholder_label)
+        self.stacked_widget.addWidget(placeholder_tab)
 
         # Recipes tab
         self.in_progress_recipes = {}
@@ -1288,6 +1296,8 @@ QCheckBox::indicator {{
         tab_name = self.tab_names[index]
         if tab_name == "Items" and not self.item_database.all_items_data:
             self.switch_items_sub_tab(0) # Lazy load
+        elif tab_name == "Placeholder":
+            pass # Nothing to do for the placeholder tab
         elif tab_name == "Lobbies" and not self.lobbies_tab.lobbies_table.rowCount():
             self.refresh_lobbies() # Refresh when tab is first viewed
         elif tab_name == "Automation":
