@@ -178,7 +178,7 @@ class QuickcastTab(QWidget):
         # Add a separator
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shape.Sunken)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
         remap_grid.addWidget(separator, (len(spell_keys) // 4), 0, 1, 4)
 
         # Add inventory buttons to the same grid
