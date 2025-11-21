@@ -26,6 +26,10 @@ DARK_STYLE = """
         background-color: #121212; /* bg */
         color: #FF7F50; /* accent */
     }
+    QPushButton[quickcast="true"] {
+        background-color: #32CD32; /* LimeGreen */
+        color: white;
+    }
     QHeaderView::section {
         background-color: #1F1F1F;
         padding: 4px;
@@ -68,6 +72,10 @@ LIGHT_STYLE = """
         background-color: #FFFFFF; /* bg */
         color: #DA3A9D;
     }
+    QPushButton[quickcast="true"] {
+        background-color: #32CD32; /* LimeGreen */
+        color: white;
+    }
     QHeaderView::section {
         background-color: #FFC0CB; /* accent */
         border: 1px solid #DA3A9D;
@@ -107,6 +115,10 @@ FOREST_STYLE = """
         background-color: #121212; /* bg */
         color: #1E90FF; /* accent */
     }
+    QPushButton[quickcast="true"] {
+        background-color: #32CD32; /* LimeGreen */
+        color: white;
+    }
     QHeaderView::section { background-color: #1F1F1F; border: 1px solid #4169E1; }
     QLineEdit, QTextEdit, QTableWidget, QListWidget {
         background-color: #1F1F1F;
@@ -137,6 +149,10 @@ OCEAN_STYLE = """
     QPushButton:hover {
         background-color: #F0F8FF; /* bg */
         color: #000080;
+    }
+    QPushButton[quickcast="true"] {
+        background-color: #32CD32; /* LimeGreen */
+        color: white;
     }
     QHeaderView::section { background-color: #ADD8E6; border: 1px solid #87CEEB; }
     QLineEdit, QTextEdit, QTableWidget, QListWidget {

@@ -1016,7 +1016,10 @@ QCheckBox::indicator {{
             quickcast = key_info.get("quickcast", False)
 
             button.setText(hotkey.upper())
-            self.update_keybind_style(button, quickcast)
+            button.setProperty("quickcast", quickcast)
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.update()
 
         self.register_keybind_hotkeys()
 
@@ -1053,17 +1056,14 @@ QCheckBox::indicator {{
         # Update the button's style so the user sees the change.
         button = self.quickcast_tab.key_buttons[name]
         self.update_keybind_style(button, new_state)
+        button.setProperty("quickcast", new_state)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        button.update()
 
         # Re-register the hotkeys to apply the new behavior immediately.
         self.register_keybind_hotkeys()
         print(f"[DEBUG] {name} quickcast toggled to {new_state}")
-
-    def update_keybind_style(self, button: QPushButton, quickcast: bool):
-        """Updates the font color of a button based on quickcast state."""
-        if quickcast:
-            button.setStyleSheet("color: green;")
-        else:
-            button.setStyleSheet("") # Revert to default stylesheet color
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
