@@ -1735,12 +1735,19 @@ remapMouse(button) {
 }
 """
 
+        # Keep track of hotkeys already defined to prevent duplicates
+        defined_hotkeys = set()
+
         # Generate the hotkeys from Python's self.keybinds
         for name, key_info in self.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
 
-            category = name.split("_")[0]
+            if hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping to prevent AHK error.")
+                continue
+
+            category = name.split("_")[0] # "spell", "inv", "mouse"
             if category == "inv": category = "inventory"
             is_enabled = self.keybinds.get("settings", {}).get(category, True)
             if not is_enabled: continue
@@ -1760,6 +1767,7 @@ remapMouse(button) {
             
             # Add the '$' prefix to prevent the hotkey from triggering itself
             script_content += f"\n${hotkey}:: {function_call}"
+            defined_hotkeys.add(hotkey)
 
         # --- Write and Run the Script ---
         script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
