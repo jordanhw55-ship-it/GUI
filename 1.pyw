@@ -1640,19 +1640,16 @@ QCheckBox::indicator {{
 
         # --- AHK Script Generation ---
         script_content = f"""#Requires AutoHotkey v2.0
-#SingleInstance Force
-ProcessSetPriority("High")
+    #SingleInstance Force
+    ProcessSetPriority("High")
 
-HotIfWinActive("{self.game_title}")
+    HotIfWinActive("{self.game_title}")
 
-"""
-; This hotkey allows the user to press F2 to exit the script,
-; allowing the Python GUI to take back control of the hotkey.
-F2:: {{
-    ExitApp()
-}}"""
-        # Add the functions that will be called by the hotkeys
-        script_content += """
+    ; This hotkey allows the user to press F2 to exit the script,
+    ; allowing the Python GUI to take back control of the hotkey.
+    F2:: {{
+        ExitApp()
+    }}
 remapSpellwQC(originalKey) {
     SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
     SendInput("{" originalKey "}")
