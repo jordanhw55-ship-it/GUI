@@ -1124,8 +1124,8 @@ QCheckBox::indicator {{
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
                 pyautogui.press(original_key)
         finally:
-            # Always reset the flag, even if an error occurs.
-            self.is_executing_keybind = False
+            # CRITICAL: Always unblock the key, even if an error occurs.
+            keyboard.unblock_key(hotkey_name)
 
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
