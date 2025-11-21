@@ -1041,17 +1041,22 @@ QCheckBox::indicator {{
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
+        # Read current state, defaulting to False if it doesn't exist.
+        current_state = self.keybinds.get(name, {}).get("quickcast", False)
+        new_state = not current_state
+
+        # Save the new state to our data model.
         if name not in self.keybinds:
             self.keybinds[name] = {}
+        self.keybinds[name]["quickcast"] = new_state
 
-        # Get the current state, default to False if not set
-        current_qc = self.keybinds[name].get("quickcast", False)
-        new_qc_state = not current_qc
-        self.keybinds[name]["quickcast"] = new_qc_state
-
+        # Update the button's style so the user sees the change.
         button = self.quickcast_tab.key_buttons[name]
-        self.update_keybind_style(button, new_qc_state)
+        self.update_keybind_style(button, new_state)
+
+        # Re-register the hotkeys to apply the new behavior immediately.
         self.register_keybind_hotkeys()
+        print(f"[DEBUG] {name} quickcast toggled to {new_state}")
 
     def update_keybind_style(self, button: QPushButton, quickcast: bool):
         """Updates the font color of a button based on quickcast state."""
