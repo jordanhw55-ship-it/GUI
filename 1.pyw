@@ -189,6 +189,10 @@ class SimpleWindow(QMainWindow):
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
         self.volume = self.settings_manager.get("volume", 100)
         self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
+        self.keybinds = self.settings_manager.get("keybinds", {})
+
+        # Keybind state
+        self.capturing_for_control = None
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
@@ -338,6 +342,13 @@ class SimpleWindow(QMainWindow):
         self.quickcast_tab = QuickcastTab(self)
         self.stacked_widget.addWidget(self.quickcast_tab)
 
+        # Connect signals for the new QuickcastTab
+        for name, button in self.quickcast_tab.key_buttons.items():
+            button.clicked.connect(lambda checked, b=button, n=name: self.on_keybind_button_clicked(b, n))
+            button.installEventFilter(self) # For right-click
+        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
+            checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
+
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
         self.stacked_widget.addWidget(self.lobbies_tab)
@@ -437,6 +448,9 @@ class SimpleWindow(QMainWindow):
         # Set initial selected ping sound
         self.update_ping_button_styles()
 
+        # Apply loaded keybinds
+        self.apply_keybind_settings()
+
 
         # Apply preset or custom theme depending on the flag
         self.custom_tab_bar._on_button_clicked(self.last_tab_index)
@@ -521,6 +535,19 @@ class SimpleWindow(QMainWindow):
             self.old_pos = event.globalPosition().toPoint()
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
+
+    def eventFilter(self, obj, event):
+        """Catch right-clicks on keybind buttons."""
+        if event.type() == QMouseEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.RightButton:
+            for name, button in self.quickcast_tab.key_buttons.items():
+                if button is obj:
+                    if name.startswith("spell_") or name.startswith("inv_"):
+                        self.toggle_quickcast(name)
+                        return True # Event handled
+        return super().eventFilter(obj, event)
+
+
+
 
     # Preset themes
     def apply_theme(self, theme_index: int):
@@ -760,6 +787,19 @@ QCheckBox::indicator {{
         # The keyboard library's internal state is now clean.
         keyboard.unhook_all()
         self.register_global_hotkeys()
+        self.register_keybind_hotkeys() # Also re-register keybinds
+
+        # If we were capturing for a keybind button, update it
+        if self.capturing_for_control:
+            button = self.quickcast_tab.key_buttons[self.capturing_for_control]
+            button.setChecked(False) # Uncheck to remove capture highlight
+            if is_valid:
+                button.setText(hotkey.upper())
+                if self.capturing_for_control not in self.keybinds:
+                    self.keybinds[self.capturing_for_control] = {}
+                self.keybinds[self.capturing_for_control]["hotkey"] = hotkey
+            else: # Capture was cancelled
+                button.setText(self.keybinds.get(self.capturing_for_control, {}).get("hotkey", "SET").upper())
 
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
@@ -768,6 +808,7 @@ QCheckBox::indicator {{
         """Clears references to the hotkey capture thread and worker."""
         self.capture_thread = None
         self.capture_worker = None
+        self.capturing_for_control = None # Clear the control reference
 
     def setup_chat_worker(self):
         """Creates and configures the persistent worker for sending chat messages."""
@@ -895,6 +936,7 @@ QCheckBox::indicator {{
         self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
         self.selected_sound = self.settings_manager.get("selected_sound")
         self.volume = self.settings_manager.get("volume", 100)
+        self.keybinds = self.settings_manager.get("keybinds", {})
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -926,6 +968,122 @@ QCheckBox::indicator {{
                 "message": self.automation_tab.custom_action_edit2.text()
             }
         }
+
+    # Keybinds / Quickcast
+    def apply_keybind_settings(self):
+        """Applies loaded keybind settings to the UI and registers hotkeys."""
+        # Set checkbox states
+        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
+            is_enabled = self.keybinds.get("settings", {}).get(name, True)
+            checkbox.setChecked(is_enabled)
+
+        # Set button text and styles
+        for name, button in self.quickcast_tab.key_buttons.items():
+            key_info = self.keybinds.get(name, {})
+            hotkey = key_info.get("hotkey", button.text())
+            quickcast = key_info.get("quickcast", False)
+
+            button.setText(hotkey.upper())
+            self.update_keybind_style(button, quickcast)
+
+        self.register_keybind_hotkeys()
+
+    def on_keybind_button_clicked(self, button: QPushButton, name: str):
+        """Handles left-click on a keybind button to start capture."""
+        if self.is_capturing_hotkey:
+            return
+
+        self.capturing_for_control = name
+        button.setText("...")
+        button.setChecked(True) # Use checked state to indicate capture
+        self.capture_message_hotkey() # Reuse the hotkey capture logic
+
+    def on_keybind_setting_changed(self, setting_name: str):
+        """Handles when a keybind setting checkbox is changed."""
+        if "settings" not in self.keybinds:
+            self.keybinds["settings"] = {}
+        
+        is_enabled = self.quickcast_tab.setting_checkboxes[setting_name].isChecked()
+        self.keybinds["settings"][setting_name] = is_enabled
+        self.register_keybind_hotkeys()
+
+    def toggle_quickcast(self, name: str):
+        """Toggles quickcast for a given keybind."""
+        if name not in self.keybinds:
+            self.keybinds[name] = {}
+
+        current_qc = self.keybinds[name].get("quickcast", False)
+        self.keybinds[name]["quickcast"] = not current_qc
+
+        button = self.quickcast_tab.key_buttons[name]
+        self.update_keybind_style(button, not current_qc)
+        self.register_keybind_hotkeys()
+
+    def update_keybind_style(self, button: QPushButton, quickcast: bool):
+        """Updates the font color of a button based on quickcast state."""
+        if quickcast:
+            button.setStyleSheet("color: green;")
+        else:
+            button.setStyleSheet("") # Revert to default stylesheet color
+
+    def execute_keybind(self, name: str):
+        """Executes the action for a triggered keybind hotkey."""
+        key_info = self.keybinds.get(name, {})
+        if not key_info: return
+
+        # Check if the corresponding setting is enabled
+        category = name.split("_")[0] # "spell", "inv", "mouse"
+        if category == "inv": category = "inventory"
+        
+        is_enabled = self.keybinds.get("settings", {}).get(category, True)
+        if not is_enabled:
+            return
+
+        # Find game window
+        hwnd = win32gui.FindWindow(None, self.game_title) if win32gui else 0
+        if hwnd == 0 or win32gui.GetForegroundWindow() != hwnd:
+            return # Only run if game is active
+
+        quickcast = key_info.get("quickcast", False)
+        
+        # Determine original key
+        original_key = ""
+        if name.startswith("spell_"):
+            original_key = name.split("_")[1].lower()
+        elif name.startswith("inv_"):
+            # Map 1-6 to Numpad 7,8,4,5,1,2
+            inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+            inv_index = int(name.split("_")[1]) - 1
+            original_key = inv_map[inv_index]
+        elif name.startswith("mouse_"):
+            original_key = name.split("_")[1].lower()
+
+        if not original_key: return
+
+        if name.startswith("mouse_"):
+            pyautogui.click(button=original_key)
+        elif quickcast:
+            # The quickcast macro from the AHK script
+            pyautogui.keyDown('ctrl'); pyautogui.press('9'); pyautogui.press('0'); pyautogui.keyUp('ctrl')
+            pyautogui.press(original_key)
+            pyautogui.click()
+            pyautogui.press('9'); pyautogui.press('0')
+        else:
+            # Normal remap
+            pyautogui.press(original_key)
+
+    def get_keybind_settings_from_ui(self):
+        """Gathers keybind settings from the UI controls for saving."""
+        # This is now handled by directly modifying self.keybinds,
+        # so this function just returns the current state.
+        # We ensure the hotkey text is up-to-date.
+        for name, button in self.quickcast_tab.key_buttons.items():
+            if name not in self.keybinds:
+                self.keybinds[name] = {}
+            self.keybinds[name]["hotkey"] = button.text().lower()
+
+        return self.keybinds
+
 
     def apply_saved_recipes(self):
         """Loads and populates the in-progress recipes from settings."""
@@ -1350,6 +1508,7 @@ QCheckBox::indicator {{
         self.automation_manager.reset_settings(confirm)
 
     def register_global_hotkeys(self):
+        # This function will now only handle app-level hotkeys (F3, F5, F6) and message hotkeys.
         """Registers all hotkeys, including global controls and custom messages."""
         keyboard.unhook_all()
         self.hotkey_ids.clear()
@@ -1379,6 +1538,17 @@ QCheckBox::indicator {{
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
 
+    def register_keybind_hotkeys(self):
+        """Registers all hotkeys defined in the Quickcast tab."""
+        # Unhook only the keybind hotkeys, leaving global ones intact
+        for name in self.keybinds:
+            if name in self.hotkey_ids:
+                keyboard.remove_hotkey(self.hotkey_ids.pop(name))
+
+        for name, key_info in self.keybinds.items():
+            if "hotkey" in key_info and key_info["hotkey"]:
+                self.register_single_keybind(name, key_info["hotkey"])
+
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
@@ -1386,6 +1556,14 @@ QCheckBox::indicator {{
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
+
+    def register_single_keybind(self, name: str, hotkey: str):
+        """Helper to register a single keybind hotkey."""
+        try:
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name: self.execute_keybind(n), suppress=True)
+            self.hotkey_ids[name] = hk_id
+        except (ValueError, ImportError, KeyError) as e:
+            print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
     def play_specific_sound(self, sound_file: str):
         """Plays a specific sound file from the contents/sounds directory."""

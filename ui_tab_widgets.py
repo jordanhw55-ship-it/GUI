@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
-    QListWidget, QTextEdit, QTableWidget, QHeaderView, QGroupBox,
+    QListWidget, QTextEdit, QTableWidget, QHeaderView, QGroupBox, QFrame,
     QGridLayout, QCheckBox, QLabel, QStackedWidget, QSlider
 )
 from PySide6.QtCore import Qt
@@ -123,50 +123,96 @@ class AutomationTab(QWidget):
 
 class QuickcastTab(QWidget):
     """A widget for the 'Quickcast' tab, for setting up key quickcasts."""
-    def __init__(self, parent_window):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.key_buttons = {}
+        self.setting_checkboxes = {}
+
+        self._create_widgets()
         self._create_layouts()
+
+    def _create_widgets(self):
+        """Creates all the widgets for the tab."""
+        # --- Spell Remapping ---
+        self.remap_spells_group = QGroupBox("Remap Spells")
+        self.original_spells_group = QGroupBox("Original")
+        self.new_spells_group = QGroupBox("New")
+
+        # --- Inventory Remapping ---
+        self.remap_inventory_group = QGroupBox("Remap Inventory")
+
+        # --- Mouse Remapping ---
+        self.remap_mouse_group = QGroupBox("Remap Mouse")
+
+        # --- Settings ---
+        self.settings_group = QGroupBox("Settings")
+        self.setting_checkboxes['spells'] = QCheckBox("Remap Spells")
+        self.setting_checkboxes['inventory'] = QCheckBox("Remap Inventory")
+        self.setting_checkboxes['mouse'] = QCheckBox("Remap Mouse")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
-        quickcast_layout = QVBoxLayout(self)
-        
-        # --- Main Keys Grid ---
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(15) # Add some space between controls
+        main_layout = QHBoxLayout(self)
+        left_panel = QWidget()
+        right_panel = QWidget()
+        main_layout.addWidget(left_panel, 2)
+        main_layout.addWidget(right_panel, 1)
 
-        keys = ['Q', 'W', 'E', 'R', 'D', 'F', 'T', 'A']
-        
-        row, col = 0, 0
-        for key in keys:
-            key_layout = QHBoxLayout()
-            button = QPushButton(key)
-            button.setFixedSize(40, 40)
-            checkbox = QCheckBox()
-            checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }")
-            key_layout.addWidget(button)
-            key_layout.addWidget(checkbox)
-            grid_layout.addLayout(key_layout, row, col)
-            col += 1
-            if col >= 4: col, row = 0, row + 1
-        quickcast_layout.addLayout(grid_layout)
-        grid_layout.setRowStretch(row + 1, 1) # Add space before numpad keys
+        # --- Left Panel ---
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.addWidget(self.remap_spells_group)
 
-        # Keys arranged in columns for the new layout
-        numpad_keys_col1 = ['7', '4', '1']
-        numpad_keys_col2 = ['8', '5', '2']
+        spells_layout = QHBoxLayout(self.remap_spells_group)
+        spells_layout.addWidget(self.original_spells_group)
+        spells_layout.addWidget(self.new_spells_group)
 
-        for i, key in enumerate(numpad_keys_col1):
-            key_layout = QHBoxLayout(); button = QPushButton(key); button.setFixedSize(40, 40)
-            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }"); key_layout.addWidget(button); key_layout.addWidget(checkbox)
-            grid_layout.addLayout(key_layout, i + row + 2, 0) # Add to column 0, below main keys
+        original_grid = QGridLayout(self.original_spells_group)
+        new_grid = QGridLayout(self.new_spells_group)
 
-        for i, key in enumerate(numpad_keys_col2):
-            key_layout = QHBoxLayout(); button = QPushButton(key); button.setFixedSize(40, 40)
-            checkbox = QCheckBox(); checkbox.setStyleSheet("QCheckBox::indicator { width: 30px; height: 30px; }"); key_layout.addWidget(button); key_layout.addWidget(checkbox)
-            grid_layout.addLayout(key_layout, i + row + 2, 1) # Add to column 1, below main keys
+        spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
+        for i, key in enumerate(spell_keys):
+            row, col = i // 4, i % 4
+            # Original key (just a label)
+            original_label = QLabel(key)
+            original_label.setFixedSize(60, 60)
+            original_label.setAlignment(Qt.AlignCenter)
+            original_label.setFrameShape(QFrame.Shape.Box)
+            original_grid.addWidget(original_label, row, col)
+            # New key (button)
+            self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
+            new_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        grid_layout.setRowStretch(i + row + 3, 10) # Add stretch to push everything up
+        # --- Right Panel ---
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.addWidget(self.remap_inventory_group)
+        right_layout.addWidget(self.remap_mouse_group)
+        right_layout.addWidget(self.settings_group)
+        right_layout.addStretch()
+
+        inventory_grid = QGridLayout(self.remap_inventory_group)
+        for i in range(6):
+            row, col = i // 2, i % 2
+            self.key_buttons[f"inv_{i+1}"] = self._create_key_button(str(i + 1))
+            inventory_grid.addWidget(self.key_buttons[f"inv_{i+1}"], row, col)
+
+        mouse_grid = QGridLayout(self.remap_mouse_group)
+        mouse_grid.addWidget(QLabel("Left Click"), 0, 0)
+        mouse_grid.addWidget(QLabel("Right Click"), 0, 1)
+        self.key_buttons["mouse_Left"] = self._create_key_button("LButton")
+        self.key_buttons["mouse_Right"] = self._create_key_button("RButton")
+        mouse_grid.addWidget(self.key_buttons["mouse_Left"], 1, 0)
+        mouse_grid.addWidget(self.key_buttons["mouse_Right"], 1, 1)
+
+        settings_v_layout = QVBoxLayout(self.settings_group)
+        for checkbox in self.setting_checkboxes.values():
+            settings_v_layout.addWidget(checkbox)
+
+    def _create_key_button(self, default_text: str) -> QPushButton:
+        """Helper to create a standard key button."""
+        button = QPushButton(default_text)
+        button.setFixedSize(60, 60)
+        button.setCheckable(True) # To show "capture" state
+        return button
 
 class ItemsTab(QWidget):
     """A widget for the 'Items' tab, including sub-tabs for different item categories."""
