@@ -151,8 +151,9 @@ class QuickcastTab(QWidget):
         self.setting_checkboxes['mouse'] = QCheckBox("Remap Mouse")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
+        
+        # New button to activate the AHK script
         self.activate_quickcast_btn = QPushButton("Activate Quickcast")
-        self.activate_quickcast_btn.setObjectName("ActivateQuickcastButton")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""

@@ -244,6 +244,8 @@ class SimpleWindow(QMainWindow):
             self.KeyBdInput = KeyBdInput
             self.MouseInput = MouseInput
             self.Input_I = Input_I
+        # This new implementation is a much more faithful recreation of AHK's SendInput.
+        
         # Define structures for inputs
 
         # Initialize the floating status overlay
@@ -1099,6 +1101,7 @@ QCheckBox::indicator {{
         if self.is_executing_keybind:
             return
 
+        
         try:
             self.is_executing_keybind = True
             print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
@@ -1107,6 +1110,7 @@ QCheckBox::indicator {{
             print(f"[DEBUG] Found key_info: {key_info}")
             if not key_info: return
             
+
             # Check if the corresponding setting is enabled
             category = name.split("_")[0] # "spell", "inv", "mouse"
             if category == "inv": category = "inventory"
@@ -1723,10 +1727,33 @@ ProcessSetPriority("High")
         KeyBdInput = self.KeyBdInput
         MouseInput = self.MouseInput
         Input_I = self.Input_I
+        # Define structures for inputs
+        PUL = ctypes.POINTER(ctypes.c_ulong)
+        class KeyBdInput(ctypes.Structure):
+            _fields_ = [("wVk", ctypes.c_ushort),
+                        ("wScan", ctypes.c_ushort),
+                        ("dwFlags", ctypes.c_ulong),
+                        ("time", ctypes.c_ulong),
+                        ("dwExtraInfo", PUL)]
 
 HotIfWinActive("{self.game_title}")
+        class MouseInput(ctypes.Structure):
+            _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
+                        ("mouseData", ctypes.c_ulong),
+                        ("dwFlags", ctypes.c_ulong),
+                        ("time", ctypes.c_ulong),
+                        ("dwExtraInfo", PUL)]
+
+        class Input_I(ctypes.Union):
+            _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
+
+        class Input(ctypes.Structure):
+            _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
+
         def key_down(vk):
             return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
+            return Input(win32con.INPUT_KEYBOARD,
+                         Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
 
 """
         # Add the functions that will be called by the hotkeys
@@ -1739,6 +1766,8 @@ remapSpellwQC(originalKey) {
 }
         def key_up(vk):
             return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
+            return Input(win32con.INPUT_KEYBOARD,
+                         Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
 
 remapSpellwoQC(originalKey) {
     SendInput("{" originalKey "}")
@@ -1750,8 +1779,12 @@ remapMouse(button) {
     MouseClick(button)
 }
 """
+            return Input(win32con.INPUT_MOUSE,
+                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
         def mouse_up():
             return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
+            return Input(win32con.INPUT_MOUSE,
+                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
 
         # Generate the hotkeys from Python's self.keybinds
         for name, key_info in self.keybinds.items():
@@ -1783,6 +1816,8 @@ remapMouse(button) {
         # Send all inputs in a single block for speed and reliability
         input_array = (self.Input * len(inputs))(*inputs)
         ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
+        input_array = (Input * len(inputs))(*inputs)
+        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
 
             quickcast = key_info.get("quickcast", False)
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
@@ -1841,8 +1876,12 @@ remapMouse(button) {
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation() # This was already here
+        self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
+        # Ensure the AHK process is terminated on exit
+        if self.ahk_process and self.ahk_process.poll() is None:
+            self.ahk_process.terminate()
         event.accept()
 
 
