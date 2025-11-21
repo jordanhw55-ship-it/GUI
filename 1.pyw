@@ -1564,7 +1564,7 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 if inform_user:
@@ -1584,7 +1584,7 @@ QCheckBox::indicator {{
             # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 
     def _find_ahk_path(self) -> str | None:
@@ -1678,7 +1678,7 @@ remapMouse(button) {
                 f.write(script_content)
             
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
