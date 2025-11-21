@@ -25,7 +25,6 @@ from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
-import time
 import ctypes
 
 try:
@@ -198,8 +197,6 @@ class SimpleWindow(QMainWindow):
         # Keybind state
         self.capturing_for_control = None
         self.is_executing_keybind = False # Flag to prevent hotkey recursion
-        self.vk_map = {
-        } if win32con else {}
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
