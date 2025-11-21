@@ -25,6 +25,7 @@ from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
 import time
+import ctypes
 
 try:
     import win32gui # type: ignore
@@ -1595,29 +1596,58 @@ QCheckBox::indicator {{
         if not win32api or not win32con:
             return
 
-        # This sequence mimics the AHK script: {Ctrl Down}90{Ctrl Up}, {originalKey}, {Click}
-        # It uses virtual-key codes, which are more reliable for games.
+        # This new implementation is a much more faithful recreation of AHK's SendInput.
+        
+        # Define structures for inputs
+        PUL = ctypes.POINTER(ctypes.c_ulong)
+        class KeyBdInput(ctypes.Structure):
+            _fields_ = [("wVk", ctypes.c_ushort), # Virtual-key code
+                        ("wScan", ctypes.c_ushort),
+                        ("dwFlags", ctypes.c_ulong),
+                        ("time", ctypes.c_ulong),
+                        ("dwExtraInfo", PUL)]
+
+        class MouseInput(ctypes.Structure):
+            _fields_ = [("dx", ctypes.c_long),
+                        ("dy", ctypes.c_long), # Coordinates
+                        ("mouseData", ctypes.c_ulong),
+                        ("dwFlags", ctypes.c_ulong),
+                        ("time", ctypes.c_ulong),
+                        ("dwExtraInfo", PUL)]
+
+        class Input_I(ctypes.Union):
+            _fields_ = [("ki", KeyBdInput),
+                        ("mi", MouseInput)]
+
+        class Input(ctypes.Structure):
+            _fields_ = [("type", ctypes.c_ulong),
+                        ("ii", Input_I)]
+
+        def key_down(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0)))
+
+        def key_up(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0)))
+
+        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click, 90
         inputs = [
-            # Ctrl Down
-            (win32con.INPUT_KEYBOARD, win32con.VK_CONTROL, 0, 0, 0),
-            # 9 Down and Up
-            (win32con.INPUT_KEYBOARD, self.vk_map['9'], 0, 0, 0),
-            (win32con.INPUT_KEYBOARD, self.vk_map['9'], win32con.KEYEVENTF_KEYUP, 0, 0),
-            # 0 Down and Up
-            (win32con.INPUT_KEYBOARD, self.vk_map['0'], 0, 0, 0),
-            (win32con.INPUT_KEYBOARD, self.vk_map['0'], win32con.KEYEVENTF_KEYUP, 0, 0),
-            # Ctrl Up
-            (win32con.INPUT_KEYBOARD, win32con.VK_CONTROL, win32con.KEYEVENTF_KEYUP, 0, 0),
-            # Original Key Down and Up
-            (win32con.INPUT_KEYBOARD, vk_code, 0, 0, 0),
-            (win32con.INPUT_KEYBOARD, vk_code, win32con.KEYEVENTF_KEYUP, 0, 0),
-            # Left Mouse Down and Up
-            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0),
-            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0),
+            key_down(win32con.VK_CONTROL),
+            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
+            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
+            key_up(win32con.VK_CONTROL),
+
+            key_down(vk_code), key_up(vk_code), # Original spell/item key
+
+            Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0))),
+            Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0))),
+
+            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
+            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
         ]
 
         # Send all inputs in a single block for speed and reliability
-        win32api.SendInput(inputs)
+        input_array = (Input * len(inputs))(*inputs)
+        win32api.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
