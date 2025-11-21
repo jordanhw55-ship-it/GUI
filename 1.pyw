@@ -974,14 +974,14 @@ QCheckBox::indicator {{
 
         if is_recipe_tab:
             self.items_tab.main_stack.setCurrentIndex(1) # type: ignore
-            self.items_tab.search_box.setPlaceholderText("Search Recipes...") # type: ignore
+            self.items_tab.search_box.setPlaceholderText("Search...") # type: ignore
             if not self.item_database.recipes_data:
                 self.item_database.load_recipes()
             self.filter_recipes_list()
             self._rebuild_materials_table()
         else:
             self.items_tab.main_stack.setCurrentIndex(0) # type: ignore
-            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore # type: ignore
+            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore
             self.items_tab.search_box.show() # type: ignore
 
             if index == 0 and not self.item_database.all_items_data:
