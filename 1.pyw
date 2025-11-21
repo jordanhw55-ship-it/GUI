@@ -216,8 +216,32 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
-        # This new implementation is a much more faithful recreation of AHK's SendInput.
-        
+
+        # --- Ctypes definitions for SendInput ---
+        # Define these once at startup to avoid redefining them on every keypress,
+        # which is a minor performance optimization for the quickcast macro.
+        if win32con:
+            PUL = ctypes.POINTER(ctypes.c_ulong)
+            class KeyBdInput(ctypes.Structure):
+                _fields_ = [("wVk", ctypes.c_ushort), ("wScan", ctypes.c_ushort),
+                            ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong),
+                            ("dwExtraInfo", PUL)]
+
+            class MouseInput(ctypes.Structure):
+                _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
+                            ("mouseData", ctypes.c_ulong), ("dwFlags", ctypes.c_ulong),
+                            ("time", ctypes.c_ulong), ("dwExtraInfo", PUL)]
+
+            class Input_I(ctypes.Union):
+                _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
+
+            class Input(ctypes.Structure):
+                _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
+
+            self.Input = Input
+            self.KeyBdInput = KeyBdInput
+            self.MouseInput = MouseInput
+            self.Input_I = Input_I
         # Define structures for inputs
 
         # Initialize the floating status overlay
@@ -1649,42 +1673,23 @@ QCheckBox::indicator {{
             print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
             return
 
-        # Define structures for inputs
-        PUL = ctypes.POINTER(ctypes.c_ulong)
-        class KeyBdInput(ctypes.Structure):
-            _fields_ = [("wVk", ctypes.c_ushort),
-                        ("wScan", ctypes.c_ushort),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
-
-        class MouseInput(ctypes.Structure):
-            _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
-                        ("mouseData", ctypes.c_ulong),
-                        ("dwFlags", ctypes.c_ulong),
-                        ("time", ctypes.c_ulong),
-                        ("dwExtraInfo", PUL)]
-
-        class Input_I(ctypes.Union):
-            _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
-
-        class Input(ctypes.Structure):
-            _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
+        # Use the pre-defined ctypes structures from __init__
+        Input = self.Input
+        KeyBdInput = self.KeyBdInput
+        MouseInput = self.MouseInput
+        Input_I = self.Input_I
 
         def key_down(vk):
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
 
         def key_up(vk):
-            return Input(win32con.INPUT_KEYBOARD,
-                         Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
 
         def mouse_down():
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
+
         def mouse_up():
-            return Input(win32con.INPUT_MOUSE,
-                         Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
 
         # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click
         inputs = [
@@ -1699,8 +1704,8 @@ QCheckBox::indicator {{
         ]
 
         # Send all inputs in a single block for speed and reliability
-        input_array = (Input * len(inputs))(*inputs)
-        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
+        input_array = (self.Input * len(inputs))(*inputs)
+        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
