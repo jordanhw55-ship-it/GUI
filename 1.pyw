@@ -1645,7 +1645,7 @@ QCheckBox::indicator {{
                 return
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
@@ -1656,21 +1656,21 @@ QCheckBox::indicator {{
         keyboard.press_and_release("9")
         keyboard.press_and_release("0")
         keyboard.release("ctrl")
-        time.sleep(0.03)
+        time.sleep(0.05)
 
         # Send the ability hotkey
         keyboard.press_and_release(original_key)
-        time.sleep(0.03)
+        time.sleep(0.05)
 
         # Immediately click at cursor
         pyautogui.click()
-        time.sleep(0.03)
+        time.sleep(0.05)
 
         # Cleanup sequence
         keyboard.press_and_release("9")
         keyboard.press_and_release("0")
 
-    def _send_vk_key(self, vk_code):
+    def _send_vk_key(self, vk_code: int):
         """Sends a key press and release using a virtual-key code."""
         if not win32api or not win32con:
             return
@@ -1678,7 +1678,7 @@ QCheckBox::indicator {{
         time.sleep(0.01)
         win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def _send_vk_char(self, char: str):
+    def _send_vk_char(self, char: str) -> None:
         """Sends a character key press and release."""
         if not win32api or not win32con:
             return
