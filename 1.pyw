@@ -1560,7 +1560,10 @@ QCheckBox::indicator {{
     def register_single_keybind(self, name: str, hotkey: str):
         """Helper to register a single keybind hotkey."""
         try:
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name: self.execute_keybind(n), suppress=True)
+            # The 'when' lambda function ensures the hotkey only triggers when WC3 is the active window.
+            is_wc3_active = lambda: win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title) if win32gui else False
+            
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name: self.execute_keybind(n), suppress=True, when=is_wc3_active)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
