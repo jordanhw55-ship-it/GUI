@@ -367,6 +367,7 @@ class SimpleWindow(QMainWindow):
             button.installEventFilter(self) # For right-click
         for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
             checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
+        self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
 
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
@@ -987,6 +988,31 @@ QCheckBox::indicator {{
                 "message": self.automation_tab.custom_action_edit2.text()
             }
         }
+
+    def reset_keybinds(self):
+        """Resets all keybinds and quickcast settings to their default state."""
+        confirm = QMessageBox.question(self, "Confirm Reset",
+                                       "Are you sure you want to reset all keybinds to their defaults?",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                       QMessageBox.StandardButton.No)
+        if confirm == QMessageBox.StandardButton.Yes:
+            # Clear the stored keybinds data
+            self.keybinds.clear()
+
+            # Reset UI elements to their default state
+            for name, button in self.quickcast_tab.key_buttons.items():
+                # Extract default text from the button's object name
+                parts = name.split('_')
+                default_text = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
+                
+                button.setText(default_text.upper())
+                self.update_keybind_style(button, False) # Turn off quickcast style
+
+            # Reset setting checkboxes to default (enabled)
+            for checkbox in self.quickcast_tab.setting_checkboxes.values():
+                checkbox.setChecked(True)
+
+            self.register_keybind_hotkeys()
 
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
