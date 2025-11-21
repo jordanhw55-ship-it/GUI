@@ -1082,23 +1082,10 @@ QCheckBox::indicator {{
         if name.startswith("mouse_"):
             pyautogui.click(button=original_key)
         elif quickcast:
-            # Use the more reliable win32api for game input, similar to AHK's SendInput
-            # This macro is based on the AHK script's quickcast logic.
-            if win32api and win32con:
-                # Send Ctrl+9, Ctrl+0
-                win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-                time.sleep(0.01)
-                self._send_vk_key(ord('9'))
-                self._send_vk_key(ord('0'))
-                time.sleep(0.01)
-                win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-                time.sleep(0.02)
-                # Send original spell key, then left click
-                vk_code = self.vk_map.get(original_key.lower())
-                if vk_code:
-                    self._send_vk_key(vk_code)
-                    time.sleep(0.02)
-                    pyautogui.click()
+            vk_code = self.vk_map.get(original_key.lower())
+            if vk_code:
+                # Replicate AHK's SendInput for a cleaner, faster macro.
+                self._send_quickcast_macro(vk_code)
                 
         else:
             # Normal remap
@@ -1602,6 +1589,34 @@ QCheckBox::indicator {{
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
+
+    def _send_quickcast_macro(self, vk_code):
+        """Sends the complete quickcast sequence using the more reliable SendInput."""
+        if not win32api or not win32con:
+            return
+
+        # This sequence mimics the AHK script: {Ctrl Down}90{Ctrl Up}, {originalKey}, {Click}, 90
+        inputs = [
+            # Ctrl Down
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(win32con.VK_CONTROL, 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
+            # 9 Down and Up
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['9'], 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['9'], 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            # 0 Down and Up
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['0'], 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(self.vk_map['0'], 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            # Ctrl Up
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(win32con.VK_CONTROL, 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            # Original Key Down and Up
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(vk_code, 0), win32con.KEYEVENTF_SCANCODE, 0, 0),
+            (win32con.INPUT_KEYBOARD, win32api.MapVirtualKey(vk_code, 0), win32con.KEYEVENTF_SCANCODE | win32con.KEYEVENTF_KEYUP, 0, 0),
+            # Left Mouse Down and Up
+            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, 0),
+            (win32con.INPUT_MOUSE, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, 0),
+        ]
+
+        # Send all inputs in a single block for speed and reliability
+        win32api.SendInput(inputs)
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
