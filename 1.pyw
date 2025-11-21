@@ -154,7 +154,6 @@ class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
     send_message_signal = Signal(str)
-    load_character_signal = Signal()
     deactivate_ahk_signal = Signal()
 
     def __init__(self):
@@ -449,7 +448,6 @@ class SimpleWindow(QMainWindow):
         # Connect the thread-safe signal to the automation toggle slot
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
-        self.load_character_signal.connect(self.on_f3_pressed)
         self.deactivate_ahk_signal.connect(lambda: self.deactivate_ahk_script_if_running(inform_user=True))
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
@@ -1404,11 +1402,6 @@ QCheckBox::indicator {{
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
 
-    def on_f3_pressed(self):
-        """Handler for the F3 hotkey press."""
-        self.load_selected_character()
-        self.showMinimized()
-
     def check_for_lobby_updates(self):
         """Performs a lightweight check to see if a full refresh is needed."""
         if self.is_fetching_lobbies:
@@ -1539,19 +1532,12 @@ QCheckBox::indicator {{
         except Exception as e:
             print(f"Failed to register F6 hotkey: {e}")
 
-        # Register global F3 for loading character
+        # Register global F3 for toggling AHK quickcast
         try:
-            f3_id = keyboard.add_hotkey('f3', lambda: self.load_character_signal.emit(), suppress=True)
+            f3_id = keyboard.add_hotkey('f3', self.toggle_ahk_quickcast, suppress=True)
             self.hotkey_ids['f3'] = f3_id
         except Exception as e:
             print(f"Failed to register F3 hotkey: {e}")
-
-        # Register global F2 for toggling AHK quickcast
-        try:
-            f2_id = keyboard.add_hotkey('f2', self.toggle_ahk_quickcast, suppress=True)
-            self.hotkey_ids['f2'] = f2_id
-        except Exception as e:
-            print(f"Failed to register F2 hotkey: {e}")
 
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
@@ -1579,13 +1565,13 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F3")
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
-                # Re-register the F2 hotkey in Python now that AHK is confirmed to be off.
-                QTimer.singleShot(100, lambda: self.register_single_hotkey('f2', self.toggle_ahk_quickcast, suppress=True, key_id='f2'))
-                print("[INFO] F2 hotkey re-registered in Python.")
+                # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
+                QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.toggle_ahk_quickcast, suppress=True, key_id='f3'))
+                print("[INFO] F3 hotkey re-registered in Python.")
                 return True
         else:
             print("[INFO] AHK script was not running.")
@@ -1599,21 +1585,21 @@ QCheckBox::indicator {{
             # If it's running, deactivate it. The helper function handles UI changes.
             self.deactivate_ahk_signal.emit()
         else:
-            # Before starting AHK, remove the F2 hotkey from the Python `keyboard` library
+            # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
             # to prevent conflicts.
-            if 'f2' in self.hotkey_ids:
+            if 'f3' in self.hotkey_ids:
                 try:
-                    keyboard.remove_hotkey(self.hotkey_ids['f2'])
-                    del self.hotkey_ids['f2']
-                    print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
+                    keyboard.remove_hotkey(self.hotkey_ids['f3'])
+                    del self.hotkey_ids['f3']
+                    print("[INFO] F3 hotkey unregistered from Python before starting AHK.")
                 except (KeyError, ValueError):
-                    print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
+                    print("[WARNING] Could not unregister F3 hotkey, it might have already been released.")
 
             # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
                 self.quickcast_status_overlay.show_status(True)
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F3")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 
     def _find_ahk_path(self) -> str | None:
@@ -1647,9 +1633,9 @@ QCheckBox::indicator {{
 
     HotIfWinActive("{self.game_title}")
 
-    ; This hotkey allows the user to press F2 to exit the script,
+    ; This hotkey allows the user to press F3 to exit the script,
     ; allowing the Python GUI to take back control of the hotkey.
-    F2:: {{
+    F3:: {{
         ExitApp()
     }}
 remapSpellwQC(originalKey) {{
@@ -1709,7 +1695,7 @@ remapMouse(button) {{
                 f.write(script_content)
             
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F3")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
