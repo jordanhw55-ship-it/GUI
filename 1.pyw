@@ -1705,11 +1705,13 @@ QCheckBox::indicator {{
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
         # Always try to deactivate first to ensure a clean state.
-        # This prevents multiple AHK processes from being launched.
-        was_running = self.deactivate_ahk_script_if_running(inform_user=False)
-
-        if not was_running:
-            # If it wasn't running, then we should start it.
+        # If the script is running, this will stop it and return True.
+        if self.deactivate_ahk_script_if_running(inform_user=False):
+            # The script was running and has now been stopped.
+            # The user clicked "Deactivate", so we are done.
+            pass
+        else:
+            # The script was not running, so the user wants to activate it.
             if self.generate_and_run_ahk_script():
                 self.unregister_keybind_hotkeys()
 
@@ -1902,19 +1904,9 @@ remapMouse(button) {
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
- 
+
         # Ensure the AHK process is terminated on exit
-        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            print("[INFO] closeEvent: Terminating AHK process...")
-            try:
-                pid = self.ahk_process.pid
-                # Forcefully terminate the process and its children
-                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                self.ahk_process.wait(timeout=3) # Wait for the process to terminate
-                print(f"[INFO] AHK process {pid} terminated on exit.")
-            except Exception as e:
-                print(f"[ERROR] Failed to terminate AHK process on exit: {e}")
-                self.ahk_process.terminate() # Fallback
+        self.deactivate_ahk_script_if_running(inform_user=False)
 
         event.accept()
  
