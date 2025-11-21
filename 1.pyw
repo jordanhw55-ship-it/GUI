@@ -982,27 +982,33 @@ QCheckBox::indicator {{
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
-        confirm = QMessageBox.question(self, "Confirm Reset",
-                                       "Are you sure you want to reset all keybinds to their defaults?",
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                       QMessageBox.StandardButton.No)
-        if confirm == QMessageBox.StandardButton.Yes:
-            # Clear the stored keybinds data
+        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
+            # First, unregister all existing keybind hotkeys to ensure a clean slate.
+            # We iterate over a copy because we'll be modifying the dictionary.
+            for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+                # Only remove keybind hotkeys, not global ones (f3, f5, f6) or message hotkeys
+                if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
+                    try:
+                        keyboard.remove_hotkey(hk_id)
+                        del self.hotkey_ids[hotkey_str]
+                    except (KeyError, ValueError):
+                        print(f"[Warning] Tried to remove a keybind hotkey ('{hotkey_str}') that was already unregistered.")
+
+            # Clear the internal data model for keybinds
             self.keybinds.clear()
 
-            # Reset UI elements to their default state
+            # Reset UI elements to their visual default state
             for name, button in self.quickcast_tab.key_buttons.items():
-                # Extract default text from the button's object name
                 parts = name.split('_')
                 default_text = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
-                
                 button.setText(default_text.upper())
-                self.update_keybind_style(button, False) # Turn off quickcast style
+                self.update_keybind_style(button, False)  # Visually disable quickcast
 
-            # Reset setting checkboxes to default (enabled)
+            # Reset the category checkboxes to their default (checked)
             for checkbox in self.quickcast_tab.setting_checkboxes.values():
                 checkbox.setChecked(True)
 
+            # Re-registering will now correctly bind the default keys without old ones interfering.
             self.register_keybind_hotkeys()
 
     # Keybinds / Quickcast
