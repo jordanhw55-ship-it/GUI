@@ -1649,15 +1649,15 @@ QCheckBox::indicator {{
         keyboard.press_and_release("9")
         keyboard.press_and_release("0")
         keyboard.release("ctrl")
-        time.sleep(0.05)
+        time.sleep(0.01)
 
         # Send the ability hotkey
         keyboard.press_and_release(original_key)
-        time.sleep(0.05)
+        time.sleep(0.01)
 
         # Immediately click at cursor
         pyautogui.click()
-        time.sleep(0.05)
+        time.sleep(0.01)
 
         # Cleanup sequence
         keyboard.press_and_release("9")
