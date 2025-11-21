@@ -1130,13 +1130,20 @@ QCheckBox::indicator {{
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
         # This is now handled by directly modifying self.keybinds,
-        # so this function just returns the current state.
-        # We ensure the hotkey text is up-to-date.
+        # so this function just returns the current state, but we clean it up first.
         for name, button in self.quickcast_tab.key_buttons.items():
-            if name not in self.keybinds:
-                self.keybinds[name] = {}
-            self.keybinds[name]["hotkey"] = button.text().lower()
-
+            parts = name.split('_')
+            default_key = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
+            current_hotkey = button.text().lower()
+            
+            # Only save a "hotkey" entry if it's different from the default.
+            if current_hotkey != default_key.lower():
+                if name not in self.keybinds: self.keybinds[name] = {}
+                self.keybinds[name]["hotkey"] = current_hotkey
+            # If it's the same as default, ensure no hotkey is saved for it.
+            elif name in self.keybinds and "hotkey" in self.keybinds[name]:
+                del self.keybinds[name]["hotkey"]
+        
         return self.keybinds
 
 
