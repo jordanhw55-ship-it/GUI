@@ -799,18 +799,9 @@ QCheckBox::indicator {{
 
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
-        is_valid = hotkey != 'esc'
-        
-        # Update UI
         self.automation_tab.message_edit.setEnabled(True)
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
-        self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid and hotkey != 'esc' else "Click to set")
-
-        # Re-register all application hotkeys now that capture is complete.
-        # The keyboard library's internal state is now clean.
-        keyboard.unhook_all()
-        self.register_global_hotkeys()
-        self.register_keybind_hotkeys() # Also re-register keybinds
+        is_valid = hotkey.lower() != 'esc'
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
@@ -818,12 +809,18 @@ QCheckBox::indicator {{
             button.setChecked(False) # Uncheck to remove capture highlight
             if is_valid:
                 button.setText(hotkey.upper())
-                if self.capturing_for_control not in self.keybinds:
-                    self.keybinds[self.capturing_for_control] = {}
-                self.keybinds[self.capturing_for_control]["hotkey"] = hotkey
+                key_name = self.capturing_for_control
+                if key_name not in self.keybinds:
+                    self.keybinds[key_name] = {}
+                self.keybinds[key_name]["hotkey"] = hotkey
             else: # Capture was cancelled
                 button.setText(self.keybinds.get(self.capturing_for_control, {}).get("hotkey", "SET").upper())
+        else: # We were capturing for a message hotkey
+            self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
 
+        # Re-register all application hotkeys now that capture is complete.
+        self.register_global_hotkeys()
+        self.register_keybind_hotkeys()
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
 
