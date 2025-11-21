@@ -199,26 +199,8 @@ class SimpleWindow(QMainWindow):
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
 
-        # --- Ctypes definitions for SendInput ---
-        # Define these once at startup to avoid redefining them on every keypress,
-        # which is a minor performance optimization for the quickcast macro.
-        # This new implementation is a much more faithful recreation of AHK's SendInput.
-        
-        # Define structures for inputs
-
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
-
-        # --- Setup Persistent Chat Worker ---
-        self.setup_chat_worker()
-
-        # Initialize media player for custom sounds
-        self.player = QMediaPlayer()
-        self.audio_output = QAudioOutput()
-        self.player.setAudioOutput(self.audio_output)
-
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
@@ -782,14 +764,6 @@ QCheckBox::indicator {{
 
         self.capture_thread.start()
 
-    def _get_default_key_for_control(self, control_name: str) -> str:
-        """Gets the default key for a given keybind control name."""
-        parts = control_name.split('_')
-        if parts[0] == "mouse":
-            return "LButton" if parts[1] == "Left" else "RButton"
-        else: # spell or inv
-            return parts[1]
-
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
         self.automation_tab.message_edit.setEnabled(True)
@@ -807,13 +781,10 @@ QCheckBox::indicator {{
                     self.keybinds[key_name] = {}
                 self.keybinds[key_name]["hotkey"] = hotkey
             else: # Capture was cancelled
-                # Revert to the default key for this control
+                # Revert to the previous hotkey from the data model
                 key_name = self.capturing_for_control
-                default_key = self._get_default_key_for_control(key_name)
-                button.setText(default_key.upper())
-                if key_name in self.keybinds:
-                    # Set the hotkey back to the default in the data model
-                    self.keybinds[key_name]["hotkey"] = default_key
+                previous_hotkey = self.keybinds.get(key_name, {}).get("hotkey", "???")
+                button.setText(previous_hotkey.upper())
         else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
 
