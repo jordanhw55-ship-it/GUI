@@ -1119,6 +1119,8 @@ QCheckBox::indicator {{
         for row, item_data in enumerate(materials_to_display.values()):
             materials_table.insertRow(row)
             material_item = QTableWidgetItem(item_data["Material"])
+            material_item.setFlags(material_item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            material_item.setCheckState(Qt.CheckState.Unchecked)
             materials_table.setItem(row, 0, material_item)
             materials_table.setItem(row, 1, QTableWidgetItem(str(item_data["#"])))
             materials_table.setItem(row, 2, QTableWidgetItem(item_data["Unit"]))
