@@ -982,28 +982,24 @@ QCheckBox::indicator {{
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
-        confirm = QMessageBox.question(self, "Confirm Reset",
-                                       "Are you sure you want to reset all keybinds to their defaults?",
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                       QMessageBox.StandardButton.No)
-        if confirm == QMessageBox.StandardButton.Yes:
-            # Unregister all existing keybind hotkeys first
+        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
+            # First, unregister all existing keybind hotkeys to ensure a clean slate.
+            # We iterate over a copy because we'll be modifying the dictionary.
             for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+                # Only remove keybind hotkeys, not global ones (f3, f5, f6) or message hotkeys
                 if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
                     try:
                         keyboard.remove_hotkey(hk_id)
                         del self.hotkey_ids[hotkey_str]
                     except (KeyError, ValueError):
-                        pass # Hotkey might already be gone, which is fine.
+                        print(f"[Warning] Tried to remove a keybind hotkey ('{hotkey_str}') that was already unregistered.")
 
-            # Clear the data model
+            # Clear the internal data model for keybinds
             self.keybinds.clear()
 
-            # Reset the UI to its default visual state
-            self.quickcast_tab.reset_ui_to_defaults()
-
-            # Re-apply the (now empty) settings, which will register the defaults
+            # Re-apply the (now empty) settings, which will force the UI and hotkeys to reset to their defaults.
             self.apply_keybind_settings()
+
 
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
