@@ -182,12 +182,15 @@ class ItemsTab(QWidget):
         self.sub_tabs_layout.setContentsMargins(0,0,0,0)
         self.sub_tabs_layout.setSpacing(5)
         self.item_tab_buttons = {}
-        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items", "Recipes"]
+        # Separate "Recipes" from the main item tabs
+        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
         for i, name in enumerate(item_tab_names):
             btn = QPushButton(name)
             btn.setCheckable(True)
             self.item_tab_buttons[i] = btn
             self.sub_tabs_layout.addWidget(btn)
+        self.recipes_btn = QPushButton("Recipes"); self.recipes_btn.setCheckable(True)
+        self.item_tab_buttons[len(item_tab_names)] = self.recipes_btn # Add it as the last button logically
 
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
@@ -246,7 +249,9 @@ class ItemsTab(QWidget):
         main_layout = QVBoxLayout(self)
         controls_layout = QHBoxLayout()
         controls_layout.addWidget(self.sub_tabs_widget)
-        controls_layout.addStretch(); controls_layout.addWidget(self.search_box)
+        controls_layout.addStretch()
+        controls_layout.addWidget(self.recipes_btn) # Add recipes button before search
+        controls_layout.addWidget(self.search_box)
         main_layout.addLayout(controls_layout)
         main_layout.addWidget(self.main_stack)
 
