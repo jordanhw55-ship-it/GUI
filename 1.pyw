@@ -915,10 +915,8 @@ QCheckBox::indicator {{
             return
 
         if self.is_sending_message:
-            print("[DEBUG] Message sending is already in progress. Ignoring new request.")
             return
         self.is_sending_message = True
-        print(f"[DEBUG] is_sending_message -> True. Emitting signal to worker with message: '{message}'")
         self.send_message_signal.emit(message)
 
     def on_chat_send_error(self, error_message: str):
@@ -1066,10 +1064,12 @@ QCheckBox::indicator {{
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
         # First, check if the active window is Warcraft III.
-        hwnd = win32gui.FindWindow(None, self.game_title) if win32gui else 0
-        if hwnd == 0 or win32gui.GetForegroundWindow() != hwnd:
-            # If not, send the original keypress so it works in other apps.
-            keyboard.send(hotkey)
+        try:
+            is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
+        except Exception:
+            is_game_active = False
+
+        if not is_game_active:
             return
 
         key_info = self.keybinds.get(name, {})
@@ -1590,7 +1590,7 @@ QCheckBox::indicator {{
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
-            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=True)
+            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False)
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
@@ -1604,7 +1604,7 @@ QCheckBox::indicator {{
                 return
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")

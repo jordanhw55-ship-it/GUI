@@ -150,6 +150,7 @@ class QuickcastTab(QWidget):
         self.setting_checkboxes['inventory'] = QCheckBox("Remap Inventory")
         self.setting_checkboxes['mouse'] = QCheckBox("Remap Mouse")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
+        self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
@@ -207,6 +208,7 @@ class QuickcastTab(QWidget):
         settings_v_layout = QVBoxLayout(self.settings_group)
         for checkbox in self.setting_checkboxes.values():
             settings_v_layout.addWidget(checkbox)
+        settings_v_layout.addWidget(self.reset_keybinds_btn)
 
     def _create_key_button(self, default_text: str) -> QPushButton:
         """Helper to create a standard key button."""
