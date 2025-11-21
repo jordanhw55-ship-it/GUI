@@ -907,20 +907,12 @@ QCheckBox::indicator {{
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
         """Sends a chat message if the game is active, otherwise passes the keypress through."""
-        print(f"[DEBUG] send_chat_message triggered for hotkey: '{hotkey_pressed}'")
-        if not win32gui:
-            return
         try:
-            game_hwnd = win32gui.FindWindow(None, self.game_title)
-            is_game_active = (win32gui.GetForegroundWindow() == game_hwnd)
+            is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
         except Exception:
             is_game_active = False
-
         if not is_game_active:
-            print(f"[DEBUG] Game not active. Simulating original keypress for '{hotkey_pressed}'.")
-            try: keyboard.send(hotkey_pressed)
-            except Exception: pass # type: ignore
-            return # type: ignore
+            return
 
         if self.is_sending_message:
             print("[DEBUG] Message sending is already in progress. Ignoring new request.")
