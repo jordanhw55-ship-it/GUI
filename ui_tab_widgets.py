@@ -133,7 +133,7 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        self.remap_spells_group = QGroupBox("Left Click to Remap\nRight Click to Quickcast")
+        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
