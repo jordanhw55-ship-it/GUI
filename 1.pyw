@@ -1130,20 +1130,13 @@ QCheckBox::indicator {{
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
         # This is now handled by directly modifying self.keybinds,
-        # so this function just returns the current state, but we clean it up first.
+        # so this function just returns the current state.
+        # We ensure the hotkey text is up-to-date.
         for name, button in self.quickcast_tab.key_buttons.items():
-            parts = name.split('_')
-            default_key = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
-            current_hotkey = button.text().lower()
-            
-            # Only save a "hotkey" entry if it's different from the default.
-            if current_hotkey != default_key.lower():
-                if name not in self.keybinds: self.keybinds[name] = {}
-                self.keybinds[name]["hotkey"] = current_hotkey
-            # If it's the same as default, ensure no hotkey is saved for it.
-            elif name in self.keybinds and "hotkey" in self.keybinds[name]:
-                del self.keybinds[name]["hotkey"]
-        
+            if name not in self.keybinds:
+                self.keybinds[name] = {}
+            self.keybinds[name]["hotkey"] = button.text().lower()
+
         return self.keybinds
 
 
@@ -1645,7 +1638,7 @@ QCheckBox::indicator {{
                 return
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
@@ -1656,29 +1649,29 @@ QCheckBox::indicator {{
         keyboard.press_and_release("9")
         keyboard.press_and_release("0")
         keyboard.release("ctrl")
-        time.sleep(0.05)
+        time.sleep(0)
 
         # Send the ability hotkey
         keyboard.press_and_release(original_key)
-        time.sleep(0.05)
+        time.sleep(0)
 
         # Immediately click at cursor
         pyautogui.click()
-        time.sleep(0.05)
+        time.sleep(0)
 
         # Cleanup sequence
         keyboard.press_and_release("9")
         keyboard.press_and_release("0")
 
-    def _send_vk_key(self, vk_code: int):
+    def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
         if not win32api or not win32con:
             return
         win32api.keybd_event(vk_code, 0, 0, 0)
-        time.sleep(0.01)
+        time.sleep(0)
         win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def _send_vk_char(self, char: str) -> None:
+    def _send_vk_char(self, char: str):
         """Sends a character key press and release."""
         if not win32api or not win32con:
             return
