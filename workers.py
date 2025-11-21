@@ -26,6 +26,25 @@ class LobbyFetcher(QObject):
         except requests.exceptions.RequestException as e:
             self.error.emit(f"Network error: {e}")
 
+class LobbyHeartbeatChecker(QObject):
+    """Checks if the wc3stats gamelist has been updated since the last check."""
+    update_required = Signal()
+    error = Signal(str)
+
+    def __init__(self, last_seen_id: int):
+        super().__init__()
+        self.last_seen_id = last_seen_id
+
+    def run(self):
+        try:
+            response = requests.get(f"https://api.wc3stats.com/uptodate?id={self.last_seen_id}", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "OK" and data.get("body") is False:
+                self.update_required.emit()
+        except requests.RequestException as e:
+            self.error.emit(f"Heartbeat check failed: {e}")
+
 
 class HotkeyCaptureWorker(QObject):
     """Runs in a separate thread to capture a hotkey without freezing the GUI."""

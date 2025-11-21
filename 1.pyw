@@ -19,7 +19,7 @@ import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
-from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
+from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
@@ -172,6 +172,7 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
+        self.last_lobby_id = 0 # For heartbeat check
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
@@ -441,7 +442,7 @@ class SimpleWindow(QMainWindow):
         self.custom_tab_bar._on_button_clicked(self.last_tab_index)
         self.refresh_lobbies()
         self.load_characters() # Load characters on startup
-        self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(30000); self.refresh_timer.timeout.connect(self.refresh_lobbies); self.refresh_timer.start()
+        self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(15000); self.refresh_timer.timeout.connect(self.check_for_lobby_updates); self.refresh_timer.start()
         
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
@@ -1220,6 +1221,22 @@ QCheckBox::indicator {{
         self.load_selected_character()
         self.showMinimized()
 
+    def check_for_lobby_updates(self):
+        """Performs a lightweight check to see if a full refresh is needed."""
+        if self.is_fetching_lobbies:
+            return
+
+        self.thread = QThread()
+        self.worker = LobbyHeartbeatChecker(self.last_lobby_id)
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(self.worker.run)
+        self.worker.update_required.connect(self.refresh_lobbies)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
+        self.thread.start()
+
     # Lobbies
     def refresh_lobbies(self):
         if self.is_fetching_lobbies:
@@ -1240,6 +1257,7 @@ QCheckBox::indicator {{
         self.thread.start()
     def on_lobbies_fetched(self, lobbies: list):
         current_watched_lobbies = set()
+        if lobbies: self.last_lobby_id = lobbies[0].get("id", self.last_lobby_id)
         self.is_fetching_lobbies = False # Reset the flag
         for lobby in lobbies:
             lobby_name = lobby.get('name', '').lower()
