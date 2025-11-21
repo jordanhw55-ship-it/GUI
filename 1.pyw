@@ -1026,23 +1026,24 @@ QCheckBox::indicator {{
         else:
             button.setStyleSheet("") # Revert to default stylesheet color
 
-    def execute_keybind(self, name: str):
+    def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
+        # First, check if the active window is Warcraft III.
+        hwnd = win32gui.FindWindow(None, self.game_title) if win32gui else 0
+        if hwnd == 0 or win32gui.GetForegroundWindow() != hwnd:
+            # If not, send the original keypress so it works in other apps.
+            keyboard.send(hotkey)
+            return
+
         key_info = self.keybinds.get(name, {})
         if not key_info: return
 
         # Check if the corresponding setting is enabled
         category = name.split("_")[0] # "spell", "inv", "mouse"
         if category == "inv": category = "inventory"
-        
         is_enabled = self.keybinds.get("settings", {}).get(category, True)
         if not is_enabled:
             return
-
-        # Find game window
-        hwnd = win32gui.FindWindow(None, self.game_title) if win32gui else 0
-        if hwnd == 0 or win32gui.GetForegroundWindow() != hwnd:
-            return # Only run if game is active
 
         quickcast = key_info.get("quickcast", False)
         
@@ -1560,10 +1561,8 @@ QCheckBox::indicator {{
     def register_single_keybind(self, name: str, hotkey: str):
         """Helper to register a single keybind hotkey."""
         try:
-            # The 'when' lambda function ensures the hotkey only triggers when WC3 is the active window.
-            is_wc3_active = lambda: win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title) if win32gui else False
-            
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name: self.execute_keybind(n), suppress=True, when=is_wc3_active)
+            # The check for the active window is now handled inside execute_keybind.
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
