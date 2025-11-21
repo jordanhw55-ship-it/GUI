@@ -153,7 +153,7 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
-    send_message_signal = Signal(str)
+    load_character_signal = Signal()
     deactivate_ahk_signal = Signal()
 
     def __init__(self):
@@ -1532,16 +1532,15 @@ QCheckBox::indicator {{
         except Exception as e:
             print(f"Failed to register F6 hotkey: {e}")
 
-        # Register global F3 for toggling AHK quickcast
+        # Register global F3 to ONLY deactivate the AHK script
         try:
-            f3_id = keyboard.add_hotkey('f3', self.toggle_ahk_quickcast, suppress=True)
-            self.hotkey_ids['f3'] = f3_id
+            self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3')
         except Exception as e:
             print(f"Failed to register F3 hotkey: {e}")
 
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg))
+            self.register_single_hotkey(hotkey, message)
 
     def register_single_hotkey(self, hotkey: str, callback, suppress=False, key_id=None):
         """Helper to register a single message hotkey."""
@@ -1565,12 +1564,12 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F3")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
-                QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.toggle_ahk_quickcast, suppress=True, key_id='f3'))
+                QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3'))
                 print("[INFO] F3 hotkey re-registered in Python.")
                 return True
         else:
@@ -1586,7 +1585,7 @@ QCheckBox::indicator {{
             self.deactivate_ahk_signal.emit()
         else:
             # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
-            # to prevent conflicts.
+            # to prevent conflicts between Python's listener and the AHK script's listener.
             if 'f3' in self.hotkey_ids:
                 try:
                     keyboard.remove_hotkey(self.hotkey_ids['f3'])
@@ -1599,9 +1598,15 @@ QCheckBox::indicator {{
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
                 self.quickcast_status_overlay.show_status(True)
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F3")
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 
+    def deactivate_ahk_via_hotkey(self):
+        """Called by the F3 hotkey to deactivate the AHK script ONLY if it's running."""
+        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+            # If it's running, emit the thread-safe signal to deactivate it.
+            self.deactivate_ahk_signal.emit()
+
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
@@ -1695,7 +1700,166 @@ remapMouse(button) {{
                 f.write(script_content)
             
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F3")
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+            print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
+            return True
+
+        except Exception as e:
+            QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
+            return False
+
+    def play_specific_sound(self, sound_file: str):
+        """Plays a specific sound file from the contents/sounds directory."""
+        try:
+            sound_file_path = os.path.join(get_base_path(), "contents", "sounds", sound_file)
+            if os.path.exists(sound_file_path):
+                self.player.setSource(QUrl.fromLocalFile(sound_file_path))
+                self.player.play()
+            else:
+                print(f"Sound file not found: {sound_file_path}")
+                QApplication.beep()
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+            QApplication.beep()
+    
+    def play_notification_sound(self):
+        """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
+        self.play_specific_sound(self.selected_sound)
+
+    # Ensure timers are cleaned up on exit
+    def closeEvent(self, event):
+        """Ensures all background processes and threads are cleaned up before closing."""
+        self.settings_manager.save(self) # Save all settings on exit
+        self.automation_manager.stop_automation()
+        self.chat_thread.quit() # Tell the persistent chat thread to stop
+        keyboard.unhook_all() # Clean up all global listeners
+        self.quickcast_status_overlay.show_status(False)
+
+        # Ensure the AHK process is terminated on exit
+        self.deactivate_ahk_script_if_running(inform_user=False)
+
+        event.accept()
+ 
+
+
+if __name__ == "__main__":
+
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = SimpleWindow()
+    window.show()
+    sys.exit(app.exec())
+            # to prevent conflicts.
+            if 'f2' in self.hotkey_ids:
+                try:
+                    keyboard.remove_hotkey(self.hotkey_ids['f2'])
+                    del self.hotkey_ids['f2']
+                    print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
+                except (KeyError, ValueError):
+                    print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
+
+            # If it's not running, activate it.
+            if self.generate_and_run_ahk_script():
+                # On successful activation, update the button to show the "Deactivate" state.
+                self.quickcast_status_overlay.show_status(True)
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+                
+    def _find_ahk_path(self) -> str | None:
+        """Finds the path to the AutoHotkey executable."""
+        program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+        possible_paths = [
+            os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        try:
+            result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            return result.stdout.strip().split('\n')[0]
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+
+    def generate_and_run_ahk_script(self):
+        """Generates a complete AHK script from the current keybinds and runs it."""
+        ahk_path = self._find_ahk_path()
+        if not ahk_path:
+            QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
+            return False
+
+        # --- AHK Script Generation ---
+        script_content = f"""#Requires AutoHotkey v2.0
+    #SingleInstance Force
+    ProcessSetPriority("High")
+
+    HotIfWinActive("{self.game_title}")
+
+    ; This hotkey allows the user to press F2 to exit the script,
+    ; allowing the Python GUI to take back control of the hotkey.
+    F2:: {{
+        ExitApp()
+    }}
+remapSpellwQC(originalKey) {{
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{{" originalKey "}}}")
+    MouseClick("Left")
+    SendInput("{{9}}{{0}}")
+}}
+
+remapSpellwoQC(originalKey) {{
+    SendInput("{{{" originalKey "}}}")
+}}
+
+remapMouse(button) {{
+    MouseClick(button)
+}}
+"""
+
+        # Keep track of hotkeys already defined to prevent duplicates
+        defined_hotkeys = set()
+
+        # Generate the hotkeys from Python's self.keybinds
+        for name, key_info in self.keybinds.items():
+            hotkey = key_info.get("hotkey")
+            if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
+
+            if hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping to prevent AHK error.")
+                continue
+
+            category = name.split("_")[0] # "spell", "inv", "mouse"
+            if category == "inv": category = "inventory"
+            is_enabled = self.keybinds.get("settings", {}).get(category, True)
+            if not is_enabled: continue
+
+            original_key = ""
+            if name.startswith("spell_"):
+                original_key = name.split("_")[1].lower()
+            elif name.startswith("inv_"):
+                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+                inv_index = int(name.split("_")[1]) - 1
+                original_key = inv_map[inv_index]
+
+            if not original_key: continue
+
+            quickcast = key_info.get("quickcast", False)
+            function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
+            
+            # Add the '$' prefix to prevent the hotkey from triggering itself
+            script_content += f"\n${hotkey}:: {function_call}"
+            defined_hotkeys.add(hotkey)
+
+        # --- Write and Run the Script ---
+        script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
+        try:
+            with open(script_path, "w") as f:
+                f.write(script_content)
+            
+            self.ahk_process = subprocess.Popen([ahk_path, script_path])
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
