@@ -133,77 +133,41 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        # --- Spell Remapping ---
-        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
-
-        # --- Inventory Remapping ---
-        # self.remap_inventory_group = QGroupBox("Remap Inventory") # Merged with spells
-
-        # --- Mouse Remapping ---
-        self.remap_mouse_group = QGroupBox("Remap Mouse")
+        self.remap_spells_group = QGroupBox("Remap Spells")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
-        self.setting_checkboxes['spells'] = QCheckBox("Remap Spells")
-        self.setting_checkboxes['inventory'] = QCheckBox("Remap Inventory")
-        self.setting_checkboxes['mouse'] = QCheckBox("Remap Mouse")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
-        # New button to activate the AHK script
         self.activate_quickcast_btn = QPushButton("Activate Quickcast")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        left_panel = QWidget()
-        right_panel = QWidget()
-        main_layout.addWidget(left_panel, 2)
-        main_layout.addWidget(right_panel, 1)
+        
+        # --- Main Remapping Panel (Left) ---
+        remap_panel = QWidget()
+        remap_layout = QVBoxLayout(remap_panel)
+        remap_layout.addWidget(self.remap_spells_group)
+        main_layout.addWidget(remap_panel, 2) # Give it more space
 
-        # --- Left Panel ---
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(self.remap_spells_group) # This now contains spells and inventory
-
-        # A single grid for all remappable keys
-        remap_grid = QGridLayout(self.remap_spells_group)
+        spells_grid = QGridLayout(self.remap_spells_group)
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
             row, col = i // 4, i % 4
-            # Create and add the remappable button
             self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
-            remap_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+            spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        # Add a separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setFrameShadow(QFrame.Shadow.Sunken)
-        remap_grid.addWidget(separator, (len(spell_keys) // 4), 0, 1, 4)
-
-        # Add inventory buttons to the same grid
-        for i in range(6):
-            row, col = (len(spell_keys) // 4) + 1 + (i // 4), i % 4
-            self.key_buttons[f"inv_{i+1}"] = self._create_key_button(str(i + 1))
-            remap_grid.addWidget(self.key_buttons[f"inv_{i+1}"], row, col)
-
-        # --- Right Panel ---
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.addWidget(self.remap_mouse_group)
-        right_layout.addWidget(self.settings_group)
-        right_layout.addStretch()
-
-        mouse_grid = QGridLayout(self.remap_mouse_group)
-        mouse_grid.addWidget(QLabel("Left Click"), 0, 0)
-        mouse_grid.addWidget(QLabel("Right Click"), 0, 1)
-        self.key_buttons["mouse_Left"] = self._create_key_button("LButton")
-        self.key_buttons["mouse_Right"] = self._create_key_button("RButton")
-        mouse_grid.addWidget(self.key_buttons["mouse_Left"], 1, 0)
-        mouse_grid.addWidget(self.key_buttons["mouse_Right"], 1, 1)
+        # --- Settings Panel (Right) ---
+        settings_panel = QWidget()
+        settings_panel_layout = QVBoxLayout(settings_panel)
+        settings_panel_layout.addWidget(self.settings_group)
+        settings_panel_layout.addStretch()
+        main_layout.addWidget(settings_panel, 1)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
-        for checkbox in self.setting_checkboxes.values():
-            settings_v_layout.addWidget(checkbox)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
         settings_v_layout.addWidget(self.reset_keybinds_btn)
 
@@ -216,13 +180,9 @@ class QuickcastTab(QWidget):
 
     def reset_ui_to_defaults(self):
         """Resets all buttons and checkboxes in this tab to their default visual state."""
-        for name, button in self.key_buttons.items():
-            parts = name.split('_')
-            default_text = "LButton" if parts[1] == "Left" else "RButton" if parts[1] == "Right" else parts[1]
-            button.setText(default_text.upper())
-            button.setStyleSheet("") # Revert to default stylesheet color
-        for checkbox in self.setting_checkboxes.values():
-            checkbox.setChecked(True)
+        # This method is now empty as there are no UI elements to reset to a default state
+        # beyond what is handled by apply_keybind_settings in the main window.
+        pass
 
 class ItemsTab(QWidget):
     """A widget for the 'Items' tab, including sub-tabs for different item categories."""
