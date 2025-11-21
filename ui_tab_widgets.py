@@ -222,7 +222,7 @@ class ItemsTab(QWidget):
         self.sub_tabs_layout.setContentsMargins(0,0,0,0)
         self.sub_tabs_layout.setSpacing(5)
         self.item_tab_buttons = {}
-        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items"]
+        item_tab_names = ["All Items", "Drops", "Raid Items", "Vendor Items", "Recipes"]
         for i, name in enumerate(item_tab_names):
             btn = QPushButton(name)
             btn.setCheckable(True)
@@ -237,10 +237,12 @@ class ItemsTab(QWidget):
         self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.vendor_table = self._create_item_table(["Item", "Unit", "Location"])
+        self.recipes_table = self._create_item_table(["Item", "Components"])
         self.stacked_widget.addWidget(self.all_items_table)
         self.stacked_widget.addWidget(self.drops_table)
         self.stacked_widget.addWidget(self.raid_items_table)
         self.stacked_widget.addWidget(self.vendor_table)
+        self.stacked_widget.addWidget(self.recipes_table)
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""

@@ -959,6 +959,7 @@ QCheckBox::indicator {{
         elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.items_tab.drops_table
         elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.items_tab.raid_items_table
         elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.items_tab.vendor_table
+        elif current_index == 4: data_source, table_widget = self.item_database.recipes_data, self.items_tab.recipes_table
         if not table_widget: return
         table_widget.setSortingEnabled(False); table_widget.setRowCount(0)
         filtered_data = [item for item in data_source if query in item.get("Item", "").lower() or
@@ -966,8 +967,12 @@ QCheckBox::indicator {{
         headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]
         for row, item_data in enumerate(filtered_data):
             table_widget.insertRow(row)
-            for col, header in enumerate(headers):
-                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
+            if current_index == 4: # Recipes tab
+                table_widget.setItem(row, 0, QTableWidgetItem(item_data.get("name", "")))
+                table_widget.setItem(row, 1, QTableWidgetItem(", ".join(item_data.get("components", []))))
+            else:
+                for col, header in enumerate(headers):
+                    table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
         table_widget.setSortingEnabled(True)
 
     def switch_items_sub_tab(self, index: int):
@@ -983,6 +988,8 @@ QCheckBox::indicator {{
             self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
         elif index == 3 and not self.item_database.vendor_data:
             self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
+        elif index == 4 and not self.item_database.recipes_data:
+            self.item_database.load_recipes()
         self.filter_current_item_view()
 
     # Recipes
