@@ -1595,14 +1595,18 @@ QCheckBox::indicator {{
 
     def register_keybind_hotkeys(self):
         """Registers all hotkeys defined in the Quickcast tab."""
-        # Unhook only the keybind hotkeys, leaving global ones intact
-        for name in self.keybinds:
+        # First, unhook any existing keybind hotkeys to prevent duplicates.
+        # We iterate through a copy of the keys because we might modify the dictionary.
+        keybind_names = list(self.keybinds.keys())
+        for name in keybind_names:
             if name in self.hotkey_ids:
                 keyboard.remove_hotkey(self.hotkey_ids.pop(name))
 
+        # Now, register all current keybinds.
         for name, key_info in self.keybinds.items():
-            if "hotkey" in key_info and key_info["hotkey"]:
-                self.register_single_keybind(name, key_info["hotkey"])
+            hotkey = key_info.get("hotkey")
+            if hotkey:
+                self.register_single_keybind(name, hotkey)
 
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
