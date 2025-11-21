@@ -44,46 +44,6 @@ class CharacterLoadTab(QWidget):
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
         main_layout.addLayout(path_layout); main_layout.addLayout(action_layout); main_layout.addLayout(content_layout)
 
-
-class RecipeTrackerTab(QWidget):
-    """A widget for the 'Recipes' tab, for tracking crafting materials."""
-    def __init__(self, parent_window):
-        super().__init__()
-        # self.parent_window = parent_window
-        self._create_widgets()
-        self._create_layouts()
-
-    def _create_widgets(self):
-        """Creates all the widgets for the tab."""
-        self.recipe_search_box = QLineEdit()
-        self.recipe_search_box.setPlaceholderText("Search Recipes...")
-        self.available_recipes_list = QListWidget()
-
-        self.add_recipe_btn = QPushButton("Add ->")
-        self.remove_recipe_btn = QPushButton("<- Remove")
-        self.reset_recipes_btn = QPushButton("Reset")
-
-        self.in_progress_recipes_list = QListWidget()
-
-        self.materials_table = QTableWidget()
-        self.materials_table.setColumnCount(5)
-        self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
-        self.materials_table.setColumnHidden(4, True)
-        self.materials_table.verticalHeader().setVisible(False)
-        self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.materials_table.setSortingEnabled(True)
-
-    def _create_layouts(self):
-        """Creates and arranges the layouts for the tab."""
-        main_layout = QVBoxLayout(self)
-        top_layout = QHBoxLayout()
-        recipes_list_layout = QVBoxLayout(); recipes_list_layout.addWidget(self.recipe_search_box); recipes_list_layout.addWidget(self.available_recipes_list)
-        add_remove_layout = QVBoxLayout(); add_remove_layout.addStretch(); add_remove_layout.addWidget(self.add_recipe_btn); add_remove_layout.addWidget(self.remove_recipe_btn); add_remove_layout.addWidget(self.reset_recipes_btn); add_remove_layout.addStretch()
-        top_layout.addLayout(recipes_list_layout); top_layout.addLayout(add_remove_layout); top_layout.addWidget(self.in_progress_recipes_list)
-        main_layout.addLayout(top_layout); main_layout.addWidget(self.materials_table)
-        main_layout.setStretchFactor(top_layout, 1); main_layout.setStretchFactor(self.materials_table, 3)
-
-
 class AutomationTab(QWidget):
     """A widget for the 'Automation' tab, handling key automation and message hotkeys."""
     def __init__(self, parent_window):
@@ -232,27 +192,63 @@ class ItemsTab(QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
 
-        self.stacked_widget = QStackedWidget()
+        # Main stack for switching between item tables and recipe tracker
+        self.main_stack = QStackedWidget()
+
+        # --- Widget for the item tables ---
+        self.item_tables_widget = QWidget()
+        item_tables_layout = QVBoxLayout(self.item_tables_widget)
+        item_tables_layout.setContentsMargins(0,0,0,0)
+        self.item_tables_stack = QStackedWidget()
         self.all_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.drops_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.raid_items_table = self._create_item_table(["Item", "Drop%", "Unit", "Location"])
         self.vendor_table = self._create_item_table(["Item", "Unit", "Location"])
-        self.recipes_table = self._create_item_table(["Item", "Components"])
-        self.stacked_widget.addWidget(self.all_items_table)
-        self.stacked_widget.addWidget(self.drops_table)
-        self.stacked_widget.addWidget(self.raid_items_table)
-        self.stacked_widget.addWidget(self.vendor_table)
-        self.stacked_widget.addWidget(self.recipes_table)
+        self.item_tables_stack.addWidget(self.all_items_table)
+        self.item_tables_stack.addWidget(self.drops_table)
+        self.item_tables_stack.addWidget(self.raid_items_table)
+        self.item_tables_stack.addWidget(self.vendor_table)
+        item_tables_layout.addWidget(self.item_tables_stack)
+
+        # --- Widget for the recipe tracker ---
+        self.recipe_tracker_widget = QWidget()
+        recipe_tracker_layout = QVBoxLayout(self.recipe_tracker_widget)
+        recipe_tracker_layout.setContentsMargins(0,0,0,0)
+        
+        self.recipe_search_box = QLineEdit()
+        self.recipe_search_box.setPlaceholderText("Search Recipes...")
+        self.available_recipes_list = QListWidget()
+        self.add_recipe_btn = QPushButton("Add ->")
+        self.remove_recipe_btn = QPushButton("<- Remove")
+        self.reset_recipes_btn = QPushButton("Reset")
+        self.in_progress_recipes_list = QListWidget()
+        self.materials_table = QTableWidget()
+        self.materials_table.setColumnCount(5)
+        self.materials_table.setHorizontalHeaderLabels(["Material", "#", "Unit", "Location", "Checked"])
+        self.materials_table.setColumnHidden(4, True)
+        self.materials_table.verticalHeader().setVisible(False)
+        self.materials_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.materials_table.setSortingEnabled(True)
+
+        recipe_top_layout = QHBoxLayout()
+        recipes_list_layout = QVBoxLayout(); recipes_list_layout.addWidget(self.recipe_search_box); recipes_list_layout.addWidget(self.available_recipes_list)
+        add_remove_layout = QVBoxLayout(); add_remove_layout.addStretch(); add_remove_layout.addWidget(self.add_recipe_btn); add_remove_layout.addWidget(self.remove_recipe_btn); add_remove_layout.addWidget(self.reset_recipes_btn); add_remove_layout.addStretch()
+        recipe_top_layout.addLayout(recipes_list_layout); recipe_top_layout.addLayout(add_remove_layout); recipe_top_layout.addWidget(self.in_progress_recipes_list)
+        recipe_tracker_layout.addLayout(recipe_top_layout); recipe_tracker_layout.addWidget(self.materials_table)
+        recipe_tracker_layout.setStretchFactor(recipe_top_layout, 1); recipe_tracker_layout.setStretchFactor(self.materials_table, 3)
+
+        # Add both main widgets to the main stack
+        self.main_stack.addWidget(self.item_tables_widget)
+        self.main_stack.addWidget(self.recipe_tracker_widget)
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QVBoxLayout(self)
         controls_layout = QHBoxLayout()
         controls_layout.addWidget(self.sub_tabs_widget)
-        controls_layout.addStretch()
-        controls_layout.addWidget(self.search_box)
+        controls_layout.addStretch(); controls_layout.addWidget(self.search_box)
         main_layout.addLayout(controls_layout)
-        main_layout.addWidget(self.stacked_widget)
+        main_layout.addWidget(self.main_stack)
 
     def _create_item_table(self, headers: list) -> QTableWidget:
         """Helper to create a standard QTableWidget for items."""

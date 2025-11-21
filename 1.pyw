@@ -22,7 +22,7 @@ from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker
 from settings import SettingsManager
 from automation_manager import AutomationManager
-from ui_tab_widgets import CharacterLoadTab, RecipeTrackerTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
+from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
 
 try:
@@ -257,7 +257,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Recipes", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
@@ -295,16 +295,12 @@ class SimpleWindow(QMainWindow):
 
         # Recipes tab
         self.in_progress_recipes = {}
-        self.recipes_tab = RecipeTrackerTab(self)
-        self.stacked_widget.addWidget(self.recipes_tab)
 
         # Connect signals from the new RecipeTrackerTab
-        self.recipes_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list)
-        self.recipes_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
-        self.recipes_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
-        self.recipes_tab.reset_recipes_btn.clicked.connect(self.reset_recipes)
-        self.recipes_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed)
-        self.recipes_tab.materials_table.itemChanged.connect(self.on_material_checked)
+        self.items_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list)
+        self.items_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
+        self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
+        self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes)
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
@@ -1281,10 +1277,6 @@ QCheckBox::indicator {{
             self.switch_items_sub_tab(0) # Lazy load
         elif tab_name == "Lobbies":
             self.refresh_lobbies() # Refresh when tab is viewed
-        elif tab_name == "Recipes":
-            if not self.item_database.recipes_data: self.item_database.load_recipes()
-            self.filter_recipes_list()
-            self._rebuild_materials_table() # Rebuild materials when tab is viewed
         elif tab_name == "Automation":
             self.load_message_hotkeys()
 
