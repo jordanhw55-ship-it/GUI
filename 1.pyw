@@ -745,6 +745,9 @@ QCheckBox::indicator {{
         # Unhook all main hotkeys before starting the capture thread.
         keyboard.unhook_all()
 
+        # Add a small delay to allow the keyboard hook to fully release
+        QTimer.singleShot(50, self._start_capture_thread)
+
         if self.is_capturing_hotkey:
             return
             
@@ -753,6 +756,8 @@ QCheckBox::indicator {{
             print("[DEBUG] Hotkey capture aborted: previous capture thread still running.")
             return
 
+    def _start_capture_thread(self):
+        """Helper function to start the capture thread after a short delay."""
         self.is_capturing_hotkey = True
         # Properly clean up any previous capture thread that might exist
         if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
