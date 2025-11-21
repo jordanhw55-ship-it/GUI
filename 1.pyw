@@ -742,6 +742,9 @@ QCheckBox::indicator {{
         capture operation can run at a time.
         """
         # Prevent starting a new capture if one is already in progress.
+        # Unhook all main hotkeys before starting the capture thread.
+        keyboard.unhook_all()
+
         if self.is_capturing_hotkey:
             return
             
@@ -761,9 +764,6 @@ QCheckBox::indicator {{
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
-        # Unhook all main hotkeys before starting the capture thread.
-        keyboard.unhook_all()
-        
         # Create and start a new thread and worker for this capture
         # These will be instance attributes to manage their lifecycle correctly
         self.capture_thread = QThread() 
