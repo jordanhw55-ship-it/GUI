@@ -1021,9 +1021,8 @@ QCheckBox::indicator {{
             button.style().polish(button)
             button.update()
 
-                # Re-register the hotkeys to apply the new behavior immediately.
+        # Re-register the hotkeys to apply the new behavior immediately.
         self.register_keybind_hotkeys()
-        print(f"[DEBUG] {name} quickcast toggled to {new_state}")
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
