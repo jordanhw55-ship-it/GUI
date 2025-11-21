@@ -1701,23 +1701,21 @@ QCheckBox::indicator {{
                                             "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
-
-def toggle_ahk_quickcast(self):
-    if self.ahk_process:
-        # Deactivate
-        self.deactivate_ahk_script_if_running()
-        self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
-        self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: green; color: white;")
-    else:
-        # Activate
-        self.ahk_process = subprocess.Popen(
-            ["autohotkey.exe", "quickcast.ahk"],
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
-        self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: red; color: white;")
-        print("[INFO] AHK Quickcast script started.")
-
+    
+    def toggle_ahk_quickcast(self):
+        """Toggles the activation of the dynamically generated AHK quickcast script."""
+        # Check if the AHK process exists and is currently running. The poll() method
+        # returns None if the process is still running.
+        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+            # If it's running, deactivate it. The helper function handles UI changes.
+            self.deactivate_ahk_script_if_running(inform_user=True)
+        else:
+            # If it's not running, activate it.
+            if self.generate_and_run_ahk_script():
+                # On successful activation, update the button to show the "Deactivate" state.
+                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+                self.unregister_keybind_hotkeys()
 
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
