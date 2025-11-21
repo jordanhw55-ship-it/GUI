@@ -1701,7 +1701,7 @@ QCheckBox::indicator {{
                                             "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
-    
+
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
         # Check if the AHK process exists and is currently running. The poll() method
@@ -1716,7 +1716,7 @@ QCheckBox::indicator {{
                 self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
                 self.unregister_keybind_hotkeys()
-
+                
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
