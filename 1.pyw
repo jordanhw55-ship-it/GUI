@@ -297,10 +297,12 @@ class SimpleWindow(QMainWindow):
         self.in_progress_recipes = {}
 
         # Connect signals from the new RecipeTrackerTab
-        self.items_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list)
-        self.items_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress)
-        self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress)
-        self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes)
+        self.items_tab.recipe_search_box.textChanged.connect(self.filter_recipes_list) # type: ignore
+        self.items_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress) # type: ignore
+        self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress) # type: ignore
+        self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes) # type: ignore
+        self.items_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed) # type: ignore
+        self.items_tab.materials_table.itemChanged.connect(self.on_material_checked) # type: ignore
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
@@ -679,8 +681,8 @@ QCheckBox::indicator {{
         
         # Also reset recipes and automation settings
         self.in_progress_recipes.clear()
-        self.recipes_tab.in_progress_recipes_list.clear()
-        self._rebuild_materials_table()
+        self.items_tab.in_progress_recipes_list.clear() # type: ignore
+        self._rebuild_materials_table() # type: ignore
         self._reset_automation_ui()
 
         # Reset message hotkeys
@@ -948,61 +950,65 @@ QCheckBox::indicator {{
 
     # Items
     def filter_current_item_view(self):
-        query = self.items_tab.search_box.text().lower()
-        current_index = self.items_tab.stacked_widget.currentIndex()
-        data_source, table_widget = [], None
-        if current_index == 0: data_source, table_widget = self.item_database.all_items_data, self.items_tab.all_items_table
-        elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.items_tab.drops_table
-        elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.items_tab.raid_items_table
-        elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.items_tab.vendor_table
-        elif current_index == 4: data_source, table_widget = self.item_database.recipes_data, self.items_tab.recipes_table
-        if not table_widget: return
-        table_widget.setSortingEnabled(False); table_widget.setRowCount(0)
-        filtered_data = [item for item in data_source if query in item.get("Item", "").lower() or
-                         query in item.get("Unit", "").lower() or query in item.get("Location", "").lower()]
-        headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())]
-        for row, item_data in enumerate(filtered_data):
-            table_widget.insertRow(row)
-            if current_index == 4: # Recipes tab
-                table_widget.setItem(row, 0, QTableWidgetItem(item_data.get("name", "")))
-                table_widget.setItem(row, 1, QTableWidgetItem(", ".join(item_data.get("components", []))))
-            else:
-                for col, header in enumerate(headers):
-                    table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, "")))
-        table_widget.setSortingEnabled(True)
+        query = self.items_tab.search_box.text().lower() # type: ignore
+        current_index = self.items_tab.item_tables_stack.currentIndex() # type: ignore
+        data_source, table_widget = [], None # type: ignore
+        if current_index == 0: data_source, table_widget = self.item_database.all_items_data, self.items_tab.all_items_table # type: ignore
+        elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.items_tab.drops_table # type: ignore
+        elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.items_tab.raid_items_table # type: ignore
+        elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.items_tab.vendor_table # type: ignore
+        if not table_widget: return # type: ignore
+        table_widget.setSortingEnabled(False); table_widget.setRowCount(0) # type: ignore
+        filtered_data = [item for item in data_source if query in item.get("Item", "").lower() or # type: ignore
+                         query in item.get("Unit", "").lower() or query in item.get("Location", "").lower()] # type: ignore
+        headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())] # type: ignore
+        for row, item_data in enumerate(filtered_data): # type: ignore
+            table_widget.insertRow(row) # type: ignore
+            for col, header in enumerate(headers): # type: ignore
+                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, ""))) # type: ignore
+        table_widget.setSortingEnabled(True) # type: ignore
 
     def switch_items_sub_tab(self, index: int):
-        for i, btn in self.items_tab.item_tab_buttons.items():
+        for i, btn in self.items_tab.item_tab_buttons.items(): # type: ignore
             btn.setChecked(i == index)
-        self.items_tab.stacked_widget.setCurrentIndex(index)
-        self.items_tab.search_box.setVisible(True)
-        if index == 0 and not self.item_database.all_items_data:
-            self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-        elif index == 1 and not self.item_database.drops_data:
-            self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
-        elif index == 2 and not self.item_database.raid_data:
-            self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
-        elif index == 3 and not self.item_database.vendor_data:
-            self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
-        elif index == 4 and not self.item_database.recipes_data:
-            self.item_database.load_recipes()
-        self.filter_current_item_view()
+
+        is_recipe_tab = (index == len(self.items_tab.item_tab_buttons) - 1) # type: ignore
+
+        if is_recipe_tab:
+            self.items_tab.main_stack.setCurrentIndex(1) # type: ignore
+            self.items_tab.search_box.hide() # type: ignore
+            if not self.item_database.recipes_data:
+                self.item_database.load_recipes()
+            self.filter_recipes_list()
+            self._rebuild_materials_table()
+        else:
+            self.items_tab.main_stack.setCurrentIndex(0) # type: ignore
+            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore
+            self.items_tab.search_box.show() # type: ignore
+
+            if index == 0 and not self.item_database.all_items_data:
+                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
+            elif index == 1 and not self.item_database.drops_data:
+                self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
+            elif index == 2 and not self.item_database.raid_data:
+                self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
+            elif index == 3 and not self.item_database.vendor_data:
+                self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
+            self.filter_current_item_view()
 
     # Recipes
     def filter_recipes_list(self):
-        if not self.item_database.recipes_data:
-            self.item_database.load_recipes()
-        query = self.recipes_tab.recipe_search_box.text().lower()
-        self.recipes_tab.available_recipes_list.clear()
+        query = self.items_tab.recipe_search_box.text().lower() # type: ignore
+        self.items_tab.available_recipes_list.clear() # type: ignore
         for recipe in self.item_database.recipes_data:
             if query in recipe["name"].lower():
                 item = QListWidgetItem(recipe["name"])
-                item.setData(Qt.ItemDataRole.UserRole, recipe)
-                self.recipes_tab.available_recipes_list.addItem(item)
+                item.setData(Qt.ItemDataRole.UserRole, recipe) # type: ignore
+                self.items_tab.available_recipes_list.addItem(item) # type: ignore
 
     def add_recipe_to_progress(self):
         """Adds a recipe to the 'in-progress' list from the UI selection."""
-        selected_item = self.recipes_tab.available_recipes_list.currentItem()
+        selected_item = self.items_tab.available_recipes_list.currentItem() # type: ignore
         if not selected_item:
             return False
         if self._add_recipe_by_name(selected_item.text()):
@@ -1025,19 +1031,19 @@ QCheckBox::indicator {{
         recipe_name = recipe["name"]
         self.in_progress_recipes[recipe_name] = recipe
         item = QListWidgetItem(recipe_name)
-        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable) # type: ignore
         item.setCheckState(Qt.CheckState.Unchecked)
-        self.recipes_tab.in_progress_recipes_list.addItem(item)
+        self.items_tab.in_progress_recipes_list.addItem(item) # type: ignore
         return True
 
     def remove_recipe_from_progress(self):
-        selected_item = self.recipes_tab.in_progress_recipes_list.currentItem()
+        selected_item = self.items_tab.in_progress_recipes_list.currentItem() # type: ignore
         if not selected_item:
             return
         recipe_name = selected_item.text()
         recipe = self.in_progress_recipes.pop(recipe_name, None)
         if recipe:
-            list_widget = self.recipes_tab.in_progress_recipes_list
+            list_widget = self.items_tab.in_progress_recipes_list # type: ignore
             list_widget.takeItem(list_widget.row(selected_item))
             self._rebuild_materials_table()
 
@@ -1048,7 +1054,7 @@ QCheckBox::indicator {{
                                        QMessageBox.StandardButton.No)
         if confirm == QMessageBox.StandardButton.Yes:
             self.in_progress_recipes.clear()
-            self.recipes_tab.in_progress_recipes_list.clear()
+            self.items_tab.in_progress_recipes_list.clear() # type: ignore
             self._rebuild_materials_table()
 
     def _reset_automation_ui(self):
@@ -1058,7 +1064,7 @@ QCheckBox::indicator {{
     def _rebuild_materials_table(self):
         """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
         # Disconnect signals to prevent loops during update
-        materials_table = self.recipes_tab.materials_table
+        materials_table = self.items_tab.materials_table # type: ignore
         materials_table.setSortingEnabled(False)
         try:
             materials_table.itemChanged.disconnect(self.on_material_checked)
@@ -1067,14 +1073,14 @@ QCheckBox::indicator {{
         materials_table.setRowCount(0)
         
         checked_recipe_names = []
-        in_progress_list = self.recipes_tab.in_progress_recipes_list
+        in_progress_list = self.items_tab.in_progress_recipes_list # type: ignore
         for i in range(in_progress_list.count()):
             item = in_progress_list.item(i)
             if item.checkState() == Qt.CheckState.Checked:
                 checked_recipe_names.append(item.text())
         
         # If no recipes are checked, use all recipes in the "In Progress" list
-        in_progress_list = self.recipes_tab.in_progress_recipes_list
+        in_progress_list = self.items_tab.in_progress_recipes_list # type: ignore
         target_recipe_names = checked_recipe_names if checked_recipe_names else [in_progress_list.item(i).text() for i in range(in_progress_list.count())]
         
         # Calculate materials needed for the target recipes
@@ -1118,7 +1124,7 @@ QCheckBox::indicator {{
 
     def on_material_checked(self, item: QTableWidgetItem):
         if item.column() != 0: return
-        materials_table = self.recipes_tab.materials_table
+        materials_table = self.items_tab.materials_table # type: ignore
         is_checked = item.checkState() == Qt.CheckState.Checked
         color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
         materials_table.itemChanged.disconnect(self.on_material_checked)
@@ -1275,8 +1281,8 @@ QCheckBox::indicator {{
         tab_name = self.tab_names[index]
         if tab_name == "Items" and not self.item_database.all_items_data:
             self.switch_items_sub_tab(0) # Lazy load
-        elif tab_name == "Lobbies":
-            self.refresh_lobbies() # Refresh when tab is viewed
+        elif tab_name == "Lobbies" and not self.lobbies_tab.lobbies_table.rowCount():
+            self.refresh_lobbies() # Refresh when tab is first viewed
         elif tab_name == "Automation":
             self.load_message_hotkeys()
 
