@@ -24,7 +24,7 @@ from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyH
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
-from ui_overlay import OverlayStatus
+from ui_overlay import OverlayStatus, QuickcastStatus
 import ctypes
 
 try:
@@ -202,6 +202,7 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
+        self.quickcast_status_overlay = QuickcastStatus()
 
         # --- Setup Persistent Chat Worker ---
         self.setup_chat_worker()
@@ -1585,6 +1586,7 @@ QCheckBox::indicator {{
             # If it's running, deactivate it. The helper function handles UI changes.
             self.deactivate_ahk_script_if_running(inform_user=True)
         else:
+            self.quickcast_status_overlay.show_status(True)
             # If it's not running, activate it.
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
@@ -1716,6 +1718,7 @@ remapMouse(button) {
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
+        self.quickcast_status_overlay.show_status(False)
 
         # Ensure the AHK process is terminated on exit
         self.deactivate_ahk_script_if_running(inform_user=False)
