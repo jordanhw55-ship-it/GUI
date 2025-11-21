@@ -1897,12 +1897,24 @@ remapMouse(button) {
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
+        """Ensures all background processes and threads are cleaned up before closing."""
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
+
         # Ensure the AHK process is terminated on exit
-        self.deactivate_ahk_script_if_running(inform_user=False)
+        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+            print("[INFO] closeEvent: Terminating AHK process...")
+            try:
+                pid = self.ahk_process.pid
+                # Forcefully terminate the process and its children
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                self.ahk_process.wait(timeout=3) # Wait for the process to terminate
+                print(f"[INFO] AHK process {pid} terminated on exit.")
+            except Exception as e:
+                print(f"[ERROR] Failed to terminate AHK process on exit: {e}")
+                self.ahk_process.terminate() # Fallback
 
         event.accept()
 
