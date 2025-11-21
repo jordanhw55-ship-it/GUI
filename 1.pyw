@@ -741,15 +741,15 @@ QCheckBox::indicator {{
         Starts a worker thread to capture a key combination, ensuring only one
         capture operation can run at a time.
         """
-        # Prevent starting a new capture if one is already in progress.
-        # Unhook all main hotkeys before starting the capture thread.
-        keyboard.unhook_all()
-
-        # Add a small delay to allow the keyboard hook to fully release
-        QTimer.singleShot(50, self._start_capture_thread)
-
         if self.is_capturing_hotkey:
             return
+
+        # Prevent starting a new capture if one is already in progress.
+        # Unhook all main hotkeys just before starting the capture thread
+        # to minimize the time hooks are disabled.
+        keyboard.unhook_all()
+        # Add a small delay to allow the keyboard hook to fully release
+        QTimer.singleShot(50, self._start_capture_thread)
             
         # If a previous thread is still cleaning up, do not start a new one.
         if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
