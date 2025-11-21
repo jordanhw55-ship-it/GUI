@@ -1705,13 +1705,14 @@ QCheckBox::indicator {{
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
         # If the script is currently running, deactivate_ahk_script_if_running will stop it and return True.
-        # In this case, the user's intent was to deactivate, so we should simply return.
+        # In this case, the user's intent was to deactivate, so we show the message and then stop.
         if self.deactivate_ahk_script_if_running(inform_user=True):
             # The script was running and has now been stopped.
             # The user clicked "Deactivate", so we are done.
             return
         else:
-            # If the script was not running, it means the user clicked "Activate".
+            # If the script was not running (deactivate_ahk_script_if_running returned False),
+            # it means the user clicked "Activate". We proceed to generate and run the script.
             # We proceed to generate and run the script.
             if self.generate_and_run_ahk_script():
                 self.unregister_keybind_hotkeys()
