@@ -161,6 +161,7 @@ class QuickcastTab(QWidget):
         left_layout.addWidget(self.remap_spells_group)
 
         spells_grid = QGridLayout(self.remap_spells_group)
+        spells_grid.setSpacing(2) # Reduce space between buttons
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
