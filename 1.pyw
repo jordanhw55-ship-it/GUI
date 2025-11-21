@@ -1567,9 +1567,6 @@ QCheckBox::indicator {{
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
-                if inform_user:
-                    QMessageBox.information(self, "Script Deactivated", 
-                                            "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
 
