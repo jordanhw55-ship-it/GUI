@@ -1118,7 +1118,11 @@ QCheckBox::indicator {{
                 pyautogui.click(button=original_key)
             elif quickcast:
                 print("[DEBUG] Executing as QUICKCAST.")
-                self._send_quickcast_macro(original_key)
+                vk_code = self.vk_map.get(original_key.lower())
+                if vk_code:
+                    self._send_quickcast_macro(vk_code)
+                else:
+                    print(f"[ERROR] No virtual-key code found for '{original_key}'. Quickcast aborted.")
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
