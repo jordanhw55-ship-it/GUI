@@ -1045,7 +1045,7 @@ QCheckBox::indicator {{
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
-        self.deactivate_ahk_script_if_running()
+        self.deactivate_ahk_signal.emit()
         if self.is_capturing_hotkey:
             return
 
@@ -1056,7 +1056,7 @@ QCheckBox::indicator {{
 
     def on_keybind_setting_changed(self, setting_name: str):
         """Handles when a keybind setting checkbox is changed."""
-        self.deactivate_ahk_script_if_running()
+        self.deactivate_ahk_signal.emit()
         if "settings" not in self.keybinds:
             self.keybinds["settings"] = {}
         
@@ -1065,7 +1065,7 @@ QCheckBox::indicator {{
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
-        self.deactivate_ahk_script_if_running()
+        self.deactivate_ahk_signal.emit()
         # Read current state, defaulting to False if it doesn't exist.
         current_state = self.keybinds.get(name, {}).get("quickcast", False)
         new_state = not current_state
