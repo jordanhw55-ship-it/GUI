@@ -1665,7 +1665,7 @@ QCheckBox::indicator {{
 
         # Send all inputs in a single block for speed and reliability
         input_array = (Input * len(inputs))(*inputs)
-        win32api.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
+        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
