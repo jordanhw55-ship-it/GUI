@@ -185,6 +185,7 @@ class SimpleWindow(QMainWindow):
         self.is_capturing_hotkey = False
         self.theme_previews = []
         self.previous_watched_lobbies = set()
+        self.ahk_process = None
         self.dark_mode = True # Initialize with a default
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
@@ -397,6 +398,8 @@ class SimpleWindow(QMainWindow):
         for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
             checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
         self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
+        # New connection for the Activate Quickcast button
+        self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.toggle_ahk_quickcast)
 
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
@@ -1138,7 +1141,12 @@ QCheckBox::indicator {{
                 pyautogui.click(button=original_key)
             elif quickcast:
                 print("[DEBUG] Executing as QUICKCAST.")
-                self._execute_ahk_quickcast(original_key)
+                # This is now handled by the external AHK script. Python no longer executes this.
+                vk_code = self.vk_map.get(original_key.lower())
+                if vk_code:
+                    self._send_quickcast_macro(vk_code)
+                else:
+                    print(f"[ERROR] No virtual-key code found for '{original_key}'. Quickcast aborted.")
             else:
                 # Normal remap
                 print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
@@ -1659,43 +1667,143 @@ QCheckBox::indicator {{
 
             # The check for the active window is now handled inside execute_keybind.
             hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
-    def _find_ahk_path(self):
+    def toggle_ahk_quickcast(self):
+        """Toggles the activation of the dynamically generated AHK quickcast script."""
+        if self.ahk_process and self.ahk_process.poll() is None:
+            # Process is running, so terminate it
+            self.ahk_process.terminate()
+            self.ahk_process = None
+            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default style
+            print("[INFO] AHK Quickcast script deactivated.")
+        else:
+            # Process is not running, so generate and start it
+            self.generate_and_run_ahk_script()
+
+    def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
-        # Check common installation directories
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
         possible_paths = [
             os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
             os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
         ]
         for path in possible_paths:
             if os.path.exists(path):
                 return path
-        
-        # Fallback to checking the system's PATH environment variable
         try:
             result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
             return result.stdout.strip().split('\n')[0]
         except (subprocess.CalledProcessError, FileNotFoundError):
             return None
 
-    def _execute_ahk_quickcast(self, original_key: str):
-        """Executes the quickcast macro by calling an external AHK script."""
+    def generate_and_run_ahk_script(self):
+        """Generates a complete AHK script from the current keybinds and runs it."""
         ahk_path = self._find_ahk_path()
         if not ahk_path:
             QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
+    def _send_quickcast_macro(self, vk_code):
+        """Sends the complete quickcast sequence using the more reliable SendInput."""
+        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
+        if not win32api or not win32con:
+            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
             return
 
-        script_path = os.path.join(os.path.dirname(__file__), "quickcast.ahk")
-        if not os.path.exists(script_path):
-            QMessageBox.critical(self, "Script Not Found", f"The script 'quickcast.ahk' was not found in the application directory.")
-            return
+        # --- AHK Script Generation ---
+        script_content = f"""#Requires AutoHotkey v2.0
+#SingleInstance Force
+ProcessSetPriority("High")
+        # Use the pre-defined ctypes structures from __init__
+        Input = self.Input
+        KeyBdInput = self.KeyBdInput
+        MouseInput = self.MouseInput
+        Input_I = self.Input_I
 
-        # Use Popen for a non-blocking call to launch the AHK script instantly.
-        subprocess.Popen([ahk_path, script_path, original_key])
+HotIfWinActive("{self.game_title}")
+        def key_down(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, 0, 0, None)))
+
+"""
+        # Add the functions that will be called by the hotkeys
+        script_content += """
+remapSpellwQC(originalKey) {
+    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
+    SendInput("{" originalKey "}")
+    MouseClick("Left")
+    SendInput("{9}{0}")
+}
+        def key_up(vk):
+            return Input(win32con.INPUT_KEYBOARD, Input_I(ki=KeyBdInput(vk, 0, win32con.KEYEVENTF_KEYUP, 0, None)))
+
+remapSpellwoQC(originalKey) {
+    SendInput("{" originalKey "}")
+}
+        def mouse_down():
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTDOWN, 0, None)))
+
+remapMouse(button) {
+    MouseClick(button)
+}
+"""
+        def mouse_up():
+            return Input(win32con.INPUT_MOUSE, Input_I(mi=MouseInput(0, 0, 0, win32con.MOUSEEVENTF_LEFTUP, 0, None)))
+
+        # Generate the hotkeys from Python's self.keybinds
+        for name, key_info in self.keybinds.items():
+            hotkey = key_info.get("hotkey")
+            if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
+        # The full quickcast sequence from the AHK script: Ctrl+90, Key, Click
+        inputs = [
+            key_down(win32con.VK_CONTROL),
+            key_down(self.vk_map['9']), key_up(self.vk_map['9']),
+            key_down(self.vk_map['0']), key_up(self.vk_map['0']),
+            key_up(win32con.VK_CONTROL),
+
+            category = name.split("_")[0]
+            is_enabled = self.keybinds.get("settings", {}).get(category, True)
+            if not is_enabled: continue
+            key_down(vk_code), key_up(vk_code), # Original spell/item key
+
+            original_key = ""
+            if name.startswith("spell_"):
+                original_key = name.split("_")[1].lower()
+            elif name.startswith("inv_"):
+                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+                inv_index = int(name.split("_")[1]) - 1
+                original_key = inv_map[inv_index]
+            mouse_down(), mouse_up(), # Left Click
+        ]
+
+            if not original_key: continue
+        # Send all inputs in a single block for speed and reliability
+        input_array = (self.Input * len(inputs))(*inputs)
+        ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(self.Input))
+
+            quickcast = key_info.get("quickcast", False)
+            function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
+            
+            # Add the '$' prefix to prevent the hotkey from triggering itself
+            script_content += f"\n${hotkey}:: {function_call}"
+
+        # --- Write and Run the Script ---
+        script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
+        try:
+            with open(script_path, "w") as f:
+                f.write(script_content)
+            
+            self.ahk_process = subprocess.Popen([ahk_path, script_path])
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #4CAF50; color: white;") # Green
+            print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
+            return
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
