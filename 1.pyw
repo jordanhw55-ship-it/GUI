@@ -1063,22 +1063,26 @@ QCheckBox::indicator {{
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
+        print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
         # First, check if the active window is Warcraft III.
         try:
             is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
         except Exception:
             is_game_active = False
 
+        print(f"[DEBUG] Is game active? {is_game_active}")
         if not is_game_active:
             return
 
         key_info = self.keybinds.get(name, {})
+        print(f"[DEBUG] Found key_info: {key_info}")
         if not key_info: return
 
         # Check if the corresponding setting is enabled
         category = name.split("_")[0] # "spell", "inv", "mouse"
         if category == "inv": category = "inventory"
         is_enabled = self.keybinds.get("settings", {}).get(category, True)
+        print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
         if not is_enabled:
             return
 
@@ -1096,18 +1100,23 @@ QCheckBox::indicator {{
         elif name.startswith("mouse_"):
             original_key = name.split("_")[1].lower()
 
+        print(f"[DEBUG] Determined original_key: '{original_key}'")
         if not original_key: return
 
         if name.startswith("mouse_"):
+            print("[DEBUG] Executing as mouse click.")
             pyautogui.click(button=original_key)
         elif quickcast:
+            print("[DEBUG] Executing as QUICKCAST.")
             vk_code = self.vk_map.get(original_key.lower())
+            print(f"[DEBUG] Mapped to vk_code: {vk_code} (0x{vk_code:X})" if vk_code else "[DEBUG] vk_code not found!")
             if vk_code:
                 # Replicate AHK's SendInput for a cleaner, faster macro.
                 self._send_quickcast_macro(vk_code)
                 
         else:
             # Normal remap
+            print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
             pyautogui.press(original_key)
 
     def get_keybind_settings_from_ui(self):
@@ -1611,7 +1620,9 @@ QCheckBox::indicator {{
 
     def _send_quickcast_macro(self, vk_code):
         """Sends the complete quickcast sequence using the more reliable SendInput."""
+        print("[DEBUG] _send_quickcast_macro called with vk_code:", vk_code)
         if not win32api or not win32con:
+            print("[DEBUG] _send_quickcast_macro skipped: win32api not available.")
             return
 
         # Define structures for inputs
@@ -1663,9 +1674,11 @@ QCheckBox::indicator {{
             mouse_down(), mouse_up(), # Left Click
         ]
 
+        print(f"[DEBUG] Sending {len(inputs)} inputs via SendInput...")
         # Send all inputs in a single block for speed and reliability
         input_array = (Input * len(inputs))(*inputs)
         ctypes.windll.user32.SendInput(len(inputs), ctypes.byref(input_array), ctypes.sizeof(Input))
+        print("[DEBUG] SendInput call completed.")
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
