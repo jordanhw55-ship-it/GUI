@@ -1064,12 +1064,12 @@ QCheckBox::indicator {{
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
-        # If this function is already running, exit to prevent recursion.
+        # If this function is already running, exit to prevent recursion from SendInput.
         if self.is_executing_keybind:
             return
 
-        self.is_executing_keybind = True
         try:
+            self.is_executing_keybind = True
             print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
             # First, check if the active window is Warcraft III.
             try:
@@ -1079,7 +1079,7 @@ QCheckBox::indicator {{
 
             print(f"[DEBUG] Is game active? {is_game_active}")
             if not is_game_active:
-                return
+                return # Let the keypress go through normally outside the game
 
             key_info = self.keybinds.get(name, {})
             print(f"[DEBUG] Found key_info: {key_info}")
@@ -1091,7 +1091,7 @@ QCheckBox::indicator {{
             is_enabled = self.keybinds.get("settings", {}).get(category, True)
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
-                return
+                return # Setting is disabled, let the keypress go through
 
             quickcast = key_info.get("quickcast", False)
             
