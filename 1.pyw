@@ -1063,61 +1063,68 @@ QCheckBox::indicator {{
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
-        print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
-        # First, check if the active window is Warcraft III.
+        # If this function is already running, exit to prevent recursion.
+        if self.is_executing_keybind:
+            return
+
+        self.is_executing_keybind = True
         try:
-            is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
-        except Exception:
-            is_game_active = False
+            print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
+            # First, check if the active window is Warcraft III.
+            try:
+                is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
+            except Exception:
+                is_game_active = False
 
-        print(f"[DEBUG] Is game active? {is_game_active}")
-        if not is_game_active:
-            return
+            print(f"[DEBUG] Is game active? {is_game_active}")
+            if not is_game_active:
+                return
 
-        key_info = self.keybinds.get(name, {})
-        print(f"[DEBUG] Found key_info: {key_info}")
-        if not key_info: return
+            key_info = self.keybinds.get(name, {})
+            print(f"[DEBUG] Found key_info: {key_info}")
+            if not key_info: return
 
-        # Check if the corresponding setting is enabled
-        category = name.split("_")[0] # "spell", "inv", "mouse"
-        if category == "inv": category = "inventory"
-        is_enabled = self.keybinds.get("settings", {}).get(category, True)
-        print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
-        if not is_enabled:
-            return
+            # Check if the corresponding setting is enabled
+            category = name.split("_")[0] # "spell", "inv", "mouse"
+            if category == "inv": category = "inventory"
+            is_enabled = self.keybinds.get("settings", {}).get(category, True)
+            print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
+            if not is_enabled:
+                return
 
-        quickcast = key_info.get("quickcast", False)
-        
-        # Determine original key
-        original_key = ""
-        if name.startswith("spell_"):
-            original_key = name.split("_")[1].lower()
-        elif name.startswith("inv_"):
-            # Map 1-6 to Numpad 7,8,4,5,1,2
-            inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
-            inv_index = int(name.split("_")[1]) - 1
-            original_key = inv_map[inv_index]
-        elif name.startswith("mouse_"):
-            original_key = name.split("_")[1].lower()
+            quickcast = key_info.get("quickcast", False)
+            
+            # Determine original key
+            original_key = ""
+            if name.startswith("spell_"):
+                original_key = name.split("_")[1].lower()
+            elif name.startswith("inv_"):
+                # Map 1-6 to Numpad 7,8,4,5,1,2
+                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+                inv_index = int(name.split("_")[1]) - 1
+                original_key = inv_map[inv_index]
+            elif name.startswith("mouse_"):
+                original_key = name.split("_")[1].lower()
 
-        print(f"[DEBUG] Determined original_key: '{original_key}'")
-        if not original_key: return
+            print(f"[DEBUG] Determined original_key: '{original_key}'")
+            if not original_key: return
 
-        if name.startswith("mouse_"):
-            print("[DEBUG] Executing as mouse click.")
-            pyautogui.click(button=original_key)
-        elif quickcast:
-            print("[DEBUG] Executing as QUICKCAST.")
-            vk_code = self.vk_map.get(original_key.lower())
-            print(f"[DEBUG] Mapped to vk_code: {vk_code} (0x{vk_code:X})" if vk_code else "[DEBUG] vk_code not found!")
-            if vk_code:
-                # Replicate AHK's SendInput for a cleaner, faster macro.
-                self._send_quickcast_macro(vk_code)
-                
-        else:
-            # Normal remap
-            print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
-            pyautogui.press(original_key)
+            if name.startswith("mouse_"):
+                print("[DEBUG] Executing as mouse click.")
+                pyautogui.click(button=original_key)
+            elif quickcast:
+                print("[DEBUG] Executing as QUICKCAST.")
+                vk_code = self.vk_map.get(original_key.lower())
+                print(f"[DEBUG] Mapped to vk_code: {vk_code} (0x{vk_code:X})" if vk_code else "[DEBUG] vk_code not found!")
+                if vk_code:
+                    self._send_quickcast_macro(vk_code)
+            else:
+                # Normal remap
+                print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
+                pyautogui.press(original_key)
+        finally:
+            # Always reset the flag, even if an error occurs.
+            self.is_executing_keybind = False
 
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
