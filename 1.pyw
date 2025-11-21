@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -192,15 +192,75 @@ class SimpleWindow(QMainWindow):
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
         self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
         self.volume = self.settings_manager.get("volume", 100)
+        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
         self.keybinds = self.settings_manager.get("keybinds", {})
 
         # Keybind state
+        self.capturing_for_control = None
+        self.is_executing_keybind = False # Flag to prevent hotkey recursion
+        self.vk_map = {
+            'a': 0x41, 'b': 0x42, 'c': 0x43, 'd': 0x44, 'e': 0x45, 'f': 0x46, 'g': 0x47, 'h': 0x48,
+            'i': 0x49, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 'm': 0x4D, 'n': 0x4E, 'o': 0x4F, 'p': 0x50,
+            'q': 0x51, 'r': 0x52, 's': 0x53, 't': 0x54, 'u': 0x55, 'v': 0x56, 'w': 0x57, 'x': 0x58,
+            'y': 0x59, 'z': 0x5A,
+            '0': 0x30, '1': 0x31, '2': 0x32, '3': 0x33, '4': 0x34, '5': 0x35, '6': 0x36, '7': 0x37,
+            '8': 0x38, '9': 0x39,
+            'numpad0': 0x60, 'numpad1': 0x61, 'numpad2': 0x62, 'numpad3': 0x63, 'numpad4': 0x64,
+            'numpad5': 0x65, 'numpad6': 0x66, 'numpad7': 0x67, 'numpad8': 0x68, 'numpad9': 0x69,
+            'f1': 0x70, 'f2': 0x71, 'f3': 0x72, 'f4': 0x73, 'f5': 0x74, 'f6': 0x75, 'f7': 0x76,
+            'f8': 0x77, 'f9': 0x78, 'f10': 0x79, 'f11': 0x7A, 'f12': 0x7B,
+            'enter': 0x0D, 'esc': 0x1B, 'space': 0x20, 'tab': 0x09, 'backspace': 0x08,
+            'left': 0x25, 'up': 0x26, 'right': 0x27, 'down': 0x28,
+            'ctrl': win32con.VK_CONTROL, 'alt': 0x12, 'shift': 0x10,
+            'lbutton': 0x01, 'rbutton': 0x02,
+            # Add other keys as needed
+        } if win32con else {}
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
 
+        # --- Ctypes definitions for SendInput ---
+        # Define these once at startup to avoid redefining them on every keypress,
+        # which is a minor performance optimization for the quickcast macro.
+        if win32con:
+            PUL = ctypes.POINTER(ctypes.c_ulong)
+            class KeyBdInput(ctypes.Structure):
+                _fields_ = [("wVk", ctypes.c_ushort), ("wScan", ctypes.c_ushort),
+                            ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong),
+                            ("dwExtraInfo", PUL)]
+
+            class MouseInput(ctypes.Structure):
+                _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long),
+                            ("mouseData", ctypes.c_ulong), ("dwFlags", ctypes.c_ulong),
+                            ("time", ctypes.c_ulong), ("dwExtraInfo", PUL)]
+
+            class Input_I(ctypes.Union):
+                _fields_ = [("ki", KeyBdInput), ("mi", MouseInput)]
+
+            class Input(ctypes.Structure):
+                _fields_ = [("type", ctypes.c_ulong), ("ii", Input_I)]
+
+            self.Input = Input
+            self.KeyBdInput = KeyBdInput
+            self.MouseInput = MouseInput
+            self.Input_I = Input_I
+        # This new implementation is a much more faithful recreation of AHK's SendInput.
+        
+        # Define structures for inputs
+
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
+
+        # --- Setup Persistent Chat Worker ---
+        self.setup_chat_worker()
+
+        # Initialize media player for custom sounds
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
@@ -337,7 +397,14 @@ class SimpleWindow(QMainWindow):
         for name, button in self.quickcast_tab.key_buttons.items():
             button.clicked.connect(lambda checked, b=button, n=name: self.on_keybind_button_clicked(b, n))
             button.installEventFilter(self) # For right-click
+        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
+            checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
+        self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
+        # New connection for the Activate Quickcast button
         self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.toggle_ahk_quickcast)
+        # Connections for AHK installation buttons
+        self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.show_ahk_install_cmd)
+        self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.open_ahk_website)
 
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
@@ -764,6 +831,14 @@ QCheckBox::indicator {{
 
         self.capture_thread.start()
 
+    def _get_default_key_for_control(self, control_name: str) -> str:
+        """Gets the default key for a given keybind control name."""
+        parts = control_name.split('_')
+        if parts[0] == "mouse":
+            return "LButton" if parts[1] == "Left" else "RButton"
+        else: # spell or inv
+            return parts[1]
+
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
         self.automation_tab.message_edit.setEnabled(True)
@@ -781,24 +856,27 @@ QCheckBox::indicator {{
                     self.keybinds[key_name] = {}
                 self.keybinds[key_name]["hotkey"] = hotkey
             else: # Capture was cancelled
-                # Revert to the previous hotkey from the data model
+                # Revert to the default key for this control
                 key_name = self.capturing_for_control
-                previous_hotkey = self.keybinds.get(key_name, {}).get("hotkey", "???")
-                button.setText(previous_hotkey.upper())
+                default_key = self._get_default_key_for_control(key_name)
+                button.setText(default_key.upper())
+                if key_name in self.keybinds:
+                    # Set the hotkey back to the default in the data model
+                    self.keybinds[key_name]["hotkey"] = default_key
         else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
 
         # Re-register all application hotkeys now that capture is complete.
-        # If AHK is running, we don't want to re-register Python hotkeys.
-        # The toggle function will handle this.
-        is_ahk_running = hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None
-        if not is_ahk_running:
-            self.register_global_hotkeys()
-        else:
-            print("[INFO] AHK is active, Python hotkeys remain unregistered.")
-
+        self.register_global_hotkeys()
+        self.register_keybind_hotkeys()
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
+
+    def on_capture_thread_finished(self):
+        """Clears references to the hotkey capture thread and worker."""
+        self.capture_thread = None
+        self.capture_worker = None
+        self.capturing_for_control = None # Clear the control reference
 
     def setup_chat_worker(self):
         """Creates and configures the persistent worker for sending chat messages."""
@@ -951,20 +1029,46 @@ QCheckBox::indicator {{
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
-        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?")
-        if confirm == QMessageBox.StandardButton.Yes:
-            # Deactivate any running AHK script first
-            self.deactivate_ahk_script_if_running(inform_user=False)
-            
+        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
+            # First, unregister all existing keybind hotkeys to ensure a clean slate.
+            # We iterate over a copy because we'll be modifying the dictionary.
+            for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+                # Only remove keybind hotkeys, not global ones (f3, f5, f6) or message hotkeys
+                if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
+                    try:
+                        keyboard.remove_hotkey(hk_id)
+                        del self.hotkey_ids[hotkey_str]
+                    except (KeyError, ValueError):
+                        print(f"[Warning] Tried to remove a keybind hotkey ('{hotkey_str}') that was already unregistered.")
+
             # Clear the internal data model for keybinds
             self.keybinds.clear()
 
             # Re-apply the (now empty) settings, which will force the UI and hotkeys to reset to their defaults.
             self.apply_keybind_settings()
 
+    def open_ahk_website(self):
+        """Opens the AutoHotkey download page in the default web browser."""
+        url = QUrl("https://www.autohotkey.com/")
+        QDesktopServices.openUrl(url)
+
+    def show_ahk_install_cmd(self):
+        """Shows a message box with the winget command to install AHK."""
+        QMessageBox.information(
+            self,
+            "Install via Command Prompt",
+            "1. Open Command Prompt or PowerShell.\n"
+            "2. Copy and paste the following command:\n\n"
+            "winget install AutoHotkey.AutoHotkey"
+        )
+
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
-        """Applies loaded keybind settings to the UI."""
+        """Applies loaded keybind settings to the UI and registers hotkeys."""
+        # Set checkbox states
+        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
+            is_enabled = self.keybinds.get("settings", {}).get(name, True)
+            checkbox.setChecked(is_enabled)
 
         # Set button text and styles
         for name, button in self.quickcast_tab.key_buttons.items():
@@ -978,6 +1082,9 @@ QCheckBox::indicator {{
             button.style().polish(button)
             button.update()
 
+        # Re-register the hotkeys to apply the new behavior immediately.
+        self.register_keybind_hotkeys()
+
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
         self.deactivate_ahk_script_if_running()
@@ -988,6 +1095,16 @@ QCheckBox::indicator {{
         button.setText("...")
         button.setChecked(True) # Use checked state to indicate capture
         self.capture_message_hotkey() # Reuse the hotkey capture logic
+
+    def on_keybind_setting_changed(self, setting_name: str):
+        """Handles when a keybind setting checkbox is changed."""
+        self.deactivate_ahk_script_if_running()
+        if "settings" not in self.keybinds:
+            self.keybinds["settings"] = {}
+        
+        is_enabled = self.quickcast_tab.setting_checkboxes[setting_name].isChecked()
+        self.keybinds["settings"][setting_name] = is_enabled
+        self.register_keybind_hotkeys()
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
@@ -1008,7 +1125,65 @@ QCheckBox::indicator {{
         button.style().polish(button)
         button.update()
 
+        # Re-register the hotkeys to apply the new behavior immediately.
+        self.register_keybind_hotkeys()
         print(f"[DEBUG] {name} quickcast toggled to {new_state}")
+
+    def execute_keybind(self, name: str, hotkey: str):
+        """Executes the action for a triggered keybind hotkey."""
+        # If this function is already running, exit to prevent recursion from SendInput.
+        if self.is_executing_keybind:
+            return
+
+        
+        try:
+            self.is_executing_keybind = True
+            print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
+
+            key_info = self.keybinds.get(name, {})
+            print(f"[DEBUG] Found key_info: {key_info}")
+            if not key_info: return
+            
+
+            # Check if the corresponding setting is enabled
+            category = name.split("_")[0] # "spell", "inv", "mouse"
+            if category == "inv": category = "inventory"
+            is_enabled = self.keybinds.get("settings", {}).get(category, True)
+            print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
+            if not is_enabled:
+                return # Setting is disabled, let the keypress go through
+
+            # The active window check is now implicitly handled by the fact that
+            # the hotkeys are only registered when the user enables the setting.
+            # This removes the delay from the win32gui calls.
+
+            quickcast = key_info.get("quickcast", False)
+            
+            # Determine original key
+            original_key = ""
+            if name.startswith("spell_"):
+                original_key = name.split("_")[1].lower()
+            elif name.startswith("inv_"):
+                # Map 1-6 to Numpad 7,8,4,5,1,2
+                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+                inv_index = int(name.split("_")[1]) - 1
+                original_key = inv_map[inv_index]
+            elif name.startswith("mouse_"):
+                original_key = name.split("_")[1].lower()
+
+            print(f"[DEBUG] Determined original_key: '{original_key}'")
+            if not original_key: return
+
+            if name.startswith("mouse_"):
+                print("[DEBUG] Executing as mouse click.")
+                pyautogui.click(button=original_key)
+            else:
+                # Normal remap
+                print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
+                pyautogui.press(original_key)
+        finally:
+            # Always reset the flag, even if an error occurs.
+            self.is_executing_keybind = False
 
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
@@ -1021,6 +1196,7 @@ QCheckBox::indicator {{
             self.keybinds[name]["hotkey"] = button.text().lower()
 
         return self.keybinds
+
 
     def apply_saved_recipes(self):
         """Loads and populates the in-progress recipes from settings."""
@@ -1445,7 +1621,10 @@ QCheckBox::indicator {{
         self.automation_manager.reset_settings(confirm)
 
     def register_global_hotkeys(self):
+        # This function will now only handle app-level hotkeys (F3, F5, F6) and message hotkeys.
         """Registers all hotkeys, including global controls and custom messages."""
+        keyboard.unhook_all()
+        self.hotkey_ids.clear()
 
         # Register global F5 for starting automation
         try:
@@ -1472,6 +1651,34 @@ QCheckBox::indicator {{
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
 
+    def register_keybind_hotkeys(self):
+        """
+        Safely unregisters and re-registers all keybind-specific hotkeys.
+
+        This method iterates through a copy of the tracked hotkey IDs and
+        selectively removes only those that are not global or message hotkeys.
+        It uses a try-except block to prevent crashes if a hotkey is already
+        unregistered, ensuring the application remains stable.
+        """
+        # Iterate over a copy of the dictionary's items, as we will be modifying it.
+        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+            # We only want to remove keybind hotkeys, not global ones (f3, f5, f6)
+            # or custom message hotkeys.
+            if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
+                try:
+                    # Attempt to remove the hotkey using its registration ID.
+                    keyboard.remove_hotkey(hk_id)
+                    # If successful, remove it from our tracking dictionary to stay in sync.
+                    del self.hotkey_ids[hotkey_str]
+                except (KeyError, ValueError):
+                    # This block executes if the hotkey was already removed or the ID is invalid.
+                    # We can safely ignore this error and just log a warning.
+                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
+
+        for name, key_info in self.keybinds.items():
+            if "hotkey" in key_info and key_info["hotkey"]:
+                self.register_single_keybind(name, key_info["hotkey"])
+
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
@@ -1479,6 +1686,20 @@ QCheckBox::indicator {{
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
+
+    def register_single_keybind(self, name: str, hotkey: str):
+        """Helper to register a single keybind hotkey."""
+        try:
+            # The keyboard library does not support mouse buttons as hotkeys.
+            # We prevent trying to register them.
+            if "button" in hotkey.lower():
+                return
+
+            # The check for the active window is now handled inside execute_keybind.
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            self.hotkey_ids[name] = hk_id
+        except (ValueError, ImportError, KeyError) as e:
+            print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
@@ -1498,6 +1719,7 @@ QCheckBox::indicator {{
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
                 # Re-register Python hotkeys now that AHK is off
+                self.register_keybind_hotkeys()
 
                 if inform_user:
                     QMessageBox.information(self, "Script Deactivated", 
@@ -1518,6 +1740,7 @@ QCheckBox::indicator {{
                 # On successful activation, update the button to show the "Deactivate" state.
                 self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+                self.unregister_keybind_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
@@ -1609,8 +1832,8 @@ remapMouse(button) {
             with open(script_path, "w") as f:
                 f.write(script_content)
             
-            self.ahk_process = subprocess.Popen([ahk_path, script_path], creationflags=subprocess.CREATE_NO_WINDOW)
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+            self.ahk_process = subprocess.Popen([ahk_path, script_path])
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
@@ -1618,6 +1841,32 @@ remapMouse(button) {
         except Exception as e:
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
+
+    def unregister_keybind_hotkeys(self):
+        """Unregisters only the keybind-related hotkeys from the Python listener."""
+        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
+        for name, hk_id in list(self.hotkey_ids.items()):
+            # Only unregister keybinds, not global app hotkeys or message hotkeys
+            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
+                try:
+                    keyboard.remove_hotkey(hk_id)
+                    del self.hotkey_ids[name]
+                except (KeyError, ValueError):
+                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
+
+    def _send_vk_key(self, vk_code):
+        """Sends a key press and release using a virtual-key code."""
+        if not win32api or not win32con:
+            return
+        win32api.keybd_event(vk_code, 0, 0, 0)
+        time.sleep(0)
+        win32api.keybd_event(vk_code, 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def _send_vk_char(self, char: str):
+        """Sends a character key press and release."""
+        if not win32api or not win32con:
+            return
+        self._send_vk_key(ord(char.upper()))
 
     def play_specific_sound(self, sound_file: str):
         """Plays a specific sound file from the contents/sounds directory."""
