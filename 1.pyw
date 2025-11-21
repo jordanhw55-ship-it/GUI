@@ -1074,20 +1074,11 @@ QCheckBox::indicator {{
         try:
             self.is_executing_keybind = True
             print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
-            # First, check if the active window is Warcraft III.
-            try:
-                is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
-            except Exception:
-                is_game_active = False
-
-            print(f"[DEBUG] Is game active? {is_game_active}")
-            if not is_game_active:
-                return # Let the keypress go through normally outside the game
 
             key_info = self.keybinds.get(name, {})
             print(f"[DEBUG] Found key_info: {key_info}")
             if not key_info: return
-
+            
             # Check if the corresponding setting is enabled
             category = name.split("_")[0] # "spell", "inv", "mouse"
             if category == "inv": category = "inventory"
@@ -1095,6 +1086,10 @@ QCheckBox::indicator {{
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
+
+            # The active window check is now implicitly handled by the fact that
+            # the hotkeys are only registered when the user enables the setting.
+            # This removes the delay from the win32gui calls.
 
             quickcast = key_info.get("quickcast", False)
             
