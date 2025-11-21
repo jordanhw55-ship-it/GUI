@@ -1693,18 +1693,13 @@ QCheckBox::indicator {{
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
-        if self.ahk_process and self.ahk_process.poll() is None:
-            # Process is running, so terminate it
-            self.ahk_process.terminate()
-            self.ahk_process = None
-            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("")
-            print("[INFO] AHK Quickcast script deactivated.")
-            # Re-register Python hotkeys now that AHK is off
-            self.register_keybind_hotkeys()
-        else:
+        # Always try to deactivate first to ensure a clean state.
+        # This prevents multiple AHK processes from being launched.
+        was_running = self.deactivate_ahk_script_if_running(inform_user=False)
+
+        if not was_running:
+            # If it wasn't running, then we should start it.
             if self.generate_and_run_ahk_script():
-                # Unregister Python hotkeys to prevent conflicts
                 self.unregister_keybind_hotkeys()
 
     def _find_ahk_path(self) -> str | None:
@@ -1892,13 +1887,12 @@ remapMouse(button) {
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         self.settings_manager.save(self) # Save all settings on exit
-        self.automation_manager.stop_automation() # This was already here
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
         # Ensure the AHK process is terminated on exit
-        if self.ahk_process and self.ahk_process.poll() is None:
-            self.ahk_process.terminate()
+        self.deactivate_ahk_script_if_running(inform_user=False)
+
         event.accept()
 
 
