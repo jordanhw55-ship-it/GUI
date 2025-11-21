@@ -1055,7 +1055,6 @@ QCheckBox::indicator {{
 
         # Update the button's style so the user sees the change.
         button = self.quickcast_tab.key_buttons[name]
-        self.update_keybind_style(button, new_state)
         button.setProperty("quickcast", new_state)
         button.style().unpolish(button)
         button.style().polish(button)
