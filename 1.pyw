@@ -1556,7 +1556,7 @@ QCheckBox::indicator {{
         self.hotkey_ids.clear()
         print("[INFO] All tracked hotkeys have been unregistered.")
 
-    def register_single_hotkey(self, hotkey: str, callback, suppress=False, key_id: str):
+    def register_single_hotkey(self, hotkey: str, callback, key_id: str, suppress=False):
         """Helper to register a single message hotkey."""
         try:
             # If a hotkey with this ID already exists, try to remove it first
