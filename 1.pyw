@@ -1566,9 +1566,10 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
+                # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Text is static
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default
+                self.quickcast_tab.activate_quickcast_btn.setChecked(False)
 
                 # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
                 QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3'))
@@ -1595,7 +1596,7 @@ QCheckBox::indicator {{
         if self.generate_and_run_ahk_script():
             # On successful activation, update the button to show the "Deactivate" state.
             self.quickcast_status_overlay.show_status(True)
-            self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
+            # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Text is static
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
     def deactivate_ahk_quickcast(self):
