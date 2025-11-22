@@ -871,6 +871,7 @@ QCheckBox::indicator {{
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state after confirmation."""
+        print("[DEBUG] Attempting to reset keybinds.")
         confirm = QMessageBox.question(
             self,
             "Confirm Reset",
@@ -880,11 +881,13 @@ QCheckBox::indicator {{
         )
         if confirm == QMessageBox.StandardButton.Yes:
             self.deactivate_ahk_signal.emit()
+            print("[DEBUG] User confirmed reset. Deactivating AHK and clearing keybinds data.")
             # Reset the keybinds data to an empty dictionary
             self.keybinds = {}
             # Re-apply settings, which will load defaults for any missing keys
             self.apply_keybind_settings()
             QMessageBox.information(self, "Success", "Keybinds have been reset to their defaults.")
+            print("[DEBUG] Keybinds have been reset and defaults applied.")
     def open_ahk_website(self):
         """Opens the AutoHotkey download page in the default web browser."""
         url = QUrl("https://www.autohotkey.com/")
@@ -903,6 +906,7 @@ QCheckBox::indicator {{
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
         """Applies loaded keybind settings to the UI and registers hotkeys."""
+        print("[DEBUG] Applying keybind settings to UI.")
         # Set checkbox states
         for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
             is_enabled = self.keybinds.get("settings", {}).get(name, True)
@@ -924,6 +928,7 @@ QCheckBox::indicator {{
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
+        print(f"[DEBUG] Keybind button clicked for '{name}'. Attempting to start capture.")
         self.deactivate_ahk_signal.emit()
         if self.is_capturing_hotkey:
             # If already capturing, do nothing to prevent conflicts.
@@ -935,8 +940,10 @@ QCheckBox::indicator {{
         
         # Provide visual feedback to the user
         button.setText("...")
+        print(f"[DEBUG] Capture mode enabled for '{name}'.")
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
+        print(f"[DEBUG] Right-click detected. Toggling quickcast for '{name}'.")
         self.deactivate_ahk_signal.emit()
         # Read current state, defaulting to False if it doesn't exist.
         current_state = self.keybinds.get(name, {}).get("quickcast", False)
@@ -1410,11 +1417,14 @@ QCheckBox::indicator {{
 
     def activate_ahk_quickcast(self):
         """Activates the dynamically generated AHK quickcast script."""
+        print("[DEBUG] 'Activate Quickcast' button clicked.")
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+            print("[DEBUG] AHK script is already running. Ignoring activation request.")
             return
 
     def deactivate_ahk_quickcast(self):
         """Deactivates the AHK quickcast script if it's running."""
+        print("[DEBUG] 'Deactivate Quickcast' button clicked. Emitting signal.")
         self.deactivate_ahk_signal.emit()
                 
     def deactivate_ahk_via_hotkey(self):
@@ -1442,6 +1452,7 @@ QCheckBox::indicator {{
 
     def generate_and_run_ahk_script(self):
         """Generates a complete AHK script from the current keybinds and runs it."""
+        print("[DEBUG] Attempting to generate and run AHK script.")
         ahk_path = self._find_ahk_path()
         if not ahk_path:
             QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
@@ -1513,6 +1524,7 @@ remapMouse(button) {{
         script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
         try:
             with open(script_path, "w") as f:
+                print(f"[DEBUG] Writing AHK script to {script_path}:\n--- SCRIPT ---\n{script_content}\n--- END SCRIPT ---")
                 f.write(script_content)
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
             # The button style and text are now handled in activate_ahk_quickcast()
