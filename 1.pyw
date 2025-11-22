@@ -206,6 +206,7 @@ class SimpleWindow(QMainWindow):
 
         self.old_pos = None
         self.all_lobbies = []
+        self.last_lobby_id = 0
         self.thread = None # type: ignore
         self.is_sending_message = False
         self.game_title = "Warcraft III"
