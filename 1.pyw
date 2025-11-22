@@ -870,8 +870,21 @@ QCheckBox::indicator {{
         }
 
     def reset_keybinds(self):
-        """Resets all keybinds and quickcast settings to their default state."""
-
+        """Resets all keybinds and quickcast settings to their default state after confirmation."""
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Reset",
+            "Are you sure you want to reset all keybinds to their defaults?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            self.deactivate_ahk_signal.emit()
+            # Reset the keybinds data to an empty dictionary
+            self.keybinds = {}
+            # Re-apply settings, which will load defaults for any missing keys
+            self.apply_keybind_settings()
+            QMessageBox.information(self, "Success", "Keybinds have been reset to their defaults.")
     def open_ahk_website(self):
         """Opens the AutoHotkey download page in the default web browser."""
         url = QUrl("https://www.autohotkey.com/")
@@ -913,8 +926,15 @@ QCheckBox::indicator {{
         """Handles left-click on a keybind button to start capture."""
         self.deactivate_ahk_signal.emit()
         if self.is_capturing_hotkey:
+            # If already capturing, do nothing to prevent conflicts.
             return
-
+        
+        # Set the application state to "capturing"
+        self.is_capturing_hotkey = True
+        self.capturing_for_control = (button, name) # Store which button we're capturing for
+        
+        # Provide visual feedback to the user
+        button.setText("...")
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
         self.deactivate_ahk_signal.emit()
