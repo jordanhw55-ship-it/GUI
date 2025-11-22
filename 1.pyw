@@ -1595,7 +1595,7 @@ QCheckBox::indicator {{
         if self.generate_and_run_ahk_script():
             # On successful activation, update the button to show the "Deactivate" state.
             self.quickcast_status_overlay.show_status(True)
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2")
+            # self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2") # Keep text static
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
     def deactivate_ahk_quickcast(self):
