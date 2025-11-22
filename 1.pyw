@@ -1566,7 +1566,7 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Keep text static
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default
 
@@ -1595,7 +1595,7 @@ QCheckBox::indicator {{
         if self.generate_and_run_ahk_script():
             # On successful activation, update the button to show the "Deactivate" state.
             self.quickcast_status_overlay.show_status(True)
-            # self.quickcast_tab.activate_quickcast_btn.setText("Deactivate/F2") # Keep text static
+            self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
     def deactivate_ahk_quickcast(self):
@@ -1699,10 +1699,10 @@ remapMouse(button) {{
         try:
             with open(script_path, "w") as f:
                 f.write(script_content)
-            
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+            # The button style and text are now handled in activate_ahk_quickcast()
+            # self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+            # self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
 
