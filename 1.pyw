@@ -1534,6 +1534,20 @@ QCheckBox::indicator {{
         except Exception as e:
             print(f"Failed to register F6 hotkey: {e}")
 
+        # Register global F2 to activate the AHK script
+        try:
+            f2_id = keyboard.add_hotkey('f2', self.activate_ahk_quickcast, suppress=True)
+            self.hotkey_ids['f2'] = f2_id
+        except Exception as e:
+            print(f"Failed to register F2 hotkey: {e}")
+
+        # Register global F2 to activate the AHK script
+        try:
+            f2_id = keyboard.add_hotkey('f2', self.activate_ahk_quickcast, suppress=True)
+            self.hotkey_ids['f2'] = f2_id
+        except Exception as e:
+            print(f"Failed to register F2 hotkey: {e}")
+
         # Register global F3 to ONLY deactivate the AHK script
         try:
             self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3')
@@ -1566,8 +1580,16 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Text is static
                 self.quickcast_status_overlay.show_status(False) # Show "OFF" overlay
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert activate button to default
+                self.quickcast_tab.deactivate_quickcast_btn.setStyleSheet("") # Revert deactivate button to default
+
+                # Re-register the F2 hotkey in Python now that AHK is confirmed to be off.
+                if 'f2' not in self.hotkey_ids:
+                    try:
+                        self.register_single_hotkey('f2', self.activate_ahk_quickcast, suppress=True, key_id='f2')
+                    except Exception as e:
+                        print(f"Failed to re-register F2 hotkey: {e}")
 
                 # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
                 QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3'))
@@ -1583,6 +1605,24 @@ QCheckBox::indicator {{
             return # Already running, do nothing.
         # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
         # to prevent conflicts between Python's listener and the AHK script's listener.
+        if 'f2' in self.hotkey_ids:
+            try:
+                keyboard.remove_hotkey(self.hotkey_ids['f2'])
+                del self.hotkey_ids['f2']
+                print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
+            except (KeyError, ValueError):
+                print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
+
+        # Also unregister F3 so AHK can use it to exit.
+        if 'f2' in self.hotkey_ids:
+            try:
+                keyboard.remove_hotkey(self.hotkey_ids['f2'])
+                del self.hotkey_ids['f2']
+                print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
+            except (KeyError, ValueError):
+                print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
+
+        # Also unregister F3 so AHK can use it to exit.
         if 'f3' in self.hotkey_ids:
             try:
                 keyboard.remove_hotkey(self.hotkey_ids['f3'])
@@ -1594,6 +1634,7 @@ QCheckBox::indicator {{
         if self.generate_and_run_ahk_script():
             # On successful activation, update the button to show the "Deactivate" state.
             self.quickcast_status_overlay.show_status(True)
+            self.quickcast_tab.deactivate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
 
     def deactivate_ahk_quickcast(self):
         """Deactivates the AHK quickcast script if it's running."""
