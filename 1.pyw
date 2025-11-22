@@ -1566,7 +1566,7 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
+                # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Keep text static
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default
 
