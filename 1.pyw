@@ -746,17 +746,13 @@ QCheckBox::indicator {{
         if self.is_capturing_hotkey:
             return
 
-        # Prevent starting a new capture if one is already in progress.
-        # Unhook all main hotkeys just before starting the capture thread
-        # to minimize the time hooks are disabled.
-        keyboard.unhook_all()
-        # Add a small delay to allow the keyboard hook to fully release
-        QTimer.singleShot(50, self._start_capture_thread)
-            
         # If a previous thread is still cleaning up, do not start a new one.
         if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
             print("[DEBUG] Hotkey capture aborted: previous capture thread still running.")
             return
+
+        self.unregister_all_hotkeys()
+        QTimer.singleShot(50, self._start_capture_thread)
 
     def _start_capture_thread(self):
         """Helper function to start the capture thread after a short delay."""
@@ -1516,23 +1512,14 @@ QCheckBox::indicator {{
 
     def register_global_hotkeys(self):
         # This function will now only handle app-level hotkeys (F3, F5, F6) and message hotkeys.
-        """Registers all hotkeys, including global controls and custom messages."""
-        keyboard.unhook_all()
-        self.hotkey_ids.clear()
+        """Registers all necessary global hotkeys for the application."""
+        self.unregister_all_hotkeys()
 
         # Register global F5 for starting automation
-        try:
-            f5_id = keyboard.add_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True)
-            self.hotkey_ids['f5'] = f5_id
-        except Exception as e:
-            print(f"Failed to register F5 hotkey: {e}")
+        self.register_single_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True, key_id='f5')
 
         # Register global F6 for stopping automation
-        try:
-            f6_id = keyboard.add_hotkey('f6', lambda: self.stop_automation_signal.emit(), suppress=True)
-            self.hotkey_ids['f6'] = f6_id
-        except Exception as e:
-            print(f"Failed to register F6 hotkey: {e}")
+        self.register_single_hotkey('f6', lambda: self.stop_automation_signal.emit(), suppress=True, key_id='f6')
 
         # Register global F2 to activate the AHK script
         try:
@@ -1556,13 +1543,27 @@ QCheckBox::indicator {{
 
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg))
+            self.register_single_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False, key_id=hotkey)
 
-    def register_single_hotkey(self, hotkey: str, callback, suppress=False, key_id=None):
+    def unregister_all_hotkeys(self):
+        """Safely unregisters all tracked hotkeys."""
+        for key, hk_id in list(self.hotkey_ids.items()):
+            try:
+                keyboard.remove_hotkey(hk_id)
+            except (KeyError, ValueError):
+                # This can happen if the hotkey was already removed, which is fine.
+                pass
+        self.hotkey_ids.clear()
+        print("[INFO] All tracked hotkeys have been unregistered.")
+
+    def register_single_hotkey(self, hotkey: str, callback, suppress=False, key_id: str):
         """Helper to register a single message hotkey."""
         try:
+            # If a hotkey with this ID already exists, try to remove it first
+            if key_id in self.hotkey_ids:
+                keyboard.remove_hotkey(self.hotkey_ids[key_id])
             hk_id = keyboard.add_hotkey(hotkey, callback, suppress=suppress)
-            self.hotkey_ids[key_id or hotkey] = hk_id
+            self.hotkey_ids[key_id] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
 
