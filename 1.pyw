@@ -1,21 +1,19 @@
 import sys
-import json
 import os
 import re
 import subprocess
 from typing import List
 
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
-    QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog,
-    QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
+    QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget, QStackedWidget,
+    QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget, QTableWidgetItem,
+    QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem,
+    QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-import keyboard   # type: ignore
 import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
@@ -25,7 +23,6 @@ from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus, QuickcastStatus
-import ctypes
 
 try:
     import win32gui # type: ignore
@@ -176,7 +173,6 @@ class SimpleWindow(QMainWindow):
         self.all_lobbies = []
         self.thread = None # type: ignore
         self.last_lobby_id = 0 # For heartbeat check
-        self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
 
@@ -204,9 +200,6 @@ class SimpleWindow(QMainWindow):
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
         self.quickcast_status_overlay = QuickcastStatus()
-
-        # --- Setup Persistent Chat Worker ---
-        self.setup_chat_worker()
 
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
@@ -473,9 +466,6 @@ class SimpleWindow(QMainWindow):
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
         self.apply_saved_recipes() # This call is now safe
-
-        # Register global hotkeys (F5 for automation, etc.)
-        self.register_global_hotkeys()
 
         # Apply theme last to ensure all widgets are styled correctly on startup
         # A theme index of -1 indicates a custom theme was last used.
@@ -827,30 +817,6 @@ QCheckBox::indicator {{
             table.setItem(row_position, 0, QTableWidgetItem(hotkey))
             table.setItem(row_position, 1, QTableWidgetItem(message))
 
-    def add_message_hotkey(self):
-        """Adds a new hotkey and message to the system."""
-        hotkey = self.automation_tab.hotkey_capture_btn.text()
-        message = self.automation_tab.message_edit.text()
-
-        if hotkey == "Click to set" or not message or hotkey == 'esc':
-            QMessageBox.warning(self, "Input Error", "Please set a hotkey and enter a message.")
-            return
-        
-        if hotkey in self.message_hotkeys:
-            QMessageBox.warning(self, "Duplicate Hotkey", "This hotkey is already in use. Delete the old one first.")
-            return
-
-        # Overwrite if exists, add if new.
-        self.message_hotkeys[hotkey] = message
-
-        # Reload the table and re-register all hotkeys
-        self.load_message_hotkeys()
-        self.register_global_hotkeys()
-
-        # Reset UI for next entry
-        self.automation_tab.hotkey_capture_btn.setText("Click to set")
-        self.automation_tab.message_edit.clear()
-
     def delete_message_hotkey(self):
         """Deletes a selected hotkey."""
         table = self.automation_tab.msg_hotkey_table
@@ -866,38 +832,7 @@ QCheckBox::indicator {{
         if confirm == QMessageBox.StandardButton.Yes:
             self.message_hotkeys.pop(hotkey_to_delete, None)
             table.removeRow(selected_row)
-            self.register_global_hotkeys() # Re-register to remove the deleted one
-
-            # Reset UI
-            self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
-
-    def send_chat_message(self, hotkey_pressed: str, message: str):
-        """Sends a chat message if the game is active, otherwise passes the keypress through."""
-        try:
-            is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
-        except Exception:
-            is_game_active = False
-        if not is_game_active:
-            return
-
-        if self.is_sending_message:
-            return
-        self.is_sending_message = True
-        self.send_message_signal.emit(message)
-
-    def on_chat_send_error(self, error_message: str):
-        """Handles errors from the chat message worker."""
-        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}. Resetting flag.")
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
-        self.is_sending_message = False
-        print("[DEBUG] is_sending_message reset to False.")
-
-    def on_chat_send_finished(self):
-        """Handles successful completion from the chat message worker."""
-        print("[DEBUG] on_chat_send_finished called. Resetting flag.")
-        self.is_sending_message = False
-        print("[DEBUG] is_sending_message reset to False.")
-
+            
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
         self.current_theme_index = self.settings_manager.get("theme_index")
@@ -947,23 +882,6 @@ QCheckBox::indicator {{
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
-        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
-            # First, unregister all existing keybind hotkeys to ensure a clean slate.
-            # We iterate over a copy because we'll be modifying the dictionary.
-            for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-                # Only remove keybind hotkeys, not global ones (f3, f5, f6) or message hotkeys
-                if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
-                    try:
-                        keyboard.remove_hotkey(hk_id)
-                        del self.hotkey_ids[hotkey_str]
-                    except (KeyError, ValueError):
-                        print(f"[Warning] Tried to remove a keybind hotkey ('{hotkey_str}') that was already unregistered.")
-
-            # Clear the internal data model for keybinds
-            self.keybinds.clear()
-
-            # Re-apply the (now empty) settings, which will force the UI and hotkeys to reset to their defaults.
-            self.apply_keybind_settings()
 
     def open_ahk_website(self):
         """Opens the AutoHotkey download page in the default web browser."""
@@ -1007,20 +925,6 @@ QCheckBox::indicator {{
         self.deactivate_ahk_signal.emit()
         if self.is_capturing_hotkey:
             return
-
-        self.capturing_for_control = name
-        button.setText("...")
-        button.setChecked(True) # Use checked state to indicate capture
-        self.capture_message_hotkey() # Reuse the hotkey capture logic
-
-    def on_keybind_setting_changed(self, setting_name: str):
-        """Handles when a keybind setting checkbox is changed."""
-        self.deactivate_ahk_signal.emit()
-        if "settings" not in self.keybinds:
-            self.keybinds["settings"] = {}
-        
-        is_enabled = self.quickcast_tab.setting_checkboxes[setting_name].isChecked()
-        self.keybinds["settings"][setting_name] = is_enabled
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
@@ -1473,63 +1377,6 @@ QCheckBox::indicator {{
         """Resets all automation settings in the UI to their defaults."""
         self.automation_manager.reset_settings(confirm)
 
-    def register_global_hotkeys(self):
-        # This function will now only handle app-level hotkeys (F3, F5, F6) and message hotkeys.
-        """Registers all necessary global hotkeys for the application."""
-        self.unregister_all_hotkeys()
-
-        # Register global F5 for starting automation
-        self.register_single_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True, key_id='f5')
-
-        # Register global F6 for stopping automation
-        self.register_single_hotkey('f6', lambda: self.stop_automation_signal.emit(), suppress=True, key_id='f6')
-
-        # Register global F2 to activate the AHK script
-        try:
-            f2_id = keyboard.add_hotkey('f2', self.activate_ahk_quickcast, suppress=True)
-            self.hotkey_ids['f2'] = f2_id
-        except Exception as e:
-            print(f"Failed to register F2 hotkey: {e}")
-
-        # Register global F2 to activate the AHK script
-        try:
-            f2_id = keyboard.add_hotkey('f2', self.activate_ahk_quickcast, suppress=True)
-            self.hotkey_ids['f2'] = f2_id
-        except Exception as e:
-            print(f"Failed to register F2 hotkey: {e}")
-
-        # Register global F3 to ONLY deactivate the AHK script
-        try:
-            self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3')
-        except Exception as e:
-            print(f"Failed to register F3 hotkey: {e}")
-
-        # Register all custom message hotkeys
-        for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False, key_id=hotkey)
-
-    def unregister_all_hotkeys(self):
-        """Safely unregisters all tracked hotkeys."""
-        for key, hk_id in list(self.hotkey_ids.items()):
-            try:
-                keyboard.remove_hotkey(hk_id)
-            except (KeyError, ValueError):
-                # This can happen if the hotkey was already removed, which is fine.
-                pass
-        self.hotkey_ids.clear()
-        print("[INFO] All tracked hotkeys have been unregistered.")
-
-    def register_single_hotkey(self, hotkey: str, callback, key_id: str, suppress=False):
-        """Helper to register a single message hotkey."""
-        try:
-            # If a hotkey with this ID already exists, try to remove it first
-            if key_id in self.hotkey_ids:
-                keyboard.remove_hotkey(self.hotkey_ids[key_id])
-            hk_id = keyboard.add_hotkey(hotkey, callback, suppress=suppress)
-            self.hotkey_ids[key_id] = hk_id
-        except (ValueError, ImportError) as e:
-            print(f"Failed to register hotkey '{hotkey}': {e}")
-
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
@@ -1547,17 +1394,6 @@ QCheckBox::indicator {{
                 self.quickcast_status_overlay.show_status(False) # Show "OFF" overlay
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert activate button to default
                 self.quickcast_tab.deactivate_quickcast_btn.setStyleSheet("") # Revert deactivate button to default
-
-                # Re-register the F2 hotkey in Python now that AHK is confirmed to be off.
-                if 'f2' not in self.hotkey_ids:
-                    try:
-                        self.register_single_hotkey('f2', self.activate_ahk_quickcast, suppress=True, key_id='f2')
-                    except Exception as e:
-                        print(f"Failed to re-register F2 hotkey: {e}")
-
-                # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
-                QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3'))
-                print("[INFO] F3 hotkey re-registered in Python.")
                 return True
         else:
             print("[INFO] AHK script was not running.")
@@ -1566,39 +1402,7 @@ QCheckBox::indicator {{
     def activate_ahk_quickcast(self):
         """Activates the dynamically generated AHK quickcast script."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            return # Already running, do nothing.
-        # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
-        # to prevent conflicts between Python's listener and the AHK script's listener.
-        if 'f2' in self.hotkey_ids:
-            try:
-                keyboard.remove_hotkey(self.hotkey_ids['f2'])
-                del self.hotkey_ids['f2']
-                print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
-            except (KeyError, ValueError):
-                print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
-
-        # Also unregister F3 so AHK can use it to exit.
-        if 'f2' in self.hotkey_ids:
-            try:
-                keyboard.remove_hotkey(self.hotkey_ids['f2'])
-                del self.hotkey_ids['f2']
-                print("[INFO] F2 hotkey unregistered from Python before starting AHK.")
-            except (KeyError, ValueError):
-                print("[WARNING] Could not unregister F2 hotkey, it might have already been released.")
-
-        # Also unregister F3 so AHK can use it to exit.
-        if 'f3' in self.hotkey_ids:
-            try:
-                keyboard.remove_hotkey(self.hotkey_ids['f3'])
-                del self.hotkey_ids['f3']
-                print("[INFO] F3 hotkey unregistered from Python before starting AHK.")
-            except (KeyError, ValueError):
-                print("[WARNING] Could not unregister F3 hotkey, it might have already been released.")
-        # If it's not running, activate it.
-        if self.generate_and_run_ahk_script():
-            # On successful activation, update the button to show the "Deactivate" state.
-            self.quickcast_status_overlay.show_status(True)
-            self.quickcast_tab.deactivate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+            return
 
     def deactivate_ahk_quickcast(self):
         """Deactivates the AHK quickcast script if it's running."""
@@ -1736,7 +1540,6 @@ remapMouse(button) {{
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
-        keyboard.unhook_all() # Clean up all global listeners
         self.quickcast_status_overlay.show_status(False)
 
         # Ensure the AHK process is terminated on exit
