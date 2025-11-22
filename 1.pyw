@@ -587,6 +587,45 @@ class SimpleWindow(QMainWindow):
                         return True # Event handled
         return super().eventFilter(obj, event)
 
+    def keyPressEvent(self, event):
+        """Captures a key press when in hotkey capture mode."""
+        if self.is_capturing_hotkey and self.capturing_for_control:
+            key = event.key()
+            
+            # Ignore modifier-only presses (e.g., just pressing Ctrl)
+            if key in (Qt.Key.Key_Control, Qt.Key.Key_Shift, Qt.Key.Key_Alt, Qt.Key.Key_Meta):
+                return
+
+            # Map Qt.Key to a user-friendly and AHK-compatible string
+            key_map = {
+                Qt.Key.Key_F1: "F1", Qt.Key.Key_F2: "F2", Qt.Key.Key_F3: "F3",
+                Qt.Key.Key_F4: "F4", Qt.Key.Key_F5: "F5", Qt.Key.Key_F6: "F6",
+                Qt.Key.Key_F7: "F7", Qt.Key.Key_F8: "F8", Qt.Key.Key_F9: "F9",
+                Qt.Key.Key_F10: "F10", Qt.Key.Key_F11: "F11", Qt.Key.Key_F12: "F12",
+            }
+            
+            key_text = key_map.get(key)
+            if not key_text:
+                # For regular keys, use the text from the event
+                key_text = event.text().lower()
+
+            if key_text:
+                button, name = self.capturing_for_control
+                
+                # Update the data model
+                if name not in self.keybinds:
+                    self.keybinds[name] = {}
+                self.keybinds[name]["hotkey"] = key_text
+                
+                # Update the button text and exit capture mode
+                button.setText(key_text.upper())
+                self.is_capturing_hotkey = False
+                self.capturing_for_control = None
+                print(f"[DEBUG] Captured '{key_text}' for '{name}'. Exiting capture mode.")
+            
+            event.accept()
+        else:
+            super().keyPressEvent(event)
 
 
 
