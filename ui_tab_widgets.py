@@ -142,7 +142,7 @@ class QuickcastTab(QWidget):
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
         self.activate_quickcast_btn = QPushButton("Activate/F2")
-        self.placeholder_btn = QPushButton("placeholder")
+        self.deactivate_quickcast_btn = QPushButton("Deactivate")
 
         # --- AHK Installation ---
         self.install_ahk_group = QGroupBox("Install AutoHotkey v2")
@@ -180,7 +180,7 @@ class QuickcastTab(QWidget):
 
         settings_v_layout = QVBoxLayout(self.settings_group)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
-        settings_v_layout.addWidget(self.placeholder_btn)
+        settings_v_layout.addWidget(self.deactivate_quickcast_btn)
         settings_v_layout.addWidget(self.reset_keybinds_btn)
 
         install_ahk_layout = QVBoxLayout(self.install_ahk_group)

@@ -355,8 +355,9 @@ class SimpleWindow(QMainWindow):
             checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
         self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
         # New connection for the Activate Quickcast button
-        self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.toggle_ahk_quickcast)
+        self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.activate_ahk_quickcast)
         # Connections for AHK installation buttons
+        self.quickcast_tab.deactivate_quickcast_btn.clicked.connect(self.deactivate_ahk_quickcast)
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.show_ahk_install_cmd)
         self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.open_ahk_website)
 
@@ -1565,7 +1566,7 @@ QCheckBox::indicator {{
             finally:
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
-                self.quickcast_tab.activate_quickcast_btn.setText("Activate")
+                self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2")
                 self.quickcast_status_overlay.show_status(False)
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
 
@@ -1577,30 +1578,29 @@ QCheckBox::indicator {{
             print("[INFO] AHK script was not running.")
         return False
 
-    def toggle_ahk_quickcast(self):
-        """Toggles the activation of the dynamically generated AHK quickcast script."""
-        # Check if the AHK process exists and is currently running. The poll() method
-        # returns None if the process is still running.
+    def activate_ahk_quickcast(self):
+        """Activates the dynamically generated AHK quickcast script."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            # If it's running, deactivate it. The helper function handles UI changes.
-            self.deactivate_ahk_signal.emit()
-        else:
-            # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
-            # to prevent conflicts between Python's listener and the AHK script's listener.
-            if 'f3' in self.hotkey_ids:
-                try:
-                    keyboard.remove_hotkey(self.hotkey_ids['f3'])
-                    del self.hotkey_ids['f3']
-                    print("[INFO] F3 hotkey unregistered from Python before starting AHK.")
-                except (KeyError, ValueError):
-                    print("[WARNING] Could not unregister F3 hotkey, it might have already been released.")
+            return # Already running, do nothing.
+        # Before starting AHK, remove the F3 hotkey from the Python `keyboard` library
+        # to prevent conflicts between Python's listener and the AHK script's listener.
+        if 'f3' in self.hotkey_ids:
+            try:
+                keyboard.remove_hotkey(self.hotkey_ids['f3'])
+                del self.hotkey_ids['f3']
+                print("[INFO] F3 hotkey unregistered from Python before starting AHK.")
+            except (KeyError, ValueError):
+                print("[WARNING] Could not unregister F3 hotkey, it might have already been released.")
+        # If it's not running, activate it.
+        if self.generate_and_run_ahk_script():
+            # On successful activation, update the button to show the "Deactivate" state.
+            self.quickcast_status_overlay.show_status(True)
+            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
 
-            # If it's not running, activate it.
-            if self.generate_and_run_ahk_script():
-                # On successful activation, update the button to show the "Deactivate" state.
-                self.quickcast_status_overlay.show_status(True)
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate")
-                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+    def deactivate_ahk_quickcast(self):
+        """Deactivates the AHK quickcast script if it's running."""
+        self.deactivate_ahk_signal.emit()
                 
     def deactivate_ahk_via_hotkey(self):
         """Called by the F3 hotkey to deactivate the AHK script ONLY if it's running."""
