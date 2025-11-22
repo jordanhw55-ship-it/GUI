@@ -61,11 +61,15 @@ class LobbyHeartbeatChecker(QObject):
 
     def run(self):
         try:
-            response = requests.get(f"https://api.wc3stats.com/uptodate?id={self.last_seen_id}", timeout=5)
+            # The API endpoint was changed from /uptodate to /gamelist/uptodate
+            response = requests.get(f"https://api.wc3stats.com/gamelist/uptodate?id={self.last_seen_id}", timeout=5)
             response.raise_for_status()
             data = response.json()
             if data.get("status") == "OK" and data.get("body") is False:
                 self.update_required.emit()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                print(f"Heartbeat check failed: Endpoint not found (404). The API may have changed.")
         finally:
             self.finished.emit()
 
