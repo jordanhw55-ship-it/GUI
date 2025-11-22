@@ -1567,9 +1567,9 @@ QCheckBox::indicator {{
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
                 # self.quickcast_tab.activate_quickcast_btn.setText("Activate/F2") # Text is static
-                self.quickcast_status_overlay.show_status(False)
-                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert to default
-                self.quickcast_tab.activate_quickcast_btn.setChecked(False)
+                self.quickcast_status_overlay.show_status(False) # Show "OFF" overlay
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("") # Revert activate button to default
+                self.quickcast_tab.deactivate_quickcast_btn.setStyleSheet("") # Revert deactivate button to default
 
                 # Re-register the F3 hotkey in Python now that AHK is confirmed to be off.
                 QTimer.singleShot(100, lambda: self.register_single_hotkey('f3', self.deactivate_ahk_via_hotkey, suppress=True, key_id='f3'))
