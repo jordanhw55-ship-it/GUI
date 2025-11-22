@@ -760,65 +760,6 @@ QCheckBox::indicator {{
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
-        
-    def capture_message_hotkey(self):
-        """
-        Prepares the application to capture the next single keypress for a hotkey,
-        without using a separate, unstable thread.
-        """
-        if self.is_capturing_hotkey:
-            return
-
-        self.is_capturing_hotkey = True
-        self.unregister_all_hotkeys()
-
-        self.automation_tab.message_edit.setEnabled(False)
-        self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
-        self.automation_tab.hotkey_capture_btn.setEnabled(False)
-
-        # Temporarily install a hook that will be removed upon the first keypress.
-        self.capture_hook = keyboard.on_press(self.on_key_captured_for_hotkey, suppress=True)
-
-    def _get_default_key_for_control(self, control_name: str) -> str:
-        """Gets the default key for a given keybind control name."""
-        parts = control_name.split('_')
-        if parts[0] == "mouse":
-            return "LButton" if parts[1] == "Left" else "RButton"
-        else: # spell or inv
-            return parts[1]
-
-    def on_key_captured_for_hotkey(self, event: keyboard.KeyboardEvent):
-        """Callback for the temporary key capture hook."""
-        if not self.is_capturing_hotkey:
-            return
-
-        # Unhook immediately to prevent this from firing again.
-        keyboard.unhook(self.capture_hook)
-
-        hotkey = event.name
-        QTimer.singleShot(0, lambda: self.finalize_hotkey_capture(hotkey))
-
-    def finalize_hotkey_capture(self, hotkey: str):
-        """Updates the UI and re-registers hotkeys on the main thread after capture."""
-        try:
-            self.automation_tab.message_edit.setEnabled(True)
-            self.automation_tab.hotkey_capture_btn.setEnabled(True)
-            is_valid = hotkey.lower() != 'esc'
-
-            if self.capturing_for_control:
-                button = self.quickcast_tab.key_buttons[self.capturing_for_control]
-                button.setChecked(False)
-                key_name = self.capturing_for_control
-                captured_key = hotkey if is_valid else self._get_default_key_for_control(key_name)
-                button.setText(captured_key.upper())
-                if key_name not in self.keybinds: self.keybinds[key_name] = {}
-                self.keybinds[key_name]["hotkey"] = captured_key
-            else:
-                self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
-        finally:
-            self.is_capturing_hotkey = False
-            self.capturing_for_control = None
-            self.register_global_hotkeys()
 
     def setup_chat_worker(self):
         """Creates and configures the persistent worker for sending chat messages."""
@@ -850,6 +791,15 @@ QCheckBox::indicator {{
             table.insertRow(row_position)
             table.setItem(row_position, 0, QTableWidgetItem(hotkey))
             table.setItem(row_position, 1, QTableWidgetItem(message))
+
+    def capture_message_hotkey(self):
+        QMessageBox.information(self, "Feature Disabled", "Custom message hotkeys are temporarily disabled due to instability.")
+
+    def add_message_hotkey(self):
+        """Adds a new hotkey and message to the system."""
+        QMessageBox.information(self, "Feature Disabled", "Custom message hotkeys are temporarily disabled due to instability.")
+
+
 
     def delete_message_hotkey(self):
         """Deletes a selected hotkey."""
@@ -1574,10 +1524,6 @@ remapMouse(button) {{
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation()
         self.chat_thread.quit() # Tell the persistent chat thread to stop
-        self.quickcast_status_overlay.show_status(False)
-
-        # Ensure the AHK process is terminated on exit
-        self.deactivate_ahk_script_if_running(inform_user=False)
 
         event.accept()
  
