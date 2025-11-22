@@ -736,56 +736,24 @@ QCheckBox::indicator {{
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
-
-    # Settings
+        
     def capture_message_hotkey(self):
         """
-        Starts a worker thread to capture a key combination, ensuring only one
-        capture operation can run at a time.
+        Prepares the application to capture the next single keypress for a hotkey,
+        without using a separate, unstable thread.
         """
         if self.is_capturing_hotkey:
             return
 
-        # If a previous thread is still cleaning up, do not start a new one.
-        if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
-            print("[DEBUG] Hotkey capture aborted: previous capture thread still running.")
-            return
-
-        self.unregister_all_hotkeys()
-        QTimer.singleShot(50, self._start_capture_thread)
-
-    def _start_capture_thread(self):
-        """Helper function to start the capture thread after a short delay."""
         self.is_capturing_hotkey = True
-        # Properly clean up any previous capture thread that might exist
-        if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
-
+        self.unregister_all_hotkeys()
 
         self.automation_tab.message_edit.setEnabled(False)
         self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
         self.automation_tab.hotkey_capture_btn.setEnabled(False)
 
-        # Create and start a new thread and worker for this capture
-        # These will be instance attributes to manage their lifecycle correctly
-        self.capture_thread = QThread() 
-        self.capture_worker = HotkeyCaptureWorker()
-        self.capture_worker.moveToThread(self.capture_thread)
-
-        # Connections
-        self.capture_worker.hotkey_captured.connect(self.on_hotkey_captured)
-        self.capture_thread.started.connect(self.capture_worker.run)
-        
-        # When the worker emits the hotkey, it's done. Quit the thread.
-        self.capture_worker.hotkey_captured.connect(self.capture_thread.quit)
-
-        # When the thread finishes, schedule both for deletion and clear references.
-        self.capture_thread.finished.connect(self.on_capture_thread_finished)
-        self.capture_thread.finished.connect(self.capture_worker.deleteLater)
-        self.capture_thread.finished.connect(self.capture_thread.deleteLater)
-
-        self.capture_thread.start()
+        # Temporarily install a hook that will be removed upon the first keypress.
+        self.capture_hook = keyboard.on_press(self.on_key_captured_for_hotkey, suppress=True)
 
     def _get_default_key_for_control(self, control_name: str) -> str:
         """Gets the default key for a given keybind control name."""
@@ -795,43 +763,38 @@ QCheckBox::indicator {{
         else: # spell or inv
             return parts[1]
 
-    def on_hotkey_captured(self, hotkey: str):
-        """Handles the captured hotkey string from the worker."""
-        self.automation_tab.message_edit.setEnabled(True)
-        self.automation_tab.hotkey_capture_btn.setEnabled(True)
-        is_valid = hotkey.lower() != 'esc'
+    def on_key_captured_for_hotkey(self, event: keyboard.KeyboardEvent):
+        """Callback for the temporary key capture hook."""
+        if not self.is_capturing_hotkey:
+            return
 
-        # If we were capturing for a keybind button, update it
-        if self.capturing_for_control:
-            button = self.quickcast_tab.key_buttons[self.capturing_for_control]
-            button.setChecked(False) # Uncheck to remove capture highlight
-            if is_valid:
-                button.setText(hotkey.upper())
+        # Unhook immediately to prevent this from firing again.
+        keyboard.unhook(self.capture_hook)
+
+        hotkey = event.name
+        QTimer.singleShot(0, lambda: self.finalize_hotkey_capture(hotkey))
+
+    def finalize_hotkey_capture(self, hotkey: str):
+        """Updates the UI and re-registers hotkeys on the main thread after capture."""
+        try:
+            self.automation_tab.message_edit.setEnabled(True)
+            self.automation_tab.hotkey_capture_btn.setEnabled(True)
+            is_valid = hotkey.lower() != 'esc'
+
+            if self.capturing_for_control:
+                button = self.quickcast_tab.key_buttons[self.capturing_for_control]
+                button.setChecked(False)
                 key_name = self.capturing_for_control
-                if key_name not in self.keybinds:
-                    self.keybinds[key_name] = {}
-                self.keybinds[key_name]["hotkey"] = hotkey
-            else: # Capture was cancelled
-                # Revert to the default key for this control
-                key_name = self.capturing_for_control
-                default_key = self._get_default_key_for_control(key_name)
-                button.setText(default_key.upper())
-                if key_name in self.keybinds:
-                    # Set the hotkey back to the default in the data model
-                    self.keybinds[key_name]["hotkey"] = default_key
-        else: # We were capturing for a message hotkey
-            self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
-
-        # Re-register all application hotkeys now that capture is complete.
-        self.register_global_hotkeys()
-        # Allow a new capture to be started. This is the crucial step.
-        self.is_capturing_hotkey = False
-
-    def on_capture_thread_finished(self):
-        """Clears references to the hotkey capture thread and worker."""
-        self.capture_thread = None
-        self.capture_worker = None
-        self.capturing_for_control = None # Clear the control reference
+                captured_key = hotkey if is_valid else self._get_default_key_for_control(key_name)
+                button.setText(captured_key.upper())
+                if key_name not in self.keybinds: self.keybinds[key_name] = {}
+                self.keybinds[key_name]["hotkey"] = captured_key
+            else:
+                self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
+        finally:
+            self.is_capturing_hotkey = False
+            self.capturing_for_control = None
+            self.register_global_hotkeys()
 
     def setup_chat_worker(self):
         """Creates and configures the persistent worker for sending chat messages."""

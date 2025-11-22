@@ -48,27 +48,6 @@ class LobbyHeartbeatChecker(QObject):
         finally:
             self.finished.emit()
 
-
-class HotkeyCaptureWorker(QObject):
-    """Runs in a separate thread to capture a hotkey without freezing the GUI."""
-    hotkey_captured = Signal(str)
-
-    def run(self):
-        try:
-            # Wait for a single key down event. This prevents combinations like "2+3".
-            # It will correctly handle modifier combinations like "ctrl+s".
-            while True:
-                event = keyboard.read_event(suppress=True)
-                if event.event_type == keyboard.KEY_DOWN:
-                    # Use the event’s key name directly
-                    hotkey_name = event.name
-                    self.hotkey_captured.emit(hotkey_name)
-                    break
-        except Exception as e:
-            print(f"Error capturing hotkey: {e}")
-            self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
-
-
 class ChatMessageWorker(QObject):
     """Runs in a separate thread to send a chat message without freezing the GUI."""
     finished = Signal()
