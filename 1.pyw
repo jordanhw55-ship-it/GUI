@@ -20,7 +20,7 @@ import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
-from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyHeartbeatChecker
+from workers import LobbyFetcher, ChatMessageWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
