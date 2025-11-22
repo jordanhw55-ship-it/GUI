@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QListWidgetItem,
     QColorDialog, QCheckBox, QSlider
 )
-from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
+from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint, QObject
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
