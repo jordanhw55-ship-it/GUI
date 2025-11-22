@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import requests
 import subprocess
 from typing import List
 
@@ -14,11 +15,9 @@ from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QDesktopServices
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-import pyautogui  # type: ignore
-
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
-from workers import LobbyFetcher, ChatMessageWorker, LobbyHeartbeatChecker
+# Workers are now defined in this file
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
@@ -33,6 +32,42 @@ except ImportError:
     win32api = None
     win32con = None
 
+class LobbyFetcher(QObject):
+    """Worker to fetch the full list of game lobbies."""
+    finished = Signal(list)
+    error = Signal(str)
+
+    def run(self):
+        try:
+            response = requests.get("https://api.wc3stats.com/gamelist", timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "OK":
+                self.finished.emit(data.get("body", []))
+            else:
+                self.error.emit("API returned an unexpected status.")
+        except requests.exceptions.RequestException as e:
+            self.error.emit(f"Network error: {e}")
+
+class LobbyHeartbeatChecker(QObject):
+    """Worker to check if the lobby list has been updated since the last fetch."""
+    update_required = Signal()
+    error = Signal(str)
+    finished = Signal()
+
+    def __init__(self, last_seen_id: int):
+        super().__init__()
+        self.last_seen_id = last_seen_id
+
+    def run(self):
+        try:
+            response = requests.get(f"https://api.wc3stats.com/uptodate?id={self.last_seen_id}", timeout=5)
+            response.raise_for_status()
+            data = response.json()
+            if data.get("status") == "OK" and data.get("body") is False:
+                self.update_required.emit()
+        finally:
+            self.finished.emit()
 
 class ThemePreview(QWidget):
     """Clickable theme preview."""
@@ -172,7 +207,6 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.all_lobbies = []
         self.thread = None # type: ignore
-        self.last_lobby_id = 0 # For heartbeat check
         self.is_sending_message = False
         self.game_title = "Warcraft III"
 
