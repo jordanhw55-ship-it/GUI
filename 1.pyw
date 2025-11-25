@@ -1797,9 +1797,9 @@ ProcessSetPriority("High")
 
 ; This hotkey allows the user to press F2 to exit the script,
 ; allowing the Python GUI to take back control of the hotkey.
-F2:: {
+F2:: {{
     ExitApp()
-}
+}}
 
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
