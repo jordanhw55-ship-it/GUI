@@ -1721,12 +1721,18 @@ QCheckBox::indicator {{
             self.ahk_process = None
             self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
-            # Re-register the F2 hotkey directly using the keyboard library
-            try:
-                f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
-                self.hotkey_ids['f2'] = f2_id
-            except Exception as e:
-                print(f"Failed to re-register F2 hotkey: {e}")
+            
+            # Re-register the F2 hotkey after a short delay to prevent the key-up event
+            # from the AHK-exit press from being immediately captured by the new Python hotkey.
+            def reregister_f2():
+                try:
+                    f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
+                    self.hotkey_ids['f2'] = f2_id
+                    print("[INFO] Python F2 hotkey re-registered.")
+                except Exception as e:
+                    print(f"Failed to re-register F2 hotkey: {e}")
+            QTimer.singleShot(200, reregister_f2) # 200ms delay
+
             self.register_keybind_hotkeys()
             self.ahk_monitor_timer.stop()
 
@@ -1748,11 +1754,15 @@ QCheckBox::indicator {{
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
                 # Explicitly re-register the F2 hotkey in Python.
                 if 'f2' not in self.hotkey_ids:
-                    try:
-                        f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
-                        self.hotkey_ids['f2'] = f2_id
-                    except Exception as e:
-                        print(f"Failed to re-register F2 hotkey after manual deactivation: {e}")
+                    def reregister_f2_manual():
+                        try:
+                            f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
+                            self.hotkey_ids['f2'] = f2_id
+                            print("[INFO] Python F2 hotkey re-registered after manual stop.")
+                        except Exception as e:
+                            print(f"Failed to re-register F2 hotkey after manual deactivation: {e}")
+                    QTimer.singleShot(200, reregister_f2_manual)
+
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
 
