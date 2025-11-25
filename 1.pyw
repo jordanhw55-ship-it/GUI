@@ -1803,8 +1803,19 @@ QCheckBox::indicator {{
                 self.ahk_monitor_timer.timeout.connect(self.monitor_ahk_process)
                 self.ahk_monitor_timer.start(250) # Check every 250ms
 
-                # Show the persistent "Quickcast ON" overlay
-                self.status_overlay.show_message("Quickcast ON", "#228B22", "white", timeout_ms=None)
+                # Show the persistent "Quickcast ON" overlay, matching the current theme
+                if self.current_theme_index == -1:
+                    # Custom theme is active
+                    bg_color = self.custom_theme.get("accent", "#FF7F50")
+                    fg_color = self.custom_theme.get("bg", "#121212")
+                else:
+                    # Preset theme is active
+                    theme = self.themes[self.current_theme_index]
+                    bg_color = theme.get("preview_color", "#FF7F50")
+                    # Use black text for light themes, white for dark themes
+                    fg_color = "#000000" if not theme.get("is_dark", True) else "#FFFFFF"
+                
+                self.status_overlay.show_message("Quickcast ON", bg_color, fg_color, timeout_ms=None)
 
                 self.unregister_keybind_hotkeys()
                 
