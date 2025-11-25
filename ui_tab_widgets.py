@@ -133,16 +133,14 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        self.remap_spells_group = QGroupBox("Remap Spells / Inventory")
+        self.remap_spells_group = QGroupBox("Remap Spells")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
-        self.setting_checkboxes['spells'] = QCheckBox("Remap Spells")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
-        self.activate_quickcast_btn = QPushButton("Activate/F2")
-        self.deactivate_quickcast_btn = QPushButton("Deactivate/F3")
+        self.activate_quickcast_btn = QPushButton("Activate Quickcast")
 
         # --- AHK Installation ---
         self.install_ahk_group = QGroupBox("Install AutoHotkey v2")
@@ -152,35 +150,31 @@ class QuickcastTab(QWidget):
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QHBoxLayout(self)
-        left_panel = QWidget()
-        right_panel = QWidget()
-        main_layout.addWidget(left_panel, 1)
-        main_layout.addWidget(right_panel, 1)
-
-        # --- Left Panel (Remapping) ---
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(self.remap_spells_group)
-        left_layout.addStretch() # Prevent the group box from expanding vertically
+        
+        # --- Main Remapping Panel (Left) ---
+        remap_panel = QWidget()
+        remap_layout = QVBoxLayout(remap_panel)
+        remap_layout.addWidget(self.remap_spells_group)
+        main_layout.addWidget(remap_panel, 2) # Give it more space
 
         spells_grid = QGridLayout(self.remap_spells_group)
-        spells_grid.setSpacing(2) # Reduce space between buttons
 
         spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
         for i, key in enumerate(spell_keys):
             row, col = i // 4, i % 4
-            # New key (button)
             self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
             spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
 
-        # --- Right Panel (Settings) ---
-        right_layout = QVBoxLayout(right_panel)
-        right_layout.addWidget(self.settings_group)
-        right_layout.addStretch()
-        right_layout.addWidget(self.install_ahk_group)
+        # --- Settings Panel (Right) ---
+        settings_panel = QWidget()
+        settings_panel_layout = QVBoxLayout(settings_panel)
+        settings_panel_layout.addWidget(self.settings_group)
+        settings_panel_layout.addStretch()
+        settings_panel_layout.addWidget(self.install_ahk_group)
+        main_layout.addWidget(settings_panel, 1)
 
         settings_v_layout = QVBoxLayout(self.settings_group)
         settings_v_layout.addWidget(self.activate_quickcast_btn)
-        settings_v_layout.addWidget(self.deactivate_quickcast_btn)
         settings_v_layout.addWidget(self.reset_keybinds_btn)
 
         install_ahk_layout = QVBoxLayout(self.install_ahk_group)
@@ -191,7 +185,7 @@ class QuickcastTab(QWidget):
     def _create_key_button(self, default_text: str) -> QPushButton:
         """Helper to create a standard key button."""
         button = QPushButton(default_text)
-        button.setFixedSize(50, 50)
+        button.setFixedSize(60, 60)
         button.setCheckable(True) # To show "capture" state
         return button
 
