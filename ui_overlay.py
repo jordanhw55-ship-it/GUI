@@ -11,6 +11,8 @@ class OverlayStatus(QLabel):
             Qt.FramelessWindowHint |
             Qt.Tool  # This flag prevents the widget from appearing in the taskbar
         )
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowOpacity(0.8) # 80% opaque, 20% transparent
         self.setFont(QFont("Arial", 14, QFont.Bold))
         self.setAlignment(Qt.AlignCenter)
         self.setAutoFillBackground(True)
