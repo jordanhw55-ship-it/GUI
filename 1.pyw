@@ -1721,21 +1721,7 @@ QCheckBox::indicator {{
             self.ahk_process = None
             self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
-            
-            # Hide the status overlay
-            self.status_overlay.hide()
-            
-            # Re-register the F2 hotkey after a short delay to prevent the key-up event
-            # from the AHK-exit press from being immediately captured by the new Python hotkey.
-            def reregister_f2():
-                try:
-                    f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
-                    self.hotkey_ids['f2'] = f2_id
-                    print("[INFO] Python F2 hotkey re-registered.")
-                except Exception as e:
-                    print(f"Failed to re-register F2 hotkey: {e}")
-            QTimer.singleShot(200, reregister_f2) # 200ms delay
-
+            self.register_single_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True, key_id='f2')
             self.register_keybind_hotkeys()
             self.ahk_monitor_timer.stop()
 
@@ -1755,21 +1741,6 @@ QCheckBox::indicator {{
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
-
-                # Hide the status overlay
-                self.status_overlay.hide()
-
-                # Explicitly re-register the F2 hotkey in Python.
-                if 'f2' not in self.hotkey_ids:
-                    def reregister_f2_manual():
-                        try:
-                            f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
-                            self.hotkey_ids['f2'] = f2_id
-                            print("[INFO] Python F2 hotkey re-registered after manual stop.")
-                        except Exception as e:
-                            print(f"Failed to re-register F2 hotkey after manual deactivation: {e}")
-                    QTimer.singleShot(200, reregister_f2_manual)
-
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
 
@@ -1802,21 +1773,6 @@ QCheckBox::indicator {{
                 self.ahk_monitor_timer = QTimer(self)
                 self.ahk_monitor_timer.timeout.connect(self.monitor_ahk_process)
                 self.ahk_monitor_timer.start(250) # Check every 250ms
-
-                # Show the persistent "Quickcast ON" overlay, matching the current theme
-                if self.current_theme_index == -1:
-                    # Custom theme is active
-                    bg_color = self.custom_theme.get("accent", "#FF7F50")
-                    fg_color = self.custom_theme.get("bg", "#121212")
-                else:
-                    # Preset theme is active
-                    theme = self.themes[self.current_theme_index]
-                    bg_color = theme.get("preview_color", "#FF7F50")
-                    # Use black text for light themes, white for dark themes
-                    fg_color = "#000000" if not theme.get("is_dark", True) else "#FFFFFF"
-                
-                self.status_overlay.show_message("Quickcast ON", bg_color, fg_color, timeout_ms=None)
-
                 self.unregister_keybind_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
@@ -1850,9 +1806,21 @@ ProcessSetPriority("High")
 
 ; This hotkey allows the user to press F2 to exit the script,
 ; allowing the Python GUI to take back control of the hotkey.
-F2:: {{
+F2:: {
     ExitApp()
-}}
+}
+
+; Pause and Resume hotkeys for chat
+Enter:: {
+    Pause()
+    KeyWait("Enter") ; Wait for Enter to be released
+    KeyWait("Enter", "D") ; Wait for Enter to be pressed again
+    Pause()
+}
+
+~Esc:: {
+    Pause(false) ; Un-pause if paused
+}
 
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
