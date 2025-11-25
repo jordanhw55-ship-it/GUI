@@ -1782,14 +1782,14 @@ QCheckBox::indicator {{
 ProcessSetPriority("High")
 
 remapSpellwQC(originalKey) {
-    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
-    SendInput("{" originalKey "}")
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{" originalKey "}}")
     MouseClick("Left")
-    SendInput("{9}{0}")
+    SendInput("{{9}}{{0}}")
 }
 
 remapSpellwoQC(originalKey) {
-    SendInput("{" originalKey "}")
+    SendInput("{{" originalKey "}}")
 }
 
 remapMouse(button) {
@@ -1797,8 +1797,6 @@ remapMouse(button) {
 }
 
 HotIfWinActive("{self.game_title}")
-
-"""
 
         # Keep track of hotkeys already defined to prevent duplicates
         defined_hotkeys = set()
