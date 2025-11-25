@@ -1,20 +1,26 @@
-from PySide6.QtWidgets import QLabel
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QFont, QColor, QPalette
 
-class OverlayStatus(QLabel):
+class OverlayStatus(QWidget):
     """A floating, self-hiding label to show automation status."""
     def __init__(self):
         super().__init__()
         self.setWindowFlags(
             Qt.WindowStaysOnTopHint |
             Qt.FramelessWindowHint |
-            Qt.Tool  # This flag prevents the widget from appearing in the taskbar
+            Qt.Tool
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowOpacity(0.8) # 80% opaque, 20% transparent
-        self.setFont(QFont("Arial", 14, QFont.Bold))
-        self.setAlignment(Qt.AlignCenter)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        self.label = QLabel()
+        self.label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.label.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(self.label)
+
         self.resize(180, 40)  # The size of the status box
         self.move(0, 0)       # Positioned at the top-left of the screen
 
@@ -38,11 +44,14 @@ class OverlayStatus(QLabel):
         """Shows a custom always-on-top overlay message.
         If timeout_ms is None or 0, the overlay remains until explicitly hidden.
         """
+        self.label.setStyleSheet(f"color: {fg_color}; background-color: transparent;")
         self.setStyleSheet(f"""
-            background-color: {bg_color};
-            color: {fg_color};
+            QWidget {{
+                background-color: {bg_color}CC; /* CC = 80% opacity */
+                border-radius: 5px;
+            }}
         """)
-        self.setText(text)
+        self.label.setText(text)
         self.show()
         if timeout_ms and timeout_ms > 0:
             QTimer.singleShot(timeout_ms, self.hide)
