@@ -1845,47 +1845,33 @@ QCheckBox::indicator {{
 
         # --- AHK Script Generation ---
         script_content = f"""#Requires AutoHotkey v2.0
-#SingleInstance Force
-ProcessSetPriority("High")
+    #SingleInstance Force
+    ProcessSetPriority("High")
 
-; This hotkey allows the user to press F2 to exit the script,
-; allowing the Python GUI to take back control of the hotkey.
-F2:: {{
-    ExitApp()
-}}
+    HotIfWinActive("{self.game_title}")
 
-; Pause and Resume hotkeys for chat
-Enter:: {{
-    Pause()
-    KeyWait("Enter") ; Wait for Enter to be released
-    KeyWait("Enter", "D") ; Wait for Enter to be pressed again
-    Pause()
-}}
-
-~Esc:: {{
-    Pause(false) ; Un-pause if paused
-}}
-
-remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" originalKey "}}}")
+"""
+        # Add the functions that will be called by the hotkeys
+        script_content += """
+remapSpellwQC(originalKey) {
+    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
+    SendInput("{" originalKey "}")
     MouseClick("Left")
-    SendInput("{{9}}{{0}}")
-}}
+    SendInput("{9}{0}")
+}
 
-remapSpellwoQC(originalKey) {{
-    SendInput("{{{" originalKey "}}}")
-}}
+remapSpellwoQC(originalKey) {
+    SendInput("{" originalKey "}")
+}
 
-remapMouse(button) {{
+remapMouse(button) {
     MouseClick(button)
-}}
-
-HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys context-sensitive
+}
 """
 
         defined_hotkeys = set()
 
+        # Generate the hotkeys from Python's self.keybinds
         for name, key_info in self.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
