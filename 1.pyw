@@ -1711,6 +1711,20 @@ QCheckBox::indicator {{
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
+    def monitor_ahk_process(self):
+        """Checks if the AHK process is still running and re-registers F2 if it's not."""
+        if not hasattr(self, 'ahk_process') or not self.ahk_process:
+            return
+
+        if self.ahk_process.poll() is not None: # Process has terminated
+            print("[INFO] AHK process terminated. Re-registering Python F2 hotkey.")
+            self.ahk_process = None
+            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
+            self.register_single_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True, key_id='f2')
+            self.register_keybind_hotkeys()
+            self.ahk_monitor_timer.stop()
+
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
@@ -1726,16 +1740,7 @@ QCheckBox::indicator {{
                 self.ahk_process.wait(timeout=2) # Wait briefly for the process to die
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
-                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
-
-                # Re-register the F2 hotkey in Python now that AHK is confirmed to be off.
-                if 'f2' not in self.hotkey_ids:
-                    try:
-                        # Use a short delay to ensure the AHK process has fully released the key
-                        QTimer.singleShot(100, lambda: self.register_single_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True, key_id='f2'))
-                        print("[INFO] F2 hotkey re-registered in Python.")
-                    except Exception as e:
-                        print(f"Failed to re-register F2 hotkey: {e}")
+                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
 
@@ -1764,6 +1769,10 @@ QCheckBox::indicator {{
             if self.generate_and_run_ahk_script():
                 # On successful activation, update the button to show the "Deactivate" state.
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
+                # Start a timer to monitor the AHK process
+                self.ahk_monitor_timer = QTimer(self)
+                self.ahk_monitor_timer.timeout.connect(self.monitor_ahk_process)
+                self.ahk_monitor_timer.start(250) # Check every 250ms
                 self.unregister_keybind_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
@@ -1797,26 +1806,26 @@ ProcessSetPriority("High")
 
 ; This hotkey allows the user to press F2 to exit the script,
 ; allowing the Python GUI to take back control of the hotkey.
-F2:: {{
+F2:: {
     ExitApp()
-}}
+}
 
-remapSpellwQC(originalKey) {{
+remapSpellwQC(originalKey) {
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
     SendInput("{{{" originalKey "}}}")
     MouseClick("Left")
     SendInput("{{9}}{{0}}")
 }}
 
-remapSpellwoQC(originalKey) {{
+remapSpellwoQC(originalKey) {
     SendInput("{{{" originalKey "}}}")
 }}
 
-remapMouse(button) {{
+remapMouse(button) {
     MouseClick(button)
 }}
 
-HotIfWinActive("{self.game_title}")
+HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys context-sensitive
 """
 
         defined_hotkeys = set()
