@@ -50,7 +50,7 @@ DARK_STYLE = """
         subcontrol-origin: margin;
         subcontrol-position: top center;
         padding: 0 10px;
-        background-color: #121212;
+        font-weight: bold;
     }
 """
 
@@ -94,7 +94,7 @@ LIGHT_STYLE = """
         subcontrol-origin: margin;
         subcontrol-position: top center;
         padding: 0 10px;
-        background-color: #FFFFFF;
+        font-weight: bold;
     }
 """
 
@@ -130,7 +130,7 @@ FOREST_STYLE = """
         border-radius: 8px;
         margin-top: 10px;
     }
-    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; background-color: #121212; }
+    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
 
 OCEAN_STYLE = """
@@ -164,7 +164,7 @@ OCEAN_STYLE = """
         border-radius: 8px;
         margin-top: 10px;
     }
-    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; background-color: #F0F8FF; }
+    QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
 
 def get_base_path():
