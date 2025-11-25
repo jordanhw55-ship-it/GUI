@@ -1781,27 +1781,26 @@ QCheckBox::indicator {{
 #SingleInstance Force
 ProcessSetPriority("High")
 
-remapSpellwQC(originalKey) {
+remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{" originalKey "}}")
+    SendInput("{{{" originalKey "}}}")
     MouseClick("Left")
     SendInput("{{9}}{{0}}")
-}
+}}
 
-remapSpellwoQC(originalKey) {
-    SendInput("{{" originalKey "}}")
-}
+remapSpellwoQC(originalKey) {{
+    SendInput("{{{" originalKey "}}}")
+}}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
-}
+}}
 
 HotIfWinActive("{self.game_title}")
+"""
 
-        # Keep track of hotkeys already defined to prevent duplicates
         defined_hotkeys = set()
 
-        # Generate the hotkeys from Python's self.keybinds
         for name, key_info in self.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
