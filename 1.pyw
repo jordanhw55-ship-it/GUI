@@ -1722,6 +1722,9 @@ QCheckBox::indicator {{
             self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
+            # Hide the status overlay
+            self.status_overlay.hide()
+            
             # Re-register the F2 hotkey after a short delay to prevent the key-up event
             # from the AHK-exit press from being immediately captured by the new Python hotkey.
             def reregister_f2():
@@ -1752,6 +1755,10 @@ QCheckBox::indicator {{
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
+
+                # Hide the status overlay
+                self.status_overlay.hide()
+
                 # Explicitly re-register the F2 hotkey in Python.
                 if 'f2' not in self.hotkey_ids:
                     def reregister_f2_manual():
@@ -1795,6 +1802,10 @@ QCheckBox::indicator {{
                 self.ahk_monitor_timer = QTimer(self)
                 self.ahk_monitor_timer.timeout.connect(self.monitor_ahk_process)
                 self.ahk_monitor_timer.start(250) # Check every 250ms
+
+                # Show the persistent "Quickcast ON" overlay
+                self.status_overlay.show_message("Quickcast ON", "#228B22", "white", timeout_ms=None)
+
                 self.unregister_keybind_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
