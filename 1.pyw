@@ -1855,16 +1855,16 @@ F2:: {{
 }}
 
 ; Pause and Resume hotkeys for chat
-Enter:: {
+Enter:: {{
     Pause()
     KeyWait("Enter") ; Wait for Enter to be released
     KeyWait("Enter", "D") ; Wait for Enter to be pressed again
     Pause()
-}
+}}
 
-~Esc:: {
+~Esc:: {{
     Pause(false) ; Un-pause if paused
-}
+}}
 
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
