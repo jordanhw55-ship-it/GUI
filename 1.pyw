@@ -1810,18 +1810,18 @@ F2:: {
     ExitApp()
 }
 
-remapSpellwQC(originalKey) {
+remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
     SendInput("{{{" originalKey "}}}")
     MouseClick("Left")
     SendInput("{{9}}{{0}}")
 }}
 
-remapSpellwoQC(originalKey) {
+remapSpellwoQC(originalKey) {{
     SendInput("{{{" originalKey "}}}")
 }}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
 }}
 
