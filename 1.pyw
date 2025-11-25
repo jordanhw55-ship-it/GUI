@@ -1731,9 +1731,6 @@ QCheckBox::indicator {{
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
 
-                if inform_user:
-                    QMessageBox.information(self, "Script Deactivated", 
-                                            "The AHK script has been deactivated. Python-based hotkeys are now active.")
                 return True
         return False
 
