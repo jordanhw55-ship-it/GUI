@@ -1746,6 +1746,13 @@ QCheckBox::indicator {{
                 self.ahk_process = None
                 self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
+                # Explicitly re-register the F2 hotkey in Python.
+                if 'f2' not in self.hotkey_ids:
+                    try:
+                        f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
+                        self.hotkey_ids['f2'] = f2_id
+                    except Exception as e:
+                        print(f"Failed to re-register F2 hotkey after manual deactivation: {e}")
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
 
