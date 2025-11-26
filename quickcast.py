@@ -179,14 +179,17 @@ SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 HotIfWinActive("{self.main_window.game_title}")
 
 remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" originalKey "}}}")
+    SendEvent("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendEvent("{{{" originalKey "}}}")
     MouseClick("Left")
-    SendInput("{{9}}{{0}}")
+    SendEvent("{{9}}{{0}}")
 }}
 
 remapSpellwoQC(originalKey) {{
-    SendInput("{{{" originalKey "}}}")
+    ; Use SendEvent for better game compatibility.
+    ; Add a brief delay to ensure the keypress is registered.
+    SetKeyDelay(10, 10)
+    SendEvent("{{{" originalKey "}}}")
 }}
 
 remapMouse(button) {{
