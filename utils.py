@@ -175,5 +175,4 @@ def get_base_path():
     else:
         # The application is not frozen
         # Change this to the directory of your main script
-        # This now correctly returns the project root, assuming utils.py is in a subdirectory like 'GUI'
-        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.dirname(os.path.abspath(__file__))
