@@ -194,25 +194,26 @@ lock_file := "{lock_file_path.replace('\\', '/')}"
 FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 """
-        # Append the rest of the script as a standard string to avoid f-string formatting issues.
-        # This matches the original, working implementation.
-        script_content += """
-remapSpellwQC(originalKey) {
+
+        # Add the functions that will be called by the hotkeys
+        # and the HotIfWinActive directive to make them context-sensitive.
+        script_content += f"""
+HotIfWinActive("{self.main_window.game_title}")
+
+remapSpellwQC(originalKey) {{
     SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
     SendInput("{" . originalKey . "}")
     MouseClick("Left")
     SendInput("{9}{0}")
 }
 
-remapSpellwoQC(originalKey) {
+remapSpellwoQC(originalKey) {{
     SendInput("{" . originalKey . "}")
-}
+}}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
-}
-
-HotIfWinActive("{self.main_window.game_title}")
+}}
 """
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
