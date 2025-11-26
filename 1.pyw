@@ -1856,15 +1856,17 @@ remapMouse(button) {
         """
         # Iterate over a copy of the dictionary's items, as we will be modifying it.
         for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-            try:
-                # Attempt to remove the hotkey using its registration ID.
-                keyboard.remove_hotkey(hk_id)
-                # If successful, remove it from our tracking dictionary to stay in sync.
-                del self.hotkey_ids[hotkey_str]
-            except (KeyError, ValueError):
-                # This block executes if the hotkey was already removed or the ID is invalid.
-                # We can safely ignore this error and just log a warning.
-                print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
+            # Do not unregister the F2 hotkey, so it can be used to deactivate the AHK script.
+            if hotkey_str != 'f2':
+                try:
+                    # Attempt to remove the hotkey using its registration ID.
+                    keyboard.remove_hotkey(hk_id)
+                    # If successful, remove it from our tracking dictionary to stay in sync.
+                    del self.hotkey_ids[hotkey_str]
+                except (KeyError, ValueError):
+                    # This block executes if the hotkey was already removed or the ID is invalid.
+                    # We can safely ignore this error and just log a warning.
+                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
 
     def register_keybind_hotkeys(self):
         """
