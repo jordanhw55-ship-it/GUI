@@ -20,6 +20,7 @@ import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
+from theme_manager import ThemeManager
 from workers import LobbyFetcher, HotkeyCaptureWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
@@ -185,7 +186,6 @@ class SimpleWindow(QMainWindow):
         # Automation state flags
         self.automation_settings = {} # To hold loaded settings
         self.is_capturing_hotkey = False
-        self.theme_previews = []
         self.previous_watched_lobbies = set()
         self.ahk_process = None
         self.dark_mode = True # Initialize with a default to prevent startup errors
@@ -275,13 +275,6 @@ class SimpleWindow(QMainWindow):
             frame_geometry = self.frameGeometry()
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
-
-        self.themes = [
-            {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
-            {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False},
-            {"name": "Black/Blue", "style": FOREST_STYLE, "preview_color": "#1E90FF", "is_dark": True},
-            {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False},
-        ]
 
         self.is_fetching_lobbies = False # Add a flag to prevent concurrent refreshes
         main_layout = QVBoxLayout()
@@ -434,11 +427,12 @@ class SimpleWindow(QMainWindow):
         settings_tab_content = QWidget()
         settings_layout = QGridLayout(settings_tab_content)
 
+        self.theme_manager = ThemeManager(self)
         # Preset themes grid
-        self.create_theme_grid(settings_layout)
+        self.theme_manager.create_theme_grid(settings_layout)
 
         # Custom theme controls below presets
-        row_below = (len(self.themes) - 1) // 4 + 1
+        row_below = (len(self.theme_manager.themes) - 1) // 4 + 1
         custom_box = QGroupBox("Custom theme")
         custom_v_layout = QVBoxLayout(custom_box)
 
@@ -447,7 +441,7 @@ class SimpleWindow(QMainWindow):
         self.fg_color_btn = QPushButton("Text")
         self.fg_color_btn.clicked.connect(lambda: self.pick_color('fg'))
         self.accent_color_btn = QPushButton("Accent")
-        self.accent_color_btn.clicked.connect(lambda: self.pick_color('accent'))
+        self.accent_color_btn.clicked.connect(lambda: self.theme_manager.pick_color('accent'))
 
         pick_buttons_h_layout = QHBoxLayout()
         pick_buttons_h_layout.addWidget(self.bg_color_btn)
@@ -465,9 +459,9 @@ class SimpleWindow(QMainWindow):
         preview_layout.addWidget(self.preview_button)
 
         self.apply_custom_btn = QPushButton("Apply")
-        self.apply_custom_btn.clicked.connect(self.apply_custom_theme)
+        self.apply_custom_btn.clicked.connect(self.theme_manager.apply_custom_theme)
         self.reset_custom_btn = QPushButton("Reset custom")
-        self.reset_custom_btn.clicked.connect(self.reset_custom_theme_to_defaults)
+        self.reset_custom_btn.clicked.connect(self.theme_manager.reset_custom_theme_to_defaults)
 
         action_buttons_h_layout = QHBoxLayout()
         action_buttons_h_layout.addWidget(self.apply_custom_btn)
@@ -539,10 +533,10 @@ class SimpleWindow(QMainWindow):
             self.ahk_monitor_timer.timeout.connect(self.quickcast_manager.monitor_ahk_process)
             self.ahk_monitor_timer.start()
             # Apply custom theme and update its preview
-            self.apply_custom_theme()
-            self.update_custom_theme_preview()
+            self.theme_manager.apply_custom_theme()
+            self.theme_manager.update_custom_theme_preview()
         else:
-            self.apply_theme(self.current_theme_index)
+            self.theme_manager.apply_theme(self.current_theme_index)
 
     def update_automation_log(self, message: str):
         """Appends a message to the automation log text box."""
@@ -555,24 +549,6 @@ class SimpleWindow(QMainWindow):
         self.audio_output.setVolume(volume_float)
 
     # Core helpers
-    def create_theme_grid(self, layout: QGridLayout):
-        row, col = 0, 0
-        for i, theme in enumerate(self.themes):
-            preview = ThemePreview(); preview.setFixedSize(150, 120)
-            preview.setCursor(Qt.CursorShape.PointingHandCursor); preview.setObjectName("ThemePreview")
-            preview.clicked.connect(lambda idx=i: self.apply_theme(idx))
-            preview_layout = QVBoxLayout(preview)
-            color_block = QLabel(); color_block.setFixedHeight(80)
-            color_block.setStyleSheet(f"background-color: {theme['preview_color']}; border-radius: 5px;")
-            name_label = QLabel(theme['name']); name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            preview_layout.addWidget(color_block); preview_layout.addWidget(name_label)
-            layout.addWidget(preview, row, col); self.theme_previews.append(preview)
-            col += 1
-            if col >= 4:
-                col = 0
-                row += 1
-        layout.setRowStretch(row + 1, 1); layout.setColumnStretch(col + 1, 1)
-
     def select_ping_sound(self, sound_file: str):
         """Selects a sound, plays it, and updates button styles."""
         self.selected_sound = sound_file
@@ -581,7 +557,7 @@ class SimpleWindow(QMainWindow):
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
-        theme = self.themes[self.current_theme_index] if self.current_theme_index != -1 else self.custom_theme
+        theme = self.theme_manager.themes[self.current_theme_index] if self.current_theme_index != -1 else self.custom_theme
         accent_color = theme.get("accent", theme.get("preview_color", "#FF7F50"))
         is_dark = theme.get("is_dark", self.dark_mode)
         checked_fg = "#000000" if not is_dark else "#FFFFFF"
@@ -618,154 +594,9 @@ class SimpleWindow(QMainWindow):
 
 
 
-
-    # Preset themes
-    def apply_theme(self, theme_index: int):
-        self.current_theme_index = theme_index
-        theme = self.themes[theme_index]
-
-        self.dark_mode = theme["is_dark"]
-        self.setStyleSheet(theme["style"])
-        self.custom_tab_bar.apply_style(theme['name'], self.dark_mode)
-        for i, preview in enumerate(self.theme_previews): # type: ignore
-            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;" # type: ignore
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}") # type: ignore
-        self.update_ping_button_styles()
-
-    # Custom theme builder
-    def build_custom_stylesheet(self) -> str:
-        bg = self.custom_theme["bg"]
-        fg = self.custom_theme["fg"]
-        accent = self.custom_theme["accent"]
-        return f"""QWidget {{
-    background-color: {bg};
-    color: {fg};
-    font-family: 'Segoe UI';
-    font-size: 14px;
-    outline: none;
-}}
-
-QMainWindow {{
-    background-color: {bg};
-}}
-#CustomTitleBar {{
-    background-color: {bg};
-}}
-#CustomTitleBar QLabel, #CustomTitleBar QPushButton {{
-    background-color: transparent;
-    border: none;
-    color: {fg};
-    font-size: 16px;
-}}
-#CustomTitleBar QPushButton:hover {{
-    background-color: {accent};
-}}
-QPushButton {{
-    background-color: {accent};
-    color: {bg};
-    border: 1px solid {accent};
-    padding: 5px;
-    border-radius: 6px;
-}}
-QPushButton:hover {{
-    background-color: {bg};
-    color: {accent};
-}}
-QLineEdit, QTextEdit, QListWidget, QTableWidget {{
-    background-color: #2E2E2E;
-    color: {fg};
-    border: 1px solid {accent};
-    border-radius: 6px;
-    padding: 6px;
-}}
-QGroupBox {{
-    border: 1px solid {accent};
-    border-radius: 8px;
-    margin-top: 10px;
-}}
-QGroupBox::title {{
-    subcontrol-origin: margin;
-    subcontrol-position: top center;
-    padding: 0 10px;
-    font-weight: bold;
-}}
-QHeaderView::section {{
-    background-color: #2E2E2E;
-    color: {fg};
-    border: 1px solid {accent};
-    padding: 4px;
-}}
-QCheckBox::indicator {{
-    border: 1px solid {accent};
-}}
-"""
-
-    def apply_custom_theme(self):
-        # Set current_theme_index to -1 to signify that a custom theme is active
-        self.current_theme_index = -1
-        
-        # Determine if the custom theme is dark or light based on background color
-        bg_color = QColor(self.custom_theme.get("bg", "#121212"))
-        self.dark_mode = bg_color.lightness() < 128
-
-        self.setStyleSheet(self.build_custom_stylesheet())
-        self.custom_tab_bar.setStyleSheet(f"""            
-            QPushButton {{
-                background-color: {self.custom_theme['bg']};
-                border: 1px solid {self.custom_theme['fg']};
-                padding: 8px;
-                border-radius: 6px;
-                color: {self.custom_theme['fg']};
-                font-size: 16px;
-            }}
-            QPushButton:hover {{
-                background-color: {self.custom_theme['accent']};
-            }}
-            QPushButton:checked {{
-                background-color: {self.custom_theme['accent']};
-                color: {self.custom_theme['bg']};
-                border-color: {self.custom_theme['accent']};
-            }}
-        """)
-        # Re-apply theme to ensure all child widgets get the new style
-        for i, preview in enumerate(self.theme_previews):
-            border_style = "border: 2px solid transparent;"
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.dark_mode else '#D8DEE9'}; }}")
-        
-        # Update the live preview for the custom theme
-        bg, fg, accent = self.custom_theme['bg'], self.custom_theme['fg'], self.custom_theme['accent']
-        self.custom_theme_preview.setStyleSheet(f"#CustomThemePreview {{ background-color: {bg}; border: 1px solid {accent}; border-radius: 8px; }}")
-        self.preview_label.setStyleSheet(f"color: {fg}; background-color: transparent; border: none;")
-        self.preview_button.setStyleSheet(f"background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px;")
-
-        self.update_ping_button_styles()
-
-    def update_custom_theme_preview(self):
-        """Updates only the live preview widget with the current custom theme colors."""
-        bg = self.custom_theme.get('bg', '#121212')
-        fg = self.custom_theme.get('fg', '#F0F0F0')
-        accent = self.custom_theme.get('accent', '#FF7F50')
-        
-        self.custom_theme_preview.setStyleSheet(f"#CustomThemePreview {{ background-color: {bg}; border: 1px solid {accent}; border-radius: 8px; }}")
-        self.preview_label.setStyleSheet(f"color: {fg}; background-color: transparent; border: none;")
-        self.preview_button.setStyleSheet(f"background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px;")
-
     def pick_color(self, key: str):
-        initial = QColor(self.custom_theme[key])
-        color = QColorDialog.getColor(initial, self, f"Pick {key} color")
-        if color.isValid():
-            self.custom_theme[key] = color.name()
-            self.update_custom_theme_preview()
-
-
-    def reset_custom_theme_to_defaults(self):
-        """Resets custom theme colors to their default values."""
-        self.custom_theme = {
-            "bg": "#121212",
-            "fg": "#F0F0F0",
-            "accent": "#FF7F50"
-        }
-        self.apply_custom_theme()
+        """Delegates color picking to the ThemeManager."""
+        self.theme_manager.pick_color(key)
 
     def confirm_reset(self):
         confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
@@ -778,7 +609,7 @@ QCheckBox::indicator {{
     def reset_state(self):
         self.resize(700, 800)
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
-        self.apply_theme(0)
+        self.theme_manager.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.watchlist = ["hellfire", "rpg"]
         self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
