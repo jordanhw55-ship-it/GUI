@@ -456,6 +456,7 @@ class SimpleWindow(QMainWindow):
         self.send_message_signal.connect(self._main_thread_send_chat_message)
 
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
+        self.automation_manager.automation_state_changed.connect(self.update_automation_button_style)
 
         # Set initial selected ping sound
         self.update_ping_button_styles()
@@ -485,6 +486,15 @@ class SimpleWindow(QMainWindow):
 
         # Initial data load for lobbies
         self.lobby_manager.refresh_lobbies()
+
+    def update_automation_button_style(self, is_running: bool):
+        """Updates the 'Start/F5' button color based on automation state."""
+        button = self.automation_tab.start_automation_btn
+        if is_running:
+            button.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
+        else:
+            # Revert to the default stylesheet provided by the theme
+            button.setStyleSheet("")
 
     def update_automation_log(self, message: str):
         """Appends a message to the automation log text box."""
