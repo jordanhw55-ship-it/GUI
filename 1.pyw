@@ -24,6 +24,7 @@ from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyH
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from quickcast import QuickcastManager
+from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
 import time
 import ctypes
