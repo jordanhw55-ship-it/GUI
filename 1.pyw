@@ -1881,7 +1881,7 @@ HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
             
             # Add the '$' prefix to prevent the hotkey from triggering itself
-            script_content += f"\n${{{hotkey}}}:: {function_call}"
+            script_content += f"\n${hotkey}:: {function_call}"
             defined_hotkeys.add(hotkey)
 
         # --- Write and Run the Script ---
