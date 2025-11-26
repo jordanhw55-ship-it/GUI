@@ -1832,15 +1832,19 @@ F2:: {{
     ExitApp()
 }}
 
-remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" originalKey "}}}")
+remapSpellwQC(originalKey) {{ ; ControlSend is more reliable for games
+    ControlSend("{{Ctrl Down}}", , "ahk_exe Warcraft III.exe")
+    ControlSend("9", , "ahk_exe Warcraft III.exe")
+    ControlSend("0", , "ahk_exe Warcraft III.exe")
+    ControlSend("{{Ctrl Up}}", , "ahk_exe Warcraft III.exe")
+    ControlSend("{{{" originalKey "}}}", , "ahk_exe Warcraft III.exe")
     MouseClick("Left")
-    SendInput("{{9}}{{0}}")
+    ControlSend("9", , "ahk_exe Warcraft III.exe")
+    ControlSend("0", , "ahk_exe Warcraft III.exe")
 }}
 
-remapSpellwoQC(originalKey) {{
-    SendInput("{{{" originalKey "}}}")
+remapSpellwoQC(originalKey) {{ ; ControlSend is more reliable for games
+    ControlSend("{{{" originalKey "}}}", , "ahk_exe Warcraft III.exe")
 }}
 
 remapMouse(button) {{
