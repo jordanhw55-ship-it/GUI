@@ -300,11 +300,8 @@ class SimpleWindow(QMainWindow):
         title_layout.setContentsMargins(0, 0, 0, 0)
         title_layout.setSpacing(5)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label = QLabel()
-        icon_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "icon.ico")).scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         title_image_label = QLabel()
         title_image_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "title.png")))
-        title_layout.addWidget(icon_label)
         title_layout.addWidget(title_image_label)
 
         # --- Add Widgets to Title Bar Layout ---
