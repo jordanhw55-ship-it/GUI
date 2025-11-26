@@ -1784,17 +1784,7 @@ remapMouse(button) {
         Safely unregisters and re-registers all keybind-specific hotkeys.
         This method iterates through a copy of the tracked hotkey IDs...
         """
-        # Iterate over a copy of the dictionary's items, as we will be modifying it.
-        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-            # We only want to remove keybind hotkeys, not global ones (f2, f3, f5, f6)
-            # or custom message hotkeys.
-            # FIX: Added 'f2' to the list below
-            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
-            self.quickcast_manager.register_keybind_hotkeys()
-
-        for name, key_info in self.keybinds.items():
-            if "hotkey" in key_info and key_info["hotkey"]:
-                self.register_single_keybind(name, key_info["hotkey"])
+        self.quickcast_manager.register_keybind_hotkeys()
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
