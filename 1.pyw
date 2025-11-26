@@ -526,8 +526,8 @@ class SimpleWindow(QMainWindow):
         
         selected_sound = self.lobby_manager.selected_sound
         for sound, btn in self.lobby_manager.lobbies_tab.ping_buttons.items():
-            btn.setChecked(sound == self.selected_sound)
-            if sound == self.selected_sound:
+            btn.setChecked(sound == selected_sound)
+            if sound == selected_sound:
                 btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg}; border: 1px solid {accent_color};")
             else:
                 btn.setStyleSheet("") # Revert to parent stylesheet
