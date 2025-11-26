@@ -501,6 +501,9 @@ class SimpleWindow(QMainWindow):
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
         self.quickcast_toggle_signal.connect(self.quickcast_manager.toggle_ahk_quickcast)
+        # Connect the chat message signal to the handler slot that runs on the main thread
+        self.send_message_signal.connect(self._main_thread_send_chat_message)
+
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
@@ -945,35 +948,40 @@ QCheckBox::indicator {{
             self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        """
-        Handles the entire process of sending a chat message on the main GUI thread
-        to avoid COM initialization errors. Uses QTimer to prevent freezing.
-        """
+        """This function is called from the keyboard library's background thread.
+        It should ONLY emit a signal to pass the work to the main GUI thread."""
+        self.send_message_signal.emit(message)
+
+    def _main_thread_send_chat_message(self, message: str):
+        """This slot is connected to the send_message_signal and runs on the main GUI thread."""
         try:
             is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
         except Exception:
             is_game_active = False
-
         if not is_game_active:
             return
 
         if self.is_sending_message:
             return
-
         self.is_sending_message = True
 
         try:
-            # --- All operations now on the main thread ---
+            # --- All operations are now safely on the main thread ---
             clipboard = QApplication.clipboard()
             original_clipboard = clipboard.text()
             clipboard.setText(message)
 
-            # Use timers to sequence the key presses without blocking
+            # Use timers to sequence the key presses without blocking the GUI
             pyautogui.press('enter')
             QTimer.singleShot(50, lambda: pyautogui.hotkey('ctrl', 'v'))
             QTimer.singleShot(100, lambda: pyautogui.press('enter'))
-            QTimer.singleShot(150, lambda: clipboard.setText(original_clipboard)) # Restore clipboard
-            QTimer.singleShot(200, lambda: setattr(self, 'is_sending_message', False)) # Reset flag
+
+            # After a short delay, restore the clipboard and reset the flag
+            def cleanup():
+                clipboard.setText(original_clipboard)
+                self.is_sending_message = False
+            QTimer.singleShot(200, cleanup)
+
         except Exception as e:
             QMessageBox.critical(self, "Chat Error", f"An error occurred while sending the message: {e}")
             self.is_sending_message = False
