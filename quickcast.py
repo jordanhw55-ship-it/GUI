@@ -159,16 +159,6 @@ class QuickcastManager:
             # Always reset the flag after the operation is complete
             self.is_toggling_ahk = False
 
-    def monitor_ahk_process(self):
-        """Periodically checks if the AHK process has terminated on its own."""
-        if self.ahk_process and self.ahk_process.poll() is not None:
-            print("[INFO] AHK process terminated automatically (window lost focus).")
-            # The process has finished. Call the deactivation logic, but don't try to kill it again.
-            self.ahk_process = None # Clear the process handle
-            self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
-            self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
-            self.main_window.register_global_hotkeys()
-
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
@@ -197,31 +187,33 @@ class QuickcastManager:
         lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
 
         script_content = f"""#Requires AutoHotkey v2.0
- #SingleInstance Force
- ProcessSetPriority("High")
- 
- ; This script will exit automatically if the lock file is deleted OR if the game window is not active.
- lock_file := "{lock_file_path.replace(os.sep, '/')}"
- FileAppend("locked", lock_file)
- SetTimer(CheckFocus, 500) ; Check every 500ms
- 
- CheckFocus() {{
-     if !WinActive("{self.main_window.game_title}") or !FileExist(lock_file) {{
-         ExitApp()
-     }}
- }}
- 
- remapSpellwQC(originalKey) {{
-     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-     SendInput("{{{" . originalKey . "}}}")
-     MouseClick("Left")
-     SendInput("{{9}}{{0}}")
- }}
- 
- remapSpellwoQC(originalKey) {{
-     SendInput("{{{" . originalKey . "}}}")
- }}
- """
+#SingleInstance Force
+ProcessSetPriority("High")
+
+lock_file := "{lock_file_path.replace('\\', '/')}"
+FileAppend("locked", lock_file)
+SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
+"""
+        # Append the rest of the script as a standard string to avoid f-string formatting issues.
+        # This matches the original, working implementation.
+        script_content += """
+remapSpellwQC(originalKey) {
+    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
+    SendInput("{" . originalKey . "}")
+    MouseClick("Left")
+    SendInput("{9}{0}")
+}
+
+remapSpellwoQC(originalKey) {
+    SendInput("{" . originalKey . "}")
+}
+
+remapMouse(button) {
+    MouseClick(button)
+}
+
+HotIfWinActive("{self.main_window.game_title}")
+"""
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
             hotkey = key_info.get("hotkey")
