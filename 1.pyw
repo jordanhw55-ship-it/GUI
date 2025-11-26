@@ -255,7 +255,7 @@ class SimpleWindow(QMainWindow):
         self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
-        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "Images", "icon.ico"))) # Set the application icon
+        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
         # Center the window on the primary screen
@@ -278,35 +278,38 @@ class SimpleWindow(QMainWindow):
         self.title_bar.setObjectName("CustomTitleBar")
         self.title_bar.setFixedHeight(30)
         title_bar_layout = QGridLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(5, 0, 5, 0) # left, top, right, bottom
+        title_bar_layout.setContentsMargins(5, 0, 5, 0)
         title_bar_layout.setSpacing(0)
 
-        # --- Buttons (Right Aligned) ---
-        min_button = QPushButton("_")
-        min_button.setFixedSize(30, 30)
-        min_button.clicked.connect(self.showMinimized)
-        close_button = QPushButton("X")
-        close_button.setFixedSize(30, 30)
-        close_button.clicked.connect(self.close)
+        # Create a central widget for the title (icon + text)
+        title_widget = QWidget()
+        title_widget.setStyleSheet("background-color: transparent;")
+        title_layout = QHBoxLayout(title_widget)
+        title_layout.setContentsMargins(0,0,0,0)
+        title_layout.setSpacing(5)
+        title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon_label = QLabel()
+        icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
+        icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        
+        title_text_label = QLabel("Hellfire Helper")
+
+        title_layout.addWidget(icon_label)
+        title_layout.addWidget(title_text_label)
+
+        min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
+        close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
+
+        # Create a separate layout for the buttons (only minimize and close)
         button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(0)
         button_layout.addWidget(min_button)
         button_layout.addWidget(close_button)
 
-        # --- Title Widget (Icon + Image, Centered) ---
-        title_widget = QWidget()
-        title_widget.setStyleSheet("background-color: transparent;")
-        title_layout = QHBoxLayout(title_widget)
-        title_layout.setContentsMargins(0, 0, 0, 0)
-        title_layout.setSpacing(5)
-        title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_image_label = QLabel()
-        title_image_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "title.png")))
-        title_layout.addWidget(title_image_label)
-
-        # --- Add Widgets to Title Bar Layout ---
-        title_bar_layout.addWidget(title_widget, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter)
-        title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight)
+        title_bar_layout.addWidget(title_widget, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
+        title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
         main_layout.addWidget(self.title_bar)
 
         # Tabs

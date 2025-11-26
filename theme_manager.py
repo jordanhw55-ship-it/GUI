@@ -4,7 +4,6 @@ from PySide6.QtCore import Qt
 
 from utils import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 
-
 class ThemeManager:
     def __init__(self, main_window):
         self.main_window = main_window
@@ -18,12 +17,6 @@ class ThemeManager:
 
     def create_theme_grid(self, layout: QGridLayout):
         """Populates the provided grid layout with theme preview widgets."""
-        # The 'from __main__ import' is a bit unusual. A better approach would be to
-        # pass the ThemePreview class as an argument if it's defined in the main script,
-        # or move it to a shared UI components file to avoid circular dependencies.
-        # For now, we'll keep it as is since it seems to be the established pattern
-        # in this project.
-
         from __main__ import ThemePreview # Avoid circular import
 
         row, col = 0, 0
@@ -62,6 +55,12 @@ class ThemeManager:
         self.main_window.setStyleSheet(theme["style"])
         self.main_window.custom_tab_bar.apply_style(theme['name'], self.main_window.dark_mode)
 
+        for i, preview in enumerate(self.theme_previews):
+            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
+            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
+
+        self.main_window.update_ping_button_styles()
+
     def build_custom_stylesheet(self) -> str:
         """Builds the full stylesheet string from the custom theme colors."""
         custom_theme = self.main_window.custom_theme
@@ -79,12 +78,7 @@ class ThemeManager:
             QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }}
             QHeaderView::section {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; padding: 4px; }}
             QCheckBox::indicator {{ border: 1px solid {accent}; }}
-        """.strip()
-
-        for i, preview in enumerate(self.theme_previews):
-            border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
-            preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
-        self.main_window.update_ping_button_styles()
+        """
 
     def apply_custom_theme(self):
         """Applies the custom theme to the main window."""
@@ -105,6 +99,7 @@ class ThemeManager:
             preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
         
         self.update_custom_theme_preview()
+        self.main_window.update_ping_button_styles()
 
     def update_custom_theme_preview(self):
         """Updates the live preview widget with the current custom theme colors."""
@@ -114,8 +109,6 @@ class ThemeManager:
         self.main_window.custom_theme_preview.setStyleSheet(f"#CustomThemePreview {{ background-color: {bg}; border: 1px solid {accent}; border-radius: 8px; }}")
         self.main_window.preview_label.setStyleSheet(f"color: {fg}; background-color: transparent; border: none;")
         self.main_window.preview_button.setStyleSheet(f"background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px;")
-        
-        self.main_window.update_ping_button_styles()
 
     def pick_color(self, key: str):
         """Opens a color dialog and updates the custom theme dictionary."""
