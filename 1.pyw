@@ -281,22 +281,24 @@ class SimpleWindow(QMainWindow):
         title_bar_layout.setContentsMargins(5, 0, 5, 0)
         title_bar_layout.setSpacing(0)
 
-        # Create a central widget for the title (icon + text)
-        title_widget = QWidget()
-        title_widget.setStyleSheet("background-color: transparent;")
-        title_layout = QHBoxLayout(title_widget)
-        title_layout.setContentsMargins(0,0,0,0)
-        title_layout.setSpacing(5)
-        title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        icon_label = QLabel()
-        icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
-        icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        
-        title_text_label = QLabel("Hellfire Helper")
-
-        title_layout.addWidget(icon_label)
-        title_layout.addWidget(title_text_label)
+        # Check if a custom title image exists
+        title_image_path = os.path.join(get_base_path(), "contents", "title.png")
+        if os.path.exists(title_image_path):
+            title_widget = QLabel()
+            title_pixmap = QPixmap(title_image_path)
+            title_widget.setPixmap(title_pixmap.scaled(title_pixmap.width(), 22, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        else:
+            # Fallback to icon and text
+            title_widget = QWidget()
+            title_widget.setStyleSheet("background-color: transparent;")
+            title_layout = QHBoxLayout(title_widget)
+            title_layout.setContentsMargins(0,0,0,0)
+            title_layout.setSpacing(5)
+            icon_label = QLabel()
+            icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
+            icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            title_layout.addWidget(icon_label); title_layout.addWidget(QLabel("Hellfire Helper"))
 
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
