@@ -283,6 +283,7 @@ class SimpleWindow(QMainWindow):
 
         # Create a central widget for the title (icon + text)
         title_widget = QWidget()
+        title_widget.setStyleSheet("background-color: transparent;")
         title_layout = QHBoxLayout(title_widget)
         title_layout.setContentsMargins(0,0,0,0)
         title_layout.setSpacing(5)
