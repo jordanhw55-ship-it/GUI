@@ -1579,24 +1579,7 @@ QCheckBox::indicator {{
         It uses a try-except block to prevent crashes if a hotkey is already
         unregistered, ensuring the application remains stable.
         """
-        # Iterate over a copy of the dictionary's items, as we will be modifying it.
-        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-            # We only want to remove keybind hotkeys, not global ones (f3, f5, f6)
-            # or custom message hotkeys.
-            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
-                try:
-                    # Attempt to remove the hotkey using its registration ID.
-                    keyboard.remove_hotkey(hk_id)
-                    # If successful, remove it from our tracking dictionary to stay in sync.
-                    del self.hotkey_ids[hotkey_str]
-                except (KeyError, ValueError):
-                    # This block executes if the hotkey was already removed or the ID is invalid.
-                    # We can safely ignore this error and just log a warning.
-                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
-
-        for name, key_info in self.keybinds.items():
-            if "hotkey" in key_info and key_info["hotkey"]:
-                self.register_single_keybind(name, key_info["hotkey"])
+        self.quickcast_manager.register_keybind_hotkeys()
 
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
