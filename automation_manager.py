@@ -78,6 +78,7 @@ class AutomationManager(QObject):
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
 
+        self.log_message.connect(self.update_log)
     # -------------------------
     # Public control
     # -------------------------
@@ -223,6 +224,10 @@ class AutomationManager(QObject):
             self.message_hotkeys.pop(hotkey_to_delete, None)
             table.removeRow(selected_row)
             self.parent.register_global_hotkeys()
+
+    def update_log(self, message: str):
+        """Appends a message to the automation log text box."""
+        self.automation_tab.automation_log_box.append(message)
 
     def send_chat_message(self, message: str):
         """Sends a chat message if the game is active."""
