@@ -259,7 +259,7 @@ HotIfWinActive("{self.main_window.game_title}")
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             # Show a persistent overlay when the script is activated
-            self.main_window.status_overlay.show_status("Quickcast Enabled", "#B22222", timeout=0)
+            self.main_window.status_overlay.show_persistent_message("Quickcast Enabled", "#B22222")
             print("[INFO] Quickcast overlay shown.")
             return True
         except Exception as e:

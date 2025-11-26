@@ -33,7 +33,7 @@ class OverlayStatus(QLabel):
         # Hide the overlay after 1.5 seconds
         QTimer.singleShot(1500, self.hide)
 
-    def show_message(self, text: str, bg_color: str, fg_color: str = "white", timeout_ms: int | None = 1500):
+    def show_timed_message(self, text: str, bg_color: str, fg_color: str = "white", timeout_ms: int = 1500):
         """Shows a custom always-on-top overlay message.
         If timeout_ms is None or 0, the overlay remains until explicitly hidden.
         """
@@ -43,5 +43,13 @@ class OverlayStatus(QLabel):
         self.setPalette(palette)
         self.setText(text)
         self.show()
-        if timeout_ms and timeout_ms > 0:
-            QTimer.singleShot(timeout_ms, self.hide)
+        QTimer.singleShot(timeout_ms, self.hide)
+
+    def show_persistent_message(self, text: str, bg_color: str, fg_color: str = "white"):
+        """Shows a custom always-on-top overlay that remains until explicitly hidden."""
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(bg_color))
+        palette.setColor(QPalette.WindowText, QColor(fg_color))
+        self.setPalette(palette)
+        self.setText(text)
+        self.show()
