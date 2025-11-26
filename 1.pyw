@@ -23,6 +23,7 @@ from data import ItemDatabase
 from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
+from quickcast import QuickcastManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
 from ui_overlay import OverlayStatus
 import time
@@ -187,7 +188,6 @@ class SimpleWindow(QMainWindow):
         self.theme_previews = []
         self.previous_watched_lobbies = set()
         self.ahk_process = None
-        self.dark_mode = True # Initialize with a default
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
@@ -219,6 +219,9 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
+
+        # Initialize the quickcast manager
+        self.quickcast_manager = QuickcastManager(self)
 
         # --- Ctypes definitions for SendInput ---
         # Define these once at startup to avoid redefining them on every keypress,
@@ -402,12 +405,12 @@ class SimpleWindow(QMainWindow):
             checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
         self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
         # New connection for the Activate Quickcast button
-        self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.toggle_ahk_quickcast)
+        self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.quickcast_manager.toggle_ahk_quickcast)
                 # Connections for AHK installation buttons
-        self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.show_ahk_install_cmd)
-        self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.open_ahk_website)
+        self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
+        self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.quickcast_manager.open_ahk_website)
         self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
-
+        
         # Lobbies tab
         self.lobbies_tab = LobbiesTab(self)
         self.stacked_widget.addWidget(self.lobbies_tab)
@@ -498,7 +501,7 @@ class SimpleWindow(QMainWindow):
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
-        self.quickcast_toggle_signal.connect(self.toggle_ahk_quickcast)
+        self.quickcast_toggle_signal.connect(self.quickcast_manager.toggle_ahk_quickcast)
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
         # Set initial values from loaded settings
@@ -509,7 +512,7 @@ class SimpleWindow(QMainWindow):
         self.update_ping_button_styles()
 
         # Apply loaded keybinds
-        self.apply_keybind_settings()
+        self.quickcast_manager.apply_keybind_settings()
 
 
         # Apply preset or custom theme depending on the flag
@@ -1031,106 +1034,20 @@ QCheckBox::indicator {{
         }
 
     def reset_keybinds(self):
-        """Resets all keybinds and quickcast settings to their default state."""
-        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
-            # First, unregister all existing keybind hotkeys to ensure a clean slate.
-            # We iterate over a copy because we'll be modifying the dictionary.
-            for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-                # Only remove keybind hotkeys, not global ones (f3, f5, f6) or message hotkeys
-                if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
-                    try:
-                        keyboard.remove_hotkey(hk_id)
-                        del self.hotkey_ids[hotkey_str]
-                    except (KeyError, ValueError):
-                        print(f"[Warning] Tried to remove a keybind hotkey ('{hotkey_str}') that was already unregistered.")
-
-            # Clear the internal data model for keybinds
-            self.keybinds.clear()
-
-            # Re-apply the (now empty) settings, which will force the UI and hotkeys to reset to their defaults.
-            self.apply_keybind_settings()
-
-    def open_ahk_website(self):
-        """Opens the AutoHotkey download page in the default web browser."""
-        url = QUrl("https://www.autohotkey.com/")
-        QDesktopServices.openUrl(url)
-
-    def show_ahk_install_cmd(self):
-        """Shows a message box with the winget command to install AHK."""
-        QMessageBox.information(
-            self,
-            "Install via Command Prompt",
-            "1. Open Command Prompt or PowerShell.\n"
-            "2. Copy and paste the following command:\n\n"
-            "winget install AutoHotkey.AutoHotkey"
-        )
+        self.quickcast_manager.reset_keybinds()
 
     # Keybinds / Quickcast
     def apply_keybind_settings(self):
-        """Applies loaded keybind settings to the UI and registers hotkeys."""
-        # Set checkbox states
-        for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
-            is_enabled = self.keybinds.get("settings", {}).get(name, True)
-            checkbox.setChecked(is_enabled)
-
-        # Set button text and styles
-        for name, button in self.quickcast_tab.key_buttons.items():
-            key_info = self.keybinds.get(name, {})
-            hotkey = key_info.get("hotkey", button.text())
-            quickcast = key_info.get("quickcast", False)
-
-            button.setText(hotkey.upper())
-            button.setProperty("quickcast", quickcast)
-            button.style().unpolish(button)
-            button.style().polish(button)
-            button.update()
-
-        # Re-register the hotkeys to apply the new behavior immediately.
-        self.register_keybind_hotkeys()
+        self.quickcast_manager.apply_keybind_settings()
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
-        """Handles left-click on a keybind button to start capture."""
-        self.deactivate_ahk_script_if_running()
-        if self.is_capturing_hotkey:
-            return
-
-        self.capturing_for_control = name
-        button.setText("...")
-        button.setChecked(True) # Use checked state to indicate capture
-        self.capture_message_hotkey() # Reuse the hotkey capture logic
+        self.quickcast_manager.on_keybind_button_clicked(button, name)
 
     def on_keybind_setting_changed(self, setting_name: str):
-        """Handles when a keybind setting checkbox is changed."""
-        self.deactivate_ahk_script_if_running()
-        if "settings" not in self.keybinds:
-            self.keybinds["settings"] = {}
-        
-        is_enabled = self.quickcast_tab.setting_checkboxes[setting_name].isChecked()
-        self.keybinds["settings"][setting_name] = is_enabled
-        self.register_keybind_hotkeys()
+        self.quickcast_manager.on_keybind_setting_changed(setting_name)
 
     def toggle_quickcast(self, name: str):
-        """Toggles quickcast for a given keybind."""
-        self.deactivate_ahk_script_if_running()
-        # Read current state, defaulting to False if it doesn't exist.
-        current_state = self.keybinds.get(name, {}).get("quickcast", False)
-        new_state = not current_state
-
-        # Save the new state to our data model.
-        if name not in self.keybinds:
-            self.keybinds[name] = {}
-        self.keybinds[name]["quickcast"] = new_state
-
-        # Update the button's style so the user sees the change.
-        button = self.quickcast_tab.key_buttons[name]
-        button.setProperty("quickcast", new_state)
-        button.style().unpolish(button)
-        button.style().polish(button)
-        button.update()
-
-        # Re-register the hotkeys to apply the new behavior immediately.
-        self.register_keybind_hotkeys()
-        print(f"[DEBUG] {name} quickcast toggled to {new_state}")
+        self.quickcast_manager.toggle_quickcast(name)
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
@@ -1190,15 +1107,7 @@ QCheckBox::indicator {{
 
     def get_keybind_settings_from_ui(self):
         """Gathers keybind settings from the UI controls for saving."""
-        # This is now handled by directly modifying self.keybinds,
-        # so this function just returns the current state.
-        # We ensure the hotkey text is up-to-date.
-        for name, button in self.quickcast_tab.key_buttons.items():
-            if name not in self.keybinds:
-                self.keybinds[name] = {}
-            self.keybinds[name]["hotkey"] = button.text().lower()
-
-        return self.keybinds
+        return self.quickcast_manager.get_keybind_settings_from_ui()
 
 
     def apply_saved_recipes(self):
@@ -1898,13 +1807,7 @@ remapMouse(button) {
             # or custom message hotkeys.
             # FIX: Added 'f2' to the list below
             if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
-                try:
-                    # Attempt to remove the hotkey using its registration ID.
-                    keyboard.remove_hotkey(hk_id)
-                    # If successful, remove it from our tracking dictionary...
-                    del self.hotkey_ids[hotkey_str]
-                except (KeyError, ValueError):
-                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}'...")
+            self.quickcast_manager.register_keybind_hotkeys()
 
         for name, key_info in self.keybinds.items():
             if "hotkey" in key_info and key_info["hotkey"]:
@@ -1951,7 +1854,7 @@ remapMouse(button) {
         keyboard.unhook_all() # Clean up all global listeners
 
         # Ensure the AHK process is terminated on exit
-        self.deactivate_ahk_script_if_running(inform_user=False)
+        self.quickcast_manager.deactivate_ahk_script_if_running(inform_user=False)
 
         event.accept()
  
