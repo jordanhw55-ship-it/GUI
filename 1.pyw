@@ -1851,6 +1851,7 @@ remapMouse(button) {{
     MouseClick(button)
 }}
 
+"""
 
         # Keep track of hotkeys already defined to prevent duplicates
         defined_hotkeys = set()
