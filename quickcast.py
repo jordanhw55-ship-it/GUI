@@ -3,10 +3,10 @@ import subprocess
 from PySide6.QtWidgets import QMessageBox, QPushButton
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
-import keyboard
 
 class QuickcastManager:
     def __init__(self, main_window):
+        import keyboard
         self.main_window = main_window
         self.ahk_process = None
         self.is_toggling_ahk = False # Debounce flag for F2 spam
@@ -14,6 +14,7 @@ class QuickcastManager:
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
         if QMessageBox.question(self.main_window, "Confirm Reset", "Are you sure you want to reset all keybinds to their defaults?") == QMessageBox.StandardButton.Yes:
+            import keyboard
             for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
                 if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
                     try:
@@ -269,6 +270,7 @@ HotIfWinActive("{self.main_window.game_title}")
     def unregister_python_hotkeys(self):
         """Unregisters all hotkeys managed by the 'keyboard' library, except F2."""
         print("[DEBUG] Unregistering Python hotkeys (except F2)...")
+        import keyboard
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
             if hotkey_str != 'f2':
                 try:
@@ -281,6 +283,7 @@ HotIfWinActive("{self.main_window.game_title}")
     def register_keybind_hotkeys(self):
         """Safely unregisters and re-registers all keybind-specific hotkeys."""
         print("[DEBUG] Registering Python keybind hotkeys...")
+        import keyboard
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
             if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
                 try:
