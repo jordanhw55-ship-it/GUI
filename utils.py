@@ -12,8 +12,8 @@ DARK_STYLE = """
     }
     QMainWindow { background-color: #1F1F1F; }
     #CustomTitleBar { background-color: #1F1F1F; }
-    #CustomTitleBar QLabel { background-color: transparent; color: #F0F0F0; font-size: 16px; }
-    #CustomTitleBar QPushButton { background-color: transparent; border: none; color: #F0F0F0; font-size: 16px; }
+    #CustomTitleBar QLabel { background-color: transparent; color: #F0F0F0; font-size: 18px; }
+    #CustomTitleBar QPushButton { background-color: transparent; border: none; color: #F0F0F0; font-size: 18px; }
     #CustomTitleBar QPushButton:hover { background-color: #FFA64D; }
     QPushButton {
         background-color: #FF7F50; /* accent */
@@ -59,7 +59,7 @@ LIGHT_STYLE = """
     QWidget { background-color: #FFFFFF; color: #000000; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
     QMainWindow { background-color: #ECEFF4; }
     #CustomTitleBar { background-color: #FFFFFF; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { background-color: transparent; color: #000000; border: none; font-size: 16px; }
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { background-color: transparent; color: #000000; border: none; font-size: 18px; }
     #CustomTitleBar QPushButton:hover { background-color: #DA3A9D; }
     QPushButton {
         background-color: #FFC0CB; /* accent */
@@ -103,7 +103,7 @@ FOREST_STYLE = """
     QWidget { background-color: #121212; color: #EAEAEA; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
     QMainWindow { background-color: #1F1F1F; }
     #CustomTitleBar { background-color: #1F1F1F; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #EAEAEA; background-color: transparent; border: none; font-size: 16px; }
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #EAEAEA; background-color: transparent; border: none; font-size: 18px; }
     #CustomTitleBar QPushButton:hover { background-color: #4682B4; }
     QPushButton {
         background-color: #1E90FF; /* accent */
@@ -138,7 +138,7 @@ OCEAN_STYLE = """
     QWidget { background-color: #F0F8FF; color: #000080; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
     QMainWindow { background-color: #F0F8FF; }
     #CustomTitleBar { background-color: #F0F8FF; }
-    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #000080; background-color: transparent; border: none; font-size: 16px; }
+    #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #000080; background-color: transparent; border: none; font-size: 18px; }
     #CustomTitleBar QPushButton:hover { background-color: #87CEFA; }
     QPushButton {
         background-color: #87CEEB; /* accent */

@@ -69,7 +69,7 @@ class ThemeManager:
         return f"""
             QWidget {{ background-color: {bg}; color: {fg}; font-family: 'Segoe UI'; font-size: 14px; outline: none; }}
             QMainWindow, #CustomTitleBar {{ background-color: {bg}; }}
-            #CustomTitleBar QLabel, #CustomTitleBar QPushButton {{ background-color: transparent; border: none; color: {fg}; font-size: 16px; }}
+            #CustomTitleBar QLabel, #CustomTitleBar QPushButton {{ background-color: transparent; border: none; color: {fg}; font-size: 18px; }}
             #CustomTitleBar QPushButton:hover {{ background-color: {accent}; }}
             QPushButton {{ background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px; }}
             QPushButton:hover {{ background-color: {bg}; color: {accent}; }}
