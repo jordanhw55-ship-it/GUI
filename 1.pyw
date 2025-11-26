@@ -1074,10 +1074,11 @@ QCheckBox::indicator {{
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
 
-            # The active window check is now implicitly handled by the fact that
-            # the hotkeys are only registered when the user enables the setting.
-            # This removes the delay from the win32gui calls.
-
+            # Explicitly check if the game window is active before executing.
+            # This prevents the hotkey from firing in other applications.
+            if win32gui:
+                if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title):
+                    return
             quickcast = key_info.get("quickcast", False)
             
             # Determine original key
