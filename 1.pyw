@@ -1711,6 +1711,34 @@ QCheckBox::indicator {{
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
+    def monitor_ahk_process(self):
+        """Checks if the AHK process is still running and re-registers F2 if it's not."""
+        if not hasattr(self, 'ahk_process') or not self.ahk_process:
+            return
+
+        if self.ahk_process.poll() is not None: # Process has terminated
+            print("[INFO] AHK process terminated. Re-registering Python F2 hotkey.")
+            self.ahk_process = None
+            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
+            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
+            
+            # Hide the status overlay
+            self.status_overlay.hide()
+            
+            # Re-register the F2 hotkey after a short delay to prevent the key-up event
+            # from the AHK-exit press from being immediately captured by the new Python hotkey.
+            def reregister_f2():
+                try:
+                    f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
+                    self.hotkey_ids['f2'] = f2_id
+                    print("[INFO] Python F2 hotkey re-registered.")
+                except Exception as e:
+                    print(f"Failed to re-register F2 hotkey: {e}")
+            QTimer.singleShot(200, reregister_f2) # 200ms delay
+
+            self.register_keybind_hotkeys()
+            self.ahk_monitor_timer.stop()
+
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
@@ -1777,28 +1805,42 @@ QCheckBox::indicator {{
 #SingleInstance Force
 ProcessSetPriority("High")
 
-HotIfWinActive("{self.game_title}")
+; This hotkey allows the user to press F2 to exit the script,
+; allowing the Python GUI to take back control of the hotkey.
+F2:: {{
+    ExitApp()
+}}
 
-"""
-        # Add the functions that will be called by the hotkeys
-        script_content += """
-remapSpellwQC(originalKey) {
+; Pause and Resume hotkeys for chat
+Enter:: {{
+    Pause()
+    KeyWait("Enter") ; Wait for Enter to be released
+    KeyWait("Enter", "D") ; Wait for Enter to be pressed again
+    Pause()
+}} 
+
+~Esc:: {{
+    Pause(false) ; Un-pause if paused
+}}
+
+remapSpellwQC(originalKey) {{
     SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
     SendInput("{" originalKey "}")
     MouseClick("Left")
     SendInput("{9}{0}")
 }
 
-remapSpellwoQC(originalKey) {
+remapSpellwoQC(originalKey) {{
     SendInput("{" originalKey "}")
-}
+}}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
-}
+}}
+
+HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys context-sensitive
 """
 
-        # Keep track of hotkeys already defined to prevent duplicates
         defined_hotkeys = set()
 
         # Generate the hotkeys from Python's self.keybinds
@@ -1829,7 +1871,7 @@ remapMouse(button) {
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
             
             # Add the '$' prefix to prevent the hotkey from triggering itself
-            script_content += f"\n${hotkey}:: {function_call}"
+            script_content += f"\n${hotkey}:: {function_call}\n"
             defined_hotkeys.add(hotkey)
 
         # --- Write and Run the Script ---
@@ -1847,18 +1889,6 @@ remapMouse(button) {
         except Exception as e:
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
-
-    def unregister_keybind_hotkeys(self):
-        """Unregisters only the keybind-related hotkeys from the Python listener."""
-        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
-        for name, hk_id in list(self.hotkey_ids.items()):
-            # Only unregister keybinds, not global app hotkeys or message hotkeys
-            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
-                try:
-                    keyboard.remove_hotkey(hk_id)
-                    del self.hotkey_ids[name]
-                except (KeyError, ValueError):
-                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
