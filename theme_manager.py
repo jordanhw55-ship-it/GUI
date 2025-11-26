@@ -20,6 +20,12 @@ class ThemeManager:
 
     def create_theme_grid(self, layout: QGridLayout):
         """Populates the provided grid layout with theme preview widgets."""
+        # The 'from __main__ import' is a bit unusual. A better approach would be to
+        # pass the ThemePreview class as an argument if it's defined in the main script,
+        # or move it to a shared UI components file to avoid circular dependencies.
+        # For now, we'll keep it as is since it seems to be the established pattern
+        # in this project.
+
         from __main__ import ThemePreview # Avoid circular import
 
         row, col = 0, 0
@@ -60,11 +66,11 @@ class ThemeManager:
 
         # Update the title image based on the theme
         image_name = f"title{theme_index + 1}.png"
-        image_path = os.path.join(get_base_path(), "contents", "Images", image_name)
+        image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", image_name)
         if not os.path.exists(image_path):
             # Fallback to the default if the specific one doesn't exist
-            image_path = os.path.join(get_base_path(), "contents", "title.png")
-        
+            image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", "title.png")
+
         self.main_window.title_image_label.setPixmap(QPixmap(image_path))
 
         for i, preview in enumerate(self.theme_previews):
@@ -113,7 +119,7 @@ class ThemeManager:
         self.update_custom_theme_preview()
 
         # For custom themes, revert to the default title image
-        default_image_path = os.path.join(get_base_path(), "contents", "Images", "title.png")
+        default_image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", "title.png")
         self.main_window.title_image_label.setPixmap(QPixmap(default_image_path))
 
         self.main_window.update_ping_button_styles()
