@@ -284,6 +284,7 @@ class SimpleWindow(QMainWindow):
         # Create a placeholder for the title widget, which will be populated by set_title_image
         self.title_widget_container = QWidget()
         self.title_widget_container.setLayout(QHBoxLayout())
+        self.title_widget_container.setStyleSheet("background-color: transparent;")
         self.title_widget_container.layout().setContentsMargins(0,0,0,0)
 
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
