@@ -1713,31 +1713,30 @@ QCheckBox::indicator {{
 
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Checks if the AHK script is running and deactivates it, informing the user."""
-        # First, check if the process handle exists and if the process is running.
         if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            graceful_exit_success = False
+            # Define the path to the lock file that signals the AHK script to run.
+            lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
             try:
-                # Try to find the script's hidden window and send it a custom exit message.
-                script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
-                hwnd = win32gui.FindWindow("AutoHotkeyGUI", f"{script_path} - AutoHotkey")
-                if hwnd:
-                    win32gui.PostMessage(hwnd, 0x1234, 0, 0) # Send our custom WM_EXIT message
-                    print("[INFO] Sent graceful exit message to AHK script.")
-                    graceful_exit_success = True
+                # To gracefully exit the AHK script, we simply delete the lock file.
+                # The script is designed to exit when this file is gone.
+                if os.path.exists(lock_file_path):
+                    os.remove(lock_file_path)
+                    print("[INFO] Sent graceful exit signal to AHK script by deleting lock file.")
+                
+                # Wait for the process to terminate on its own.
+                self.ahk_process.wait(timeout=2)
+
             except Exception as e:
                 print(f"[WARNING] Graceful exit failed: {e}. Falling back to forceful termination.")
-
-            if not graceful_exit_success:
-                # Fallback to the old method if the graceful exit fails for any reason.
+                # If graceful exit fails, fall back to the forceful method.
                 try:
                     pid = self.ahk_process.pid
                     subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                    print(f"[INFO] AHK script (PID: {pid}) terminated forcefully via taskkill.")
                 except Exception as e:
-                    print(f"[WARNING] taskkill also failed: {e}")
+                    print(f"[WARNING] taskkill also failed: {e_kill}")
                     self.ahk_process.terminate()
-
-            self.ahk_process.wait(timeout=3) # Wait for the process to close.
+            
+            # Finalize UI changes and re-register hotkeys
             self.ahk_process = None
             self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
@@ -1785,16 +1784,20 @@ QCheckBox::indicator {{
             QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
             return False
 
+        # Define the path for the lock file.
+        lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
+
         # --- AHK Script Generation ---
         script_content = f"""#Requires AutoHotkey v2.0
 #SingleInstance Force
 ProcessSetPriority("High")
 
-HotIfWinActive("{self.game_title}")
+; This script will exit automatically if the lock file is deleted.
+lock_file := "{lock_file_path.replace(os.sep, '/')}"
+FileAppend("locked", lock_file)
+SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 
-; Listen for a custom message (0x1234) from the Python GUI to exit gracefully.
-; This allows the script to clean up its tray icon properly.
-OnMessage(0x1234, (*) => ExitApp())
+HotIfWinActive("{self.game_title}")
 
 """
         # Add the functions that will be called by the hotkeys
