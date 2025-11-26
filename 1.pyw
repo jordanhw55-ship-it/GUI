@@ -20,7 +20,7 @@ import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
-from workers import LobbyFetcher, HotkeyCaptureWorker, ChatMessageWorker, LobbyHeartbeatChecker
+from workers import LobbyFetcher, HotkeyCaptureWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from quickcast import QuickcastManager
@@ -256,9 +256,6 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the floating status overlay
         self.status_overlay = OverlayStatus()
-
-        # --- Setup Persistent Chat Worker ---
-        self.setup_chat_worker()
 
         # Initialize media player for custom sounds
         self.player = QMediaPlayer()
@@ -891,25 +888,6 @@ QCheckBox::indicator {{
         self.capture_worker = None
         self.capturing_for_control = None # Clear the control reference
 
-    def setup_chat_worker(self):
-        """Creates and configures the persistent worker for sending chat messages."""
-        print("[DEBUG] Setting up persistent chat worker...")
-        self.chat_thread = QThread()
-        self.chat_worker = ChatMessageWorker(self.game_title)
-        self.chat_worker.moveToThread(self.chat_thread)
-
-        # Connect signals
-        self.send_message_signal.connect(self.chat_worker.sendMessage)
-        self.chat_worker.finished.connect(self.on_chat_send_finished)
-        self.chat_worker.error.connect(self.on_chat_send_error)
-
-        # Clean up thread when application closes
-        self.chat_thread.finished.connect(self.chat_worker.deleteLater)
-        self.chat_thread.finished.connect(self.chat_thread.deleteLater)
-
-        self.chat_thread.start()
-        print(f"[DEBUG] Persistent Chat Thread (id: {id(self.chat_thread)}) started.")
-
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""
         table = self.automation_tab.msg_hotkey_table
@@ -967,44 +945,38 @@ QCheckBox::indicator {{
             self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        """Sends a chat message if the game is active, otherwise passes the keypress through."""
+        """
+        Handles the entire process of sending a chat message on the main GUI thread
+        to avoid COM initialization errors. Uses QTimer to prevent freezing.
+        """
         try:
             is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
         except Exception:
             is_game_active = False
+
         if not is_game_active:
             return
 
         if self.is_sending_message:
             return
-            
+
         self.is_sending_message = True
 
-        # --- Clipboard operations MUST be done in the main GUI thread ---
-        clipboard = QApplication.clipboard()
-        self.original_clipboard_content = clipboard.text() # Save original content
-        clipboard.setText(message) # Set the new message
-
-        self.send_message_signal.emit(message)
-        # The worker will now only handle the pyautogui part.
-
-    def on_chat_send_error(self, error_message: str):
-        """Handles errors from the chat message worker."""
-        print(f"[DEBUG] on_chat_send_error called. Error: {error_message}. Resetting flag.")
-        QMessageBox.critical(self, "Chat Error", f"Failed to send message: {error_message}")
-        self.is_sending_message = False
-        print("[DEBUG] is_sending_message reset to False.")
-
-    def on_chat_send_finished(self):
-        """Handles successful completion from the chat message worker."""
-        # Restore the user's clipboard after the worker is done.
-        if hasattr(self, 'original_clipboard_content'):
+        try:
+            # --- All operations now on the main thread ---
             clipboard = QApplication.clipboard()
-            clipboard.setText(self.original_clipboard_content)
+            original_clipboard = clipboard.text()
+            clipboard.setText(message)
 
-        print("[DEBUG] on_chat_send_finished called. Resetting flag.")
-        self.is_sending_message = False
-        print("[DEBUG] is_sending_message reset to False.")
+            # Use timers to sequence the key presses without blocking
+            pyautogui.press('enter')
+            QTimer.singleShot(50, lambda: pyautogui.hotkey('ctrl', 'v'))
+            QTimer.singleShot(100, lambda: pyautogui.press('enter'))
+            QTimer.singleShot(150, lambda: clipboard.setText(original_clipboard)) # Restore clipboard
+            QTimer.singleShot(200, lambda: setattr(self, 'is_sending_message', False)) # Reset flag
+        except Exception as e:
+            QMessageBox.critical(self, "Chat Error", f"An error occurred while sending the message: {e}")
+            self.is_sending_message = False
 
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
@@ -1719,7 +1691,6 @@ QCheckBox::indicator {{
         """Ensures all background processes and threads are cleaned up before closing."""
         self.settings_manager.save(self) # Save all settings on exit
         self.automation_manager.stop_automation()
-        self.chat_thread.quit() # Tell the persistent chat thread to stop
         keyboard.unhook_all() # Clean up all global listeners
 
         # Ensure the AHK process is terminated on exit
