@@ -212,12 +212,6 @@ class SimpleWindow(QMainWindow):
         } if win32con else {}
         self.f2_key_down = False # Debounce flag for F2 spam
 
-        # Initialize the automation manager
-        self.automation_manager = AutomationManager(self)
-
-        # Initialize the quickcast manager
-        self.quickcast_manager = QuickcastManager(self)
-
         # --- Ctypes definitions for SendInput ---
         # Define these once at startup to avoid redefining them on every keypress,
         # which is a minor performance optimization for the quickcast macro.
@@ -313,6 +307,10 @@ class SimpleWindow(QMainWindow):
         # Load tab
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
         self.character_load_manager = CharacterLoadManager(self)
+
+        # Initialize the automation manager
+        self.automation_manager = AutomationManager(self)
+        self.quickcast_manager = QuickcastManager(self)
 
         # Items tab
         self.item_database = ItemDatabase()
