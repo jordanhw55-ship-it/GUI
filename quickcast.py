@@ -172,7 +172,7 @@ class QuickcastManager:
 #SingleInstance Force
 ProcessSetPriority("High")
 
-lock_file := "{lock_file_path.replace(os.sep, '/')}"
+lock_file := "{lock_file_path.replace('\\', '/')}"
 FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 
