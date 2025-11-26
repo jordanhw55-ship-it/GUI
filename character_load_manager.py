@@ -1,5 +1,6 @@
 import os
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QListWidgetItem
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
 try:
@@ -110,6 +111,11 @@ class CharacterLoadManager:
                 QMessageBox.critical(self.main_window, "Error", f"'{self.game_title}' window not found.")
                 return
             win32gui.SetForegroundWindow(hwnd)
-            pyautogui.press('enter'); pyautogui.write(f"-load {char_name}", interval=0.05); pyautogui.press('enter')
+            
+            # Paste the command instead of typing it for speed
+            command_to_paste = f"-load {char_name}"
+            clipboard = QApplication.clipboard()
+            clipboard.setText(command_to_paste)
+            pyautogui.press('enter'); pyautogui.hotkey('ctrl', 'v'); pyautogui.press('enter')
         except Exception as e:
             QMessageBox.critical(self.main_window, "Error", f"Failed to send command to game: {e}")
