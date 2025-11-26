@@ -1116,7 +1116,13 @@ if __name__ == "__main__":
     # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
     if os.name == 'nt':
         myappid = 'cherrybandit.hellfirehelper.1.0' # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        shell32 = ctypes.windll.shell32
+        shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+        # Notify the shell that the file association for our icon may have changed.
+        # This can help refresh the icon cache if the .exe is moved.
+        SHCNE_ASSOCCHANGED = 0x08000000
+        shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
