@@ -291,7 +291,7 @@ class SimpleWindow(QMainWindow):
 
         icon_label = QLabel()
         icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
-        icon_label.setPixmap(icon_pixmap.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         
         title_text_label = QLabel("Hellfire Helper")
 
