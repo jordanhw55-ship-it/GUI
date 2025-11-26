@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -281,8 +281,22 @@ class SimpleWindow(QMainWindow):
         title_bar_layout.setContentsMargins(5, 0, 5, 0)
         title_bar_layout.setSpacing(0)
 
-        title_label = QLabel("<span style='color: #FF7F50;'>🔥</span> Hellfire Helper")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Create a central widget for the title (icon + text)
+        title_widget = QWidget()
+        title_layout = QHBoxLayout(title_widget)
+        title_layout.setContentsMargins(0,0,0,0)
+        title_layout.setSpacing(5)
+        title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon_label = QLabel()
+        icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
+        icon_label.setPixmap(icon_pixmap.scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        
+        title_text_label = QLabel("Hellfire Helper")
+
+        title_layout.addWidget(icon_label)
+        title_layout.addWidget(title_text_label)
+
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
 
@@ -293,7 +307,7 @@ class SimpleWindow(QMainWindow):
         button_layout.addWidget(min_button)
         button_layout.addWidget(close_button)
 
-        title_bar_layout.addWidget(title_label, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
+        title_bar_layout.addWidget(title_widget, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
         title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
         main_layout.addWidget(self.title_bar)
 
