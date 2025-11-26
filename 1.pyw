@@ -21,6 +21,7 @@ import pyautogui  # type: ignore
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
 from theme_manager import ThemeManager
+from items_manager import ItemsManager
 from workers import LobbyFetcher, HotkeyCaptureWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
@@ -337,13 +338,9 @@ class SimpleWindow(QMainWindow):
         self.items_tab = ItemsTab(self)
         self.stacked_widget.addWidget(self.items_tab)
 
-        # Connect signals from the new ItemsTab
-        self.items_tab.search_box.textChanged.connect(self.on_item_search_changed)
-        for i, btn in self.items_tab.item_tab_buttons.items():
-            btn.clicked.connect(lambda checked, idx=i: self.switch_items_sub_tab(idx))
-
-        # Set initial state for the items tab
-        self.switch_items_sub_tab(0)
+        # Initialize the ItemsManager to handle all logic for the Items tab
+        self.items_manager = ItemsManager(self)
+        self.items_manager.switch_items_sub_tab(0)
 
         # Placeholder Tab
         placeholder_tab = QWidget()
@@ -355,13 +352,6 @@ class SimpleWindow(QMainWindow):
 
         # Recipes tab
         self.in_progress_recipes = {}
-
-        # Connect signals from the new RecipeTrackerTab
-        self.items_tab.add_recipe_btn.clicked.connect(self.add_recipe_to_progress) # type: ignore
-        self.items_tab.remove_recipe_btn.clicked.connect(self.remove_recipe_from_progress) # type: ignore
-        self.items_tab.reset_recipes_btn.clicked.connect(self.reset_recipes) # type: ignore
-        self.items_tab.in_progress_recipes_list.itemChanged.connect(self.on_recipe_check_changed) # type: ignore
-        self.items_tab.materials_table.itemChanged.connect(self.on_material_checked) # type: ignore
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
@@ -615,7 +605,7 @@ class SimpleWindow(QMainWindow):
         self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
         self.lobbies_tab.volume_slider.setValue(100)
         
-        # Also reset recipes and automation settings
+        # Also reset recipes and automation settings (delegating recipe reset)
         self.in_progress_recipes.clear()
         self.items_tab.in_progress_recipes_list.clear() # type: ignore
         self._rebuild_materials_table() # type: ignore
@@ -972,202 +962,6 @@ class SimpleWindow(QMainWindow):
             self.lobbies_tab.watchlist_widget.takeItem(self.lobbies_tab.watchlist_widget.row(item))
         self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
 
-    # Items
-    def on_item_search_changed(self):
-        """Decides which view to filter based on the active sub-tab."""
-        # If the recipe tracker is visible (index 1), filter recipes.
-        if self.items_tab.main_stack.currentIndex() == 1:
-            self.filter_recipes_list()
-        else: # Otherwise, filter the currently visible item table.
-            self.filter_current_item_view()
-
-    def filter_current_item_view(self):
-        query = self.items_tab.search_box.text().lower() # type: ignore
-        current_index = self.items_tab.item_tables_stack.currentIndex() # type: ignore
-        data_source, table_widget = [], None # type: ignore
-        if current_index == 0: data_source, table_widget = self.item_database.all_items_data, self.items_tab.all_items_table # type: ignore
-        elif current_index == 1: data_source, table_widget = self.item_database.drops_data, self.items_tab.drops_table # type: ignore
-        elif current_index == 2: data_source, table_widget = self.item_database.raid_data, self.items_tab.raid_items_table # type: ignore
-        elif current_index == 3: data_source, table_widget = self.item_database.vendor_data, self.items_tab.vendor_table # type: ignore
-        if not table_widget: return # type: ignore
-        table_widget.setSortingEnabled(False); table_widget.setRowCount(0) # type: ignore
-        filtered_data = [item for item in data_source if query in item.get("Item", "").lower() or # type: ignore
-                         query in item.get("Unit", "").lower() or query in item.get("Location", "").lower()] # type: ignore
-        headers = [table_widget.horizontalHeaderItem(i).text() for i in range(table_widget.columnCount())] # type: ignore
-        for row, item_data in enumerate(filtered_data): # type: ignore
-            table_widget.insertRow(row) # type: ignore
-            for col, header in enumerate(headers): # type: ignore
-                table_widget.setItem(row, col, QTableWidgetItem(item_data.get(header, ""))) # type: ignore
-        table_widget.setSortingEnabled(True) # type: ignore
-
-    def switch_items_sub_tab(self, index: int):
-        for i, btn in self.items_tab.item_tab_buttons.items(): # type: ignore
-            btn.setChecked(i == index)
-
-        is_recipe_tab = (index == len(self.items_tab.item_tab_buttons) - 1) # type: ignore
-
-        if is_recipe_tab:
-            self.items_tab.main_stack.setCurrentIndex(1) # type: ignore
-            self.items_tab.search_box.setPlaceholderText("Search...") # type: ignore
-            if not self.item_database.recipes_data:
-                self.item_database.load_recipes()
-            self.filter_recipes_list()
-            self._rebuild_materials_table()
-        else:
-            self.items_tab.main_stack.setCurrentIndex(0) # type: ignore
-            self.items_tab.item_tables_stack.setCurrentIndex(index) # type: ignore
-            self.items_tab.search_box.show() # type: ignore
-
-            if index == 0 and not self.item_database.all_items_data:
-                self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
-            elif index == 1 and not self.item_database.drops_data:
-                self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
-            elif index == 2 and not self.item_database.raid_data:
-                self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
-            elif index == 3 and not self.item_database.vendor_data:
-                self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
-            self.filter_current_item_view()
-
-    # Recipes
-    def filter_recipes_list(self):
-        query = self.items_tab.search_box.text().lower() # type: ignore
-        self.items_tab.available_recipes_list.clear() # type: ignore
-        for recipe in self.item_database.recipes_data:
-            if query in recipe["name"].lower():
-                item = QListWidgetItem(recipe["name"])
-                item.setData(Qt.ItemDataRole.UserRole, recipe) # type: ignore
-                self.items_tab.available_recipes_list.addItem(item) # type: ignore
-
-    def add_recipe_to_progress(self):
-        """Adds a recipe to the 'in-progress' list from the UI selection."""
-        selected_item = self.items_tab.available_recipes_list.currentItem() # type: ignore
-        if not selected_item:
-            return False
-        if self._add_recipe_by_name(selected_item.text()):
-            self._rebuild_materials_table()
-            return True
-        return False
-
-    def _add_recipe_by_name(self, recipe_name: str):
-        """Helper to add a recipe to the in-progress list by its name."""
-        if recipe_name in self.in_progress_recipes:
-            # Don't show a message box when loading from settings, just skip.
-            # QMessageBox.information(self, "Duplicate", "This recipe is already in the 'In Progress' list.")
-            return False
-
-        # Find the full recipe object from the database
-        recipe = next((r for r in self.item_database.recipes_data if r["name"] == recipe_name), None)
-        if not recipe:
-            return False # Recipe not found in database
-
-        recipe_name = recipe["name"]
-        self.in_progress_recipes[recipe_name] = recipe
-        item = QListWidgetItem(recipe_name)
-        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable) # type: ignore
-        item.setCheckState(Qt.CheckState.Unchecked)
-        self.items_tab.in_progress_recipes_list.addItem(item) # type: ignore
-        return True
-
-    def remove_recipe_from_progress(self):
-        selected_item = self.items_tab.in_progress_recipes_list.currentItem() # type: ignore
-        if not selected_item:
-            return
-        recipe_name = selected_item.text()
-        recipe = self.in_progress_recipes.pop(recipe_name, None)
-        if recipe:
-            list_widget = self.items_tab.in_progress_recipes_list # type: ignore
-            list_widget.takeItem(list_widget.row(selected_item))
-            self._rebuild_materials_table()
-
-    def reset_recipes(self):
-        """Clears all in-progress recipes and the materials list."""
-        confirm = QMessageBox.question(self, "Confirm Reset", "Are you sure you want to clear all in-progress recipes?",
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                       QMessageBox.StandardButton.No)
-        if confirm == QMessageBox.StandardButton.Yes:
-            self.in_progress_recipes.clear()
-            self.items_tab.in_progress_recipes_list.clear() # type: ignore
-            self._rebuild_materials_table()
-
-    def _reset_automation_ui(self):
-        """Resets the automation UI controls to their default values without confirmation."""
-        self.automation_manager.reset_settings(confirm=False)
-
-    def _rebuild_materials_table(self):
-        """Clears and repopulates the materials table based on the internal data dictionary and checked recipes."""
-        # Disconnect signals to prevent loops during update
-        materials_table = self.items_tab.materials_table # type: ignore
-        materials_table.setSortingEnabled(False)
-        try:
-            materials_table.itemChanged.disconnect(self.on_material_checked)
-
-            # Store the names of currently checked materials
-            checked_materials = set()
-            for row in range(materials_table.rowCount()):
-                item = materials_table.item(row, 0)
-                if item and item.checkState() == Qt.CheckState.Checked:
-                    checked_materials.add(item.text())
-
-        except RuntimeError: # Already disconnected
-            pass
-        materials_table.setRowCount(0)
-        
-        checked_recipe_names = []
-        in_progress_list = self.items_tab.in_progress_recipes_list # type: ignore
-        for i in range(in_progress_list.count()):
-            item = in_progress_list.item(i)
-            if item.checkState() == Qt.CheckState.Checked:
-                checked_recipe_names.append(item.text())
-        
-        # If no recipes are checked, use all recipes in the "In Progress" list
-        in_progress_list = self.items_tab.in_progress_recipes_list # type: ignore
-        target_recipe_names = checked_recipe_names if checked_recipe_names else [in_progress_list.item(i).text() for i in range(in_progress_list.count())]
-        
-        # Calculate materials needed for the target recipes
-        materials_to_display = {}
-        for recipe_name in target_recipe_names:
-            recipe = self.in_progress_recipes.get(recipe_name)
-            if not recipe: continue
-            
-            for component_str in recipe["components"]:
-                match = re.match(r"^(.*?)\s+x(\d+)$", component_str, re.IGNORECASE)
-                name, quantity = (match.group(1).strip(), int(match.group(2))) if match else (component_str.strip(), 1)
-                
-                if name in materials_to_display:
-                    materials_to_display[name]["#"] += quantity
-                else:
-                    drop_info = next((item for item in self.item_database.all_items_data if item["Item"].lower() == name.lower()), None)
-                    materials_to_display[name] = {"Material": name, "#": quantity, "Unit": drop_info["Unit"] if drop_info else "?", "Location": drop_info["Location"] if drop_info else "?"}
-        
-        # Populate the table
-        for row, item_data in enumerate(materials_to_display.values()):
-            materials_table.insertRow(row)
-            material_item = QTableWidgetItem(item_data["Material"])
-            material_item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            material_item.setCheckState(Qt.CheckState.Unchecked)
-            materials_table.setItem(row, 0, material_item)
-
-            # Create non-editable items for other columns
-            for col, key in enumerate(["#", "Unit", "Location"], 1):
-                text = str(item_data.get(key, ""))
-                item = QTableWidgetItem(text)
-                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-                materials_table.setItem(row, col, item)
-
-            # Hidden sort column
-            sort_item = QTableWidgetItem("0")
-            sort_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-            materials_table.setItem(row, 4, sort_item)
-        
-        # Reconnect signals and enable sorting
-        materials_table.itemChanged.connect(self.on_material_checked)
-        materials_table.setSortingEnabled(True)
-
-    def on_recipe_check_changed(self, item: QListWidgetItem):
-        """Called when any recipe's check state changes to rebuild the material list."""
-        # This handler is now connected to QListWidget.itemChanged
-        self._rebuild_materials_table()
-
     # Character loading
     def on_path_changed(self, new_path: str):
         self.character_path = new_path # Still need to update the main window's state
@@ -1352,8 +1146,8 @@ class SimpleWindow(QMainWindow):
     def on_main_tab_selected(self, index: int):
         self.stacked_widget.setCurrentIndex(index)
         tab_name = self.tab_names[index]
-        if tab_name == "Items" and not self.item_database.all_items_data:
-            self.switch_items_sub_tab(0) # Lazy load
+        if tab_name == "Items" and not self.items_manager.item_database.all_items_data:
+            self.items_manager.switch_items_sub_tab(0) # Lazy load
         elif tab_name == "Placeholder":
             pass # Nothing to do for the placeholder tab
         elif tab_name == "Lobbies" and not self.lobbies_tab.lobbies_table.rowCount():
