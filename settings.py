@@ -6,7 +6,7 @@ class SettingsManager:
     """Handles loading and saving application settings to a JSON file."""
 
     def __init__(self):
-        self.settings_path = os.path.join(get_base_path(), "settings.json")
+        self.settings_path = os.path.join(os.path.dirname(get_base_path()), "settings.json")
         self.defaults = {
             "theme_index": 0,
             "last_tab_index": 0,
