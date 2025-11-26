@@ -1890,6 +1890,19 @@ HotIfWinActive("{self.game_title}")
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
 
+    def unregister_keybind_hotkeys(self):
+        """Unregisters only the keybind-related hotkeys from the Python listener."""
+        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
+        for name, hk_id in list(self.hotkey_ids.items()):
+            # Only unregister keybinds, not global app hotkeys or message hotkeys
+            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
+                try:
+                    keyboard.remove_hotkey(hk_id)
+                    del self.hotkey_ids[name]
+                except (KeyError, ValueError):
+                    # This can happen if the hotkey was already removed, which is safe to ignore.
+                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
+
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
         if not win32api or not win32con:
