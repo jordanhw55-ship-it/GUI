@@ -1,15 +1,17 @@
 import time
 from PySide6.QtCore import QTimer, QObject, Signal
-from PySide6.QtWidgets import QMessageBox, QTableWidgetItem
+from PySide6.QtWidgets import QMessageBox, QTableWidgetItem, QApplication
 
 try:
     import win32gui
     import win32api
     import win32con
+    import pyautogui
 except ImportError:
     win32gui = None
     win32api = None
     win32con = None
+    pyautogui = None
 
 
 class AutomationManager(QObject):
@@ -79,6 +81,7 @@ class AutomationManager(QObject):
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
 
         self.log_message.connect(self.update_log)
+        self.send_message_signal.connect(self._main_thread_send_chat_message)
     # -------------------------
     # Public control
     # -------------------------
@@ -238,6 +241,31 @@ class AutomationManager(QObject):
 
         self.is_sending_message = True
         self.send_message_signal.emit(message)
+
+    def _main_thread_send_chat_message(self, message: str):
+        """This slot is connected to the send_message_signal and runs on the main GUI thread."""
+        if not pyautogui: return
+
+        try:
+            # --- All operations are now safely on the main thread ---
+            clipboard = QApplication.clipboard()
+            original_clipboard = clipboard.text()
+            clipboard.setText(message)
+
+            # Use timers to sequence the key presses without blocking the GUI
+            pyautogui.press('enter')
+            QTimer.singleShot(50, lambda: pyautogui.hotkey('ctrl', 'v'))
+            QTimer.singleShot(100, lambda: pyautogui.press('enter'))
+
+            # After a short delay, restore the clipboard and reset the flag
+            def cleanup():
+                clipboard.setText(original_clipboard)
+                self.is_sending_message = False
+            QTimer.singleShot(200, cleanup)
+
+        except Exception as e:
+            QMessageBox.critical(self.parent, "Chat Error", f"An error occurred while sending the message: {e}")
+            self.is_sending_message = False
 
     # -------------------------
     # Scheduler

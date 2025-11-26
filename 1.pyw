@@ -23,7 +23,7 @@ from theme_manager import ThemeManager
 from items_manager import ItemsManager
 from lobby_manager import LobbyManager
 from character_load_manager import CharacterLoadManager
-from workers import HotkeyCaptureWorker
+from workers import LobbyFetcher, HotkeyCaptureWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
 from quickcast_manager import QuickcastManager
@@ -158,7 +158,6 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
-    send_message_signal = Signal(str)
     load_character_signal = Signal()
     quickcast_toggle_signal = Signal()
 
@@ -180,6 +179,7 @@ class SimpleWindow(QMainWindow):
         self.old_pos = None
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
+        self.game_title = "Warcraft III"
 
         # Automation state flags
         self.automation_settings = {} # To hold loaded settings
@@ -187,6 +187,7 @@ class SimpleWindow(QMainWindow):
         self.ahk_process = None
         self.dark_mode = True # Initialize with a default to prevent startup errors
         self.message_hotkeys = {}       # {hotkey_str: message_str}
+        self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
         self.keybinds = self.settings_manager.get("keybinds", {})
 
         # Keybind state
@@ -210,6 +211,9 @@ class SimpleWindow(QMainWindow):
             # Add other keys as needed
         } if win32con else {}
         self.f2_key_down = False # Debounce flag for F2 spam
+
+        # Initialize the automation manager
+        self.automation_manager = AutomationManager(self)
 
         # Initialize the quickcast manager
         self.quickcast_manager = QuickcastManager(self)
@@ -254,7 +258,6 @@ class SimpleWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.resize(700, 800)
 
-        self.game_title = "Warcraft III"
         self.setWindowTitle("Hellfire Helper")
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
@@ -334,9 +337,21 @@ class SimpleWindow(QMainWindow):
         # Automation tab
         self.automation_tab = AutomationTab(self)
         self.stacked_widget.addWidget(self.automation_tab)
-        self.automation_manager = AutomationManager(self)
+
+        # Connect signals from the new AutomationTab
+        self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.start_automation)
+        self.automation_tab.stop_automation_btn.clicked.connect(self.automation_manager.stop_automation)
+        self.automation_tab.reset_automation_btn.clicked.connect(self.reset_automation_settings)
+        self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
+        self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
+        self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
+        self.automation_manager.log_message.connect(self.update_automation_log)
 
         # Add validators to the line edits in the new tab
+        int_validator = QIntValidator(50, 600000, self)
+        for ctrls in self.automation_tab.automation_key_ctrls.values():
+            ctrls["edit"].setValidator(int_validator)
+        self.automation_tab.custom_action_edit1.setValidator(int_validator)
 
         # Apply loaded automation settings after UI is created
         self.apply_automation_settings()
@@ -348,9 +363,11 @@ class SimpleWindow(QMainWindow):
         # Connect signals for the new QuickcastTab
         for name, button in self.quickcast_tab.key_buttons.items():
             button.clicked.connect(lambda checked, b=button, n=name: self.on_keybind_button_clicked(b, n))
+            button.installEventFilter(self) # For right-click
         for name, checkbox in self.quickcast_tab.setting_checkboxes.items():
             checkbox.clicked.connect(lambda checked, n=name: self.on_keybind_setting_changed(n))
-        self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.quickcast_manager.reset_keybinds)
+        self.quickcast_tab.reset_keybinds_btn.clicked.connect(self.reset_keybinds)
+        # New connection for the Activate Quickcast button
         self.quickcast_tab.activate_quickcast_btn.clicked.connect(self.quickcast_manager.toggle_ahk_quickcast)
                 # Connections for AHK installation buttons
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
@@ -467,6 +484,10 @@ class SimpleWindow(QMainWindow):
         # Initial data load for lobbies
         self.lobby_manager.refresh_lobbies()
 
+    def update_automation_log(self, message: str):
+        """Appends a message to the automation log text box."""
+        self.automation_tab.automation_log_box.append(message)
+
     def set_volume(self, value: int):
         """Sets the media player volume. The manager keeps track of the value."""
         volume_float = value / 100.0
@@ -505,13 +526,28 @@ class SimpleWindow(QMainWindow):
     def mouseReleaseEvent(self, event: QMouseEvent):
         self.old_pos = None
 
+    def eventFilter(self, obj, event):
+        """Catch right-clicks on keybind buttons."""
+        if event.type() == QMouseEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.RightButton:
+            for name, button in self.quickcast_tab.key_buttons.items():
+                if button is obj:
+                    if name.startswith("spell_") or name.startswith("inv_"):
+                        self.toggle_quickcast(name)
+                        return True # Event handled
+        return super().eventFilter(obj, event)
+
+
 
     def pick_color(self, key: str):
         """Delegates color picking to the ThemeManager."""
         self.theme_manager.pick_color(key)
 
     def confirm_reset(self):
-        if QMessageBox.question(self, "Confirm Reset", "Are you sure you want to reset the application?\nAll settings will be returned to their defaults.") == QMessageBox.StandardButton.Yes:
+        confirm_box = QMessageBox(self); confirm_box.setWindowTitle("Confirm Reset")
+        confirm_box.setText("Are you sure you want to reset the application?\nAll settings will be returned to their defaults.")
+        confirm_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm_box.setDefaultButton(QMessageBox.StandardButton.No)
+        if confirm_box.exec() == QMessageBox.StandardButton.Yes:
             self.reset_state()
 
     def reset_state(self):
@@ -531,7 +567,7 @@ class SimpleWindow(QMainWindow):
 
         # Reset message hotkeys
         self.message_hotkeys.clear()
-        self.automation_manager.load_message_hotkeys() # This will clear the table
+        self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
 
     # Settings
@@ -554,12 +590,12 @@ class SimpleWindow(QMainWindow):
         if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
             self.capture_thread.quit()
             self.capture_thread.wait()
-        
-        if not self.capturing_for_control: # Only do this for message hotkeys
-            self.automation_tab.message_edit.setEnabled(False)
-            self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
-            self.automation_tab.hotkey_capture_btn.setEnabled(False)
-        
+
+
+        self.automation_tab.message_edit.setEnabled(False)
+        self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
+        self.automation_tab.hotkey_capture_btn.setEnabled(False)
+
         # Unhook all main hotkeys before starting the capture thread.
         keyboard.unhook_all()
         
@@ -593,6 +629,8 @@ class SimpleWindow(QMainWindow):
 
     def on_hotkey_captured(self, hotkey: str):
         """Handles the captured hotkey string from the worker."""
+        self.automation_tab.message_edit.setEnabled(True)
+        self.automation_tab.hotkey_capture_btn.setEnabled(True)
         is_valid = hotkey.lower() != 'esc'
 
         # If we were capturing for a keybind button, update it
@@ -613,10 +651,8 @@ class SimpleWindow(QMainWindow):
                 if key_name in self.keybinds:
                     # Set the hotkey back to the default in the data model
                     self.keybinds[key_name]["hotkey"] = default_key
-        else: # We were capturing for a message hotkey, update its UI
-            self.automation_tab.message_edit.setEnabled(True)
+        else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
-            self.automation_tab.hotkey_capture_btn.setEnabled(True)
 
         # Re-register all application hotkeys now that capture is complete.
         self.register_global_hotkeys()
@@ -732,7 +768,7 @@ class SimpleWindow(QMainWindow):
         self.character_path = self.settings_manager.get("character_path")
         if not self.character_path:
              self.character_path = os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG")
-        self.message_hotkeys = self.settings_manager.get("message_hotkeys", {})
+        self.message_hotkeys = self.settings_manager.get("message_hotkeys")
         self.automation_settings = self.settings_manager.get("automation")
         self.custom_theme = self.settings_manager.get("custom_theme")
         self.keybinds = self.settings_manager.get("keybinds", {})
@@ -769,11 +805,11 @@ class SimpleWindow(QMainWindow):
         }
 
     def reset_keybinds(self):
-        self.quickcast_manager.reset_keybinds() # type: ignore
+        self.quickcast_manager.reset_keybinds()
 
     # Keybinds / Quickcast
-    def apply_keybind_settings(self): # type: ignore
-        self.quickcast_manager.apply_keybind_settings() # type: ignore
+    def apply_keybind_settings(self):
+        self.quickcast_manager.apply_keybind_settings()
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         self.quickcast_manager.on_keybind_button_clicked(button, name)
@@ -782,7 +818,7 @@ class SimpleWindow(QMainWindow):
         self.quickcast_manager.on_keybind_setting_changed(setting_name)
 
     def toggle_quickcast(self, name: str):
-        self.quickcast_manager.toggle_quickcast(name) # type: ignore
+        self.quickcast_manager.toggle_quickcast(name)
 
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
@@ -854,6 +890,21 @@ class SimpleWindow(QMainWindow):
             self.items_manager._add_recipe_by_name(recipe_name)
 
     # Character loading
+    def on_path_changed(self, new_path: str):
+    def on_material_checked(self, item: QTableWidgetItem):
+        if item.column() != 0: return
+        materials_table = self.items_tab.materials_table # type: ignore
+        is_checked = item.checkState() == Qt.CheckState.Checked
+        color = QColor("gray") if is_checked else self.palette().color(self.foregroundRole())
+        materials_table.itemChanged.disconnect(self.on_material_checked)
+        for col in range(materials_table.columnCount()):
+            table_item = materials_table.item(item.row(), col)
+            if table_item: table_item.setForeground(color)
+        sort_item = materials_table.item(item.row(), 4)
+        if sort_item: sort_item.setText("1" if is_checked else "0")
+        materials_table.setSortingEnabled(True)
+        materials_table.sortItems(4, Qt.SortOrder.AscendingOrder)
+        materials_table.itemChanged.connect(self.on_material_checked)
 
     def on_f3_pressed(self):
         """Handler for the F3 hotkey press."""
@@ -871,7 +922,7 @@ class SimpleWindow(QMainWindow):
         elif tab_name == "Lobbies" and not self.lobby_manager.lobbies_tab.lobbies_table.rowCount():
             self.lobby_manager.refresh_lobbies() # Refresh when tab is first viewed
         elif tab_name == "Automation":
-            self.automation_manager.load_message_hotkeys()
+            self.load_message_hotkeys()
 
     def _reset_automation_button_style(self):
         """Resets the automation button to its default theme color."""
@@ -929,7 +980,7 @@ class SimpleWindow(QMainWindow):
         except Exception as e:
             print(f"Failed to hook F2 key: {e}")
         # Register all custom message hotkeys
-        for hotkey, message in self.automation_manager.message_hotkeys.items():
+        for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
 
     def register_keybind_hotkeys(self):
@@ -946,7 +997,7 @@ class SimpleWindow(QMainWindow):
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
-            hk_id = keyboard.add_hotkey(hotkey, lambda msg=message: self.automation_manager.send_chat_message(msg), suppress=False)
+            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False)
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
@@ -964,6 +1015,46 @@ class SimpleWindow(QMainWindow):
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
+
+    def deactivate_ahk_script_if_running(self, inform_user=True):
+        """Delegates AHK deactivation to the QuickcastManager."""
+        return self.quickcast_manager.deactivate_ahk_script_if_running(inform_user)
+
+    def toggle_ahk_quickcast(self):
+        """Delegates AHK toggling to the QuickcastManager."""
+        self.quickcast_manager.toggle_ahk_quickcast()
+                
+    def _find_ahk_path(self) -> str | None:
+        """Finds the path to the AutoHotkey executable."""
+        program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
+        possible_paths = [
+            os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
+            os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+        try:
+            result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            return result.stdout.strip().split('\n')[0]
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+
+    def generate_and_run_ahk_script(self):
+        """Delegates AHK script generation to the QuickcastManager."""
+        return self.quickcast_manager.generate_and_run_ahk_script()
+
+    def unregister_python_hotkeys(self):
+        """Delegates Python hotkey unregistration to the QuickcastManager."""
+        self.quickcast_manager.unregister_python_hotkeys()
+
+    def register_keybind_hotkeys(self):
+        """
+        Safely unregisters and re-registers all keybind-specific hotkeys.
+        This method iterates through a copy of the tracked hotkey IDs...
+        """
+        self.quickcast_manager.register_keybind_hotkeys()
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
