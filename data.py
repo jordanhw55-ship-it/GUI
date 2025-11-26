@@ -6,7 +6,7 @@ from utils import get_base_path
 class ItemDatabase:
     """Handles loading and searching item data from text files."""
     def __init__(self):
-        self.base_path = os.path.join(get_base_path(), "contents")
+        self.base_path = os.path.join(os.path.dirname(get_base_path()), "contents")
         self.all_items_data = []
         self.drops_data = []
         self.raid_data = []

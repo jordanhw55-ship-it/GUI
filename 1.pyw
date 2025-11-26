@@ -255,7 +255,7 @@ class SimpleWindow(QMainWindow):
         self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
-        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
+        self.setWindowIcon(QIcon(os.path.join(os.path.dirname(get_base_path()), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
         # Center the window on the primary screen
@@ -301,7 +301,7 @@ class SimpleWindow(QMainWindow):
         title_layout.setSpacing(5)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_image_label = QLabel()
-        self.title_image_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "title.png")))
+        self.title_image_label.setPixmap(QPixmap(os.path.join(os.path.dirname(get_base_path()), "contents", "title.png")))
         title_layout.addWidget(self.title_image_label)
 
         # --- Add Widgets to Title Bar Layout ---
@@ -1094,7 +1094,7 @@ class SimpleWindow(QMainWindow):
     def play_specific_sound(self, sound_file: str):
         """Plays a specific sound file from the contents/sounds directory."""
         try:
-            sound_file_path = os.path.join(get_base_path(), "contents", "sounds", sound_file)
+            sound_file_path = os.path.join(os.path.dirname(get_base_path()), "contents", "sounds", sound_file)
             if os.path.exists(sound_file_path):
                 self.player.setSource(QUrl.fromLocalFile(sound_file_path))
                 self.player.play()
