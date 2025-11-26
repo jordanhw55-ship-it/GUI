@@ -1,5 +1,6 @@
 import os
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QListWidgetItem
+from PySide6.QtCore import Qt
 
 try:
     import win32gui
