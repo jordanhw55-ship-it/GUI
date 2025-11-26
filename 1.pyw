@@ -1420,9 +1420,15 @@ QCheckBox::indicator {{
         try:
             hwnd = win32gui.FindWindow(None, self.game_title)
             if hwnd == 0:
-                QMessageBox.critical(self, "Error", f"'{self.game_title}' window not found."); return
+                QMessageBox.critical(self, "Error", f"'{self.game_title}' window not found.")
+                return
             win32gui.SetForegroundWindow(hwnd)
-            pyautogui.press('enter'); pyautogui.write(f"-load {char_name}", interval=0.05); pyautogui.press('enter')
+            
+            # Paste the command instead of typing it for speed
+            command_to_paste = f"-load {char_name}"
+            clipboard = QApplication.clipboard()
+            clipboard.setText(command_to_paste)
+            pyautogui.press('enter'); pyautogui.hotkey('ctrl', 'v'); pyautogui.press('enter')
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send command to game: {e}")
 
