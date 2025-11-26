@@ -307,11 +307,6 @@ class SimpleWindow(QMainWindow):
         # Load tab
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
         self.character_load_manager = CharacterLoadManager(self)
-
-        # Initialize the automation manager
-        self.automation_manager = AutomationManager(self)
-        self.quickcast_manager = QuickcastManager(self)
-
         # Items tab
         self.item_database = ItemDatabase()
         self.items_tab = ItemsTab(self)
@@ -335,6 +330,11 @@ class SimpleWindow(QMainWindow):
         # Automation tab
         self.automation_tab = AutomationTab(self)
         self.stacked_widget.addWidget(self.automation_tab)
+
+        # Initialize managers after all tabs are created
+        self.automation_manager = AutomationManager(self)
+        self.quickcast_manager = QuickcastManager(self)
+
 
         # Connect signals from the new AutomationTab
         self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.start_automation)
