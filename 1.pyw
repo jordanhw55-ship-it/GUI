@@ -373,7 +373,6 @@ class SimpleWindow(QMainWindow):
                 # Connections for AHK installation buttons
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
         self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.quickcast_manager.open_ahk_website)
-        self.quickcast_tab.gimp_web_btn.clicked.connect(self.quickcast_manager.open_gimp_website)
         self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
         
         # Lobbies tab
