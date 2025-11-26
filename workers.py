@@ -91,17 +91,11 @@ class ChatMessageWorker(QObject):
                 print(f"[DEBUG] ChatMessageWorker: Window '{self.game_title}' not found. Skipping message.")
                 return
 
-            # Use clipboard to paste the message for speed
-            clipboard = QApplication.clipboard()
-            original_clipboard = clipboard.text() # Save user's clipboard
-            clipboard.setText(message)
-
+            # The main thread has already set the clipboard.
+            # This worker's only job is to perform the key presses.
             pyautogui.press('enter')
             pyautogui.hotkey('ctrl', 'v')
             pyautogui.press('enter')
-
-            # Restore user's original clipboard content
-            clipboard.setText(original_clipboard)
 
         except Exception as e:
             self.error.emit(str(e))

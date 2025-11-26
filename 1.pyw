@@ -977,8 +977,16 @@ QCheckBox::indicator {{
 
         if self.is_sending_message:
             return
+            
         self.is_sending_message = True
+
+        # --- Clipboard operations MUST be done in the main GUI thread ---
+        clipboard = QApplication.clipboard()
+        self.original_clipboard_content = clipboard.text() # Save original content
+        clipboard.setText(message) # Set the new message
+
         self.send_message_signal.emit(message)
+        # The worker will now only handle the pyautogui part.
 
     def on_chat_send_error(self, error_message: str):
         """Handles errors from the chat message worker."""
@@ -989,6 +997,11 @@ QCheckBox::indicator {{
 
     def on_chat_send_finished(self):
         """Handles successful completion from the chat message worker."""
+        # Restore the user's clipboard after the worker is done.
+        if hasattr(self, 'original_clipboard_content'):
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.original_clipboard_content)
+
         print("[DEBUG] on_chat_send_finished called. Resetting flag.")
         self.is_sending_message = False
         print("[DEBUG] is_sending_message reset to False.")
