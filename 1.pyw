@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -255,6 +255,7 @@ class SimpleWindow(QMainWindow):
         self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
+        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
         # Center the window on the primary screen
@@ -372,6 +373,7 @@ class SimpleWindow(QMainWindow):
                 # Connections for AHK installation buttons
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
         self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.quickcast_manager.open_ahk_website)
+        self.quickcast_tab.gimp_web_btn.clicked.connect(self.quickcast_manager.open_gimp_website)
         self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
         
         # Lobbies tab
@@ -1111,6 +1113,11 @@ class SimpleWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+
+    # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
+    if os.name == 'nt':
+        myappid = 'cherrybandit.hellfirehelper.1.0' # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
