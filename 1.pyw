@@ -1851,8 +1851,6 @@ remapMouse(button) {{
     MouseClick(button)
 }}
 
-HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys context-sensitive
-"""
 
         # Keep track of hotkeys already defined to prevent duplicates
         defined_hotkeys = set()
