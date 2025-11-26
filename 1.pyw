@@ -589,7 +589,7 @@ class SimpleWindow(QMainWindow):
         self.in_progress_recipes.clear()
         self.items_tab.in_progress_recipes_list.clear() # type: ignore
         self.items_manager.rebuild_materials_table()
-        self._reset_automation_ui()
+        self.reset_automation_settings(confirm=False)
 
         # Reset message hotkeys
         self.message_hotkeys.clear()
