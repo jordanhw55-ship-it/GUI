@@ -47,10 +47,10 @@ class SettingsManager:
             "in_progress_recipes": [window_instance.items_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.items_tab.in_progress_recipes_list.count())],
             "keybinds": window_instance.get_keybind_settings_from_ui(),
             "automation": window_instance.get_automation_settings_from_ui(),
-            "watchlist": window_instance.watchlist,
-            "play_sound_on_found": window_instance.lobbies_tab.lobby_placeholder_checkbox.isChecked(),
-            "selected_sound": window_instance.selected_sound,
-            "volume": window_instance.lobbies_tab.volume_slider.value()
+            "watchlist": window_instance.lobby_manager.watchlist,
+            "play_sound_on_found": window_instance.lobby_manager.lobbies_tab.lobby_placeholder_checkbox.isChecked(),
+            "selected_sound": window_instance.lobby_manager.selected_sound,
+            "volume": window_instance.lobby_manager.volume
         }
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)

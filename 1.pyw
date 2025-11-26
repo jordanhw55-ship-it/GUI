@@ -22,6 +22,7 @@ from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_ST
 from data import ItemDatabase
 from theme_manager import ThemeManager
 from items_manager import ItemsManager
+from lobby_manager import LobbyManager
 from workers import LobbyFetcher, HotkeyCaptureWorker, LobbyHeartbeatChecker
 from settings import SettingsManager
 from automation_manager import AutomationManager
@@ -177,9 +178,6 @@ class SimpleWindow(QMainWindow):
         })
 
         self.old_pos = None
-        self.all_lobbies = []
-        self.thread = None # type: ignore
-        self.last_lobby_id = 0 # For heartbeat check
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
         self.is_sending_message = False
         self.game_title = "Warcraft III"
@@ -187,14 +185,9 @@ class SimpleWindow(QMainWindow):
         # Automation state flags
         self.automation_settings = {} # To hold loaded settings
         self.is_capturing_hotkey = False
-        self.previous_watched_lobbies = set()
         self.ahk_process = None
         self.dark_mode = True # Initialize with a default to prevent startup errors
         self.message_hotkeys = {}       # {hotkey_str: message_str}
-        self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
-        self.play_sound_on_found = False # Default, will be overwritten by load_settings
-        self.selected_sound = self.settings_manager.get("selected_sound", "ping1.mp3")
-        self.volume = self.settings_manager.get("volume", 100)
         self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
         self.keybinds = self.settings_manager.get("keybinds", {})
 
@@ -277,7 +270,6 @@ class SimpleWindow(QMainWindow):
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
 
-        self.is_fetching_lobbies = False # Add a flag to prevent concurrent refreshes
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(5)
@@ -397,21 +389,8 @@ class SimpleWindow(QMainWindow):
         self.lobbies_tab = LobbiesTab(self)
         self.stacked_widget.addWidget(self.lobbies_tab)
 
-        # Connect signals for the new LobbiesTab
-        self.lobbies_tab.lobby_search_bar.textChanged.connect(self.filter_lobbies)
-        self.lobbies_tab.refresh_button.clicked.connect(self.refresh_lobbies)
-        self.lobbies_tab.toggle_watchlist_btn.clicked.connect(self.toggle_watchlist_visibility)
-        self.lobbies_tab.add_watchlist_button.clicked.connect(self.add_to_watchlist)
-        self.lobbies_tab.remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
-
-        # Connect sound and volume controls from LobbiesTab
-        for sound, btn in self.lobbies_tab.ping_buttons.items():
-            btn.clicked.connect(lambda checked=False, s=sound: self.select_ping_sound(s))
-        self.lobbies_tab.test_sound_button.clicked.connect(self.play_notification_sound)
-        self.lobbies_tab.volume_slider.valueChanged.connect(self.set_volume)
-
-        # Populate initial watchlist
-        self.lobbies_tab.watchlist_widget.addItems(self.watchlist)
+        # Initialize the LobbyManager to handle all logic for the Lobbies tab
+        self.lobby_manager = LobbyManager(self)
 
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget()
@@ -490,10 +469,6 @@ class SimpleWindow(QMainWindow):
 
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
-        # Set initial values from loaded settings
-        self.lobbies_tab.lobby_placeholder_checkbox.setChecked(self.play_sound_on_found)
-        self.lobbies_tab.volume_slider.setValue(self.volume)
-
         # Set initial selected ping sound
         self.update_ping_button_styles()
 
@@ -503,9 +478,8 @@ class SimpleWindow(QMainWindow):
 
         # Apply preset or custom theme depending on the flag
         self.custom_tab_bar._on_button_clicked(self.last_tab_index)
-        self.refresh_lobbies()
+        self.lobby_manager.refresh_lobbies()
         self.load_characters() # Load characters on startup
-        self.refresh_timer = QTimer(self); self.refresh_timer.setInterval(15000); self.refresh_timer.timeout.connect(self.check_for_lobby_updates); self.refresh_timer.start()
         
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
@@ -533,17 +507,14 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.automation_log_box.append(message)
 
     def set_volume(self, value: int):
-        """Sets the media player volume from the slider (0-100)."""
-        self.volume = value
+        """Sets the media player volume. The manager keeps track of the value."""
         volume_float = value / 100.0
         self.audio_output.setVolume(volume_float)
 
     # Core helpers
     def select_ping_sound(self, sound_file: str):
-        """Selects a sound, plays it, and updates button styles."""
-        self.selected_sound = sound_file
-        self.play_specific_sound(sound_file)
-        self.update_ping_button_styles()
+        """Delegates sound selection to the LobbyManager."""
+        self.lobby_manager.select_ping_sound(sound_file)
 
     def update_ping_button_styles(self):
         """Updates the visual state of the ping buttons."""
@@ -552,8 +523,9 @@ class SimpleWindow(QMainWindow):
         is_dark = theme.get("is_dark", self.dark_mode)
         checked_fg = "#000000" if not is_dark else "#FFFFFF"
         if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
-
-        for sound, btn in self.lobbies_tab.ping_buttons.items():
+        
+        selected_sound = self.lobby_manager.selected_sound
+        for sound, btn in self.lobby_manager.lobbies_tab.ping_buttons.items():
             btn.setChecked(sound == self.selected_sound)
             if sound == self.selected_sound:
                 btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg}; border: 1px solid {accent_color};")
@@ -601,9 +573,9 @@ class SimpleWindow(QMainWindow):
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.theme_manager.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
-        self.watchlist = ["hellfire", "rpg"]
-        self.lobbies_tab.watchlist_widget.clear(); self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
-        self.lobbies_tab.volume_slider.setValue(100)
+        self.lobby_manager.watchlist = ["hellfire", "rpg"]
+        self.lobby_manager.lobbies_tab.watchlist_widget.clear(); self.lobby_manager.lobbies_tab.watchlist_widget.addItems(self.lobby_manager.watchlist)
+        self.lobby_manager.lobbies_tab.volume_slider.setValue(100)
         
         # Also reset recipes and automation settings (delegating recipe reset)
         self.in_progress_recipes.clear()
@@ -817,10 +789,6 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys = self.settings_manager.get("message_hotkeys")
         self.automation_settings = self.settings_manager.get("automation")
         self.custom_theme = self.settings_manager.get("custom_theme")
-        self.watchlist = self.settings_manager.get("watchlist")
-        self.play_sound_on_found = self.settings_manager.get("play_sound_on_found")
-        self.selected_sound = self.settings_manager.get("selected_sound")
-        self.volume = self.settings_manager.get("volume", 100)
         self.keybinds = self.settings_manager.get("keybinds", {})
 
     def apply_automation_settings(self):
@@ -939,29 +907,6 @@ class SimpleWindow(QMainWindow):
         for recipe_name in saved_recipes:
             self.items_manager._add_recipe_by_name(recipe_name)
 
-    # Watchlist
-    def load_watchlist(self):
-        """Loads the watchlist from settings. This is now handled by apply_loaded_settings().""" # type: ignore
-        # This method is kept for compatibility but logic is in load_settings()
-        # The watchlist is loaded with other settings at startup.
-        self.lobbies_tab.watchlist_widget.clear() # type: ignore
-        self.lobbies_tab.watchlist_widget.addItems(self.watchlist) # type: ignore
-    def add_to_watchlist(self):
-        keyword = self.lobbies_tab.watchlist_input.text().strip().lower()
-        if keyword and keyword not in self.watchlist:
-            self.watchlist.append(keyword)
-            self.lobbies_tab.watchlist_widget.addItem(keyword)
-            self.lobbies_tab.watchlist_input.clear()
-            self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
-    def remove_from_watchlist(self):
-        selected_items = self.lobbies_tab.watchlist_widget.selectedItems()
-        if not selected_items:
-            return
-        for item in selected_items:
-            self.watchlist.remove(item.text())
-            self.lobbies_tab.watchlist_widget.takeItem(self.lobbies_tab.watchlist_widget.row(item))
-        self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
-
     # Character loading
     def on_path_changed(self, new_path: str):
         self.character_path = new_path # Still need to update the main window's state
@@ -1055,93 +1000,6 @@ class SimpleWindow(QMainWindow):
         self.load_selected_character()
         self.showMinimized()
 
-    def check_for_lobby_updates(self):
-        """Performs a lightweight check to see if a full refresh is needed."""
-        if self.is_fetching_lobbies:
-            return
-
-        self.thread = QThread()
-        self.worker = LobbyHeartbeatChecker(self.last_lobby_id)
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.update_required.connect(self.refresh_lobbies)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.thread.start()
-
-    # Lobbies
-    def refresh_lobbies(self):
-        if self.is_fetching_lobbies:
-            return # Don't start a new refresh if one is already running
-        self.is_fetching_lobbies = True
-        lobbies_table = self.lobbies_tab.lobbies_table
-
-        lobbies_table.setRowCount(0); lobbies_table.setRowCount(1)
-        loading_item = QTableWidgetItem("Fetching lobby data..."); loading_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        lobbies_table.setItem(0, 0, loading_item); lobbies_table.setSpan(0, 0, 1, 3)
-        self.thread = QThread(); self.worker = LobbyFetcher(); self.worker.moveToThread(self.thread)
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.on_lobbies_fetched)
-        self.worker.error.connect(self.on_lobbies_fetch_error)
-        self.worker.finished.connect(self.thread.quit); self.worker.error.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater); self.worker.error.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        self.thread.start()
-    def on_lobbies_fetched(self, lobbies: list):
-        current_watched_lobbies = set()
-        if lobbies: self.last_lobby_id = lobbies[0].get("id", self.last_lobby_id)
-        self.is_fetching_lobbies = False # Reset the flag
-        for lobby in lobbies:
-            lobby_name = lobby.get('name', '').lower()
-            lobby_map = lobby.get('map', '').lower()
-            for keyword in self.watchlist:
-                if keyword in lobby_name or keyword in lobby_map:
-                    current_watched_lobbies.add(lobby.get('name')); break
-        newly_found = current_watched_lobbies - self.previous_watched_lobbies # type: ignore
-        if newly_found and self.lobbies_tab.lobby_placeholder_checkbox.isChecked():
-            self.play_notification_sound()
-        self.previous_watched_lobbies = current_watched_lobbies
-        self.all_lobbies = lobbies
-        self.filter_lobbies(self.lobbies_tab.lobby_search_bar.text())
-    def on_lobbies_fetch_error(self, error_message: str):
-        self.is_fetching_lobbies = False # Reset the flag
-        lobbies_table = self.lobbies_tab.lobbies_table
-        lobbies_table.setRowCount(1)
-        lobbies_table.setSpan(0, 0, 1, lobbies_table.columnCount())
-        error_item = QTableWidgetItem(f"Error: {error_message}")
-        error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        lobbies_table.setItem(0, 0, error_item)
-    def filter_lobbies(self, query: str):
-        lobbies_table = self.lobbies_tab.lobbies_table
-        lobbies_table.setRowCount(0); lobbies_table.setSortingEnabled(False)
-        query = query.lower()
-        filtered_lobbies = [l for l in self.all_lobbies if query in l.get('name', '').lower() or query in l.get('map', '').lower()]
-        def is_watched(lobby):
-            name = lobby.get('name', '').lower(); map_name = lobby.get('map', '').lower()
-            return any(k in name or k in map_name for k in self.watchlist)
-        sorted_lobbies = sorted(filtered_lobbies, key=is_watched, reverse=True)
-        lobbies_table.setRowCount(len(sorted_lobbies))
-        for row, lobby in enumerate(sorted_lobbies):
-            lobby_name = lobby.get('name', '').lower(); lobby_map = lobby.get('map', '').lower()
-            watched = any(k in lobby_name or k in lobby_map for k in self.watchlist)
-            lobbies_table.setItem(row, 0, QTableWidgetItem(lobby.get('name', 'N/A')))
-            lobbies_table.setItem(row, 1, QTableWidgetItem(lobby.get('map', 'N/A')))
-            players = f"{lobby.get('slotsTaken', '?')}/{lobby.get('slotsTotal', '?')}"
-            lobbies_table.setItem(row, 2, AlignedTableWidgetItem(players))
-            host = lobby.get('host', lobby.get('server', 'N/A')) # Fallback to 'server' if 'host' is not present
-            lobbies_table.setItem(row, 3, AlignedTableWidgetItem(host))
-            if watched:
-                for col in range(lobbies_table.columnCount()):
-                    lobbies_table.item(row, col).setBackground(QColor("#3A5F0B"))
-        lobbies_table.setSortingEnabled(True)
-
-    def toggle_watchlist_visibility(self):
-        """Shows or hides the watchlist group box."""
-        is_visible = self.lobbies_tab.watchlist_group.isVisible()
-        self.lobbies_tab.watchlist_group.setVisible(not is_visible)
-
     # Tab select logic
     def on_main_tab_selected(self, index: int):
         self.stacked_widget.setCurrentIndex(index)
@@ -1150,8 +1008,8 @@ class SimpleWindow(QMainWindow):
             self.items_manager.switch_items_sub_tab(0) # Lazy load
         elif tab_name == "Placeholder":
             pass # Nothing to do for the placeholder tab
-        elif tab_name == "Lobbies" and not self.lobbies_tab.lobbies_table.rowCount():
-            self.refresh_lobbies() # Refresh when tab is first viewed
+        elif tab_name == "Lobbies" and not self.lobby_manager.lobbies_tab.lobbies_table.rowCount():
+            self.lobby_manager.refresh_lobbies() # Refresh when tab is first viewed
         elif tab_name == "Automation":
             self.load_message_hotkeys()
 
@@ -1316,8 +1174,8 @@ class SimpleWindow(QMainWindow):
             QApplication.beep()
     
     def play_notification_sound(self):
-        """Plays a custom sound file (ping.mp3), with fallback to a system beep."""
-        self.play_specific_sound(self.selected_sound)
+        """Plays the currently selected notification sound."""
+        self.play_specific_sound(self.lobby_manager.selected_sound)
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
