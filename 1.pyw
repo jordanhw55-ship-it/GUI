@@ -490,11 +490,15 @@ class SimpleWindow(QMainWindow):
     def update_automation_button_style(self, is_running: bool):
         """Updates the 'Start/F5' button color based on automation state."""
         button = self.automation_tab.start_automation_btn
+        # Revert to the default stylesheet to ensure we have a clean base
+        button.setStyleSheet("")
         if is_running:
             button.setStyleSheet("background-color: #228B22; color: white;") # ForestGreen
         else:
-            # Explicitly set an empty stylesheet to remove the override
-            button.setStyleSheet("")
+            # Force a style refresh by unpolishing and repolishing the widget.
+            # This makes it re-read the global stylesheet.
+            button.style().unpolish(button)
+            button.style().polish(button)
 
     def update_automation_log(self, message: str):
         """Appends a message to the automation log text box."""
