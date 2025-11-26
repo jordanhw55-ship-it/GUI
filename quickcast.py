@@ -130,6 +130,9 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             self.register_keybind_hotkeys()
             self.main_window.register_global_hotkeys() # This is crucial to re-enable F2
+            # Hide the overlay when the script is deactivated
+            self.main_window.status_overlay.hide()
+            print("[INFO] Quickcast overlay hidden.")
             return True
         return False
 
@@ -255,6 +258,9 @@ HotIfWinActive("{self.main_window.game_title}")
             print(f"[DEBUG] Launching AHK process with path: {ahk_path}")
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
+            # Show a persistent overlay when the script is activated
+            self.main_window.status_overlay.show_status("Quickcast Enabled", "#B22222", timeout=0)
+            print("[INFO] Quickcast overlay shown.")
             return True
         except Exception as e:
             QMessageBox.critical(self.main_window, "Script Error", f"Failed to generate or run AHK script: {e}")
