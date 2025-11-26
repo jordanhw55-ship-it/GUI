@@ -611,6 +611,7 @@ class SimpleWindow(QMainWindow):
                 pixmap = QPixmap(image_path)
                 title_widget.setPixmap(pixmap.scaled(pixmap.width(), 22, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
                 title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                title_widget.setStyleSheet("background-color: transparent;")
 
         if not title_widget:
             # Fallback to icon and text if no image or image not found
