@@ -1730,7 +1730,7 @@ QCheckBox::indicator {{
 
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
-                self.register_global_hotkeys()
+                self.register_global_hotkeys() # This line is crucial
                 return True
         return False
 
