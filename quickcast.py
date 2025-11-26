@@ -128,7 +128,7 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             self.register_keybind_hotkeys()
-            self.main_window.register_global_hotkeys()
+            self.main_window.register_global_hotkeys() # This is crucial to re-enable F2
             return True
         return False
 

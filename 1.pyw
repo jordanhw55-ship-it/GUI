@@ -1606,53 +1606,12 @@ QCheckBox::indicator {{
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
 
     def deactivate_ahk_script_if_running(self, inform_user=True):
-        """Checks if the AHK script is running and deactivates it, informing the user."""
-        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            # Define the path to the lock file that signals the AHK script to run.
-            lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
-            try:
-                # To gracefully exit the AHK script, we simply delete the lock file.
-                # The script is designed to exit when this file is gone.
-                if os.path.exists(lock_file_path):
-                    os.remove(lock_file_path)
-                    print("[INFO] Sent graceful exit signal to AHK script by deleting lock file.")
-                
-                # Wait for the process to terminate on its own.
-                self.ahk_process.wait(timeout=2)
-
-            except Exception as e:
-                print(f"[WARNING] Graceful exit failed: {e}. Falling back to forceful termination.")
-                # If graceful exit fails, fall back to the forceful method.
-                try:
-                    pid = self.ahk_process.pid
-                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-                except Exception as e:
-                    print(f"[WARNING] taskkill also failed: {e_kill}")
-                    self.ahk_process.terminate()
-            
-            # Finalize UI changes and re-register hotkeys
-            self.ahk_process = None
-            self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
-            self.register_keybind_hotkeys()
-            self.register_global_hotkeys()
-            return True
-        return False
+        """Delegates AHK deactivation to the QuickcastManager."""
+        return self.quickcast_manager.deactivate_ahk_script_if_running(inform_user)
 
     def toggle_ahk_quickcast(self):
-        """Toggles the activation of the dynamically generated AHK quickcast script."""
-        # Check if the AHK process exists and is currently running. The poll() method
-        # returns None if the process is still running.
-        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
-            # If it's running, deactivate it. The helper function handles UI changes.
-            self.deactivate_ahk_script_if_running(inform_user=True)
-        else:
-            # If it's not running, activate it.
-            if self.generate_and_run_ahk_script():
-                # On successful activation, update the button to show the "Deactivate" state.
-                self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
-                self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
-                self.unregister_python_hotkeys()
+        """Delegates AHK toggling to the QuickcastManager."""
+        self.quickcast_manager.toggle_ahk_quickcast()
                 
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
@@ -1672,114 +1631,12 @@ QCheckBox::indicator {{
             return None
 
     def generate_and_run_ahk_script(self):
-        """Generates a complete AHK script from the current keybinds and runs it."""
-        ahk_path = self._find_ahk_path()
-        if not ahk_path:
-            QMessageBox.critical(self, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
-            return False
-
-        # Define the path for the lock file.
-        lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
-
-        # --- AHK Script Generation ---
-        script_content = f"""#Requires AutoHotkey v2.0
-#SingleInstance Force
-ProcessSetPriority("High")
-
-; This script will exit automatically if the lock file is deleted.
-lock_file := "{lock_file_path.replace(os.sep, '/')}"
-FileAppend("locked", lock_file)
-SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
-
-HotIfWinActive("{self.game_title}")
-
-"""
-        # Add the functions that will be called by the hotkeys
-        script_content += """
-remapSpellwQC(originalKey) {
-    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
-    SendInput("{" originalKey "}")
-    MouseClick("Left")
-    SendInput("{9}{0}")
-}
-
-remapSpellwoQC(originalKey) {
-    SendInput("{" originalKey "}")
-}
-
-remapMouse(button) {
-    MouseClick(button)
-}
-"""
-
-        # Keep track of hotkeys already defined to prevent duplicates
-        defined_hotkeys = set()
-
-        # Generate the hotkeys from Python's self.keybinds
-        for name, key_info in self.keybinds.items():
-            hotkey = key_info.get("hotkey")
-            if not hotkey or "button" in hotkey: continue # Skip empty or mouse button hotkeys
-
-            if hotkey in defined_hotkeys:
-                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping to prevent AHK error.")
-                continue
-
-            category = name.split("_")[0] # "spell", "inv", "mouse"
-            if category == "inv": category = "inventory"
-            is_enabled = self.keybinds.get("settings", {}).get(category, True)
-            if not is_enabled: continue
-
-            original_key = ""
-            if name.startswith("spell_"):
-                original_key = name.split("_")[1].lower()
-            elif name.startswith("inv_"):
-                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
-                inv_index = int(name.split("_")[1]) - 1
-                original_key = inv_map[inv_index]
-
-            if not original_key: continue
-
-            quickcast = key_info.get("quickcast", False)
-            function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
-            
-            # Add the '$' prefix to prevent the hotkey from triggering itself
-            script_content += f"\n${hotkey}:: {function_call}"
-            defined_hotkeys.add(hotkey)
-
-        # --- Write and Run the Script ---
-        script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
-        try:
-            with open(script_path, "w") as f:
-                f.write(script_content)
-            
-            self.ahk_process = subprocess.Popen([ahk_path, script_path])
-            self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
-            self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
-            print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
-            return True
-
-        except Exception as e:
-            QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
-            return False
+        """Delegates AHK script generation to the QuickcastManager."""
+        return self.quickcast_manager.generate_and_run_ahk_script()
 
     def unregister_python_hotkeys(self):
-        """
-        Unregisters all hotkeys managed by the 'keyboard' library.
-        This is called when the AHK script is activated to prevent conflicts.
-        """
-        # Iterate over a copy of the dictionary's items, as we will be modifying it.
-        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
-            # Do not unregister the F2 hotkey, so it can be used to deactivate the AHK script.
-            if hotkey_str != 'f2':
-                try:
-                    # Attempt to remove the hotkey using its registration ID.
-                    keyboard.remove_hotkey(hk_id)
-                    # If successful, remove it from our tracking dictionary to stay in sync.
-                    del self.hotkey_ids[hotkey_str]
-                except (KeyError, ValueError):
-                    # This block executes if the hotkey was already removed or the ID is invalid.
-                    # We can safely ignore this error and just log a warning.
-                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
+        """Delegates Python hotkey unregistration to the QuickcastManager."""
+        self.quickcast_manager.unregister_python_hotkeys()
 
     def register_keybind_hotkeys(self):
         """
