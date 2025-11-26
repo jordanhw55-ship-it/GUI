@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QGridLayout, QVBoxLayout, QLabel, QColorDialog
 from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 
 from utils import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 
