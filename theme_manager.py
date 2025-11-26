@@ -66,10 +66,10 @@ class ThemeManager:
 
         # Update the title image based on the theme
         image_name = f"title{theme_index + 1}.png"
-        image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", image_name)
+        image_path = os.path.join(os.path.dirname(get_base_path()), "contents", image_name)
         if not os.path.exists(image_path):
             # Fallback to the default if the specific one doesn't exist
-            image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", "title.png")
+            image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "title.png")
 
         self.main_window.title_image_label.setPixmap(QPixmap(image_path))
 
@@ -119,7 +119,7 @@ class ThemeManager:
         self.update_custom_theme_preview()
 
         # For custom themes, revert to the default title image
-        default_image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "Images", "title.png")
+        default_image_path = os.path.join(os.path.dirname(get_base_path()), "contents", "title.png")
         self.main_window.title_image_label.setPixmap(QPixmap(default_image_path))
 
         self.main_window.update_ping_button_styles()

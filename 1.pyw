@@ -255,7 +255,7 @@ class SimpleWindow(QMainWindow):
         self.resize(700, 800)
 
         self.setWindowTitle("Hellfire Helper")
-        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "Images", "icon.ico"))) # Set the application icon
+        self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
 
         # Center the window on the primary screen
@@ -301,7 +301,7 @@ class SimpleWindow(QMainWindow):
         title_layout.setSpacing(5)
         title_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_image_label = QLabel()
-        self.title_image_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "Images", "title.png")))
+        self.title_image_label.setPixmap(QPixmap(os.path.join(get_base_path(), "contents", "title.png")))
         title_layout.addWidget(self.title_image_label)
 
         # --- Add Widgets to Title Bar Layout ---
