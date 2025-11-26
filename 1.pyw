@@ -16,6 +16,7 @@ from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, Q
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
+import pyautogui  # type: ignore
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
@@ -758,38 +759,6 @@ class SimpleWindow(QMainWindow):
     def apply_loaded_settings(self):
         """Applies settings from the SettingsManager to the application state."""
         self.current_theme_index = self.settings_manager.get("theme_index")
-        try:
-            is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
-        except Exception:
-            is_game_active = False
-        if not is_game_active:
-            return
-
-        if self.is_sending_message:
-            return
-        self.is_sending_message = True
-
-        try:
-            # --- All operations are now safely on the main thread ---
-            clipboard = QApplication.clipboard()
-            original_clipboard = clipboard.text()
-            clipboard.setText(message)
-
-            # Use timers to sequence the key presses without blocking the GUI
-            pyautogui.press('enter')
-            QTimer.singleShot(50, lambda: pyautogui.hotkey('ctrl', 'v'))
-            QTimer.singleShot(100, lambda: pyautogui.press('enter'))
-
-            # After a short delay, restore the clipboard and reset the flag
-            def cleanup():
-                clipboard.setText(original_clipboard)
-                self.is_sending_message = False
-            QTimer.singleShot(200, cleanup)
-
-        except Exception as e:
-            QMessageBox.critical(self, "Chat Error", f"An error occurred while sending the message: {e}")
-            self.is_sending_message = False
-
         self.last_tab_index = self.settings_manager.get("last_tab_index")
         self.character_path = self.settings_manager.get("character_path")
         if not self.character_path:
