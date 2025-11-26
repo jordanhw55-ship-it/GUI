@@ -41,8 +41,8 @@ class SettingsManager:
         settings_to_save = {
             "theme_index": window_instance.current_theme_index,
             "last_tab_index": window_instance.stacked_widget.currentIndex(),
-            "character_path": window_instance.character_path,
-            "message_hotkeys": window_instance.message_hotkeys,
+            "character_path": window_instance.character_load_manager.character_path, # type: ignore
+            "message_hotkeys": window_instance.automation_manager.message_hotkeys,
             "custom_theme": window_instance.custom_theme,
             "in_progress_recipes": [window_instance.items_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.items_tab.in_progress_recipes_list.count())],
             "keybinds": window_instance.get_keybind_settings_from_ui(),

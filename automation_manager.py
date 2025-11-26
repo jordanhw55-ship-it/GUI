@@ -1,6 +1,6 @@
 import time
 from PySide6.QtCore import QTimer, QObject, Signal
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox, QTableWidgetItem
 
 try:
     import win32gui
@@ -15,10 +15,12 @@ except ImportError:
 class AutomationManager(QObject):
     log_message = Signal(str)
     status_changed = Signal(bool)
+    send_message_signal = Signal(str)
 
     def __init__(self, parent_window):
         super().__init__()
         self.parent = parent_window
+        self.automation_tab = parent_window.automation_tab
 
         # Debug toggle
         self.debug = True
@@ -48,6 +50,16 @@ class AutomationManager(QObject):
         # Cached message
         self.custom_message = ""
 
+        # Message Hotkeys
+        self.message_hotkeys = self.parent.settings_manager.get("message_hotkeys", {})
+        self.is_capturing_hotkey = False
+
+        self._connect_signals()
+        self.load_message_hotkeys()
+
+        # Chat Worker
+        self.is_sending_message = False
+
     def _log(self, *args):
         if self.debug:
             message = " ".join(map(str, args))
@@ -56,6 +68,15 @@ class AutomationManager(QObject):
 
     def _fmt_due(self, due):
         return "None" if due is None else f"{due:.3f}"
+
+    def _connect_signals(self):
+        """Connects UI signals for the automation tab to this manager."""
+        self.automation_tab.start_automation_btn.clicked.connect(self.start_automation)
+        self.automation_tab.stop_automation_btn.clicked.connect(self.stop_automation)
+        self.automation_tab.reset_automation_btn.clicked.connect(lambda: self.reset_settings(confirm=True))
+        self.automation_tab.hotkey_capture_btn.clicked.connect(self.parent.capture_message_hotkey)
+        self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
+        self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
 
     # -------------------------
     # Public control
@@ -76,17 +97,17 @@ class AutomationManager(QObject):
         self._log("start_automation -> True")
 
         try:
-            self.quest_interval_ms = int(self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
+            self.quest_interval_ms = int(self.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
         except Exception:
             self.quest_interval_ms = 15000
 
         try:
-            self.custom_interval_ms = int(self.parent.automation_tab.custom_action_edit1.text().strip())
+            self.custom_interval_ms = int(self.automation_tab.custom_action_edit1.text().strip())
         except Exception:
             self.custom_interval_ms = 30000
 
-        self.custom_message = self.parent.automation_tab.custom_action_edit2.text().strip()
-        custom_enabled = self.parent.automation_tab.custom_action_btn.isChecked() and bool(self.custom_message)
+        self.custom_message = self.automation_tab.custom_action_edit2.text().strip()
+        custom_enabled = self.automation_tab.custom_action_btn.isChecked() and bool(self.custom_message)
 
         if self.parent.automation_tab.custom_action_btn.isChecked() and not self.custom_message:
             QMessageBox.warning(self.parent, "Invalid message", "Custom action message cannot be empty.")
@@ -94,12 +115,12 @@ class AutomationManager(QObject):
 
         now = time.monotonic()
         quest_checked = self.parent.automation_tab.automation_key_ctrls["Complete Quest"]["chk"].isChecked()
-        self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None
+        self.next_quest_due = (now + self.quest_interval_ms / 1000.0) if quest_checked else None # type: ignore
         self.next_custom_due = (now + self.custom_interval_ms / 1000.0) if custom_enabled else None
 
         # Set up all other keys
         self.next_key_due = {}
-        for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
+        for key, ctrls in self.automation_tab.automation_key_ctrls.items():
             if key == "Complete Quest":
                 continue
             if ctrls["chk"].isChecked():
@@ -144,13 +165,74 @@ class AutomationManager(QObject):
         if do_reset:
             self.stop_automation()
             # Reset key automation UI
-            for key, ctrls in self.parent.automation_tab.automation_key_ctrls.items():
+            for key, ctrls in self.automation_tab.automation_key_ctrls.items():
                 ctrls["chk"].setChecked(False)
                 ctrls["edit"].setText("15000" if key == "Complete Quest" else "500")
             # Reset custom action UI
-            self.parent.automation_tab.custom_action_btn.setChecked(False)
-            self.parent.automation_tab.custom_action_edit1.setText("30000")
-            self.parent.automation_tab.custom_action_edit2.setText("-save x")
+            self.automation_tab.custom_action_btn.setChecked(False)
+            self.automation_tab.custom_action_edit1.setText("30000")
+            self.automation_tab.custom_action_edit2.setText("-save x")
+
+    # -------------------------
+    # Message Hotkeys
+    # -------------------------
+    def load_message_hotkeys(self):
+        """Populates the hotkey table from the manager's data."""
+        table = self.automation_tab.msg_hotkey_table
+        table.setRowCount(0)
+        if not isinstance(self.message_hotkeys, dict):
+            self.message_hotkeys = {}
+        for hotkey, message in self.message_hotkeys.items():
+            row_position = table.rowCount()
+            table.insertRow(row_position)
+            table.setItem(row_position, 0, QTableWidgetItem(hotkey))
+            table.setItem(row_position, 1, QTableWidgetItem(message))
+
+    def add_message_hotkey(self):
+        """Adds a new hotkey and message to the system."""
+        hotkey = self.automation_tab.hotkey_capture_btn.text()
+        message = self.automation_tab.message_edit.text()
+
+        if hotkey == "Click to set" or not message or hotkey == 'esc':
+            QMessageBox.warning(self.parent, "Input Error", "Please set a hotkey and enter a message.")
+            return
+
+        if hotkey in self.message_hotkeys:
+            QMessageBox.warning(self.parent, "Duplicate Hotkey", "This hotkey is already in use. Delete the old one first.")
+            return
+
+        self.message_hotkeys[hotkey] = message
+        self.load_message_hotkeys()
+        self.parent.register_global_hotkeys() # Re-register all hotkeys
+
+        self.automation_tab.hotkey_capture_btn.setText("Click to set")
+        self.automation_tab.message_edit.clear()
+
+    def delete_message_hotkey(self):
+        """Deletes a selected hotkey."""
+        table = self.automation_tab.msg_hotkey_table
+        selected_items = table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self.parent, "Selection Error", "Please select a hotkey from the list to delete.")
+            return
+
+        selected_row = selected_items[0].row()
+        hotkey_to_delete = table.item(selected_row, 0).text()
+
+        if QMessageBox.question(self.parent, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?") == QMessageBox.StandardButton.Yes:
+            self.message_hotkeys.pop(hotkey_to_delete, None)
+            table.removeRow(selected_row)
+            self.parent.register_global_hotkeys()
+
+    def send_chat_message(self, message: str):
+        """Sends a chat message if the game is active."""
+        if self.is_sending_message: return
+        try:
+            if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title): return
+        except Exception: return
+
+        self.is_sending_message = True
+        self.send_message_signal.emit(message)
 
     # -------------------------
     # Scheduler
@@ -191,7 +273,7 @@ class AutomationManager(QObject):
                 self._log(f"{key.upper()} due -> send")
                 self._send_key(key)
                 try:
-                    interval = int(self.parent.automation_tab.automation_key_ctrls[key]["edit"].text().strip())
+                    interval = int(self.automation_tab.automation_key_ctrls[key]["edit"].text().strip())
                 except Exception:
                     interval = 500
                 self.next_key_due[key] += interval / 1000.0
