@@ -158,6 +158,7 @@ class CustomTabBar(QWidget):
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
+    send_message_signal = Signal(str)
     load_character_signal = Signal()
     quickcast_toggle_signal = Signal()
 
@@ -450,6 +451,8 @@ class SimpleWindow(QMainWindow):
         self.start_automation_signal.connect(self.automation_manager.start_automation)
         self.stop_automation_signal.connect(self.automation_manager.stop_automation)
         self.load_character_signal.connect(self.on_f3_pressed)
+        self.quickcast_toggle_signal.connect(self.quickcast_manager.toggle_ahk_quickcast)
+        self.send_message_signal.connect(self._main_thread_send_chat_message)
 
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
 
@@ -721,12 +724,40 @@ class SimpleWindow(QMainWindow):
             self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
 
     def send_chat_message(self, hotkey_pressed: str, message: str):
-        """This function is called from the keyboard library's background thread.
-        It should ONLY emit a signal to pass the work to the main GUI thread."""
+        """Sends a chat message if the game is active. This is called from a background thread."""
+        if self.is_sending_message: return
+        try:
+            if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title): return
+        except Exception: return
+
+        self.is_sending_message = True
         self.send_message_signal.emit(message)
 
     def _main_thread_send_chat_message(self, message: str):
-        """This slot is connected to the send_message_signal and runs on the main GUI thread."""
+        """This slot runs on the main GUI thread to safely interact with the clipboard and pyautogui."""
+        if not pyautogui: return
+
+        try:
+            clipboard = QApplication.clipboard()
+            original_clipboard = clipboard.text()
+            clipboard.setText(message)
+
+            pyautogui.press('enter')
+            QTimer.singleShot(50, lambda: pyautogui.hotkey('ctrl', 'v'))
+            QTimer.singleShot(100, lambda: pyautogui.press('enter'))
+
+            def cleanup():
+                clipboard.setText(original_clipboard)
+                self.is_sending_message = False
+            QTimer.singleShot(200, cleanup)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Chat Error", f"An error occurred while sending the message: {e}")
+            self.is_sending_message = False
+
+    def apply_loaded_settings(self):
+        """Applies settings from the SettingsManager to the application state."""
+        self.current_theme_index = self.settings_manager.get("theme_index")
         try:
             is_game_active = (win32gui.GetForegroundWindow() == win32gui.FindWindow(None, self.game_title))
         except Exception:
@@ -759,9 +790,6 @@ class SimpleWindow(QMainWindow):
             QMessageBox.critical(self, "Chat Error", f"An error occurred while sending the message: {e}")
             self.is_sending_message = False
 
-    def apply_loaded_settings(self):
-        """Applies settings from the SettingsManager to the application state."""
-        self.current_theme_index = self.settings_manager.get("theme_index")
         self.last_tab_index = self.settings_manager.get("last_tab_index")
         self.character_path = self.settings_manager.get("character_path")
         if not self.character_path:
@@ -978,7 +1006,7 @@ class SimpleWindow(QMainWindow):
             print(f"Failed to hook F2 key: {e}")
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, message)
+            self.register_single_hotkey(hotkey, message) # type: ignore
 
     def register_keybind_hotkeys(self):
         """
@@ -994,7 +1022,7 @@ class SimpleWindow(QMainWindow):
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
-            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False)
+            hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.send_chat_message(h, msg), suppress=False) # type: ignore
             self.hotkey_ids[hotkey] = hk_id
         except (ValueError, ImportError) as e:
             print(f"Failed to register hotkey '{hotkey}': {e}")
