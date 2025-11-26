@@ -176,8 +176,6 @@ lock_file := "{lock_file_path.replace('\\', '/')}"
 FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 
-HotIfWinActive("{self.main_window.game_title}")
-
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
     SendInput("{{{" originalKey "}}}")
@@ -192,6 +190,8 @@ remapSpellwoQC(originalKey) {{
 remapMouse(button) {{
     MouseClick(button)
 }}
+
+HotIfWinActive("{self.main_window.game_title}")
 """
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
