@@ -13,6 +13,7 @@ class SettingsManager:
             "character_path": os.path.join(os.path.expanduser("~"), "Documents", "Warcraft III", "CustomMapData", "Hellfire RPG"),
             "message_hotkeys": {},
             "custom_theme": {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"},
+            "custom_title_image_path": "",
             "in_progress_recipes": [],
             "keybinds": {},
             "automation": {},
@@ -44,6 +45,7 @@ class SettingsManager:
             "character_path": window_instance.character_load_manager.character_path, # type: ignore
             "message_hotkeys": window_instance.automation_manager.message_hotkeys,
             "custom_theme": window_instance.custom_theme,
+            "custom_title_image_path": window_instance.custom_title_image_path,
             "in_progress_recipes": [window_instance.items_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.items_tab.in_progress_recipes_list.count())],
             "keybinds": window_instance.get_keybind_settings_from_ui(),
             "automation": window_instance.get_automation_settings_from_ui(),

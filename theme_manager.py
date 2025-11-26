@@ -8,10 +8,10 @@ class ThemeManager:
     def __init__(self, main_window):
         self.main_window = main_window
         self.themes = [
-            {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True},
-            {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False},
-            {"name": "Black/Blue", "style": FOREST_STYLE, "preview_color": "#1E90FF", "is_dark": True},
-            {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False},
+            {"name": "Black/Orange", "style": DARK_STYLE, "preview_color": "#FF7F50", "is_dark": True, "title_image": "title.png"},
+            {"name": "White/Pink", "style": LIGHT_STYLE, "preview_color": "#FFC0CB", "is_dark": False, "title_image": "title1.png"},
+            {"name": "Black/Blue", "style": FOREST_STYLE, "preview_color": "#1E90FF", "is_dark": True, "title_image": "title2.png"},
+            {"name": "White/Blue", "style": OCEAN_STYLE, "preview_color": "#87CEEB", "is_dark": False, "title_image": "title3.png"},
         ]
         self.theme_previews = []
 
@@ -54,6 +54,7 @@ class ThemeManager:
         self.main_window.dark_mode = theme["is_dark"]
         self.main_window.setStyleSheet(theme["style"])
         self.main_window.custom_tab_bar.apply_style(theme['name'], self.main_window.dark_mode)
+        self.main_window.set_title_image(theme.get("title_image"))
 
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
@@ -89,6 +90,7 @@ class ThemeManager:
         self.main_window.dark_mode = bg_color.lightness() < 128
 
         self.main_window.setStyleSheet(self.build_custom_stylesheet())
+        self.main_window.set_title_image(self.main_window.custom_title_image_path)
         self.main_window.custom_tab_bar.setStyleSheet(f"""            
             QPushButton {{ background-color: {custom_theme['bg']}; border: 1px solid {custom_theme['fg']}; padding: 8px; border-radius: 6px; color: {custom_theme['fg']}; font-size: 16px; }}
             QPushButton:hover {{ background-color: {custom_theme['accent']}; }}
@@ -121,4 +123,5 @@ class ThemeManager:
     def reset_custom_theme_to_defaults(self):
         """Resets custom theme colors to their default values and applies them."""
         self.main_window.custom_theme = { "bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50" }
+        self.main_window.custom_title_image_path = ""
         self.apply_custom_theme()

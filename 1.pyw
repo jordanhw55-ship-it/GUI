@@ -281,24 +281,10 @@ class SimpleWindow(QMainWindow):
         title_bar_layout.setContentsMargins(5, 0, 5, 0)
         title_bar_layout.setSpacing(0)
 
-        # Check if a custom title image exists
-        title_image_path = os.path.join(get_base_path(), "contents", "title.png")
-        if os.path.exists(title_image_path):
-            title_widget = QLabel()
-            title_pixmap = QPixmap(title_image_path)
-            title_widget.setPixmap(title_pixmap.scaled(title_pixmap.width(), 22, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        else:
-            # Fallback to icon and text
-            title_widget = QWidget()
-            title_widget.setStyleSheet("background-color: transparent;")
-            title_layout = QHBoxLayout(title_widget)
-            title_layout.setContentsMargins(0,0,0,0)
-            title_layout.setSpacing(5)
-            icon_label = QLabel()
-            icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
-            icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            title_layout.addWidget(icon_label); title_layout.addWidget(QLabel("Hellfire Helper"))
+        # Create a placeholder for the title widget, which will be populated by set_title_image
+        self.title_widget_container = QWidget()
+        self.title_widget_container.setLayout(QHBoxLayout())
+        self.title_widget_container.layout().setContentsMargins(0,0,0,0)
 
         min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
@@ -310,7 +296,7 @@ class SimpleWindow(QMainWindow):
         button_layout.addWidget(min_button)
         button_layout.addWidget(close_button)
 
-        title_bar_layout.addWidget(title_widget, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
+        title_bar_layout.addWidget(self.title_widget_container, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
         title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
         main_layout.addWidget(self.title_bar)
 
@@ -437,12 +423,16 @@ class SimpleWindow(QMainWindow):
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.theme_manager.apply_custom_theme)
         self.reset_custom_btn = QPushButton("Reset custom")
-        self.reset_custom_btn.clicked.connect(self.theme_manager.reset_custom_theme_to_defaults)
+        self.reset_custom_btn.clicked.connect(self.reset_custom_theme_and_title)
+
+        self.select_custom_title_btn = QPushButton("Select Custom Title Image")
+        self.select_custom_title_btn.clicked.connect(self.select_custom_title_image)
 
         action_buttons_h_layout = QHBoxLayout()
         action_buttons_h_layout.addWidget(self.apply_custom_btn)
         action_buttons_h_layout.addWidget(self.reset_custom_btn)
 
+        custom_v_layout.addWidget(self.select_custom_title_btn)
         custom_v_layout.addLayout(pick_buttons_h_layout)
         custom_v_layout.addWidget(self.custom_theme_preview)
         custom_v_layout.addStretch()
@@ -590,6 +580,7 @@ class SimpleWindow(QMainWindow):
         self.theme_manager.apply_theme(0)
         self.custom_tab_bar._on_button_clicked(0)
         self.lobby_manager.watchlist = ["hellfire", "rpg"]
+        self.custom_title_image_path = "" # Reset custom title image path
         self.lobby_manager.lobbies_tab.watchlist_widget.clear(); self.lobby_manager.lobbies_tab.watchlist_widget.addItems(self.lobby_manager.watchlist)
         self.lobby_manager.lobbies_tab.volume_slider.setValue(100)
         
@@ -603,6 +594,48 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
+
+    def set_title_image(self, image_name: str | None):
+        """Sets the title bar image, or falls back to text if not found."""
+        # Clear the existing title widget
+        while self.title_widget_container.layout().count():
+            child = self.title_widget_container.layout().takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
+        title_widget = None
+        if image_name:
+            image_path = image_name if os.path.isabs(image_name) else os.path.join(get_base_path(), "contents", image_name)
+            if os.path.exists(image_path):
+                title_widget = QLabel()
+                pixmap = QPixmap(image_path)
+                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 22, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        if not title_widget:
+            # Fallback to icon and text if no image or image not found
+            title_widget = QWidget()
+            title_widget.setStyleSheet("background-color: transparent;")
+            title_layout = QHBoxLayout(title_widget)
+            title_layout.setContentsMargins(0,0,0,0)
+            title_layout.setSpacing(5)
+            icon_label = QLabel()
+            icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
+            icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            title_layout.addWidget(icon_label); title_layout.addWidget(QLabel("Hellfire Helper"))
+
+        self.title_widget_container.layout().addWidget(title_widget)
+
+    def select_custom_title_image(self):
+        """Opens a file dialog to select an image for the custom theme title."""
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Custom Title Image", get_base_path(), "Images (*.png *.jpg *.bmp)")
+        if file_path:
+            self.custom_title_image_path = file_path
+            self.theme_manager.apply_custom_theme() # Re-apply to show the new title
+
+    def reset_custom_theme_and_title(self):
+        self.custom_title_image_path = ""
+        self.theme_manager.reset_custom_theme_to_defaults()
 
     # Settings
     def capture_message_hotkey(self):
@@ -799,6 +832,7 @@ class SimpleWindow(QMainWindow):
         self.automation_settings = self.settings_manager.get("automation")
         self.custom_theme = self.settings_manager.get("custom_theme")
         self.keybinds = self.settings_manager.get("keybinds", {})
+        self.custom_title_image_path = self.settings_manager.get("custom_title_image_path", "")
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
