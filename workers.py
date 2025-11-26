@@ -65,3 +65,37 @@ class HotkeyCaptureWorker(QObject):
         except Exception as e:
             print(f"Error capturing hotkey: {e}")
             self.hotkey_captured.emit("esc") # Emit 'esc' on error to cancel capture
+
+
+class ChatMessageWorker(QObject):
+    """Runs in a separate thread to send a chat message without freezing the GUI."""
+    finished = Signal()
+    error = Signal(str) 
+
+    def __init__(self, game_title: str):
+        super().__init__()
+        self.game_title = game_title
+
+    def sendMessage(self, message: str):
+        """This slot receives the message and performs the blocking IO."""
+        print(f"[DEBUG] ChatMessageWorker (id: {id(self)}) received message: '{message}'")
+        if not win32gui:
+            self.error.emit("win32gui not available on this system.")
+            return
+        try:
+            hwnd = win32gui.FindWindow(None, self.game_title)
+            if hwnd == 0:
+                # This is not a fatal error for the worker, just for this message attempt.
+                print(f"[DEBUG] ChatMessageWorker: Window '{self.game_title}' not found. Skipping message.")
+                return
+
+            # The main thread has already set the clipboard.
+            # This worker's only job is to perform the key presses.
+            pyautogui.press('enter')
+            pyautogui.hotkey('ctrl', 'v')
+            pyautogui.press('enter')
+
+        except Exception as e:
+            self.error.emit(str(e))
+        finally:
+            self.finished.emit()
