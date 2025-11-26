@@ -82,10 +82,27 @@ class ItemsManager:
     def add_recipe_to_progress(self):
         selected_item = self.items_tab.available_recipes_list.currentItem()
         if not selected_item: return False
-        if self.main_window._add_recipe_by_name(selected_item.text()):
+        if self._add_recipe_by_name(selected_item.text()):
             self.rebuild_materials_table()
             return True
         return False
+
+    def _add_recipe_by_name(self, recipe_name: str):
+        """Helper to add a recipe to the in-progress list by its name."""
+        if recipe_name in self.main_window.in_progress_recipes:
+            return False
+
+        # Find the full recipe object from the database
+        recipe = next((r for r in self.item_database.recipes_data if r["name"] == recipe_name), None)
+        if not recipe:
+            return False # Recipe not found in database
+
+        self.main_window.in_progress_recipes[recipe_name] = recipe
+        item = QListWidgetItem(recipe_name)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setCheckState(Qt.CheckState.Unchecked)
+        self.items_tab.in_progress_recipes_list.addItem(item)
+        return True
 
     def remove_recipe_from_progress(self):
         selected_item = self.items_tab.in_progress_recipes_list.currentItem()

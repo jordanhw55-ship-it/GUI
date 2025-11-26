@@ -608,7 +608,7 @@ class SimpleWindow(QMainWindow):
         # Also reset recipes and automation settings (delegating recipe reset)
         self.in_progress_recipes.clear()
         self.items_tab.in_progress_recipes_list.clear() # type: ignore
-        self._rebuild_materials_table() # type: ignore
+        self.items_manager.rebuild_materials_table()
         self._reset_automation_ui()
 
         # Reset message hotkeys
@@ -937,7 +937,7 @@ class SimpleWindow(QMainWindow):
         """Loads and populates the in-progress recipes from settings."""
         saved_recipes = self.settings_manager.get("in_progress_recipes", [])
         for recipe_name in saved_recipes:
-            self._add_recipe_by_name(recipe_name)
+            self.items_manager._add_recipe_by_name(recipe_name)
 
     # Watchlist
     def load_watchlist(self):
