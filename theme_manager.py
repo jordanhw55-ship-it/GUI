@@ -65,7 +65,11 @@ class ThemeManager:
         self.main_window.custom_tab_bar.apply_style(theme['name'], self.main_window.dark_mode)
 
         # Update the title image based on the theme
-        image_name = f"title{theme_index + 1}.png"
+        # Use "title.png" for the first theme (index 0), and "title2.png", "title3.png", etc. for the others.
+        if theme_index == 0:
+            image_name = "title.png"
+        else:
+            image_name = f"title{theme_index + 1}.png"
         image_path = os.path.join(os.path.dirname(get_base_path()), "contents", image_name)
         if not os.path.exists(image_path):
             # Fallback to the default if the specific one doesn't exist
