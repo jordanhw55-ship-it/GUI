@@ -1824,21 +1824,21 @@ Enter:: {{
 }}
 
 remapSpellwQC(originalKey) {{
-    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
-    SendInput("{" originalKey "}")
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{{" originalKey "}}}")
     MouseClick("Left")
-    SendInput("{9}{0}")
-}
+    SendInput("{{9}}{{0}}")
+}}
 
 remapSpellwoQC(originalKey) {{
-    SendInput("{" originalKey "}")
+    SendInput("{{{" originalKey "}}}")
 }}
 
 remapMouse(button) {{
     MouseClick(button)
 }}
 
-HotIfWinActive("{self.game_title}") ; This directive makes the following hotkeys context-sensitive
+HotIfWinActive("{self.game_title}")
 """
 
         defined_hotkeys = set()
