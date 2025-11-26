@@ -3,7 +3,7 @@ import keyboard   # type: ignore
 import pyautogui  # type: ignore
 
 from PySide6.QtCore import QObject, Signal
-
+from PySide6.QtWidgets import QApplication
 try:
     import win32gui # type: ignore
 except ImportError:
@@ -90,9 +90,19 @@ class ChatMessageWorker(QObject):
                 # This is not a fatal error for the worker, just for this message attempt.
                 print(f"[DEBUG] ChatMessageWorker: Window '{self.game_title}' not found. Skipping message.")
                 return
+
+            # Use clipboard to paste the message for speed
+            clipboard = QApplication.clipboard()
+            original_clipboard = clipboard.text() # Save user's clipboard
+            clipboard.setText(message)
+
             pyautogui.press('enter')
-            pyautogui.write(message, interval=0.01)
+            pyautogui.hotkey('ctrl', 'v')
             pyautogui.press('enter')
+
+            # Restore user's original clipboard content
+            clipboard.setText(original_clipboard)
+
         except Exception as e:
             self.error.emit(str(e))
         finally:
