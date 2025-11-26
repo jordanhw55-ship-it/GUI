@@ -217,6 +217,7 @@ class SimpleWindow(QMainWindow):
             'lbutton': 0x01, 'rbutton': 0x02,
             # Add other keys as needed
         } if win32con else {}
+        self.f2_key_down = False # Debounce flag for F2 spam
 
         # Initialize the automation manager
         self.automation_manager = AutomationManager(self)
@@ -1563,12 +1564,23 @@ QCheckBox::indicator {{
             print(f"Failed to register F3 hotkey: {e}")
 
         # Register global F2 for toggling Quickcast (emit Qt signal to keep UI thread-safe)
-        try:
-            f2_id = keyboard.add_hotkey('f2', lambda: self.quickcast_toggle_signal.emit(), suppress=True)
-            self.hotkey_ids['f2'] = f2_id
-        except Exception as e:
-            print(f"Failed to register F2 hotkey: {e}")
+        # We handle this one manually to implement a debounce for key-holding.
+        def on_f2_press(e):
+            if e.event_type == keyboard.KEY_DOWN and not self.f2_key_down:
+                self.f2_key_down = True
+                self.quickcast_toggle_signal.emit()
+            elif e.event_type == keyboard.KEY_UP:
+                self.f2_key_down = False
 
+        # Unhook any previous F2 handler to be safe
+        if 'f2' in self.hotkey_ids:
+            try: keyboard.remove_hotkey(self.hotkey_ids['f2']) 
+            except (KeyError, ValueError): pass
+        
+        try:
+            self.hotkey_ids['f2'] = keyboard.hook_key('f2', on_f2_press, suppress=True)
+        except Exception as e:
+            print(f"Failed to hook F2 key: {e}")
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message)
