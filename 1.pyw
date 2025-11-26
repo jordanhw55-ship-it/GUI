@@ -1730,6 +1730,7 @@ QCheckBox::indicator {{
 
                 # Re-register Python hotkeys now that AHK is off
                 self.register_keybind_hotkeys()
+                self.register_global_hotkeys()
                 return True
         return False
 
@@ -1746,7 +1747,7 @@ QCheckBox::indicator {{
                 # On successful activation, update the button to show the "Deactivate" state.
                 self.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
                 self.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;") # FireBrick Red
-                self.unregister_keybind_hotkeys()
+                self.unregister_python_hotkeys()
                 
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
@@ -1847,6 +1848,23 @@ remapMouse(button) {
         except Exception as e:
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
+
+    def unregister_python_hotkeys(self):
+        """
+        Unregisters all hotkeys managed by the 'keyboard' library.
+        This is called when the AHK script is activated to prevent conflicts.
+        """
+        # Iterate over a copy of the dictionary's items, as we will be modifying it.
+        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+            try:
+                # Attempt to remove the hotkey using its registration ID.
+                keyboard.remove_hotkey(hk_id)
+                # If successful, remove it from our tracking dictionary to stay in sync.
+                del self.hotkey_ids[hotkey_str]
+            except (KeyError, ValueError):
+                # This block executes if the hotkey was already removed or the ID is invalid.
+                # We can safely ignore this error and just log a warning.
+                print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
 
     def register_keybind_hotkeys(self):
         """
