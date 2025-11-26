@@ -890,7 +890,6 @@ class SimpleWindow(QMainWindow):
             self.items_manager._add_recipe_by_name(recipe_name)
 
     # Character loading
-    def on_path_changed(self, new_path: str):
     def on_material_checked(self, item: QTableWidgetItem):
         if item.column() != 0: return
         materials_table = self.items_tab.materials_table # type: ignore
