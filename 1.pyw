@@ -533,6 +533,11 @@ class SimpleWindow(QMainWindow):
         # Apply theme last to ensure all widgets are styled correctly on startup
         # A theme index of -1 indicates a custom theme was last used.
         if self.current_theme_index == -1:
+            # Start a timer to monitor the AHK process for automatic deactivation
+            self.ahk_monitor_timer = QTimer(self)
+            self.ahk_monitor_timer.setInterval(1000) # Check every second
+            self.ahk_monitor_timer.timeout.connect(self.quickcast_manager.monitor_ahk_process)
+            self.ahk_monitor_timer.start()
             # Apply custom theme and update its preview
             self.apply_custom_theme()
             self.update_custom_theme_preview()
