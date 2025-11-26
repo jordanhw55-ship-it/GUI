@@ -1078,6 +1078,7 @@ QCheckBox::indicator {{
             # This prevents the hotkey from firing in other applications.
             if win32gui:
                 if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title):
+                    print(f"[DEBUG] Keybind '{name}' blocked: game window is not active.")
                     return
             quickcast = key_info.get("quickcast", False)
             

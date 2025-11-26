@@ -134,9 +134,13 @@ class QuickcastManager:
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
-        if hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None:
+        is_running = hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None
+        print(f"\n[DEBUG] toggle_ahk_quickcast called. AHK script is currently {'running' if is_running else 'not running'}.")
+        if is_running:
+            print("[DEBUG] --> Deactivating AHK script.")
             self.deactivate_ahk_script_if_running(inform_user=True)
         else:
+            print("[DEBUG] --> Activating AHK script.")
             if self.generate_and_run_ahk_script():
                 self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
                 self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
@@ -161,6 +165,7 @@ class QuickcastManager:
 
     def generate_and_run_ahk_script(self):
         """Generates a complete AHK script from the current keybinds and runs it."""
+        print("[DEBUG] ----- Generating AHK Script -----")
         ahk_path = self._find_ahk_path()
         if not ahk_path:
             QMessageBox.critical(self.main_window, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
@@ -199,7 +204,7 @@ HotIfWinActive("{self.main_window.game_title}")
             if not hotkey or "button" in hotkey: continue
 
             if hotkey in defined_hotkeys:
-                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping.")
+                print(f"[DEBUG] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping.")
                 continue
 
             category = name.split("_")[0]
@@ -207,6 +212,7 @@ HotIfWinActive("{self.main_window.game_title}")
             is_enabled = self.main_window.keybinds.get("settings", {}).get(category, True)
             if not is_enabled: continue
 
+            print(f"[DEBUG] Processing keybind for AHK: name='{name}', hotkey='{hotkey}'")
             original_key = ""
             if name.startswith("spell_"):
                 original_key = name.split("_")[1].lower()
@@ -222,12 +228,18 @@ HotIfWinActive("{self.main_window.game_title}")
             
             script_content += f"\n${hotkey}:: {function_call}"
             defined_hotkeys.add(hotkey)
+        
+        print("--- AHK SCRIPT CONTENT ---")
+        print(script_content)
+        print("--------------------------")
 
         script_path = os.path.join(os.path.dirname(__file__), "generated_quickcast.ahk")
         try:
             with open(script_path, "w") as f:
                 f.write(script_content)
+            print(f"[DEBUG] AHK script written to {script_path}")
             
+            print(f"[DEBUG] Launching AHK process with path: {ahk_path}")
             self.ahk_process = subprocess.Popen([ahk_path, script_path])
             print(f"[INFO] AHK Quickcast script generated and activated. Process ID: {self.ahk_process.pid}")
             return True
@@ -237,24 +249,29 @@ HotIfWinActive("{self.main_window.game_title}")
 
     def unregister_python_hotkeys(self):
         """Unregisters all hotkeys managed by the 'keyboard' library, except F2."""
+        print("[DEBUG] Unregistering Python hotkeys (except F2)...")
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
             if hotkey_str != 'f2':
                 try:
                     keyboard.remove_hotkey(hk_id)
+                    print(f"[DEBUG]   - Removed '{hotkey_str}'")
                     del self.main_window.hotkey_ids[hotkey_str]
                 except (KeyError, ValueError):
                     print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
 
     def register_keybind_hotkeys(self):
         """Safely unregisters and re-registers all keybind-specific hotkeys."""
+        print("[DEBUG] Registering Python keybind hotkeys...")
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
             if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
                 try:
                     keyboard.remove_hotkey(hk_id)
+                    print(f"[DEBUG]   - Unregistered old keybind: '{hotkey_str}'")
                     del self.main_window.hotkey_ids[hotkey_str]
                 except (KeyError, ValueError):
                     print(f"[Warning] Failed to remove hotkey '{hotkey_str}', it might have been already unregistered.")
 
         for name, key_info in self.main_window.keybinds.items():
             if "hotkey" in key_info and key_info["hotkey"]:
+                print(f"[DEBUG]   + Registering new keybind: '{key_info['hotkey']}' for '{name}'")
                 self.main_window.register_single_keybind(name, key_info["hotkey"])
