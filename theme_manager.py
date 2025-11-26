@@ -1,8 +1,11 @@
+import os
 from PySide6.QtWidgets import QGridLayout, QVBoxLayout, QLabel, QColorDialog
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtCore import Qt
 
-from utils import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
+from utils import (
+    DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE, get_base_path
+)
 
 class ThemeManager:
     def __init__(self, main_window):
@@ -55,6 +58,15 @@ class ThemeManager:
         self.main_window.setStyleSheet(theme["style"])
         self.main_window.custom_tab_bar.apply_style(theme['name'], self.main_window.dark_mode)
 
+        # Update the title image based on the theme
+        image_name = f"title{theme_index + 1}.png"
+        image_path = os.path.join(get_base_path(), "contents", "Images", image_name)
+        if not os.path.exists(image_path):
+            # Fallback to the default if the specific one doesn't exist
+            image_path = os.path.join(get_base_path(), "contents", "Images", "title.png")
+        
+        self.main_window.title_image_label.setPixmap(QPixmap(image_path))
+
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
             preview.setStyleSheet(f"#ThemePreview {{ {border_style} border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
@@ -99,6 +111,11 @@ class ThemeManager:
             preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
         
         self.update_custom_theme_preview()
+
+        # For custom themes, revert to the default title image
+        default_image_path = os.path.join(get_base_path(), "contents", "Images", "title.png")
+        self.main_window.title_image_label.setPixmap(QPixmap(default_image_path))
+
         self.main_window.update_ping_button_styles()
 
     def update_custom_theme_preview(self):
