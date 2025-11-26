@@ -183,13 +183,13 @@ SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" originalKey "}}}")
+    SendInput("{{}" originalKey "{{}}")
     MouseClick("Left")
     SendInput("{{9}}{{0}}")
 }}
 
 remapSpellwoQC(originalKey) {{
-    SendInput("{{{" originalKey "}}}")
+    SendInput("{{}" originalKey "{{}}")
 }}
 
 remapMouse(button) {{
