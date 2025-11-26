@@ -9,6 +9,7 @@ class QuickcastManager:
     def __init__(self, main_window):
         self.main_window = main_window
         self.ahk_process = None
+        self.is_toggling_ahk = False # Debounce flag for F2 spam
 
     def reset_keybinds(self):
         """Resets all keybinds and quickcast settings to their default state."""
@@ -134,18 +135,27 @@ class QuickcastManager:
 
     def toggle_ahk_quickcast(self):
         """Toggles the activation of the dynamically generated AHK quickcast script."""
-        is_running = hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None
-        print(f"\n[DEBUG] toggle_ahk_quickcast called. AHK script is currently {'running' if is_running else 'not running'}.")
-        if is_running:
-            print("[DEBUG] --> Deactivating AHK script.")
-            self.deactivate_ahk_script_if_running(inform_user=True)
-        else:
-            print("[DEBUG] --> Activating AHK script.")
-            if self.generate_and_run_ahk_script():
-                self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
-                self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
-                self.unregister_python_hotkeys()
-                
+        if self.is_toggling_ahk:
+            print("[DEBUG] AHK toggle already in progress. Ignoring F2 spam.")
+            return
+
+        self.is_toggling_ahk = True
+        try:
+            is_running = hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None
+            print(f"\n[DEBUG] toggle_ahk_quickcast called. AHK script is currently {'running' if is_running else 'not running'}.")
+            if is_running:
+                print("[DEBUG] --> Deactivating AHK script.")
+                self.deactivate_ahk_script_if_running(inform_user=True)
+            else:
+                print("[DEBUG] --> Activating AHK script.")
+                if self.generate_and_run_ahk_script():
+                    self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
+                    self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
+                    self.unregister_python_hotkeys()
+        finally:
+            # Always reset the flag after the operation is complete
+            self.is_toggling_ahk = False
+
     def _find_ahk_path(self) -> str | None:
         """Finds the path to the AutoHotkey executable."""
         program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
