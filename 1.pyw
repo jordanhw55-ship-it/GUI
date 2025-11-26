@@ -188,6 +188,7 @@ class SimpleWindow(QMainWindow):
         self.theme_previews = []
         self.previous_watched_lobbies = set()
         self.ahk_process = None
+        self.dark_mode = True # Initialize with a default to prevent startup errors
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.watchlist = ["hellfire", "rpg"] # Default, will be overwritten by load_settings
         self.play_sound_on_found = False # Default, will be overwritten by load_settings
