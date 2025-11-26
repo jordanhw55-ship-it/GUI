@@ -1674,7 +1674,7 @@ QCheckBox::indicator {{
         for hotkey_str, hk_id in list(self.hotkey_ids.items()):
             # We only want to remove keybind hotkeys, not global ones (f3, f5, f6)
             # or custom message hotkeys.
-            if hotkey_str not in ['f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
+            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
                 try:
                     # Attempt to remove the hotkey using its registration ID.
                     keyboard.remove_hotkey(hk_id)
@@ -1848,17 +1848,28 @@ remapMouse(button) {
             QMessageBox.critical(self, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
 
-    def unregister_keybind_hotkeys(self):
-        """Unregisters only the keybind-related hotkeys from the Python listener."""
-        print("[INFO] Unregistering Python keybind hotkeys to prevent conflicts with AHK.")
-        for name, hk_id in list(self.hotkey_ids.items()):
-            # Only unregister keybinds, not global app hotkeys or message hotkeys
-            if name.startswith("spell_") or name.startswith("inv_") or name.startswith("mouse_"):
+    def register_keybind_hotkeys(self):
+        """
+        Safely unregisters and re-registers all keybind-specific hotkeys.
+        This method iterates through a copy of the tracked hotkey IDs...
+        """
+        # Iterate over a copy of the dictionary's items, as we will be modifying it.
+        for hotkey_str, hk_id in list(self.hotkey_ids.items()):
+            # We only want to remove keybind hotkeys, not global ones (f2, f3, f5, f6)
+            # or custom message hotkeys.
+            # FIX: Added 'f2' to the list below
+            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.message_hotkeys:
                 try:
+                    # Attempt to remove the hotkey using its registration ID.
                     keyboard.remove_hotkey(hk_id)
-                    del self.hotkey_ids[name]
+                    # If successful, remove it from our tracking dictionary...
+                    del self.hotkey_ids[hotkey_str]
                 except (KeyError, ValueError):
-                    print(f"[Warning] Failed to unregister Python hotkey '{name}'. It may have already been removed.")
+                    print(f"[Warning] Failed to remove hotkey '{hotkey_str}'...")
+
+        for name, key_info in self.keybinds.items():
+            if "hotkey" in key_info and key_info["hotkey"]:
+                self.register_single_keybind(name, key_info["hotkey"])
 
     def _send_vk_key(self, vk_code):
         """Sends a key press and release using a virtual-key code."""
