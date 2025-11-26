@@ -335,7 +335,6 @@ class SimpleWindow(QMainWindow):
         self.automation_tab = AutomationTab(self)
         self.stacked_widget.addWidget(self.automation_tab)
         self.automation_manager = AutomationManager(self)
-        self.automation_manager.log_message.connect(self.update_automation_log)
 
         # Add validators to the line edits in the new tab
 
