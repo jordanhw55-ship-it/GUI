@@ -63,7 +63,7 @@ class ThemeManager:
         image_path = os.path.join(get_base_path(), "contents", "Images", image_name)
         if not os.path.exists(image_path):
             # Fallback to the default if the specific one doesn't exist
-            image_path = os.path.join(get_base_path(), "contents", "Images", "title.png")
+            image_path = os.path.join(get_base_path(), "contents", "title.png")
         
         self.main_window.title_image_label.setPixmap(QPixmap(image_path))
 
