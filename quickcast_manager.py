@@ -206,18 +206,14 @@ global is_paused := false
 
 ; --- Functions ---
 remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}90{{Ctrl Up}}")
-    SendInput "{{" . originalKey . " Down}}"
-    Sleep(30)
-    SendInput "{{" . originalKey . " Up}}"
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{{" . originalKey . "}}}")
     MouseClick("Left")
-    SendInput("90")
+    SendInput("{{9}}{{0}}")
 }}
 
 remapSpellwoQC(originalKey) {{
-    SendInput "{{" . originalKey . " Down}}"
-    Sleep(30)
-    SendInput "{{" . originalKey . " Up}}"
+    SendInput("{{{" . originalKey . "}}}")
 }}
 
 ; --- Pause toggle hotkeys ---
@@ -266,12 +262,6 @@ closePause() {{
             original_key = ""
             if name.startswith("spell_"):
                 original_key = name.split("_")[1].lower()
-            elif name.startswith("inv_"):
-                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
-                inv_index = int(name.split("_")[1]) - 1
-                original_key = inv_map[inv_index]
-
-            if not original_key: continue
 
             quickcast = key_info.get("quickcast", False)
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
