@@ -206,14 +206,18 @@ global is_paused := false
 
 ; --- Functions ---
 remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" . originalKey . "}}}")
+    SendInput("{{Ctrl Down}}90{{Ctrl Up}}")
+    SendInput("{{{" . originalKey . " Down}}}")
+    Sleep(30)
+    SendInput("{{{" . originalKey . " Up}}}")
     MouseClick("Left")
-    SendInput("{{9}}{{0}}")
+    SendInput("90")
 }}
 
 remapSpellwoQC(originalKey) {{
-    SendInput("{{{" . originalKey . "}}}")
+    SendInput("{{{" . originalKey . " Down}}}")
+    Sleep(30)
+    SendInput("{{{" . originalKey . " Up}}}")
 }}
 
 ; --- Pause toggle hotkeys ---
