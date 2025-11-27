@@ -610,7 +610,7 @@ class SimpleWindow(QMainWindow):
             if os.path.exists(image_path):
                 title_widget = QLabel()
                 pixmap = QPixmap(image_path)
-                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 22, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
                 title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 title_widget.setStyleSheet("background-color: transparent;")
 
@@ -626,7 +626,7 @@ class SimpleWindow(QMainWindow):
             icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
             title_layout.addWidget(icon_label); title_layout.addWidget(QLabel("Hellfire Helper"))
 
-        self.title_widget_container.layout().addWidget(title_widget)
+        self.title_widget_container.layout().addWidget(title_widget, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def select_custom_title_image(self):
         """Opens a file dialog to select an image for the custom theme title."""
