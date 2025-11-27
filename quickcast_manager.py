@@ -216,7 +216,7 @@ remapSpellwoQC(originalKey) {{
 class RegisterHotkey {{
     key := "", fn := "", win := ""
     __New(key, fn, win) {{
-        this.key := key
+        this.key := "$" . key ; Add the '$' prefix here to prevent self-triggering
         this.fn := fn
         this.win := win
         this.Toggle(true)
@@ -286,7 +286,7 @@ updateAllHotkeys() {{
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
 
             # Create an instance of the RegisterHotkey class for each keybind
-            script_content += f'\nhotkey_map["{name}"] := RegisterHotkey("${hotkey}", {function_call}, "{self.main_window.game_title}")'
+            script_content += f'\nhotkey_map["{name}"] := RegisterHotkey("{hotkey}", {function_call}, "{self.main_window.game_title}")'
             defined_hotkeys.add(hotkey)
         
         print("--- AHK SCRIPT CONTENT ---")
