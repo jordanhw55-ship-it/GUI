@@ -227,14 +227,12 @@ remapSpellwoQC(originalKey) {{
 togglePause() {{
     global is_paused
     is_paused := !is_paused
-    ToolTip(is_paused ? "Quickcast Paused" : "")
 }}
 
 closePause() {{
     global is_paused
     if (is_paused) {{
         is_paused := false
-        ToolTip("")
     }}
 }}
 
