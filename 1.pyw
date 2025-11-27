@@ -889,13 +889,6 @@ class SimpleWindow(QMainWindow):
         if self.is_executing_keybind:
             return
 
-        # Explicitly check if the game window is active before executing.
-        # This prevents the hotkey from firing in other applications, like the GUI itself.
-        if win32gui:
-            if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title):
-                print(f"[DEBUG] Python keybind '{name}' blocked: game window is not active.")
-                return
-
         
         try:
             self.is_executing_keybind = True
@@ -912,31 +905,7 @@ class SimpleWindow(QMainWindow):
             is_enabled = self.keybinds.get("settings", {}).get(category, True)
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
-                return # Setting is disabled, let the keypress go through            
-            quickcast = key_info.get("quickcast", False)
-            
-            # Determine original key
-            original_key = ""
-            if name.startswith("spell_"):
-                original_key = name.split("_")[1].lower()
-            elif name.startswith("inv_"):
-                # Map 1-6 to Numpad 7,8,4,5,1,2
-                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
-                inv_index = int(name.split("_")[1]) - 1
-                original_key = inv_map[inv_index]
-            elif name.startswith("mouse_"):
-                original_key = name.split("_")[1].lower()
-
-            print(f"[DEBUG] Determined original_key: '{original_key}'")
-            if not original_key: return
-
-            if name.startswith("mouse_"):
-                print("[DEBUG] Executing as mouse click.")
-                pyautogui.click(button=original_key)
-            else:
-                # Normal remap
-                print(f"[DEBUG] Executing as normal remap (pyautogui.press('{original_key}')).")
-                pyautogui.press(original_key)
+                return # Setting is disabled, let the keypress go through
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False
@@ -1073,7 +1042,7 @@ class SimpleWindow(QMainWindow):
                 return
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
