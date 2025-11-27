@@ -907,11 +907,22 @@ class SimpleWindow(QMainWindow):
         self.font_family = self.font_combo.currentFont().family()
         self.font_size = self.font_size_spinbox.value()
         
-        new_font = QFont(self.font_family, self.font_size)
-        QApplication.instance().setFont(new_font)
+        app = QApplication.instance()
+        if app:
+            new_font = QFont(self.font_family, self.font_size)
+            app.setFont(new_font)
+            
+            # Force a style refresh on all widgets
+            self._update_all_widget_styles(app)
         
         # Re-apply the current theme to ensure stylesheets are updated if they use font properties
         self.theme_manager.reapply_current_theme()
+
+    def _update_all_widget_styles(self, app: QApplication):
+        """Iterates through all widgets and forces them to re-polish their style."""
+        for widget in app.allWidgets():
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
     def reset_keybinds(self):
         self.quickcast_manager.reset_keybinds()
