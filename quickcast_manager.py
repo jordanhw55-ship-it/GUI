@@ -225,11 +225,13 @@ remapSpellwoQC(originalKey) {{
 ~$Esc::closePause()
 
 togglePause() {{
+    global is_paused
     is_paused := !is_paused
     ToolTip(is_paused ? "Quickcast Paused" : "")
 }}
 
 closePause() {{
+    global is_paused
     if (is_paused) {{
         is_paused := false
         ToolTip("")
@@ -323,4 +325,3 @@ closePause() {{
         for name, key_info in self.main_window.keybinds.items():
             if "hotkey" in key_info and key_info["hotkey"]:
                 self.main_window.register_single_keybind(name, key_info["hotkey"])
-
