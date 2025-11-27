@@ -68,7 +68,7 @@ class ThemeManager:
         bg, fg, accent = custom_theme["bg"], custom_theme["fg"], custom_theme["accent"]
         # This is a simplified version of your builder. You can move the full string here.
         return f"""
-            QWidget {{ background-color: {bg}; color: {fg}; font-family: 'Segoe UI'; font-size: 14px; outline: none; }}
+            QWidget {{ background-color: {bg}; color: {fg}; outline: none; }}
             QMainWindow, #CustomTitleBar {{ background-color: {bg}; }}
             #CustomTitleBar QLabel, #CustomTitleBar QPushButton {{ background-color: transparent; border: none; color: {fg}; font-size: 18px; }}
             #CustomTitleBar QPushButton:hover {{ background-color: {accent}; }}

@@ -6,8 +6,6 @@ DARK_STYLE = """
     QWidget {
         background-color: #121212;
         color: #F0F0F0;
-        font-family: 'Segoe UI';
-        font-size: 14px;
         outline: none;
     }
     QMainWindow { background-color: #1F1F1F; }
@@ -56,7 +54,7 @@ DARK_STYLE = """
 
 LIGHT_STYLE = """
     /* White/Pink Theme */
-    QWidget { background-color: #FFFFFF; color: #000000; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
+    QWidget { background-color: #FFFFFF; color: #000000; outline: none; }
     QMainWindow { background-color: #ECEFF4; }
     #CustomTitleBar { background-color: #FFFFFF; }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { background-color: transparent; color: #000000; border: none; font-size: 18px; }
@@ -100,7 +98,7 @@ LIGHT_STYLE = """
 
 FOREST_STYLE = """
     /* Black/Blue Theme */
-    QWidget { background-color: #121212; color: #EAEAEA; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
+    QWidget { background-color: #121212; color: #EAEAEA; outline: none; }
     QMainWindow { background-color: #1F1F1F; }
     #CustomTitleBar { background-color: #1F1F1F; }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #EAEAEA; background-color: transparent; border: none; font-size: 18px; }
@@ -135,7 +133,7 @@ FOREST_STYLE = """
 
 OCEAN_STYLE = """
     /* White/Blue Theme */
-    QWidget { background-color: #F0F8FF; color: #000080; font-family: 'Segoe UI'; font-size: 14px; outline: none; }
+    QWidget { background-color: #F0F8FF; color: #000080; outline: none; }
     QMainWindow { background-color: #F0F8FF; }
     #CustomTitleBar { background-color: #F0F8FF; }
     #CustomTitleBar QLabel, #CustomTitleBar QPushButton { color: #000080; background-color: transparent; border: none; font-size: 18px; }
