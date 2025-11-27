@@ -465,10 +465,15 @@ class SimpleWindow(QMainWindow):
         font_controls_layout.addWidget(self.font_combo, 1)
         font_controls_layout.addWidget(self.font_size_spinbox)
         
+        font_buttons_layout = QHBoxLayout()
+        font_buttons_layout.addStretch()
+        self.reset_font_btn = QPushButton("Reset Font")
         self.apply_font_btn = QPushButton("Apply Font")
+        font_buttons_layout.addWidget(self.reset_font_btn)
+        font_buttons_layout.addWidget(self.apply_font_btn)
 
         fonts_layout.addLayout(font_controls_layout)
-        fonts_layout.addWidget(self.apply_font_btn, 0, Qt.AlignmentFlag.AlignRight)
+        fonts_layout.addLayout(font_buttons_layout)
         fonts_box.setLayout(fonts_layout)
         settings_layout.addWidget(fonts_box, row_below + 1, 0, 1, 4)
 
@@ -496,6 +501,7 @@ class SimpleWindow(QMainWindow):
         self.quickcast_toggle_signal.connect(self.quickcast_manager.toggle_ahk_quickcast)
         self.send_message_signal.connect(self._main_thread_send_chat_message)
 
+        self.reset_font_btn.clicked.connect(self.reset_font_settings)
         self.apply_font_btn.clicked.connect(self.apply_font_settings)
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
         self.automation_manager.automation_state_changed.connect(self.update_automation_button_style)
@@ -912,6 +918,14 @@ class SimpleWindow(QMainWindow):
         
         # Re-applying the theme will now correctly pick up the new application font
         self.theme_manager.reapply_current_theme()
+
+    def reset_font_settings(self):
+        """Resets the font to the application default and applies it."""
+        # These are the default values from the SettingsManager
+        self.font_combo.setCurrentFont(QFont("Segoe UI"))
+        self.font_size_spinbox.setValue(14)
+        # Apply the reset
+        self.apply_font_settings()
 
     def reset_keybinds(self):
         self.quickcast_manager.reset_keybinds()
