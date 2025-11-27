@@ -288,7 +288,7 @@ updateAllHotkeys() {{
             function_object_str = f"Func('{function_name}').Bind('{original_key}')"
 
             # Create an instance of the RegisterHotkey class for each keybind
-            script_content += f'\nhotkey_map["{name}"] := new RegisterHotkey("{hotkey}", {function_object_str}, "{self.main_window.game_title}")'
+            script_content += f'\nhotkey_map["{name}"] := RegisterHotkey("{hotkey}", {function_object_str}, "{self.main_window.game_title}")'
             defined_hotkeys.add(hotkey)
         
         print("--- AHK SCRIPT CONTENT ---")
