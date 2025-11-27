@@ -610,7 +610,7 @@ class SimpleWindow(QMainWindow):
             if os.path.exists(image_path):
                 title_widget = QLabel()
                 pixmap = QPixmap(image_path)
-                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 26, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
                 title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 title_widget.setStyleSheet("background-color: transparent;")
 
