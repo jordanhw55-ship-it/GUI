@@ -183,6 +183,7 @@ class QuickcastManager:
         ahk_path = self._find_ahk_path()
         if not ahk_path:
             QMessageBox.critical(self.main_window, "AutoHotkey Not Found", "Could not find AutoHotkey.exe. Please ensure it is installed and in your system's PATH.")
+            self.is_toggling_ahk = False
             return False
 
         lock_file_path = os.path.join(os.path.dirname(__file__), "ahk.lock")
@@ -194,14 +195,12 @@ ProcessSetPriority("High")
 lock_file := "{lock_file_path.replace('\\', '/')}"
 FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
-"""
-        # Append the rest of the script. The f-string requires doubling the braces {{ and }}
-        # to escape them for the final AHK script.
-        script_content += f"""
-; --- State flag for pausing ---
-global is_paused := false
 
-; --- Functions ---
+; --- State flags ---
+global is_paused := false
+global hotkey_map := Map()
+
+; --- Main Functions ---
 remapSpellwQC(originalKey) {{
     SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
     SendInput("{{{" . originalKey . "}}}")
@@ -213,30 +212,50 @@ remapSpellwoQC(originalKey) {{
     SendInput("{{{" . originalKey . "}}}")
 }}
 
-remapMouse(button) {{
-    MouseClick(button)
+; --- Hotkey Management Class ---
+class RegisterHotkey {{
+    key := "", fn := "", win := ""
+    __New(key, fn, win) {{
+        this.key := key
+        this.fn := fn
+        this.win := win
+        this.Toggle(true)
+    }}
+    Toggle(enable) {{
+        if (enable and !is_paused) {{
+            Hotkey(this.key, this.fn, "On")
+        }} else {{
+            try Hotkey(this.key, "Off")
+        }}
+    }}
+}}
+
+updateAllHotkeys() {{
+    for _, hk_obj in hotkey_map {{
+        hk_obj.Toggle(true)
+    }}
 }}
 
 ; --- Pause toggle hotkeys ---
-$Enter::togglePause()
-$NumpadEnter::togglePause()
-$LButton::closePause()
-$Esc::closePause()
-
-togglePause() {{
-    global is_paused
+#HotIf WinActive("{self.main_window.game_title}")
+~$Enter::
+~$NumpadEnter::
+{{
     is_paused := !is_paused
     ToolTip(is_paused ? "Quickcast Paused" : "")
+    updateAllHotkeys()
 }}
 
-closePause() {{
-    global is_paused
-    is_paused := false
-    ToolTip("")
+~$LButton::
+~$Esc::
+{{
+    if (is_paused) {{
+        is_paused := false
+        ToolTip("")
+        updateAllHotkeys()
+    }}
 }}
-
-; --- Hotkeys only active if NOT paused and game is active ---
-#HotIf !is_paused and WinActive("{self.main_window.game_title}")
+#HotIf
 """
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
@@ -265,8 +284,9 @@ closePause() {{
 
             quickcast = key_info.get("quickcast", False)
             function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
-            
-            script_content += f"\n${hotkey}:: {function_call}"
+
+            # Create an instance of the RegisterHotkey class for each keybind
+            script_content += f'\nhotkey_map["{name}"] := RegisterHotkey("${hotkey}", {function_call}, "{self.main_window.game_title}")'
             defined_hotkeys.add(hotkey)
         
         print("--- AHK SCRIPT CONTENT ---")
