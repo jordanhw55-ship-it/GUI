@@ -875,7 +875,7 @@ class SimpleWindow(QMainWindow):
         self.keybinds = self.settings_manager.get("keybinds", {})
         self.custom_title_image_path = self.settings_manager.get("custom_title_image_path", "")
         self.font_family = self.settings_manager.get("font_family", "Segoe UI")
-        self.font_size = self.settings_manager.get("font_size", 14)
+        self.font_size = self.settings_manager.get("font_size", 11)
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
