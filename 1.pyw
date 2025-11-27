@@ -630,6 +630,9 @@ class SimpleWindow(QMainWindow):
         self.items_manager.rebuild_materials_table()
         self.reset_automation_settings(confirm=False)
 
+        # Reset font settings
+        self.reset_font_settings()
+
         # Reset message hotkeys
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
