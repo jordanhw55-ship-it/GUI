@@ -103,6 +103,13 @@ class ThemeManager:
         self.update_custom_theme_preview()
         self.main_window.update_ping_button_styles()
 
+    def reapply_current_theme(self):
+        """Re-applies the currently active theme (preset or custom)."""
+        if self.main_window.current_theme_index == -1:
+            self.apply_custom_theme()
+        else:
+            self.apply_theme(self.main_window.current_theme_index)
+
     def update_custom_theme_preview(self):
         """Updates the live preview widget with the current custom theme colors."""
         custom_theme = self.main_window.custom_theme

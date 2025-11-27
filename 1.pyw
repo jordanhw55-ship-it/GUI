@@ -8,8 +8,8 @@ from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog,
-    QTextEdit, QListWidgetItem, QColorDialog, QCheckBox, QSlider
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
+    QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
 from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap
@@ -177,6 +177,8 @@ class SimpleWindow(QMainWindow):
             "fg": "#F0F0F0",
             "accent": "#FF7F50"
         })
+        self.font_family = self.settings_manager.get("font_family", "Segoe UI")
+        self.font_size = self.settings_manager.get("font_size", 14)
 
         self.old_pos = None
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
@@ -257,6 +259,11 @@ class SimpleWindow(QMainWindow):
         self.setWindowTitle("Hellfire Helper")
         self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
+
+        # Apply font settings at startup
+        initial_font = QFont(self.font_family, self.font_size)
+        QApplication.instance().setFont(initial_font)
+
 
         # Center the window on the primary screen
         screen = QApplication.primaryScreen()
@@ -444,7 +451,24 @@ class SimpleWindow(QMainWindow):
         # Fonts box
         fonts_box = QGroupBox("Fonts")
         fonts_layout = QVBoxLayout(fonts_box)
-        fonts_layout.addWidget(QLabel("Font settings will go here.")) # Placeholder
+        
+        font_controls_layout = QHBoxLayout()
+        self.font_combo = QFontComboBox()
+        self.font_combo.setCurrentFont(QFont(self.font_family))
+        
+        self.font_size_spinbox = QSpinBox()
+        self.font_size_spinbox.setRange(8, 24)
+        self.font_size_spinbox.setValue(self.font_size)
+        self.font_size_spinbox.setSuffix(" pt")
+
+        font_controls_layout.addWidget(QLabel("Font:"))
+        font_controls_layout.addWidget(self.font_combo, 1)
+        font_controls_layout.addWidget(self.font_size_spinbox)
+        
+        self.apply_font_btn = QPushButton("Apply Font")
+
+        fonts_layout.addLayout(font_controls_layout)
+        fonts_layout.addWidget(self.apply_font_btn, 0, Qt.AlignmentFlag.AlignRight)
         fonts_box.setLayout(fonts_layout)
         settings_layout.addWidget(fonts_box, row_below + 1, 0, 1, 4)
 
@@ -472,6 +496,7 @@ class SimpleWindow(QMainWindow):
         self.quickcast_toggle_signal.connect(self.quickcast_manager.toggle_ahk_quickcast)
         self.send_message_signal.connect(self._main_thread_send_chat_message)
 
+        self.apply_font_btn.clicked.connect(self.apply_font_settings)
         self.automation_manager.status_changed.connect(self.status_overlay.show_status)
         self.automation_manager.automation_state_changed.connect(self.update_automation_button_style)
 
@@ -843,6 +868,8 @@ class SimpleWindow(QMainWindow):
         self.custom_theme = self.settings_manager.get("custom_theme")
         self.keybinds = self.settings_manager.get("keybinds", {})
         self.custom_title_image_path = self.settings_manager.get("custom_title_image_path", "")
+        self.font_family = self.settings_manager.get("font_family", "Segoe UI")
+        self.font_size = self.settings_manager.get("font_size", 14)
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
@@ -874,6 +901,17 @@ class SimpleWindow(QMainWindow):
                 "message": self.automation_tab.custom_action_edit2.text()
             }
         }
+
+    def apply_font_settings(self):
+        """Applies the selected font and size to the entire application."""
+        self.font_family = self.font_combo.currentFont().family()
+        self.font_size = self.font_size_spinbox.value()
+        
+        new_font = QFont(self.font_family, self.font_size)
+        QApplication.instance().setFont(new_font)
+        
+        # Re-apply the current theme to ensure stylesheets are updated if they use font properties
+        self.theme_manager.reapply_current_theme()
 
     def reset_keybinds(self):
         self.quickcast_manager.reset_keybinds()

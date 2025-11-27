@@ -20,7 +20,9 @@ class SettingsManager:
             "watchlist": ["hellfire", "rpg"],
             "play_sound_on_found": False,
             "selected_sound": "ping1.mp3",
-            "volume": 100
+            "volume": 100,
+            "font_family": "Segoe UI",
+            "font_size": 14
         }
         self.settings = self.defaults.copy()
         self.load()
@@ -52,7 +54,9 @@ class SettingsManager:
             "watchlist": window_instance.lobby_manager.watchlist,
             "play_sound_on_found": window_instance.lobby_manager.lobbies_tab.lobby_placeholder_checkbox.isChecked(),
             "selected_sound": window_instance.lobby_manager.selected_sound,
-            "volume": window_instance.lobby_manager.volume
+            "volume": window_instance.lobby_manager.volume,
+            "font_family": window_instance.font_family,
+            "font_size": window_instance.font_size
         }
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)
