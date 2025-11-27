@@ -195,38 +195,48 @@ lock_file := "{lock_file_path.replace('\\', '/')}"
 FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 """
-        # Append the rest of the script as a standard string to avoid f-string formatting issues.
-        script_content += """
+        # Append the rest of the script. The f-string requires doubling the braces {{ and }}
+        # to escape them for the final AHK script.
+        script_content += f"""
 ; --- State flag for pausing ---
 global is_paused := false
 
 ; --- Functions ---
-remapSpellwQC(originalKey) {
-    SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
-    SendInput("{" . originalKey . "}")
+remapSpellwQC(originalKey) {{
+    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
+    SendInput("{{{" . originalKey . "}}}")
     MouseClick("Left")
-    SendInput("{9}{0}")
-}
+    SendInput("{{9}}{{0}}")
+}}
 
-remapSpellwoQC(originalKey) {
-    SendInput("{" . originalKey . "}")
-}
+remapSpellwoQC(originalKey) {{
+    SendInput("{{{" . originalKey . "}}}")
+}}
 
-remapMouse(button) {
+remapMouse(button) {{
     MouseClick(button)
-}
+}}
 
 ; --- Pause toggle hotkeys ---
 $Enter::togglePause()
 $NumpadEnter::togglePause()
+$LButton::closePause()
+$Esc::closePause()
 
-togglePause() {
+togglePause() {{
     global is_paused
     is_paused := !is_paused
-}
+    ToolTip(is_paused ? "Quickcast Paused" : "")
+}}
+
+closePause() {{
+    global is_paused
+    is_paused := false
+    ToolTip("")
+}}
 
 ; --- Hotkeys only active if NOT paused and game is active ---
-HotIf !is_paused && WinActive("{self.main_window.game_title}")
+#HotIf !is_paused and WinActive("{self.main_window.game_title}")
 """
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
