@@ -196,8 +196,11 @@ FileAppend("locked", lock_file)
 SetTimer(() => FileExist(lock_file) ? "" : ExitApp(), 250)
 """
         # Append the rest of the script as a standard string to avoid f-string formatting issues.
-        # This matches the original, working implementation.
         script_content += """
+; --- State flag for pausing ---
+global is_paused := false
+
+; --- Functions ---
 remapSpellwQC(originalKey) {
     SendInput("{Ctrl Down}{9}{0}{Ctrl Up}")
     SendInput("{" . originalKey . "}")
@@ -213,7 +216,17 @@ remapMouse(button) {
     MouseClick(button)
 }
 
-HotIfWinActive("{self.main_window.game_title}")
+; --- Pause toggle hotkeys ---
+$Enter::togglePause()
+$NumpadEnter::togglePause()
+
+togglePause() {
+    global is_paused
+    is_paused := !is_paused
+}
+
+; --- Hotkeys only active if NOT paused and game is active ---
+HotIf !is_paused && WinActive("{self.main_window.game_title}")
 """
         defined_hotkeys = set()
         for name, key_info in self.main_window.keybinds.items():
