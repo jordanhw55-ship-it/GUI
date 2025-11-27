@@ -439,9 +439,17 @@ class SimpleWindow(QMainWindow):
         custom_v_layout.addLayout(action_buttons_h_layout)
 
         settings_layout.setRowStretch(row_below + 2, 1) # Add stretch to the main grid layout
-        settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
+        settings_layout.addWidget(custom_box, row_below, 0, 1, 4)
+
+        # Fonts box
+        fonts_box = QGroupBox("Fonts")
+        fonts_layout = QVBoxLayout(fonts_box)
+        fonts_layout.addWidget(QLabel("Font settings will go here.")) # Placeholder
+        fonts_box.setLayout(fonts_layout)
+        settings_layout.addWidget(fonts_box, row_below + 1, 0, 1, 4)
 
         self.stacked_widget.addWidget(settings_tab_content)
+
 
         # Reset tab
         reset_tab_content = QWidget()
