@@ -889,6 +889,13 @@ class SimpleWindow(QMainWindow):
         if self.is_executing_keybind:
             return
 
+        # Explicitly check if the game window is active before executing.
+        # This prevents the hotkey from firing in other applications, like the GUI itself.
+        if win32gui:
+            if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title):
+                print(f"[DEBUG] Python keybind '{name}' blocked: game window is not active.")
+                return
+
         
         try:
             self.is_executing_keybind = True
@@ -905,14 +912,7 @@ class SimpleWindow(QMainWindow):
             is_enabled = self.keybinds.get("settings", {}).get(category, True)
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
-                return # Setting is disabled, let the keypress go through
-
-            # Explicitly check if the game window is active before executing.
-            # This prevents the hotkey from firing in other applications.
-            if win32gui:
-                if win32gui.GetForegroundWindow() != win32gui.FindWindow(None, self.game_title):
-                    print(f"[DEBUG] Keybind '{name}' blocked: game window is not active.")
-                    return
+                return # Setting is disabled, let the keypress go through            
             quickcast = key_info.get("quickcast", False)
             
             # Determine original key
