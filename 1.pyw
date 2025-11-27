@@ -437,7 +437,6 @@ class SimpleWindow(QMainWindow):
         custom_v_layout.addLayout(pick_buttons_h_layout)
         custom_v_layout.addWidget(self.custom_theme_preview)        
         custom_v_layout.addLayout(action_buttons_h_layout)
-        custom_v_layout.addStretch() # Add stretch to the box layout itself
 
         settings_layout.setRowStretch(row_below + 2, 1) # Add stretch to the main grid layout
         settings_layout.addWidget(custom_box, row_below + 1, 0, 1, 4)
