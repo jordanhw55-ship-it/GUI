@@ -20,9 +20,9 @@ class SettingsManager:
             "watchlist": ["hellfire", "rpg"],
             "play_sound_on_found": False,
             "selected_sound": "ping1.mp3",
-            "volume": 100,
+            "volume": 100,            
             "font_family": "Segoe UI",
-            "font_size": 14
+            "font_size": 11
         }
         self.settings = self.defaults.copy()
         self.load()

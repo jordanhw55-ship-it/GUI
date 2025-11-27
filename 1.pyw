@@ -178,7 +178,7 @@ class SimpleWindow(QMainWindow):
             "accent": "#FF7F50"
         })
         self.font_family = self.settings_manager.get("font_family", "Segoe UI")
-        self.font_size = self.settings_manager.get("font_size", 14)
+        self.font_size = self.settings_manager.get("font_size", 11)
 
         self.old_pos = None
         self.hotkey_ids = {}            # {hotkey_str: id from keyboard.add_hotkey}
@@ -922,8 +922,8 @@ class SimpleWindow(QMainWindow):
     def reset_font_settings(self):
         """Resets the font to the application default and applies it."""
         # These are the default values from the SettingsManager
-        self.font_combo.setCurrentFont(QFont("Segoe UI"))
-        self.font_size_spinbox.setValue(14)
+        self.font_combo.setCurrentFont(QFont(self.settings_manager.defaults["font_family"]))
+        self.font_size_spinbox.setValue(self.settings_manager.defaults["font_size"])
         # Apply the reset
         self.apply_font_settings()
 
