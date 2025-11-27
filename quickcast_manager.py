@@ -207,14 +207,12 @@ global is_paused := false
 ; --- Functions ---
 remapSpellwQC(originalKey) {{
     SendInput "{{" originalKey " Down}}"
-    Sleep(30)
     SendInput "{{" originalKey " Up}}"
     MouseClick("Left")
 }}
 
 remapSpellwoQC(originalKey) {{
     SendInput "{{" originalKey " Down}}"
-    Sleep(30)
     SendInput "{{" originalKey " Up}}"
 }}
 
