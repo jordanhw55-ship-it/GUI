@@ -206,14 +206,16 @@ global is_paused := false
 
 ; --- Functions ---
 remapSpellwQC(originalKey) {{
-    SendInput("{{Ctrl Down}}{{9}}{{0}}{{Ctrl Up}}")
-    SendInput("{{{" . originalKey . "}}}")
+    SendInput("{{{" . originalKey . " Down}}}")
+    Sleep(30)
+    SendInput("{{{" . originalKey . " Up}}}")
     MouseClick("Left")
-    SendInput("{{9}}{{0}}")
 }}
 
 remapSpellwoQC(originalKey) {{
-    SendInput("{{{" . originalKey . "}}}")
+    SendInput("{{{" . originalKey . " Down}}}")
+    Sleep(30)
+    SendInput("{{{" . originalKey . " Up}}}")
 }}
 
 ; --- Pause toggle hotkeys ---
@@ -263,8 +265,10 @@ closePause() {{
             if name.startswith("spell_"):
                 original_key = name.split("_")[1].lower()
 
+            if not original_key: continue
+
             quickcast = key_info.get("quickcast", False)
-            function_call = f"remapSpellwQC('{original_key}')" if quickcast else f"remapSpellwoQC('{original_key}')"
+            function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
             script_content += f"\n${hotkey}:: {function_call}"
