@@ -58,7 +58,8 @@ class AutomationTab(QWidget):
         self.automation_key_ctrls = {}
         # All keys that can be in the automation grid
         self.automationKeys = [ 
-            "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r", "Complete Quest"
+            "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r", "Complete Quest",
+            "Num7", "Num8", "Num4", "Num5", "Num1", "Num2"
         ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
@@ -123,6 +124,19 @@ class AutomationTab(QWidget):
                     pair = QHBoxLayout(); pair.setSpacing(5); pair.addWidget(ctrls["chk"]); pair.addWidget(ctrls["edit"])
                     main_keys_grid.addLayout(pair, r, c)
         top_level_grid.addWidget(main_keys_group, 0, 0)
+
+        # --- Box 2: Top-Right (Numpad Keys) ---
+        numpad_group = QGroupBox("Numpad Keys")
+        numpad_grid = QGridLayout(numpad_group)
+        numpad_grid.setHorizontalSpacing(10); numpad_grid.setVerticalSpacing(2)
+        numpad_layout_def = [["Num7", "Num8"], ["Num4", "Num5"], ["Num1", "Num2"]]
+        for r, row_keys in enumerate(numpad_layout_def):
+            for c, key in enumerate(row_keys):
+                if key in self.automation_key_ctrls:
+                    ctrls = self.automation_key_ctrls[key]
+                    pair = QHBoxLayout(); pair.setSpacing(5); pair.addWidget(ctrls["chk"]); pair.addWidget(ctrls["edit"])
+                    numpad_grid.addLayout(pair, r, c)
+        top_level_grid.addWidget(numpad_group, 0, 1)
 
         # --- Box 3: Bottom-Left (Other Actions) ---
         other_actions_group = QGroupBox("Other Actions")
@@ -209,10 +223,7 @@ class QuickcastTab(QWidget):
         layout_definition = [
             ["Y", "S", "H", "A", "numpad 7", "numpad 8"],
             ["P", "D", "F", "T", "numpad 4", "numpad 5"],
-            ["Q", "W", "E", "R", "numpad 1", "numpad 2"],
-            ["Y", "S", "H", "A"],
-            ["P", "D", "F", "T"],
-            ["Q", "W", "E", "R"]
+            ["Q", "W", "E", "R", "numpad 1", "numpad 2"]
         ]
 
         for row_idx, row_keys in enumerate(layout_definition):
