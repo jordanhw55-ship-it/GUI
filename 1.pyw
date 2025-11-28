@@ -754,9 +754,9 @@ class SimpleWindow(QMainWindow):
 
         # The 'keyboard' library can return "num 7". We standardize this
         # to "numpad 7" immediately to ensure consistency for all other
-        # parts of the application (AHK script gen, python hotkey registration).
+        # parts of the application.
         if hotkey.lower().startswith("num "):
-            hotkey = hotkey.lower().replace("num ", "numpad ")
+            hotkey = "numpad " + hotkey.split()[-1]
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
@@ -1117,12 +1117,6 @@ class SimpleWindow(QMainWindow):
             # We prevent trying to register them.
             if "button" in hotkey.lower():
                 return
-
-            # The 'keyboard' library expects "numpad 7", not "num 7".
-            # This standardizes the hotkey string before registration.
-            if "num " in hotkey.lower():
-                hotkey = hotkey.lower().replace("num ", "numpad ")
-                print(f"[DEBUG] Standardized numpad hotkey to '{hotkey}' for registration.")
 
             # The check for the active window is now handled inside execute_keybind.
             hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)

@@ -266,11 +266,11 @@ closePause() {{
                 # Sanitize the key name for AHK.
                 key_part = name.split("_")[1].lower()
 
-                # AHK v2 expects "Numpad1", not "num1" or "numpad 1".
-                if key_part.startswith("numpad"):
-                    original_key = "Numpad" + key_part[-1]
+                # The internal name can be "numpad 7". AHK needs "Numpad7".
+                if key_part.startswith("numpad "):
+                    original_key = "Numpad" + key_part.split(" ")[1]
                 else:
-                    original_key = key_part.replace(" ", "")
+                    original_key = key_part
 
 
             if not original_key: continue
