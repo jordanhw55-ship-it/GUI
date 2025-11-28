@@ -102,33 +102,46 @@ class AutomationTab(QWidget):
         # --- Top Section (Key Automation) ---
         key_automation_layout = QVBoxLayout()
 
-        automation_grid = QGridLayout()
-        automation_grid.setHorizontalSpacing(10) # Reduced spacing
-        automation_grid.setVerticalSpacing(2)   # Reduced spacing
+        # Main grid to hold the three new boxes
+        top_level_grid = QGridLayout()
+        self.automation_keys_group.setLayout(top_level_grid)
 
-        # Define the layout row by row
-        layout_definition = [
-            ["y", "s", "h", "a", "Num7", "Num8"],
-            ["p", "d", "f", "t", "Num4", "Num5"],
-            ["q", "w", "e", "r", "Num1", "Num2"],
+        # --- Box 1: Top-Left (Main Keys) ---
+        main_keys_group = QGroupBox("Main Keys")
+        main_keys_grid = QGridLayout(main_keys_group)
+        main_keys_grid.setHorizontalSpacing(10); main_keys_grid.setVerticalSpacing(2)
+        main_keys_layout_def = [
+            ["y", "s", "h", "a"],
+            ["p", "d", "f", "t"],
+            ["q", "w", "e", "r"]
         ]
-
-        for row_idx, row_keys in enumerate(layout_definition):
-            for col_idx, key in enumerate(row_keys):
+        for r, row_keys in enumerate(main_keys_layout_def):
+            for c, key in enumerate(row_keys):
                 if key in self.automation_key_ctrls:
                     ctrls = self.automation_key_ctrls[key]
-                    pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
-                    pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"])
-                    automation_grid.addLayout(pair_layout, row_idx, col_idx)
+                    pair = QHBoxLayout(); pair.setSpacing(5); pair.addWidget(ctrls["chk"]); pair.addWidget(ctrls["edit"])
+                    main_keys_grid.addLayout(pair, r, c)
+        top_level_grid.addWidget(main_keys_group, 0, 0)
 
-        # Add the 4th row with "Complete Quest" and "Custom"
-        quest_ctrls = self.automation_key_ctrls["Complete Quest"]
-        quest_layout = QHBoxLayout(); quest_layout.setSpacing(5); quest_layout.addWidget(quest_ctrls["chk"]); quest_layout.addWidget(quest_ctrls["edit"])
-        custom_layout = QHBoxLayout(); custom_layout.setSpacing(5); custom_layout.addWidget(self.custom_action_btn); custom_layout.addWidget(self.custom_action_edit1); custom_layout.addWidget(self.custom_action_edit2)
-        automation_grid.addLayout(quest_layout, 3, 0)
-        automation_grid.addLayout(custom_layout, 3, 1, 1, 2) # Span across 2 columns
+        # --- Box 2: Top-Right (Numpad Keys) ---
+        numpad_group = QGroupBox("Numpad Keys")
+        numpad_grid = QGridLayout(numpad_group)
+        numpad_grid.setHorizontalSpacing(10); numpad_grid.setVerticalSpacing(2)
+        numpad_layout_def = [["Num7", "Num8"], ["Num4", "Num5"], ["Num1", "Num2"]]
+        for r, row_keys in enumerate(numpad_layout_def):
+            for c, key in enumerate(row_keys):
+                if key in self.automation_key_ctrls:
+                    ctrls = self.automation_key_ctrls[key]
+                    pair = QHBoxLayout(); pair.setSpacing(5); pair.addWidget(ctrls["chk"]); pair.addWidget(ctrls["edit"])
+                    numpad_grid.addLayout(pair, r, c)
+        top_level_grid.addWidget(numpad_group, 0, 1)
 
-        self.automation_keys_group.setLayout(automation_grid)
+        # --- Box 3: Bottom-Left (Other Actions) ---
+        other_actions_group = QGroupBox("Other Actions")
+        other_actions_layout = QVBoxLayout(other_actions_group)
+        other_actions_layout.addLayout(self._create_control_pair(self.automation_key_ctrls["Complete Quest"]))
+        other_actions_layout.addLayout(self._create_custom_action_layout())
+        top_level_grid.addWidget(other_actions_group, 1, 0)
 
         automation_actions_layout = QHBoxLayout()
         automation_actions_layout.addWidget(self.start_automation_btn); automation_actions_layout.addWidget(self.stop_automation_btn); automation_actions_layout.addWidget(self.reset_automation_btn)
@@ -154,6 +167,17 @@ class AutomationTab(QWidget):
         bottom_section_layout.addWidget(self.automation_log_group, 1)
         main_layout.addLayout(bottom_section_layout, 1)
 
+    def _create_control_pair(self, ctrls):
+        """Helper to create a CheckBox + LineEdit pair layout."""
+        pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
+        pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"]); pair_layout.addStretch()
+        return pair_layout
+
+    def _create_custom_action_layout(self):
+        """Helper to create the custom action layout."""
+        custom_layout = QHBoxLayout(); custom_layout.setSpacing(5)
+        custom_layout.addWidget(self.custom_action_btn); custom_layout.addWidget(self.custom_action_edit1); custom_layout.addWidget(self.custom_action_edit2); custom_layout.addStretch()
+        return custom_layout
 
 class QuickcastTab(QWidget):
     """A widget for the 'Quickcast' tab, for setting up key quickcasts."""
