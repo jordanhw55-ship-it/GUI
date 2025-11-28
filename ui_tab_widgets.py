@@ -221,9 +221,9 @@ class QuickcastTab(QWidget):
 
         # Define the layout row by row
         layout_definition = [
-            ["Y", "S", "H", "A", "num 7", "num 8"],
-            ["P", "D", "F", "T", "num 4", "num 5"],
-            ["Q", "W", "E", "R", "num 1", "num 2"]
+            ["Y", "S", "H", "A"],
+            ["P", "D", "F", "T"],
+            ["Q", "W", "E", "R"]
         ]
 
         for row_idx, row_keys in enumerate(layout_definition):
