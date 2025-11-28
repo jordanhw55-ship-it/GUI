@@ -242,6 +242,15 @@ closePause() {{
 #HotIf !is_paused and WinActive("{self.main_window.game_title}")
 """
         
+        def format_ahk_hotkey(py_hotkey: str) -> str:
+            """Translates Python keyboard hotkey names to AHK v2 hotkey names."""
+            # AHK expects NumpadX, not 'num X' or 'numpad X'
+            if "num" in py_hotkey:
+                parts = py_hotkey.split()
+                if len(parts) == 2 and parts[1].isdigit():
+                    return f"Numpad{parts[1]}"
+            return py_hotkey
+
         script_content = static_block
         defined_hotkeys = set()
 
@@ -250,8 +259,10 @@ closePause() {{
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
 
-            if hotkey in defined_hotkeys:
-                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping.")
+            ahk_hotkey = format_ahk_hotkey(hotkey)
+
+            if ahk_hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{ahk_hotkey}' found for '{name}'. Skipping.")
                 continue
 
             category = name.split("_")[0]
@@ -261,7 +272,8 @@ closePause() {{
 
             original_key = ""
             if name.startswith("spell_"):
-                original_key = name.split("_")[1].lower().replace(" ", "") # "num 7" -> "num7"
+                # "spell_num 7" -> "Numpad7"
+                original_key = format_ahk_hotkey(name.split("_")[1].lower())
 
             if not original_key: continue
 
@@ -269,8 +281,8 @@ closePause() {{
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
-            script_content += f"\n${hotkey}:: {function_call}"
-            defined_hotkeys.add(hotkey)
+            script_content += f"\n${ahk_hotkey}:: {function_call}"
+            defined_hotkeys.add(ahk_hotkey)
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
