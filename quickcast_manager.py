@@ -267,11 +267,13 @@ closePause() {{
             if not original_key: continue
 
             quickcast = key_info.get("quickcast", False)
+            # Sanitize the hotkey for AHK by removing spaces (e.g., "numpad 7" -> "numpad7")
+            ahk_hotkey = hotkey.replace(" ", "")
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
-            script_content += f"\n${hotkey}:: {function_call}"
-            defined_hotkeys.add(hotkey)
+            script_content += f"\n${ahk_hotkey}:: {function_call}"
+            defined_hotkeys.add(ahk_hotkey)
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
