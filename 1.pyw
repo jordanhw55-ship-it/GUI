@@ -894,6 +894,15 @@ class SimpleWindow(QMainWindow):
         self.font_family = self.settings_manager.get("font_family", "Segoe UI")
         self.font_size = self.settings_manager.get("font_size", 11)
 
+        # --- CRITICAL FIX: Normalize all loaded keybinds on startup ---
+        # This ensures that any invalid formats (e.g., "numpad7") saved in settings.json
+        # are corrected to the canonical format ("numpad 7") before they are used.
+        if self.keybinds:
+            print("[INFO] Normalizing loaded keybinds...")
+            for name, key_info in self.keybinds.items():
+                if "hotkey" in key_info:
+                    key_info["hotkey"] = normalize_to_canonical(key_info["hotkey"])
+
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
         if not self.automation_settings:
