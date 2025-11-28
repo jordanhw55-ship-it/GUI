@@ -186,12 +186,21 @@ class QuickcastTab(QWidget):
 
         spells_grid = QGridLayout(self.remap_spells_group)
 
-        spell_keys = ["M", "S", "H", "A", "P", "D", "T", "F", "Q", "W", "E", "R"]
-        for i, key in enumerate(spell_keys):
-            row, col = i // 4, i % 4
-            self.key_buttons[f"spell_{key}"] = self._create_key_button(key)
-            spells_grid.addWidget(self.key_buttons[f"spell_{key}"], row, col)
+        # Define the layout row by row
+        layout_definition = [
+            ["Y", "S", "H", "A", "Numpad7", "Numpad8"],
+            ["P", "D", "F", "T", "Numpad4", "Numpad5"],
+            ["Q", "W", "E", "R", "Numpad1", "Numpad2"]
+        ]
 
+        for row_idx, row_keys in enumerate(layout_definition):
+            for col_idx, key in enumerate(row_keys):
+                # Use a consistent naming scheme for the keybind dictionary
+                key_id = f"spell_{key}"
+                # Create the button
+                self.key_buttons[key_id] = self._create_key_button(key)
+                # Add it to the grid
+                spells_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
         # --- Settings Panel (Right) ---
         settings_panel = QWidget()
         settings_panel_layout = QVBoxLayout(settings_panel)
