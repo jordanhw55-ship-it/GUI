@@ -234,7 +234,7 @@ HotIfWinActive("{self.main_window.game_title}")
             if name.startswith("spell_"):
                 original_key = name.split("_")[1].lower()
             elif name.startswith("inv_"):
-                inv_map = ["numpad7", "numpad8", "numpad4", "numpad5", "numpad1", "numpad2"]
+                inv_map = ["numpad 7", "numpad 8", "numpad 4", "numpad 5", "numpad 1", "numpad 2"]
                 inv_index = int(name.split("_")[1]) - 1
                 original_key = inv_map[inv_index]
 
