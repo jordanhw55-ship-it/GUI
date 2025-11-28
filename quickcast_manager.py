@@ -50,8 +50,12 @@ class QuickcastManager:
         for name, button in self.main_window.quickcast_tab.key_buttons.items():
             key_info = self.main_window.keybinds.get(name, {})
             # Use the button's default text if no hotkey is saved
-            default_key = name.split('_')[-1] if '_' in name else button.text()
-            hotkey = key_info.get("hotkey", default_key)
+            raw_default_key = name.split('_')[-1] if '_' in name else button.text()
+            
+            # Normalize the default key to the canonical format (e.g., "Numpad7" -> "7")
+            canonical_default = normalize_to_canonical(raw_default_key, "numpad" in name.lower())
+            
+            hotkey = key_info.get("hotkey", canonical_default)
             quickcast = key_info.get("quickcast", False)
 
             button.setText(hotkey.upper())
