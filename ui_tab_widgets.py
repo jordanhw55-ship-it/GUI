@@ -99,6 +99,7 @@ class AutomationTab(QWidget):
         key_automation_layout = QVBoxLayout()
 
         automation_grid = QGridLayout()
+        automation_grid.setHorizontalSpacing(5) # Make checkboxes and edits closer
         row, col = 0, 0
         for key in self.automationKeys:
             ctrls = self.automation_key_ctrls[key]
