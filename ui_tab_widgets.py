@@ -65,7 +65,7 @@ class AutomationTab(QWidget):
 
         self.custom_action_btn = QCheckBox("Custom Action")
         self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
-        self.custom_action_edit2 = QLineEdit("-save x")
+        self.custom_action_edit2 = QLineEdit("-save x"); self.custom_action_edit2.setFixedWidth(120)
 
         # Automation log box
         self.automation_log_group = QGroupBox("Automation Log")
