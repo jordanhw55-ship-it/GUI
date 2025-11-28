@@ -58,17 +58,17 @@ class AutomationTab(QWidget):
         self.automation_key_ctrls = {}
         # All keys that can be in the automation grid
         self.automationKeys = [ 
-            "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r",
-            "Numpad7", "Numpad8", "Numpad4", "Numpad5", "Numpad1", "Numpad2", "Complete Quest"
+            "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r", "Complete Quest",
+            "Num7", "Num8", "Num4", "Num5", "Num1", "Num2"
         ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
             edit = QLineEdit("15000" if key == "Complete Quest" else "500")
-            edit.setFixedWidth(70)
+            edit.setFixedWidth(35)
             self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
 
         self.custom_action_btn = QCheckBox("Custom")
-        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
+        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(35)
         self.custom_action_edit2 = QLineEdit("-save x"); self.custom_action_edit2.setFixedWidth(120)
 
         # Automation log box
@@ -103,14 +103,14 @@ class AutomationTab(QWidget):
         key_automation_layout = QVBoxLayout()
 
         automation_grid = QGridLayout()
-        automation_grid.setHorizontalSpacing(15)
-        automation_grid.setVerticalSpacing(5)
+        automation_grid.setHorizontalSpacing(10) # Reduced spacing
+        automation_grid.setVerticalSpacing(2)   # Reduced spacing
 
         # Define the layout row by row
         layout_definition = [
-            ["y", "s", "h", "a", "Numpad7", "Numpad8"],
-            ["p", "d", "f", "t", "Numpad4", "Numpad5"],
-            ["q", "w", "e", "r", "Numpad1", "Numpad2"],
+            ["y", "s", "h", "a", "Num7", "Num8"],
+            ["p", "d", "f", "t", "Num4", "Num5"],
+            ["q", "w", "e", "r", "Num1", "Num2"],
         ]
 
         for row_idx, row_keys in enumerate(layout_definition):
