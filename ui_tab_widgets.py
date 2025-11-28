@@ -209,7 +209,7 @@ class QuickcastTab(QWidget):
         layout_definition = [
             ["Y", "S", "H", "A", "numpad 7", "numpad 8"],
             ["P", "D", "F", "T", "numpad 4", "numpad 5"],
-            ["Q", "W", "E", "R", "numpad 1", "numpad 2"]
+            ["Q", "W", "E", "R", "numpad 1", "numpad 2"],
             ["Y", "S", "H", "A"],
             ["P", "D", "F", "T"],
             ["Q", "W", "E", "R"]
