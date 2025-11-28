@@ -112,8 +112,11 @@ class AutomationTab(QWidget):
             pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"]); pair_layout.addStretch()
             automation_grid.addLayout(pair_layout, row, col)
             col += 1
-            if col > 1: col, row = 0, row + 1
-        custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
+            if col > 1:
+                col, row = 0, row + 1
+        custom_action_layout = QHBoxLayout(); custom_action_layout.setSpacing(5)
+        custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
+        custom_action_layout.addStretch()
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4)
         self.automation_keys_group.setLayout(automation_grid)
 
