@@ -56,8 +56,9 @@ class AutomationTab(QWidget):
         # --- Left Panel: Key Automation ---
         self.automation_keys_group = QGroupBox("Key Automation")
         self.automation_key_ctrls = {}
-        self.automationKeys = [
-            "q", "w", "e", "r", "d", "f", "t", "z", "x",
+        # All keys that can be in the automation grid
+        self.automationKeys = [ 
+            "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r",
             "Numpad7", "Numpad8", "Numpad4", "Numpad5", "Numpad1", "Numpad2", "Complete Quest"
         ]
         for key in self.automationKeys:
@@ -102,25 +103,31 @@ class AutomationTab(QWidget):
         key_automation_layout = QVBoxLayout()
 
         automation_grid = QGridLayout()
-        automation_grid.setColumnStretch(0, 1)
-        automation_grid.setColumnStretch(1, 1)
-        automation_grid.setColumnStretch(2, 1)
-        automation_grid.setHorizontalSpacing(20) # Add space between the columns of key pairs
-        row, col = 0, 0
-        for key in self.automationKeys:
-            ctrls = self.automation_key_ctrls[key]
-            pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
-            pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"]); pair_layout.addStretch()
-            automation_grid.addLayout(pair_layout, row, col)
-            row += 1
-            if row >= 6:
-                row = 0
-                col += 1
-        # After the loop, 'row' and 'col' will be at the next available spot.
-        custom_action_layout = QHBoxLayout(); custom_action_layout.setSpacing(5)
-        custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
-        custom_action_layout.addStretch()
-        automation_grid.addLayout(custom_action_layout, row, 0, 1, 4)
+        automation_grid.setHorizontalSpacing(15)
+        automation_grid.setVerticalSpacing(5)
+
+        # Define the layout row by row
+        layout_definition = [
+            ["y", "s", "h", "a", "Numpad7", "Numpad8"],
+            ["p", "d", "f", "t", "Numpad4", "Numpad5"],
+            ["q", "w", "e", "r", "Numpad1", "Numpad2"],
+        ]
+
+        for row_idx, row_keys in enumerate(layout_definition):
+            for col_idx, key in enumerate(row_keys):
+                if key in self.automation_key_ctrls:
+                    ctrls = self.automation_key_ctrls[key]
+                    pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
+                    pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"])
+                    automation_grid.addLayout(pair_layout, row_idx, col_idx)
+
+        # Add the 4th row with "Complete Quest" and "Custom"
+        quest_ctrls = self.automation_key_ctrls["Complete Quest"]
+        quest_layout = QHBoxLayout(); quest_layout.setSpacing(5); quest_layout.addWidget(quest_ctrls["chk"]); quest_layout.addWidget(quest_ctrls["edit"])
+        custom_layout = QHBoxLayout(); custom_layout.setSpacing(5); custom_layout.addWidget(self.custom_action_btn); custom_layout.addWidget(self.custom_action_edit1); custom_layout.addWidget(self.custom_action_edit2)
+        automation_grid.addLayout(quest_layout, 3, 0)
+        automation_grid.addLayout(custom_layout, 3, 1, 1, 2) # Span across 2 columns
+
         self.automation_keys_group.setLayout(automation_grid)
 
         automation_actions_layout = QHBoxLayout()
