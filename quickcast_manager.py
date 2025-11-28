@@ -261,7 +261,8 @@ closePause() {{
 
             original_key = ""
             if name.startswith("spell_"):
-                original_key = name.split("_")[1].lower()
+                # Sanitize the key name for AHK by removing spaces.
+                original_key = name.split("_")[1].lower().replace(" ", "")
 
             if not original_key: continue
 
