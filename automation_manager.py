@@ -332,8 +332,7 @@ class AutomationManager(QObject):
             'z': 0x5A, 'x': 0x58, 'y': 0x59, 's': 0x53, 'h': 0x48, 'a': 0x41, 'p': 0x50,
             'esc': win32con.VK_ESCAPE, 'enter': win32con.VK_RETURN,
             'num 1': 0x61, 'num 2': 0x62, 'num 3': 0x63, 'num 4': 0x64,
-            'num 5': 0x65, 'num 6': 0x66, 'num 7': 0x67, 'num 8': 0x68,
-            'num 9': 0x69, 'num 0': 0x60
+            'num 5': 0x65, 'num 6': 0x66, 'num 7': 0x67, 'num 8': 0x68
         }
         vk_code = vk_map.get(key.lower())
         if vk_code is None:
