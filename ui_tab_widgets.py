@@ -99,14 +99,17 @@ class AutomationTab(QWidget):
         key_automation_layout = QVBoxLayout()
 
         automation_grid = QGridLayout()
-        automation_grid.setHorizontalSpacing(5) # Make checkboxes and edits closer
+        automation_grid.setColumnStretch(0, 1)
+        automation_grid.setColumnStretch(1, 1)
+        automation_grid.setHorizontalSpacing(20) # Add space between the columns of key pairs
         row, col = 0, 0
         for key in self.automationKeys:
             ctrls = self.automation_key_ctrls[key]
-            automation_grid.addWidget(ctrls["chk"], row, col * 2); automation_grid.addWidget(ctrls["edit"], row, col * 2 + 1)
+            pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
+            pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"]); pair_layout.addStretch()
+            automation_grid.addLayout(pair_layout, row, col)
             col += 1
-            if col > 1:
-                col, row = 0, row + 1
+            if col > 1: col, row = 0, row + 1
         custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4)
         self.automation_keys_group.setLayout(automation_grid)
