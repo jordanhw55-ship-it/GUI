@@ -242,25 +242,6 @@ closePause() {{
 #HotIf !is_paused and WinActive("{self.main_window.game_title}")
 """
         
-        def format_ahk_hotkey(py_hotkey: str) -> str:
-            """Translates Python keyboard hotkey names to AHK v2 hotkey names."""
-            # Use specific scan codes for numpad keys to avoid ambiguity with number row.
-            # Hex codes are from the user's request (e.g., 71 -> 0x47).
-            scancode_map = {
-                "num 7": "sc047",
-                "num 8": "sc048",
-                "num 4": "sc04B",
-                "num 5": "sc04C",
-                "num 1": "sc04F",
-                "num 2": "sc050",
-            }
-            
-            lower_hotkey = py_hotkey.lower()
-            if lower_hotkey in scancode_map:
-                return scancode_map[lower_hotkey]
-
-            return py_hotkey
-
         script_content = static_block
         defined_hotkeys = set()
 
@@ -269,10 +250,8 @@ closePause() {{
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
 
-            ahk_hotkey = format_ahk_hotkey(hotkey)
-
-            if ahk_hotkey in defined_hotkeys:
-                print(f"[WARNING] Duplicate hotkey '{ahk_hotkey}' found for '{name}'. Skipping.")
+            if hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping.")
                 continue
 
             category = name.split("_")[0]
@@ -282,8 +261,7 @@ closePause() {{
 
             original_key = ""
             if name.startswith("spell_"):
-                # "spell_num 7" -> "num 7"
-                original_key = format_ahk_hotkey(name.split("_", 1)[1].lower())
+                original_key = name.split("_")[1].lower()
 
             if not original_key: continue
 
@@ -291,8 +269,8 @@ closePause() {{
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
-            script_content += f"\n${ahk_hotkey}:: {function_call}"
-            defined_hotkeys.add(ahk_hotkey)
+            script_content += f"\n${hotkey}:: {function_call}"
+            defined_hotkeys.add(hotkey)
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
