@@ -249,9 +249,11 @@ closePause() {{
         for name, key_info in self.main_window.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
-
-            if hotkey in defined_hotkeys:
-                print(f"[WARNING] Duplicate hotkey '{hotkey}' found for '{name}'. Skipping.")
+            
+            # Sanitize the hotkey for AHK by removing spaces (e.g., "numpad 7" -> "numpad7")
+            ahk_hotkey = hotkey.replace(" ", "")
+            if ahk_hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{ahk_hotkey}' found for '{name}'. Skipping.")
                 continue
 
             category = name.split("_")[0]
@@ -267,8 +269,6 @@ closePause() {{
             if not original_key: continue
 
             quickcast = key_info.get("quickcast", False)
-            # Sanitize the hotkey for AHK by removing spaces (e.g., "numpad 7" -> "numpad7")
-            ahk_hotkey = hotkey.replace(" ", "")
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
