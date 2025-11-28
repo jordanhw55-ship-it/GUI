@@ -752,11 +752,13 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
         is_valid = hotkey.lower() != 'esc'
         
+        print(f"[DEBUG] Raw hotkey captured: '{hotkey}'")
         # The 'keyboard' library can return "num 7" or "7_num". We standardize this
         # to "numpad 7" immediately to ensure consistency for all other parts of the
         # application (AHK script gen, python hotkey registration).
         if hotkey.lower().startswith("num ") or hotkey.lower().endswith("_num"):
             hotkey = "numpad " + hotkey.replace("_num", "").replace("num ", "").strip()
+            print(f"[DEBUG] Standardized numpad key to: '{hotkey}'")
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
