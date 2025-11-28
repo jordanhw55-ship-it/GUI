@@ -66,7 +66,7 @@ class AutomationTab(QWidget):
             edit.setFixedWidth(70)
             self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
 
-        self.custom_action_btn = QCheckBox("Custom Action")
+        self.custom_action_btn = QCheckBox("Custom")
         self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(70)
         self.custom_action_edit2 = QLineEdit("-save x"); self.custom_action_edit2.setFixedWidth(120)
 
