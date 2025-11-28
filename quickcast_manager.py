@@ -282,8 +282,8 @@ closePause() {{
 
             original_key = ""
             if name.startswith("spell_"):
-                # "spell_num 7" -> "Numpad7"
-                original_key = format_ahk_hotkey(name.split("_")[1].lower())
+                # "spell_num 7" -> "num 7"
+                original_key = format_ahk_hotkey(name.split("_", 1)[1].lower())
 
             if not original_key: continue
 
