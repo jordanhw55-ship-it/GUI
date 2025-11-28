@@ -758,7 +758,7 @@ class SimpleWindow(QMainWindow):
         key_lower = hotkey.lower()
         is_capturing_numpad = self.capturing_for_control and "numpad" in self.capturing_for_control.lower()
         
-        if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and is_capturing_numpad):
+        if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and len(key_lower) == 1 and is_capturing_numpad):
             digit = ''.join(filter(str.isdigit, key_lower))
             if digit:
                 hotkey = f"numpad {digit}"
