@@ -17,7 +17,7 @@ def normalize_to_canonical(raw_key: str) -> str:
     key_lower = raw_key.lower().strip()
     
     # Extract digit from various numpad formats
-    if key_lower.startswith("num ") or key_lower.endswith("_num") or key_lower.startswith("numpad"):
+    if "num" in key_lower:
         digit = ''.join(filter(str.isdigit, key_lower))
         if digit:
             return f"numpad {digit}"
