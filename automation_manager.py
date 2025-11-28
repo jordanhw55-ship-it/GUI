@@ -133,7 +133,7 @@ class AutomationManager(QObject):
                 except Exception:
                     interval = 500
                 # Standardize the key name for the scheduler and vk_map lookup.
-                normalized_key = key.lower().replace(" ", "")
+                normalized_key = key.lower().replace(" ", "").replace("num", "")
                 self.next_key_due[normalized_key] = now + interval / 1000.0
             else:
                 self.next_key_due[key] = None
@@ -275,7 +275,7 @@ class AutomationManager(QObject):
                 self._send_key(key)
                 try:
                     # Find the original key name to get the interval from the UI control
-                    original_key_name = next((k for k in self.automation_tab.automation_key_ctrls if k.lower().replace(" ", "") == key), key)
+                    original_key_name = next((k for k in self.automation_tab.automation_key_ctrls if k.lower().replace(" ", "").replace("num", "") == key), key)
                     interval = int(self.automation_tab.automation_key_ctrls[original_key_name]["edit"].text().strip())
                 except Exception:
                     interval = 500
@@ -333,17 +333,12 @@ class AutomationManager(QObject):
         vk_map = {
             'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52,
             'd': 0x44, 'f': 0x46, 't': 0x54,
-            'z': 0x5A, 'x': 0x58, 'y': 0x59,
+            'y': 0x59, 's': 0x53, 'h': 0x48, 'a': 0x41, 'p': 0x50,
             'esc': win32con.VK_ESCAPE, 'enter': win32con.VK_RETURN,
-            'num1': 0x61, 'num2': 0x62, 'num3': 0x63, 'num4': 0x64,
-            'num7': 0x67, 'num8': 0x68,
-            'num4': 0x64, 'num5': 0x65,
-            'num1': 0x61, 'num2': 0x62,
-            'num5': 0x65, 'num6': 0x66, 'num7': 0x67, 'num8': 0x68, 'num9': 0x69,
-            'numpad1': 0x61, 'numpad2': 0x62, 'numpad3': 0x63, 'numpad4': 0x64,
-            'numpad5': 0x65, 'numpad6': 0x66, 'numpad7': 0x67, 'numpad8': 0x68, 'numpad9': 0x69,
-            'numpad_1': 0x61, 'numpad_2': 0x62, 'numpad_3': 0x63, 'numpad_4': 0x64,
-            'numpad_5': 0x65, 'numpad_6': 0x66, 'numpad_7': 0x67, 'numpad_8': 0x68, 'numpad_9': 0x69,
+            '1': 0x61, '2': 0x62, '3': 0x63,
+            '4': 0x64, '5': 0x65, '6': 0x66,
+            '7': 0x67, '8': 0x68, '9': 0x69,
+            '0': 0x60,
         }
         vk_code = vk_map.get(key.lower())
         if vk_code is None:

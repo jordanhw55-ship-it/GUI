@@ -754,8 +754,9 @@ class SimpleWindow(QMainWindow):
         is_valid = hotkey.lower() != 'esc'
         
         print(f"[DEBUG] on_hotkey_captured - Raw: '{hotkey}'")
+        is_capturing_numpad = self.capturing_for_control and "numpad" in self.capturing_for_control.lower()
         # Normalize the captured key to the canonical internal format (e.g., "numpad 7")
-        canonical_hotkey = normalize_to_canonical(hotkey)
+        canonical_hotkey = normalize_to_canonical(hotkey, is_capturing_numpad)
         print(f"[DEBUG] on_hotkey_captured - Normalized to canonical: '{canonical_hotkey}'")
 
         # If we were capturing for a keybind button, update it
@@ -901,7 +902,8 @@ class SimpleWindow(QMainWindow):
             print("[INFO] Normalizing loaded keybinds...")
             for name, key_info in self.keybinds.items():
                 if "hotkey" in key_info:
-                    key_info["hotkey"] = normalize_to_canonical(key_info["hotkey"])
+                    is_numpad_control = "numpad" in name.lower()
+                    key_info["hotkey"] = normalize_to_canonical(key_info["hotkey"], is_numpad_control)
 
     def apply_automation_settings(self):
         """Applies loaded automation settings to the UI controls."""
