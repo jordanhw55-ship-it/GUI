@@ -266,12 +266,12 @@ closePause() {{
                 key_part = name.split("_")[1] # e.g., Numpad7
                 # AHK's SendInput requires the format "Numpad7".
                 if "numpad" in key_part.lower():
-                    # Ensure it's always capitalized correctly for AHK
+                    # Ensure it's always capitalized correctly for AHK.
                     original_key = "Numpad" + key_part.lower().replace("numpad", "").strip()
                 else:
                     # For regular keys like 'Q', 'W', etc.
                     original_key = key_part.lower()
-
+            
             if not original_key: continue
 
             quickcast = key_info.get("quickcast", False)
