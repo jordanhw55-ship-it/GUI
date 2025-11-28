@@ -104,6 +104,7 @@ class AutomationTab(QWidget):
         automation_grid = QGridLayout()
         automation_grid.setColumnStretch(0, 1)
         automation_grid.setColumnStretch(1, 1)
+        automation_grid.setColumnStretch(2, 1)
         automation_grid.setHorizontalSpacing(20) # Add space between the columns of key pairs
         row, col = 0, 0
         for key in self.automationKeys:
@@ -111,9 +112,11 @@ class AutomationTab(QWidget):
             pair_layout = QHBoxLayout(); pair_layout.setSpacing(5)
             pair_layout.addWidget(ctrls["chk"]); pair_layout.addWidget(ctrls["edit"]); pair_layout.addStretch()
             automation_grid.addLayout(pair_layout, row, col)
-            col += 1
-            if col > 1:
-                col, row = 0, row + 1
+            row += 1
+            if row >= 6:
+                row = 0
+                col += 1
+        # After the loop, 'row' and 'col' will be at the next available spot.
         custom_action_layout = QHBoxLayout(); custom_action_layout.setSpacing(5)
         custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         custom_action_layout.addStretch()
