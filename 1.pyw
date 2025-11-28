@@ -752,18 +752,17 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
         is_valid = hotkey.lower() != 'esc'
         
-        print(f"[DEBUG] on_hotkey_captured - Raw hotkey: '{hotkey}'")
-        # The 'keyboard' library can return "num 7", "7_num", or just "7" for numpad keys.
-        # We standardize this to "numpad 7" immediately to ensure consistency for all other
-        # parts of the application (AHK script gen, python hotkey registration).
+        print(f"[DEBUG] on_hotkey_captured - Raw hotkey from keyboard lib: '{hotkey}'")
+        # The 'keyboard' library can return "num 7", "7_num", or just a digit "7" for numpad keys.
+        # We must standardize this to "numpad 7" (with a space) for the library to re-register it.
         key_lower = hotkey.lower()
-        # Check if it's a numpad key from the keyboard library or a single digit while a numpad button is being captured
-        if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and len(key_lower) == 1 and self.capturing_for_control and "numpad" in self.capturing_for_control.lower()):
-            # Extract the digit and create the canonical name
+        is_capturing_numpad = self.capturing_for_control and "numpad" in self.capturing_for_control.lower()
+        
+        if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and is_capturing_numpad):
             digit = ''.join(filter(str.isdigit, key_lower))
             if digit:
                 hotkey = f"numpad {digit}"
-                print(f"[DEBUG] on_hotkey_captured - Standardized numpad key to: '{hotkey}'")
+                print(f"[DEBUG] on_hotkey_captured - Standardized to canonical format: '{hotkey}'")
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
