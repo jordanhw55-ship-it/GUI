@@ -29,6 +29,7 @@ from settings import SettingsManager
 from automation_manager import AutomationManager
 from quickcast_manager import QuickcastManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
+from key_translator import normalize_to_canonical, to_keyboard_lib, to_pyautogui
 from ui_overlay import OverlayStatus
 import time
 import ctypes
@@ -752,28 +753,21 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.hotkey_capture_btn.setEnabled(True)
         is_valid = hotkey.lower() != 'esc'
         
-        print(f"[DEBUG] on_hotkey_captured - Raw hotkey from keyboard lib: '{hotkey}'")
-        # The 'keyboard' library can return "num 7", "7_num", or just a digit "7" for numpad keys.
-        # We must standardize this to "numpad 7" (with a space) for the library to re-register it.
-        key_lower = hotkey.lower()
-        is_capturing_numpad = self.capturing_for_control and "numpad" in self.capturing_for_control.lower()
-        
-        if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and len(key_lower) == 1 and is_capturing_numpad):
-            digit = ''.join(filter(str.isdigit, key_lower))
-            if digit:
-                hotkey = f"numpad {digit}"
-                print(f"[DEBUG] on_hotkey_captured - Standardized to canonical format: '{hotkey}'")
+        print(f"[DEBUG] on_hotkey_captured - Raw: '{hotkey}'")
+        # Normalize the captured key to the canonical internal format (e.g., "numpad 7")
+        canonical_hotkey = normalize_to_canonical(hotkey)
+        print(f"[DEBUG] on_hotkey_captured - Normalized to canonical: '{canonical_hotkey}'")
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
             button = self.quickcast_tab.key_buttons[self.capturing_for_control]
             button.setChecked(False) # Uncheck to remove capture highlight
             if is_valid:
-                button.setText(hotkey.upper())
+                button.setText(canonical_hotkey.upper())
                 key_name = self.capturing_for_control
                 if key_name not in self.keybinds:
                     self.keybinds[key_name] = {}
-                self.keybinds[key_name]["hotkey"] = hotkey
+                self.keybinds[key_name]["hotkey"] = canonical_hotkey
             else: # Capture was cancelled
                 # Revert to the default key for this control
                 key_name = self.capturing_for_control
@@ -783,7 +777,7 @@ class SimpleWindow(QMainWindow):
                     # Set the hotkey back to the default in the data model
                     self.keybinds[key_name]["hotkey"] = default_key
         else: # We were capturing for a message hotkey
-            self.automation_tab.hotkey_capture_btn.setText(hotkey if is_valid else "Click to set")
+            self.automation_tab.hotkey_capture_btn.setText(canonical_hotkey if is_valid else "Click to set")
 
         # Re-register all application hotkeys now that capture is complete.
         self.register_global_hotkeys()
@@ -1124,11 +1118,14 @@ class SimpleWindow(QMainWindow):
             if "button" in hotkey.lower():
                 return
 
+            # Translate from canonical to the format the 'keyboard' library expects
+            lib_hotkey = to_keyboard_lib(hotkey)
+
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
+            hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
-            print(f"Failed to register keybind '{hotkey}' for '{name}': {e}")
+            print(f"Failed to register keybind '{lib_hotkey}' for '{name}': ({e.__class__.__name__}, {e})")
 
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Delegates AHK deactivation to the QuickcastManager."""

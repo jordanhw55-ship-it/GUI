@@ -4,6 +4,8 @@ from PySide6.QtWidgets import QMessageBox, QPushButton
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 
+from key_translator import to_ahk_hotkey, to_ahk_send, normalize_to_canonical
+
 class QuickcastManager:
     def __init__(self, main_window):
         self.main_window = main_window
@@ -250,8 +252,8 @@ closePause() {{
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
             
-            # Sanitize the hotkey for AHK by removing spaces (e.g., "numpad 7" -> "numpad7")
-            ahk_hotkey = hotkey.lower().replace(" ", "")
+            # Translate the remapped key from canonical ("numpad 7") to AHK hotkey format ("numpad7")
+            ahk_hotkey = to_ahk_hotkey(hotkey)
             if ahk_hotkey in defined_hotkeys:
                 print(f"[WARNING] Duplicate hotkey '{ahk_hotkey}' found for '{name}'. Skipping.")
                 continue
@@ -264,19 +266,16 @@ closePause() {{
             if not is_enabled: continue
 
             original_key = ""
-            if name.startswith("spell_"): # e.g., spell_Numpad7
-                key_part = name.split("_")[1] # e.g., Numpad7
-                # AHK's SendInput requires the format "Numpad7".
-                if "numpad" in key_part.lower():
-                    # Ensure it's always capitalized correctly for AHK.
-                    original_key = "Numpad" + key_part.lower().replace("numpad", "").strip()
-                else:
-                    # For regular keys like 'Q', 'W', etc.
-                    original_key = key_part.lower()
-
+            if name.startswith("spell_"):
+                # The original key is part of the name, e.g., "spell_Numpad7"
+                original_key_part = name.split("_")[1]
+                # Translate the original key to the format AHK's SendInput needs ("Numpad7")
+                original_key = to_ahk_send(original_key_part)
+            
+            if not original_key: continue
+            
             quickcast = key_info.get("quickcast", False)
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
-            
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
             script_content += f"\n${ahk_hotkey}:: {function_call}"
             defined_hotkeys.add(ahk_hotkey)
