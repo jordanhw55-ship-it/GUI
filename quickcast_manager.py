@@ -262,16 +262,15 @@ closePause() {{
             if not is_enabled: continue
 
             original_key = ""
-            if name.startswith("spell_"):
-                # Sanitize the key name for AHK.
-                key_part = name.split("_")[1].lower()
-
-                # The internal name can be "numpad 7". AHK needs "Numpad7".
-                if key_part.startswith("numpad "):
-                    original_key = "Numpad" + key_part.split(" ")[1]
+            if name.startswith("spell_"): # e.g., spell_Numpad7
+                key_part = name.split("_")[1] # e.g., Numpad7
+                # AHK's SendInput requires the format "Numpad7"
+                if "numpad" in key_part.lower():
+                    # Ensure it's always capitalized correctly for AHK
+                    original_key = "Numpad" + key_part.lower().replace("numpad", "").strip()
                 else:
-                    original_key = key_part
-
+                    # For regular keys like 'Q', 'W', etc.
+                    original_key = key_part.lower()
 
             if not original_key: continue
 
