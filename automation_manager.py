@@ -333,10 +333,8 @@ class AutomationManager(QObject):
             'esc': win32con.VK_ESCAPE, 'enter': win32con.VK_RETURN,
             'num1': 0x61, 'num2': 0x62, 'num3': 0x63, 'num4': 0x64,
             'num5': 0x65, 'num6': 0x66, 'num7': 0x67, 'num8': 0x68, 'num9': 0x69,
-            'numpad1': 0x61, 'numpad2': 0x62, 'numpad3': 0x63, 'numpad4': 0x64,
-            'numpad5': 0x65, 'numpad6': 0x66, 'numpad7': 0x67, 'numpad8': 0x68, 'numpad9': 0x69,
-            'numpad_1': 0x61, 'numpad_2': 0x62, 'numpad_3': 0x63, 'numpad_4': 0x64,
-            'numpad_5': 0x65, 'numpad_6': 0x66, 'numpad_7': 0x67, 'numpad_8': 0x68, 'numpad_9': 0x69,
+            'numpad 1': 0x61, 'numpad 2': 0x62, 'numpad 3': 0x63, 'numpad 4': 0x64,
+            'numpad 5': 0x65, 'numpad 6': 0x66, 'numpad 7': 0x67, 'numpad 8': 0x68, 'numpad 9': 0x69
         }
         vk_code = vk_map.get(key.lower())
         if vk_code is None:
