@@ -132,7 +132,9 @@ class AutomationManager(QObject):
                     interval = int(ctrls["edit"].text().strip())
                 except Exception:
                     interval = 500
-                self.next_key_due[key] = now + interval / 1000.0
+                # Standardize the key name for the scheduler and vk_map lookup.
+                normalized_key = key.lower().replace(" ", "")
+                self.next_key_due[normalized_key] = now + interval / 1000.0
             else:
                 self.next_key_due[key] = None
 
@@ -272,7 +274,9 @@ class AutomationManager(QObject):
                 self._log(f"{key.upper()} due -> send")
                 self._send_key(key)
                 try:
-                    interval = int(self.automation_tab.automation_key_ctrls[key]["edit"].text().strip())
+                    # Find the original key name to get the interval from the UI control
+                    original_key_name = next((k for k in self.automation_tab.automation_key_ctrls if k.lower().replace(" ", "") == key), key)
+                    interval = int(self.automation_tab.automation_key_ctrls[original_key_name]["edit"].text().strip())
                 except Exception:
                     interval = 500
                 self.next_key_due[key] += interval / 1000.0
