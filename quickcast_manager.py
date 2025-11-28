@@ -261,7 +261,7 @@ closePause() {{
 
             original_key = ""
             if name.startswith("spell_"):
-                original_key = name.split("_")[1].lower()
+                original_key = name.split("_")[1].lower().replace(" ", "") # "num 7" -> "num7"
 
             if not original_key: continue
 

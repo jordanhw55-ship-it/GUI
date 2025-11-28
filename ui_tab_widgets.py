@@ -59,7 +59,7 @@ class AutomationTab(QWidget):
         # All keys that can be in the automation grid
         self.automationKeys = [ 
             "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r", "Complete Quest",
-            "Num7", "Num8", "Num4", "Num5", "Num1", "Num2"
+            "num 7", "num 8", "num 4", "num 5", "num 1", "num 2"
         ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
@@ -129,7 +129,7 @@ class AutomationTab(QWidget):
         numpad_group = QGroupBox("Numpad Keys")
         numpad_grid = QGridLayout(numpad_group)
         numpad_grid.setHorizontalSpacing(10); numpad_grid.setVerticalSpacing(2)
-        numpad_layout_def = [["Num7", "Num8"], ["Num4", "Num5"], ["Num1", "Num2"]]
+        numpad_layout_def = [["num 7", "num 8"], ["num 4", "num 5"], ["num 1", "num 2"]]
         for r, row_keys in enumerate(numpad_layout_def):
             for c, key in enumerate(row_keys):
                 if key in self.automation_key_ctrls:
@@ -221,9 +221,9 @@ class QuickcastTab(QWidget):
 
         # Define the layout row by row
         layout_definition = [
-            ["Y", "S", "H", "A", "numpad 7", "numpad 8"],
-            ["P", "D", "F", "T", "numpad 4", "numpad 5"],
-            ["Q", "W", "E", "R", "numpad 1", "numpad 2"]
+            ["Y", "S", "H", "A", "num 7", "num 8"],
+            ["P", "D", "F", "T", "num 4", "num 5"],
+            ["Q", "W", "E", "R", "num 1", "num 2"]
         ]
 
         for row_idx, row_keys in enumerate(layout_definition):
