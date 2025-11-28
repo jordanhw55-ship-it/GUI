@@ -93,44 +93,46 @@ class AutomationTab(QWidget):
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
-        main_layout = QVBoxLayout(self) # Changed to QVBoxLayout
+        main_layout = QVBoxLayout(self)
 
-        # --- Top Section (Key Automation and Log) ---
-        top_section_layout = QHBoxLayout()
-
-        # Key Automation (left part of top section)
+        # --- Top Section (Key Automation) ---
         key_automation_layout = QVBoxLayout()
+
         automation_grid = QGridLayout()
         row, col = 0, 0
         for key in self.automationKeys:
             ctrls = self.automation_key_ctrls[key]
             automation_grid.addWidget(ctrls["chk"], row, col * 2); automation_grid.addWidget(ctrls["edit"], row, col * 2 + 1)
-            col += 1;
-            if col > 1: col, row = 0, row + 1
+            col += 1
+            if col > 1:
+                col, row = 0, row + 1
         custom_action_layout = QHBoxLayout(); custom_action_layout.addWidget(self.custom_action_btn); custom_action_layout.addWidget(self.custom_action_edit1); custom_action_layout.addWidget(self.custom_action_edit2)
         automation_grid.addLayout(custom_action_layout, row, 0, 1, 4)
         self.automation_keys_group.setLayout(automation_grid)
+
         automation_actions_layout = QHBoxLayout()
         automation_actions_layout.addWidget(self.start_automation_btn); automation_actions_layout.addWidget(self.stop_automation_btn); automation_actions_layout.addWidget(self.reset_automation_btn)
+
         key_automation_layout.addWidget(self.automation_keys_group)
         key_automation_layout.addLayout(automation_actions_layout)
         key_automation_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s"))
-        top_section_layout.addLayout(key_automation_layout, 1)
 
-        # Automation Log (right part of top section)
+        # --- Bottom Section (Hotkeys and Log) ---
+        bottom_section_layout = QHBoxLayout()
+
+        # Custom Message Hotkeys (left part of bottom section)
         log_layout = QVBoxLayout(self.automation_log_group)
         log_layout.addWidget(self.automation_log_box)
-        top_section_layout.addWidget(self.automation_log_group, 1)
-
-        # --- Bottom Section (Message Hotkeys) ---
         right_layout = QVBoxLayout(self.msg_hotkey_group)
         right_layout.addWidget(self.msg_hotkey_table)
         msg_form_layout = QGridLayout(); msg_form_layout.addWidget(QLabel("Hotkey:"), 0, 0); msg_form_layout.addWidget(self.hotkey_capture_btn, 0, 1); msg_form_layout.addWidget(QLabel("Message:"), 1, 0); msg_form_layout.addWidget(self.message_edit, 1, 1); right_layout.addLayout(msg_form_layout)
         msg_btn_layout = QHBoxLayout(); msg_btn_layout.addWidget(self.add_msg_btn); msg_btn_layout.addWidget(self.delete_msg_btn); right_layout.addLayout(msg_btn_layout)
 
         # Add top and bottom sections to the main vertical layout
-        main_layout.addLayout(top_section_layout, 2) # Give top section more stretch
-        main_layout.addWidget(self.msg_hotkey_group, 1) # Give bottom section less stretch
+        main_layout.addLayout(key_automation_layout)
+        bottom_section_layout.addWidget(self.msg_hotkey_group, 1)
+        bottom_section_layout.addWidget(self.automation_log_group, 1)
+        main_layout.addLayout(bottom_section_layout, 1)
 
 
 class QuickcastTab(QWidget):
