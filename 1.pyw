@@ -757,10 +757,13 @@ class SimpleWindow(QMainWindow):
         # We standardize this to "numpad 7" immediately to ensure consistency for all other
         # parts of the application (AHK script gen, python hotkey registration).
         key_lower = hotkey.lower()
+        # Check if it's a numpad key from the keyboard library or a single digit while a numpad button is being captured
         if key_lower.startswith("num ") or key_lower.endswith("_num") or (key_lower.isdigit() and len(key_lower) == 1 and self.capturing_for_control and "numpad" in self.capturing_for_control.lower()):
-            digit = key_lower.replace("_num", "").replace("num ", "").strip()
-            hotkey = f"numpad {digit}"
-            print(f"[DEBUG] on_hotkey_captured - Standardized numpad key to: '{hotkey}'")
+            # Extract the digit and create the canonical name
+            digit = ''.join(filter(str.isdigit, key_lower))
+            if digit:
+                hotkey = f"numpad {digit}"
+                print(f"[DEBUG] on_hotkey_captured - Standardized numpad key to: '{hotkey}'")
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:

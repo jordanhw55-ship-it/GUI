@@ -262,16 +262,16 @@ closePause() {{
             if not is_enabled: continue
 
             original_key = ""
-            if name.startswith("spell_"): # e.g., spell_Numpad7
-                key_part = name.split("_")[1] # e.g., Numpad7
+            if name.startswith("spell_"):
+                key_part = name.split("_")[1]
                 # AHK's SendInput requires the format "Numpad7".
                 if "numpad" in key_part.lower():
-                    # Ensure it's always capitalized correctly for AHK.
-                    original_key = "Numpad" + key_part.lower().replace("numpad", "").strip()
+                    digit = ''.join(filter(str.isdigit, key_part))
+                    if digit:
+                        original_key = f"Numpad{digit}"
                 else:
-                    # For regular keys like 'Q', 'W', etc.
                     original_key = key_part.lower()
-            
+
             if not original_key: continue
 
             quickcast = key_info.get("quickcast", False)
