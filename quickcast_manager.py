@@ -244,6 +244,21 @@ closePause() {{
         
         def format_ahk_hotkey(py_hotkey: str) -> str:
             """Translates Python keyboard hotkey names to AHK v2 hotkey names."""
+            # Use specific scan codes for numpad keys to avoid ambiguity with number row.
+            # Hex codes are from the user's request (e.g., 71 -> 0x47).
+            scancode_map = {
+                "num 7": "sc047",
+                "num 8": "sc048",
+                "num 4": "sc04B",
+                "num 5": "sc04C",
+                "num 1": "sc04F",
+                "num 2": "sc050",
+            }
+            
+            lower_hotkey = py_hotkey.lower()
+            if lower_hotkey in scancode_map:
+                return scancode_map[lower_hotkey]
+
             return py_hotkey
 
         script_content = static_block
