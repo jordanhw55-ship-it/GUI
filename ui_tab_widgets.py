@@ -193,7 +193,9 @@ class QuickcastTab(QWidget):
 
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
-        self.remap_spells_group = QGroupBox("Remap Spells")
+        # Create separate groups for better visual organization
+        self.main_keys_group = QGroupBox("Main Spell Keys")
+        self.numpad_keys_group = QGroupBox("Numpad Spell Keys")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
@@ -213,27 +215,40 @@ class QuickcastTab(QWidget):
         
         # --- Main Remapping Panel (Left) ---
         remap_panel = QWidget()
-        remap_layout = QVBoxLayout(remap_panel)
-        remap_layout.addWidget(self.remap_spells_group)
+        remap_layout = QHBoxLayout(remap_panel) # Changed to QHBoxLayout
+        remap_layout.addWidget(self.main_keys_group)
+        remap_layout.addWidget(self.numpad_keys_group)
         main_layout.addWidget(remap_panel, 2) # Give it more space
 
-        spells_grid = QGridLayout(self.remap_spells_group)
+        # --- Main Keys Grid ---
+        main_keys_grid = QGridLayout(self.main_keys_group)
+        main_keys_layout = [
+            ["Y", "S", "H", "A"],
+            ["P", "D", "F", "T"],
+            ["Q", "W", "E", "R"]
+        ]
+        for row_idx, row_keys in enumerate(main_keys_layout):
+            for col_idx, key in enumerate(row_keys):
+                key_id = f"spell_{key}"
+                # Create smaller buttons for main keys
+                self.key_buttons[key_id] = self._create_key_button(key, size=45)
+                main_keys_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
 
-        # Define the layout row by row
-        layout_definition = [
+        # --- Numpad Keys Grid ---
+        numpad_keys_grid = QGridLayout(self.numpad_keys_group)
+        numpad_layout = [
             ["Y", "S", "H", "A", "Numpad7", "Numpad8"],
             ["P", "D", "F", "T", "Numpad4", "Numpad5"],
             ["Q", "W", "E", "R", "Numpad1", "Numpad2"]
         ]
-
-        for row_idx, row_keys in enumerate(layout_definition):
+        numpad_layout_definition = [["Numpad7", "Numpad8"], ["Numpad4", "Numpad5"], ["Numpad1", "Numpad2"]]
+        for row_idx, row_keys in enumerate(numpad_layout_definition):
             for col_idx, key in enumerate(row_keys):
-                # Use a consistent naming scheme for the keybind dictionary
                 key_id = f"spell_{key}"
-                # Create the button
-                self.key_buttons[key_id] = self._create_key_button(key)
-                # Add it to the grid
-                spells_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
+                # Create larger buttons for numpad keys
+                self.key_buttons[key_id] = self._create_key_button(key, size=60)
+                numpad_keys_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
+
         # --- Settings Panel (Right) ---
         settings_panel = QWidget()
         settings_panel_layout = QVBoxLayout(settings_panel)
@@ -251,10 +266,10 @@ class QuickcastTab(QWidget):
         install_ahk_layout.addWidget(self.install_ahk_web_btn)
 
 
-    def _create_key_button(self, default_text: str) -> QPushButton:
+    def _create_key_button(self, default_text: str, size: int = 60) -> QPushButton:
         """Helper to create a standard key button."""
         button = QPushButton(default_text)
-        button.setFixedSize(60, 60)
+        button.setFixedSize(size, size)
         button.setCheckable(True) # To show "capture" state
         return button
 
