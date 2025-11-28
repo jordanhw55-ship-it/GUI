@@ -56,7 +56,10 @@ class AutomationTab(QWidget):
         # --- Left Panel: Key Automation ---
         self.automation_keys_group = QGroupBox("Key Automation")
         self.automation_key_ctrls = {}
-        self.automationKeys = ["q", "w", "e", "r", "d", "f", "t", "z", "x", "Complete Quest"]
+        self.automationKeys = [
+            "q", "w", "e", "r", "d", "f", "t", "z", "x",
+            "Numpad7", "Numpad8", "Numpad4", "Numpad5", "Numpad1", "Numpad2", "Complete Quest"
+        ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
             edit = QLineEdit("15000" if key == "Complete Quest" else "500")
