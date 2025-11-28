@@ -105,6 +105,8 @@ class AutomationTab(QWidget):
         # Main grid to hold the three new boxes
         top_level_grid = QGridLayout()
         self.automation_keys_group.setLayout(top_level_grid)
+        top_level_grid.setColumnStretch(0, 2) # Main keys column takes more space
+        top_level_grid.setColumnStretch(1, 1) # Numpad keys column takes less space
 
         # --- Box 1: Top-Left (Main Keys) ---
         main_keys_group = QGroupBox("Main Keys")
