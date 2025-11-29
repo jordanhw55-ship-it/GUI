@@ -16,6 +16,7 @@ class WC3UITab(QWidget):
         self.font_tab = QWidget()
         self.background_tab = QWidget()
         self.hp_bar_tab = QWidget()
+        self.reticle_tab = QWidget()
         self.apply_tab = QWidget()
 
         # Add sub-tabs to the tab widget
@@ -23,6 +24,7 @@ class WC3UITab(QWidget):
         self.tab_widget.addTab(self.font_tab, "Font")
         self.tab_widget.addTab(self.background_tab, "Background")
         self.tab_widget.addTab(self.hp_bar_tab, "HP Bar")
+        self.tab_widget.addTab(self.reticle_tab, "Reticle")
         self.tab_widget.addTab(self.apply_tab, "Apply")
 
         self._populate_tabs()
