@@ -108,23 +108,23 @@ class WC3UITab(QWidget):
             QMessageBox.warning(self, "Invalid Path", "The specified Warcraft III path does not exist.")
             return
 
-        interface_path = os.path.join(base_path, "Interface")
-        subfolders = [
-            "CustomKeys", "ErrorSounds", "FrameDef", "Glues",
-            "Icons", "Info", "Lordaeron", "Northrend",
-            "Skins", "Sound", "Tooltips", "Tutorial"
+        ui_path = os.path.join(base_path, "UI")
+        # Define the folder structure, including nested folders
+        subfolders_to_create = [
+            os.path.join("console", "human"),
+            "Cursor",
+            os.path.join("Feedback", "HpBarConsole"),
+            os.path.join("ReplaceableTextures", "Selection")
         ]
 
         try:
-            # Create the main Interface folder
-            os.makedirs(interface_path, exist_ok=True)
-
-            # Create all the subfolders
-            for folder in subfolders:
-                os.makedirs(os.path.join(interface_path, folder), exist_ok=True)
+            # Create the main UI folder and all specified subdirectories
+            for folder_path in subfolders_to_create:
+                full_path = os.path.join(ui_path, folder_path)
+                os.makedirs(full_path, exist_ok=True)
 
             QMessageBox.information(self, "Success",
-                                    f"Successfully created folder structure inside:\n{interface_path}")
+                                    f"Successfully created folder structure inside:\n{ui_path}")
 
         except OSError as e:
             QMessageBox.critical(self, "Error", f"Failed to create folders. Please check permissions.\n\nError: {e}")
