@@ -215,10 +215,14 @@ class QuickcastTab(QWidget):
         
         # --- Main Remapping Panel (Left) ---
         remap_panel = QWidget()
-        remap_layout = QHBoxLayout(remap_panel)
-        remap_layout.addWidget(self.main_keys_group, 2)
-        remap_layout.addWidget(self.numpad_keys_group, 1)
-        main_layout.addWidget(remap_panel, 2) # Give it more space
+        remap_panel_v_layout = QVBoxLayout(remap_panel) # Use a vertical layout for the panel
+        
+        key_groups_h_layout = QHBoxLayout() # Horizontal layout for the two group boxes
+        key_groups_h_layout.addWidget(self.main_keys_group, 2)
+        key_groups_h_layout.addWidget(self.numpad_keys_group, 1)
+        remap_panel_v_layout.addLayout(key_groups_h_layout)
+        remap_panel_v_layout.addStretch() # Add stretch to push the boxes up
+        main_layout.addWidget(remap_panel, 2)
 
         # --- Main Keys Grid ---
         main_keys_grid = QGridLayout(self.main_keys_group)
