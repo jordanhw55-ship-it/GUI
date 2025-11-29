@@ -61,11 +61,14 @@ class WC3UITab(QWidget):
         # Apply and Reset buttons at the bottom
         self.apply_wc3_ui_button = QPushButton("Apply")
         self.reset_default_button = QPushButton("Reset Default")
+        self.apply_wc3_ui_button.setStyleSheet("background-color: #228B22; color: white;")
+        self.reset_default_button.setStyleSheet("background-color: #B22222; color: white;")
         right_layout.addWidget(self.apply_wc3_ui_button)
         right_layout.addWidget(self.reset_default_button)
 
         # Guide button
         self.guide_button = QPushButton("Guide")
+        self.guide_button.setStyleSheet("background-color: #FFFFFF; color: black;")
         right_layout.addWidget(self.guide_button)
 
         # Reg On and Reg Off buttons
