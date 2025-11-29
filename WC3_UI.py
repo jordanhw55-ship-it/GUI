@@ -125,7 +125,7 @@ class WC3UITab(QWidget):
         unit_select_layout = QGridLayout(self.unit_select_tab)
         unit_select_layout.setVerticalSpacing(10)
         self.unit_select_buttons = []
-        unit_select_options = ["Arrow", "Chain", "Dragon", "Eye", "Glow", "Skeleton", "Square", "Sun", "Target"]
+        unit_select_options = ["Chain", "Dragon", "Eye", "Skeleton", "Square", "Sun", "Target"]
 
         for i, option_name in enumerate(unit_select_options):
             button = QPushButton(option_name)
