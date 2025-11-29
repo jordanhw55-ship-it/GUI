@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QHBoxLayout
+    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -36,26 +36,29 @@ class WC3UITab(QWidget):
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
         # UI Tab
-        ui_layout = QVBoxLayout(self.ui_tab)
+        ui_layout = QGridLayout(self.ui_tab)
+        ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
         self.theme_buttons = []
+
         for i in range(1, 7):
-            theme_layout = QHBoxLayout()
             button = QPushButton(f"Theme {i}")
             self.theme_buttons.append(button)
-            theme_layout.addWidget(button, 1)  # Button takes some space
+            ui_layout.addWidget(button, i - 1, 0)  # Add button to column 0
 
-            # Add the image for Theme 1
+            # Create a label for the image in column 1
+            image_label = QLabel()
             if i == 1:
-                image_label = QLabel()
                 image_path = os.path.join(get_base_path(), "contents", "WC3UI", "theme1.png")
                 if os.path.exists(image_path):
                     pixmap = QPixmap(image_path)
                     image_label.setPixmap(pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
-                theme_layout.addWidget(image_label, 2) # Give image some space
+            
+            ui_layout.addWidget(image_label, i - 1, 1) # Add image label to column 1
 
-            theme_layout.addStretch(7)  # The rest of the space is empty
-            ui_layout.addLayout(theme_layout)
-        ui_layout.addStretch()  # Push everything to the top
+        # Set column stretches to define the layout proportions
+        ui_layout.setColumnStretch(0, 1)  # Button column
+        ui_layout.setColumnStretch(1, 3)  # Image column (3 times wider)
+        ui_layout.setRowStretch(6, 1)     # Add stretch below the last row
 
         # Populate other tabs with placeholders
         other_tabs = [self.font_tab, self.background_tab, self.hp_bar_tab, self.reticle_tab, self.apply_tab]
