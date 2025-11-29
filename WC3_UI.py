@@ -1,4 +1,5 @@
 import os
+import shutil
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox
 )
@@ -10,6 +11,11 @@ class WC3UITab(QWidget):
     """A widget for the 'WC3 UI' tab, containing various UI customization options."""
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # State variables to track selections
+        self.selected_theme = None
+        self.selected_hp_bar = None
+        self.selected_unit_select = None
         
         main_layout = QHBoxLayout(self)
         self.tab_widget = QTabWidget()
@@ -64,6 +70,8 @@ class WC3UITab(QWidget):
 
         self.browse_button.clicked.connect(self.browse_for_wc3_path)
         self.create_folders_button.clicked.connect(self.create_interface_folders)
+        self.apply_wc3_ui_button.clicked.connect(self.apply_all_changes)
+        self.reset_default_button.clicked.connect(self.reset_to_default)
 
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
@@ -74,6 +82,7 @@ class WC3UITab(QWidget):
 
         for i in range(1, 7):
             button = QPushButton(f"Theme {i}")
+            button.setCheckable(True)
             self.theme_buttons.append(button)
             ui_layout.addWidget(button, i - 1, 0)  # Add button to column 0
 
@@ -101,6 +110,7 @@ class WC3UITab(QWidget):
 
         for i, option_name in enumerate(hp_bar_options):
             button = QPushButton(option_name)
+            button.setCheckable(True)
             self.hp_bar_buttons.append(button)
             hp_bar_layout.addWidget(button, i, 0)
 
@@ -135,6 +145,7 @@ class WC3UITab(QWidget):
 
         for i, option_name in enumerate(unit_select_options):
             button = QPushButton(option_name)
+            button.setCheckable(True)
             self.unit_select_buttons.append(button)
             unit_select_layout.addWidget(button, i, 0)
 
@@ -159,6 +170,14 @@ class WC3UITab(QWidget):
         unit_select_layout.setColumnStretch(1, 5)
         unit_select_layout.setRowStretch(len(unit_select_options), 1)
 
+        # Connect button signals after they are created
+        for i, button in enumerate(self.theme_buttons):
+            button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.theme_buttons, 'theme'))
+        for button in self.hp_bar_buttons:
+            button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.hp_bar_buttons, 'hp_bar'))
+        for button in self.unit_select_buttons:
+            button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.unit_select_buttons, 'unit_select'))
+
         # Populate other tabs with placeholders
         other_tabs = [self.font_tab, self.reticle_tab, self.apply_tab]
         for tab in other_tabs:
@@ -166,6 +185,24 @@ class WC3UITab(QWidget):
             layout = QVBoxLayout(tab)
             layout.addWidget(QLabel(f"Content for {tab_name} tab."))
             layout.addStretch()
+
+    def on_option_selected(self, clicked_button: QPushButton, button_group: list, category: str):
+        """Handles the logic when an option button is clicked, ensuring only one is selected."""
+        # Uncheck all other buttons in the same group
+        for button in button_group:
+            if button is not clicked_button:
+                button.setChecked(False)
+
+        # Update the state variable for the corresponding category
+        if clicked_button.isChecked():
+            selection_name = clicked_button.text()
+            if category == 'theme': self.selected_theme = selection_name
+            elif category == 'hp_bar': self.selected_hp_bar = selection_name
+            elif category == 'unit_select': self.selected_unit_select = selection_name
+        else: # If the user unchecks the button
+            if category == 'theme': self.selected_theme = None
+            elif category == 'hp_bar': self.selected_hp_bar = None
+            elif category == 'unit_select': self.selected_unit_select = None
 
     def browse_for_wc3_path(self):
         """Opens a dialog to select the Warcraft III directory."""
@@ -200,3 +237,48 @@ class WC3UITab(QWidget):
 
         except OSError as e:
             QMessageBox.critical(self, "Error", f"Failed to create folders. Please check permissions.\n\nError: {e}")
+
+    def apply_all_changes(self):
+        """Applies all selected changes from the various sub-tabs."""
+        wc3_path = self.path_edit.text()
+        if not os.path.isdir(wc3_path):
+            QMessageBox.warning(self, "Invalid Path", "The specified Warcraft III path does not exist. Please set it correctly before applying changes.")
+            return
+
+        changes_applied = []
+
+        # Apply HP Bar change
+        if self.selected_hp_bar:
+            source_dir = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", self.selected_hp_bar)
+            dest_dir = os.path.join(wc3_path, "UI", "Feedback", "HpBarConsole")
+            if self._copy_file("human-healthbar-fill.blp", source_dir, dest_dir):
+                changes_applied.append(f"HP Bar: {self.selected_hp_bar}")
+
+        # Placeholder for other apply functions
+        # if self.selected_theme: ...
+        # if self.selected_unit_select: ...
+
+        if changes_applied:
+            QMessageBox.information(self, "Success", "The following changes have been applied:\n\n- " + "\n- ".join(changes_applied))
+        else:
+            QMessageBox.information(self, "No Changes", "No options were selected to apply.")
+
+    def _copy_file(self, filename: str, source_dir: str, dest_dir: str) -> bool:
+        """Helper function to copy a file and handle errors."""
+        source_path = os.path.join(source_dir, filename)
+        dest_path = os.path.join(dest_dir, filename)
+
+        if not os.path.exists(source_path):
+            QMessageBox.warning(self, "File Not Found", f"Could not find the source file:\n{source_path}")
+            return False
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            shutil.copy2(source_path, dest_path)
+            return True
+        except (OSError, shutil.Error) as e:
+            QMessageBox.critical(self, "Copy Error", f"Failed to copy file to:\n{dest_path}\n\nError: {e}")
+            return False
+
+    def reset_to_default(self):
+        """Functionality for the 'Reset Default' button will be added here."""
+        QMessageBox.information(self, "Not Implemented", "The 'Reset Default' functionality is not yet implemented.")
