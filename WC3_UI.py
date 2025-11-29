@@ -51,13 +51,13 @@ class WC3UITab(QWidget):
                 image_path = os.path.join(get_base_path(), "contents", "WC3UI", "theme1.png")
                 if os.path.exists(image_path):
                     pixmap = QPixmap(image_path)
-                    image_label.setPixmap(pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
+                    image_label.setPixmap(pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation))
             
             ui_layout.addWidget(image_label, i - 1, 1) # Add image label to column 1
 
         # Set column stretches to define the layout proportions
         ui_layout.setColumnStretch(0, 1)  # Button column
-        ui_layout.setColumnStretch(1, 3)  # Image column (3 times wider)
+        ui_layout.setColumnStretch(1, 5)  # Image column (5 times wider)
         ui_layout.setRowStretch(6, 1)     # Add stretch below the last row
 
         # Populate other tabs with placeholders
