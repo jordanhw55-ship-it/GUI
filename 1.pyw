@@ -29,6 +29,7 @@ from settings import SettingsManager
 from automation_manager import AutomationManager
 from quickcast_manager import QuickcastManager
 from ui_tab_widgets import CharacterLoadTab, AutomationTab, ItemsTab, QuickcastTab, LobbiesTab
+from WC3_UI import WC3UITab
 from key_translator import normalize_to_canonical, to_keyboard_lib, to_pyautogui
 from ui_overlay import OverlayStatus
 import time
@@ -318,7 +319,7 @@ class SimpleWindow(QMainWindow):
         main_layout.addWidget(self.title_bar)
 
         # Tabs
-        self.tab_names = ["Load", "Items", "Placeholder", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
+        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Reset"]
         self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
         main_layout.addWidget(self.custom_tab_bar)
 
@@ -339,13 +340,9 @@ class SimpleWindow(QMainWindow):
         self.items_manager = ItemsManager(self)
         self.items_manager.switch_items_sub_tab(0)
 
-        # Placeholder Tab
-        placeholder_tab = QWidget()
-        placeholder_layout = QVBoxLayout(placeholder_tab)
-        placeholder_label = QLabel("This is a placeholder tab.")
-        placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        placeholder_layout.addWidget(placeholder_label)
-        self.stacked_widget.addWidget(placeholder_tab)
+        # WC3 UI Tab
+        self.wc3_ui_tab = WC3UITab(self)
+        self.stacked_widget.addWidget(self.wc3_ui_tab)
 
         # Recipes tab
         self.in_progress_recipes = {}
@@ -1036,8 +1033,6 @@ class SimpleWindow(QMainWindow):
         tab_name = self.tab_names[index]
         if tab_name == "Items" and not self.items_manager.item_database.all_items_data:
             self.items_manager.switch_items_sub_tab(0) # Lazy load
-        elif tab_name == "Placeholder":
-            pass # Nothing to do for the placeholder tab
         elif tab_name == "Lobbies" and not self.lobby_manager.lobbies_tab.lobbies_table.rowCount():
             self.lobby_manager.refresh_lobbies() # Refresh when tab is first viewed
         elif tab_name == "Automation":
