@@ -38,6 +38,12 @@ class WC3UITab(QWidget):
         right_layout.addWidget(path_group)
         right_layout.addStretch()
 
+        # Apply and Reset buttons at the bottom
+        self.apply_wc3_ui_button = QPushButton("Apply")
+        self.reset_default_button = QPushButton("Reset Default")
+        right_layout.addWidget(self.apply_wc3_ui_button)
+        right_layout.addWidget(self.reset_default_button)
+
         # Create the sub-tabs
         self.ui_tab = QWidget()
         self.font_tab = QWidget()
