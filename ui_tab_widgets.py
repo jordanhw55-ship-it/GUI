@@ -245,8 +245,8 @@ class QuickcastTab(QWidget):
         for row_idx, row_keys in enumerate(numpad_layout_definition):
             for col_idx, key in enumerate(row_keys):
                 key_id = f"spell_{key}"
-                # Create larger buttons for numpad keys
-                self.key_buttons[key_id] = self._create_key_button(key, size=60)
+                # Create buttons for numpad keys, same size as main keys
+                self.key_buttons[key_id] = self._create_key_button(key, size=45)
                 numpad_keys_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
 
         # --- Settings Panel (Right) ---
