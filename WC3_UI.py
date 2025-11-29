@@ -64,6 +64,10 @@ class WC3UITab(QWidget):
         right_layout.addWidget(self.apply_wc3_ui_button)
         right_layout.addWidget(self.reset_default_button)
 
+        # Guide button
+        self.guide_button = QPushButton("Guide")
+        right_layout.addWidget(self.guide_button)
+
         # Reg On and Reg Off buttons
         reg_buttons_layout = QHBoxLayout()
         self.reg_on_button = QPushButton("Reg On")
@@ -90,6 +94,7 @@ class WC3UITab(QWidget):
         self.create_folders_button.clicked.connect(self.create_interface_folders)
         self.apply_wc3_ui_button.clicked.connect(self.apply_all_changes)
         self.reset_summary_button.clicked.connect(self.reset_summary_selections)
+        self.guide_button.clicked.connect(self.show_guide_prompt)
         self.reg_on_button.clicked.connect(self.run_reg_on)
         self.reg_off_button.clicked.connect(self.run_reg_off)
         self.reset_default_button.clicked.connect(self.reset_to_default)
@@ -257,6 +262,21 @@ class WC3UITab(QWidget):
 
         # Update the UI
         self._update_summary_list()
+
+    def show_guide_prompt(self):
+        """Displays a message box with a step-by-step guide."""
+        guide_text = """
+1. Click "Create Folders" after finding your _retail_ folder (if it isnt already selected)
+
+2. Click "Reg on" to enable customization of WC3, alternatively you can do the CMD "reg add "HKCU\SOFTWARE\Blizzard Entertainment\Warcraft III" /v "Allow Local Files" /t REG_DWORD /d 1 /f"
+
+3. Select 1 of each option and click Apply. Restart WC3 to see changes. 
+
+4. Reg off will hide any customizations, if you want to delete the folder find the UI folder in "C:\Program Files (x86)\Warcraft III\\_retail_"
+        """.strip()
+
+        QMessageBox.information(self, "Guide", guide_text)
+
 
     def browse_for_wc3_path(self):
         """Opens a dialog to select the Warcraft III directory."""
