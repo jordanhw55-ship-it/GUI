@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTabWidget, QLabel
+    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton
 )
 
 class WC3UITab(QWidget):
@@ -30,9 +30,17 @@ class WC3UITab(QWidget):
         self._populate_tabs()
 
     def _populate_tabs(self):
-        """Adds placeholder content to the sub-tabs."""
-        for i in range(self.tab_widget.count()):
-            tab = self.tab_widget.widget(i)
-            tab_name = self.tab_widget.tabText(i)
+        """Adds content to the sub-tabs."""
+        # UI Tab
+        ui_layout = QVBoxLayout(self.ui_tab)
+        self.theme1_button = QPushButton("theme 1")
+        ui_layout.addWidget(self.theme1_button)
+        ui_layout.addStretch() # Push button to the top
+
+        # Populate other tabs with placeholders
+        other_tabs = [self.font_tab, self.background_tab, self.hp_bar_tab, self.reticle_tab, self.apply_tab]
+        for tab in other_tabs:
+            tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(tab))
             layout = QVBoxLayout(tab)
             layout.addWidget(QLabel(f"Content for {tab_name} tab."))
+            layout.addStretch()
