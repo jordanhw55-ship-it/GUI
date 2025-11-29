@@ -1,7 +1,7 @@
 import os
 import shutil
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox
+    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox, QGroupBox, QListWidget
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -42,6 +42,14 @@ class WC3UITab(QWidget):
 
         right_layout.addWidget(self.create_folders_button)
         right_layout.addWidget(path_group)
+
+        # Summary box for selected changes
+        self.summary_group = QGroupBox("Changes to Apply")
+        summary_layout = QVBoxLayout(self.summary_group)
+        self.summary_list = QListWidget()
+        self.summary_list.setFixedHeight(120)  # Set a fixed height for the summary box
+        summary_layout.addWidget(self.summary_list)
+        right_layout.addWidget(self.summary_group)
         right_layout.addStretch()
 
         # Apply and Reset buttons at the bottom
@@ -203,6 +211,21 @@ class WC3UITab(QWidget):
             if category == 'theme': self.selected_theme = None
             elif category == 'hp_bar': self.selected_hp_bar = None
             elif category == 'unit_select': self.selected_unit_select = None
+
+        self._update_summary_list()
+
+    def _update_summary_list(self):
+        """Updates the summary list on the right with the current selections."""
+        self.summary_list.clear()
+        
+        if self.selected_theme:
+            self.summary_list.addItem(f"UI: {self.selected_theme}")
+            
+        if self.selected_hp_bar:
+            self.summary_list.addItem(f"HP Bar: {self.selected_hp_bar}")
+
+        if self.selected_unit_select:
+            self.summary_list.addItem(f"Unit Select: {self.selected_unit_select}")
 
     def browse_for_wc3_path(self):
         """Opens a dialog to select the Warcraft III directory."""
