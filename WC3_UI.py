@@ -63,21 +63,25 @@ class WC3UITab(QWidget):
         right_layout.addWidget(self.apply_wc3_ui_button)
         right_layout.addWidget(self.reset_default_button)
 
+        # Reg On and Reg Off buttons
+        reg_buttons_layout = QHBoxLayout()
+        self.reg_on_button = QPushButton("Reg On")
+        self.reg_off_button = QPushButton("Reg Off")
+        reg_buttons_layout.addWidget(self.reg_on_button)
+        reg_buttons_layout.addWidget(self.reg_off_button)
+        right_layout.addLayout(reg_buttons_layout)
+
         # Create the sub-tabs
         self.ui_tab = QWidget()
-        self.font_tab = QWidget()
         self.unit_select_tab = QWidget()
         self.hp_bar_tab = QWidget()
         self.reticle_tab = QWidget()
-        self.apply_tab = QWidget()
 
         # Add sub-tabs to the tab widget
         self.tab_widget.addTab(self.ui_tab, "UI")
-        self.tab_widget.addTab(self.font_tab, "Font")
         self.tab_widget.addTab(self.unit_select_tab, "Unit Select")
         self.tab_widget.addTab(self.hp_bar_tab, "HP Bar")
         self.tab_widget.addTab(self.reticle_tab, "Reticle")
-        self.tab_widget.addTab(self.apply_tab, "Apply")
 
         self._populate_tabs()
 
@@ -193,7 +197,7 @@ class WC3UITab(QWidget):
             button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.unit_select_buttons, 'unit_select'))
 
         # Populate other tabs with placeholders
-        other_tabs = [self.font_tab, self.reticle_tab, self.apply_tab]
+        other_tabs = [self.reticle_tab]
         for tab in other_tabs:
             tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(tab))
             layout = QVBoxLayout(tab)
