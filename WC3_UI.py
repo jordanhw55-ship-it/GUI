@@ -87,8 +87,33 @@ class WC3UITab(QWidget):
         ui_layout.setColumnStretch(1, 5)  # Image column (5 times wider)
         ui_layout.setRowStretch(6, 1)     # Add stretch below the last row
 
+        # HP Bar Tab
+        hp_bar_layout = QGridLayout(self.hp_bar_tab)
+        hp_bar_layout.setVerticalSpacing(10)
+        self.hp_bar_buttons = []
+        hp_bar_options = ["4Bar", "8Bar", "30Bar"]
+
+        for i, option_name in enumerate(hp_bar_options):
+            button = QPushButton(option_name)
+            self.hp_bar_buttons.append(button)
+            hp_bar_layout.addWidget(button, i, 0)
+
+            # Create a label for the image
+            image_label = QLabel()
+            # The user mentioned .jpg but the path structure suggests .png, so I'll use .png for consistency.
+            image_path = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", option_name, f"{option_name}.png")
+            if os.path.exists(image_path):
+                pixmap = QPixmap(image_path)
+                image_label.setPixmap(pixmap.scaled(300, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            
+            hp_bar_layout.addWidget(image_label, i, 1)
+
+        hp_bar_layout.setColumnStretch(0, 1)
+        hp_bar_layout.setColumnStretch(1, 5)
+        hp_bar_layout.setRowStretch(len(hp_bar_options), 1)
+
         # Populate other tabs with placeholders
-        other_tabs = [self.font_tab, self.background_tab, self.hp_bar_tab, self.reticle_tab, self.apply_tab]
+        other_tabs = [self.font_tab, self.background_tab, self.reticle_tab, self.apply_tab]
         for tab in other_tabs:
             tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(tab))
             layout = QVBoxLayout(tab)
