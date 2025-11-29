@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout
+    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -11,9 +11,27 @@ class WC3UITab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        main_layout = QVBoxLayout(self)
+        main_layout = QHBoxLayout(self)
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget)
+
+        # Right-side panel for path and actions
+        right_panel = QWidget()
+        right_panel.setFixedWidth(200)
+        right_layout = QVBoxLayout(right_panel)
+        main_layout.addWidget(right_panel)
+
+        # Path finder
+        path_group = QWidget()
+        path_layout = QVBoxLayout(path_group)
+        path_layout.setContentsMargins(0,0,0,0)
+        path_layout.addWidget(QLabel("Warcraft III Path:"))
+        self.path_edit = QLineEdit(r"C:\Program Files (x86)\Warcraft III\_retail_")
+        self.browse_button = QPushButton("Browse...")
+        path_layout.addWidget(self.path_edit)
+        path_layout.addWidget(self.browse_button)
+        right_layout.addWidget(path_group)
+        right_layout.addStretch()
 
         # Create the sub-tabs
         self.ui_tab = QWidget()
@@ -33,6 +51,8 @@ class WC3UITab(QWidget):
 
         self._populate_tabs()
 
+        self.browse_button.clicked.connect(self.browse_for_wc3_path)
+
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
         # UI Tab
@@ -49,7 +69,7 @@ class WC3UITab(QWidget):
             image_label = QLabel()
             theme_folder = f"theme{i}"
             image_name = f"theme{i}.png"
-            image_path = os.path.join(get_base_path(), "contents", "WC3UI", theme_folder, image_name)
+            image_path = os.path.join(get_base_path(), "contents", "WC3UI", "UI", theme_folder, image_name)
             if os.path.exists(image_path):
                 pixmap = QPixmap(image_path)
                 image_label.setPixmap(pixmap.scaled(300, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -68,3 +88,9 @@ class WC3UITab(QWidget):
             layout = QVBoxLayout(tab)
             layout.addWidget(QLabel(f"Content for {tab_name} tab."))
             layout.addStretch()
+
+    def browse_for_wc3_path(self):
+        """Opens a dialog to select the Warcraft III directory."""
+        directory = QFileDialog.getExistingDirectory(self, "Select Warcraft III Folder", self.path_edit.text())
+        if directory:
+            self.path_edit.setText(directory)
