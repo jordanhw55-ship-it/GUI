@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog
+    QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -30,6 +30,11 @@ class WC3UITab(QWidget):
         self.browse_button = QPushButton("Browse...")
         path_layout.addWidget(self.path_edit)
         path_layout.addWidget(self.browse_button)
+
+        # Button to create folder structure
+        self.create_folders_button = QPushButton("Create Folders")
+
+        right_layout.addWidget(self.create_folders_button)
         right_layout.addWidget(path_group)
         right_layout.addStretch()
 
@@ -52,6 +57,7 @@ class WC3UITab(QWidget):
         self._populate_tabs()
 
         self.browse_button.clicked.connect(self.browse_for_wc3_path)
+        self.create_folders_button.clicked.connect(self.create_interface_folders)
 
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
@@ -94,3 +100,31 @@ class WC3UITab(QWidget):
         directory = QFileDialog.getExistingDirectory(self, "Select Warcraft III Folder", self.path_edit.text())
         if directory:
             self.path_edit.setText(directory)
+
+    def create_interface_folders(self):
+        """Creates a standard UI modding folder structure inside the selected WC3 path."""
+        base_path = self.path_edit.text()
+        if not os.path.isdir(base_path):
+            QMessageBox.warning(self, "Invalid Path", "The specified Warcraft III path does not exist.")
+            return
+
+        interface_path = os.path.join(base_path, "Interface")
+        subfolders = [
+            "CustomKeys", "ErrorSounds", "FrameDef", "Glues",
+            "Icons", "Info", "Lordaeron", "Northrend",
+            "Skins", "Sound", "Tooltips", "Tutorial"
+        ]
+
+        try:
+            # Create the main Interface folder
+            os.makedirs(interface_path, exist_ok=True)
+
+            # Create all the subfolders
+            for folder in subfolders:
+                os.makedirs(os.path.join(interface_path, folder), exist_ok=True)
+
+            QMessageBox.information(self, "Success",
+                                    f"Successfully created folder structure inside:\n{interface_path}")
+
+        except OSError as e:
+            QMessageBox.critical(self, "Error", f"Failed to create folders. Please check permissions.\n\nError: {e}")
