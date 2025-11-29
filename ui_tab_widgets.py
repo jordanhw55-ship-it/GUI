@@ -194,8 +194,8 @@ class QuickcastTab(QWidget):
     def _create_widgets(self):
         """Creates all the widgets for the tab."""
         # Create separate groups for better visual organization
-        self.main_keys_group = QGroupBox("Main Spell Keys")
-        self.numpad_keys_group = QGroupBox("Numpad Spell Keys")
+        self.main_keys_group = QGroupBox("Main")
+        self.numpad_keys_group = QGroupBox("Numpad")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
