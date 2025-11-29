@@ -1,7 +1,11 @@
+import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QHBoxLayout
 )
+from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt
 
+from utils import get_base_path
 class WC3UITab(QWidget):
     """A widget for the 'WC3 UI' tab, containing various UI customization options."""
     def __init__(self, parent=None):
@@ -38,8 +42,18 @@ class WC3UITab(QWidget):
             theme_layout = QHBoxLayout()
             button = QPushButton(f"Theme {i}")
             self.theme_buttons.append(button)
-            theme_layout.addWidget(button, 1)  # Button takes 1/10th of the space
-            theme_layout.addStretch(9)  # The rest of the space is for the image
+            theme_layout.addWidget(button, 1)  # Button takes some space
+
+            # Add the image for Theme 1
+            if i == 1:
+                image_label = QLabel()
+                image_path = os.path.join(get_base_path(), "contents", "WC3UI", "theme1.png")
+                if os.path.exists(image_path):
+                    pixmap = QPixmap(image_path)
+                    image_label.setPixmap(pixmap.scaledToHeight(40, Qt.TransformationMode.SmoothTransformation))
+                theme_layout.addWidget(image_label, 2) # Give image some space
+
+            theme_layout.addStretch(7)  # The rest of the space is empty
             ui_layout.addLayout(theme_layout)
         ui_layout.addStretch()  # Push everything to the top
 
