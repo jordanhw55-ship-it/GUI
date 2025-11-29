@@ -45,10 +45,15 @@ class WC3UITab(QWidget):
 
         # Summary box for selected changes
         self.summary_group = QGroupBox("Changes to Apply")
-        summary_layout = QVBoxLayout(self.summary_group)
+        summary_group_layout = QVBoxLayout(self.summary_group)
+        
+        # Add a small reset button inside the group box
+        self.reset_summary_button = QPushButton("Reset Selections")
+        
         self.summary_list = QListWidget()
         self.summary_list.setFixedHeight(120)  # Set a fixed height for the summary box
-        summary_layout.addWidget(self.summary_list)
+        summary_group_layout.addWidget(self.summary_list)
+        summary_group_layout.addWidget(self.reset_summary_button)
         right_layout.addWidget(self.summary_group)
         right_layout.addStretch()
 
@@ -79,6 +84,7 @@ class WC3UITab(QWidget):
         self.browse_button.clicked.connect(self.browse_for_wc3_path)
         self.create_folders_button.clicked.connect(self.create_interface_folders)
         self.apply_wc3_ui_button.clicked.connect(self.apply_all_changes)
+        self.reset_summary_button.clicked.connect(self.reset_summary_selections)
         self.reset_default_button.clicked.connect(self.reset_to_default)
 
     def _populate_tabs(self):
@@ -226,6 +232,24 @@ class WC3UITab(QWidget):
 
         if self.selected_unit_select:
             self.summary_list.addItem(f"Unit Select: {self.selected_unit_select}")
+
+    def reset_summary_selections(self):
+        """Resets all selections in the UI and clears the summary box."""
+        # Uncheck all buttons in every group
+        for button in self.theme_buttons:
+            button.setChecked(False)
+        for button in self.hp_bar_buttons:
+            button.setChecked(False)
+        for button in self.unit_select_buttons:
+            button.setChecked(False)
+
+        # Reset the state variables
+        self.selected_theme = None
+        self.selected_hp_bar = None
+        self.selected_unit_select = None
+
+        # Update the UI
+        self._update_summary_list()
 
     def browse_for_wc3_path(self):
         """Opens a dialog to select the Warcraft III directory."""
