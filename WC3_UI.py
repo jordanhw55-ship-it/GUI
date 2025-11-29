@@ -52,7 +52,7 @@ class WC3UITab(QWidget):
             image_path = os.path.join(get_base_path(), "contents", "WC3UI", theme_folder, image_name)
             if os.path.exists(image_path):
                 pixmap = QPixmap(image_path)
-                image_label.setPixmap(pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation))
+                image_label.setPixmap(pixmap.scaled(300, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
             ui_layout.addWidget(image_label, i - 1, 1) # Add image label to column 1
 
