@@ -100,8 +100,17 @@ class WC3UITab(QWidget):
 
             # Create a label for the image
             image_label = QLabel()
-            # The user mentioned .jpg but the path structure suggests .png, so I'll use .png for consistency.
-            image_path = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", option_name, f"{option_name}.png")
+            
+            # Check for both .jpg and .png extensions to be safe
+            image_path_jpg = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", option_name, f"{option_name}.jpg")
+            image_path_png = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", option_name, f"{option_name}.png")
+            
+            image_path = ""
+            if os.path.exists(image_path_jpg):
+                image_path = image_path_jpg
+            elif os.path.exists(image_path_png):
+                image_path = image_path_png
+
             if os.path.exists(image_path):
                 pixmap = QPixmap(image_path)
                 image_label.setPixmap(pixmap.scaled(300, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
