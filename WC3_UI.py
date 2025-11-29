@@ -301,9 +301,21 @@ class WC3UITab(QWidget):
             if self._copy_file("human-healthbar-fill.blp", source_dir, dest_dir):
                 changes_applied.append(f"HP Bar: {self.selected_hp_bar}")
 
-        # Placeholder for other apply functions
-        # if self.selected_theme: ...
-        # if self.selected_unit_select: ...
+        # Apply Unit Select change
+        if self.selected_unit_select:
+            source_dir = os.path.join(get_base_path(), "contents", "WC3UI", "UnitSelection", self.selected_unit_select)
+            dest_dir = os.path.join(wc3_path, "UI", "ReplaceableTextures", "Selection")
+            
+            if os.path.isdir(source_dir):
+                files_copied_count = 0
+                for filename in os.listdir(source_dir):
+                    if filename.lower().endswith(".blp"):
+                        if self._copy_file(filename, source_dir, dest_dir):
+                            files_copied_count += 1
+                if files_copied_count > 0:
+                    changes_applied.append(f"Unit Select: {self.selected_unit_select} ({files_copied_count} files)")
+            else:
+                QMessageBox.warning(self, "Source Directory Not Found", f"Could not find the source directory for '{self.selected_unit_select}'.")
 
         if changes_applied:
             QMessageBox.information(self, "Success", "The following changes have been applied:\n\n- " + "\n- ".join(changes_applied))
