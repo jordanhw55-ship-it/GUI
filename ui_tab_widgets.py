@@ -216,8 +216,8 @@ class QuickcastTab(QWidget):
         # --- Main Remapping Panel (Left) ---
         remap_panel = QWidget()
         remap_layout = QHBoxLayout(remap_panel) # Changed to QHBoxLayout
-        remap_layout.addWidget(self.main_keys_group)
-        remap_layout.addWidget(self.numpad_keys_group)
+        remap_layout.addWidget(self.main_keys_group, 2)
+        remap_layout.addWidget(self.numpad_keys_group, 1)
         main_layout.addWidget(remap_panel, 2) # Give it more space
 
         # --- Main Keys Grid ---
