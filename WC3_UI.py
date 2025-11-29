@@ -386,8 +386,56 @@ class WC3UITab(QWidget):
             return False
 
     def reset_to_default(self):
-        """Functionality for the 'Reset Default' button will be added here."""
-        QMessageBox.information(self, "Not Implemented", "The 'Reset Default' functionality is not yet implemented.")
+        """Removes all applied custom files to restore the default WC3 UI components."""
+        confirm = QMessageBox.question(self, "Confirm Reset",
+                                       "This will delete any applied custom UI files from your Warcraft III folder. Are you sure?",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                       QMessageBox.StandardButton.No)
+
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        wc3_path = self.path_edit.text()
+        if not os.path.isdir(wc3_path):
+            QMessageBox.warning(self, "Invalid Path", "The specified Warcraft III path does not exist.")
+            return
+
+        files_to_delete = []
+        dirs_to_check = []
+
+        # 1. HP Bar file
+        hp_bar_file = os.path.join(wc3_path, "UI", "Feedback", "HpBarConsole", "human-healthbar-fill.blp")
+        files_to_delete.append(hp_bar_file)
+
+        # 2. UI Theme files (all .blp files in the destination)
+        ui_theme_dir = os.path.join(wc3_path, "UI", "console", "human")
+        dirs_to_check.append(ui_theme_dir)
+
+        # 3. Unit Selection files (all .blp files in the destination)
+        unit_select_dir = os.path.join(wc3_path, "UI", "ReplaceableTextures", "Selection")
+        dirs_to_check.append(unit_select_dir)
+
+        # Add all .blp files from the specified directories
+        for directory in dirs_to_check:
+            if os.path.isdir(directory):
+                for filename in os.listdir(directory):
+                    if filename.lower().endswith(".blp"):
+                        files_to_delete.append(os.path.join(directory, filename))
+
+        deleted_count = 0
+        for file_path in files_to_delete:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    deleted_count += 1
+                except OSError as e:
+                    QMessageBox.critical(self, "Deletion Error", f"Failed to delete file:\n{file_path}\n\nError: {e}")
+                    return # Stop on first error
+
+        if deleted_count > 0:
+            QMessageBox.information(self, "Reset Complete", f"Successfully removed {deleted_count} custom file(s).")
+        else:
+            QMessageBox.information(self, "Reset Complete", "No custom files were found to remove.")
 
     def run_reg_on(self):
         """Runs the reg_on.reg file after confirmation."""
