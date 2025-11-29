@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox, QGroupBox, QListWidget
 )
@@ -89,6 +90,8 @@ class WC3UITab(QWidget):
         self.create_folders_button.clicked.connect(self.create_interface_folders)
         self.apply_wc3_ui_button.clicked.connect(self.apply_all_changes)
         self.reset_summary_button.clicked.connect(self.reset_summary_selections)
+        self.reg_on_button.clicked.connect(self.run_reg_on)
+        self.reg_off_button.clicked.connect(self.run_reg_off)
         self.reset_default_button.clicked.connect(self.reset_to_default)
 
     def _populate_tabs(self):
@@ -362,3 +365,33 @@ class WC3UITab(QWidget):
     def reset_to_default(self):
         """Functionality for the 'Reset Default' button will be added here."""
         QMessageBox.information(self, "Not Implemented", "The 'Reset Default' functionality is not yet implemented.")
+
+    def run_reg_on(self):
+        """Runs the reg_on.reg file after confirmation."""
+        self._run_reg_file("reg_on.reg")
+
+    def run_reg_off(self):
+        """Runs the reg_off.reg file after confirmation."""
+        self._run_reg_file("reg_off.reg")
+
+    def _run_reg_file(self, filename: str):
+        """Shows a confirmation and then runs the specified .reg file."""
+        confirm = QMessageBox.question(self, "Confirm Registry Edit",
+                                       "This will edit your registry. Confirm?",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                       QMessageBox.StandardButton.No)
+
+        if confirm == QMessageBox.StandardButton.Yes:
+            reg_file_path = os.path.join(get_base_path(), "contents", "WC3UI", filename)
+
+            if not os.path.exists(reg_file_path):
+                QMessageBox.critical(self, "File Not Found", f"The registry file could not be found:\n{reg_file_path}")
+                return
+
+            try:
+                # Use 'reg import' for a standard way to import .reg files.
+                subprocess.run(["reg", "import", reg_file_path], check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                QMessageBox.information(self, "Success", f"Successfully executed {filename}.")
+            except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
+                error_output = e.stderr if hasattr(e, 'stderr') else str(e)
+                QMessageBox.critical(self, "Registry Error", f"Failed to execute registry file.\n\nError: {error_output}")
