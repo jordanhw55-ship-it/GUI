@@ -41,7 +41,7 @@ class WC3UITab(QWidget):
         # Create the sub-tabs
         self.ui_tab = QWidget()
         self.font_tab = QWidget()
-        self.background_tab = QWidget()
+        self.unit_select_tab = QWidget()
         self.hp_bar_tab = QWidget()
         self.reticle_tab = QWidget()
         self.apply_tab = QWidget()
@@ -49,7 +49,7 @@ class WC3UITab(QWidget):
         # Add sub-tabs to the tab widget
         self.tab_widget.addTab(self.ui_tab, "UI")
         self.tab_widget.addTab(self.font_tab, "Font")
-        self.tab_widget.addTab(self.background_tab, "Background")
+        self.tab_widget.addTab(self.unit_select_tab, "Unit Select")
         self.tab_widget.addTab(self.hp_bar_tab, "HP Bar")
         self.tab_widget.addTab(self.reticle_tab, "Reticle")
         self.tab_widget.addTab(self.apply_tab, "Apply")
@@ -121,8 +121,40 @@ class WC3UITab(QWidget):
         hp_bar_layout.setColumnStretch(1, 5)
         hp_bar_layout.setRowStretch(len(hp_bar_options), 1)
 
+        # Unit Select Tab
+        unit_select_layout = QGridLayout(self.unit_select_tab)
+        unit_select_layout.setVerticalSpacing(10)
+        self.unit_select_buttons = []
+        unit_select_options = ["Arrow", "Chain", "Dragon", "Eye", "Glow", "Skeleton", "Square", "Sun", "Target"]
+
+        for i, option_name in enumerate(unit_select_options):
+            button = QPushButton(option_name)
+            self.unit_select_buttons.append(button)
+            unit_select_layout.addWidget(button, i, 0)
+
+            # Create a label for the image
+            image_label = QLabel()
+            image_path_jpg = os.path.join(get_base_path(), "contents", "WC3UI", "UnitSelection", option_name, f"{option_name}.jpg")
+            image_path_png = os.path.join(get_base_path(), "contents", "WC3UI", "UnitSelection", option_name, f"{option_name}.png")
+
+            image_path = ""
+            if os.path.exists(image_path_jpg):
+                image_path = image_path_jpg
+            elif os.path.exists(image_path_png):
+                image_path = image_path_png
+
+            if image_path:
+                pixmap = QPixmap(image_path)
+                image_label.setPixmap(pixmap.scaled(300, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            
+            unit_select_layout.addWidget(image_label, i, 1)
+
+        unit_select_layout.setColumnStretch(0, 1)
+        unit_select_layout.setColumnStretch(1, 5)
+        unit_select_layout.setRowStretch(len(unit_select_options), 1)
+
         # Populate other tabs with placeholders
-        other_tabs = [self.font_tab, self.background_tab, self.reticle_tab, self.apply_tab]
+        other_tabs = [self.font_tab, self.reticle_tab, self.apply_tab]
         for tab in other_tabs:
             tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(tab))
             layout = QVBoxLayout(tab)
