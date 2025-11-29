@@ -32,13 +32,16 @@ class WC3UITab(QWidget):
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
         # UI Tab
-        ui_main_layout = QVBoxLayout(self.ui_tab)
-        theme1_layout = QHBoxLayout()
-        self.theme1_button = QPushButton("theme 1")
-        theme1_layout.addWidget(self.theme1_button, 1) # Button takes 1/10th of the space
-        theme1_layout.addStretch(9) # The rest of the space is empty
-        ui_main_layout.addLayout(theme1_layout)
-        ui_main_layout.addStretch() # Push everything to the top
+        ui_layout = QVBoxLayout(self.ui_tab)
+        self.theme_buttons = []
+        for i in range(1, 7):
+            theme_layout = QHBoxLayout()
+            button = QPushButton(f"Theme {i}")
+            self.theme_buttons.append(button)
+            theme_layout.addWidget(button, 1)  # Button takes 1/10th of the space
+            theme_layout.addStretch(9)  # The rest of the space is for the image
+            ui_layout.addLayout(theme_layout)
+        ui_layout.addStretch()  # Push everything to the top
 
         # Populate other tabs with placeholders
         other_tabs = [self.font_tab, self.background_tab, self.hp_bar_tab, self.reticle_tab, self.apply_tab]
