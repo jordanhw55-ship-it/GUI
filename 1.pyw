@@ -435,6 +435,7 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
         self.automation_manager.log_message.connect(self.update_automation_log)
+        self.automation_tab.add_msg_btn.setObjectName("PrimaryButton")
 
         # Add validators to the line edits in the new tab
         int_validator = QIntValidator(50, 600000, self)
@@ -461,6 +462,8 @@ class SimpleWindow(QMainWindow):
                 # Connections for AHK installation buttons
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
         self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.quickcast_manager.open_ahk_website)
+        self.quickcast_tab.install_ahk_cmd_btn.setObjectName("PrimaryButton")
+        self.quickcast_tab.install_ahk_web_btn.setObjectName("PrimaryButton")
         self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
         
         # Lobbies tab
@@ -508,6 +511,7 @@ class SimpleWindow(QMainWindow):
 
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.theme_manager.apply_custom_theme)
+        self.apply_custom_btn.setObjectName("PrimaryButton")
         self.reset_custom_btn = QPushButton("Reset custom")
         self.reset_custom_btn.clicked.connect(self.reset_custom_theme_and_title)
 
@@ -547,6 +551,7 @@ class SimpleWindow(QMainWindow):
         font_buttons_layout.addStretch()
         self.reset_font_btn = QPushButton("Reset Font")
         self.apply_font_btn = QPushButton("Apply Font")
+        self.apply_font_btn.setObjectName("PrimaryButton")
         font_buttons_layout.addWidget(self.reset_font_btn)
         font_buttons_layout.addWidget(self.apply_font_btn)
 
@@ -714,6 +719,12 @@ class SimpleWindow(QMainWindow):
             QPushButton#SecondaryButton:hover {
                 background-color: #3c3c3c;
                 border-color: #666666;
+            }
+            QPushButton#PrimaryButton {
+                background-color: #007AAB; /* CCleaner's blue */
+            }
+            QPushButton#PrimaryButton:hover {
+                background-color: #0095CC;
             }
             QPushButton#DangerButton {
                 background-color: #B22222; /* FireBrick */

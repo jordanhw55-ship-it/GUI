@@ -22,6 +22,7 @@ class CharacterLoadTab(QWidget):
         self.reset_path_btn = QPushButton("Reset Path")
 
         self.load_char_btn = QPushButton("Load Character (F3)")
+        self.load_char_btn.setObjectName("PrimaryButton")
         self.refresh_chars_btn = QPushButton("Refresh")
 
         self.char_list_box = QListWidget()
@@ -77,8 +78,11 @@ class AutomationTab(QWidget):
         self.automation_log_box.setReadOnly(True)
 
         self.start_automation_btn = QPushButton("Start/F5")
+        self.start_automation_btn.setObjectName("PrimaryButton")
         self.stop_automation_btn = QPushButton("Stop/F6")
+        self.stop_automation_btn.setObjectName("DangerButton")
         self.reset_automation_btn = QPushButton("Reset Automation")
+        self.reset_automation_btn.setObjectName("SecondaryButton")
 
         # --- Right Panel: Message Hotkeys ---
         self.msg_hotkey_group = QGroupBox("Custom Message Hotkeys")
@@ -200,6 +204,7 @@ class QuickcastTab(QWidget):
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
         self.reset_keybinds_btn = QPushButton("Reset Keybinds") 
+        self.reset_keybinds_btn.setObjectName("DangerButton")
         self.reset_keybinds_btn.setObjectName("ResetKeybindsButton") # For styling
         
         self.activate_quickcast_btn = QPushButton("Activate Quickcast")
@@ -334,9 +339,12 @@ class ItemsTab(QWidget):
         recipe_tracker_layout.setContentsMargins(0,0,0,0)
         
         self.available_recipes_list = QListWidget()
-        self.add_recipe_btn = QPushButton("Add ->")
-        self.remove_recipe_btn = QPushButton("<- Remove")
+        self.add_recipe_btn = QPushButton("Add")
+        self.add_recipe_btn.setObjectName("PrimaryButton")
+        self.remove_recipe_btn = QPushButton("Remove")
+        self.remove_recipe_btn.setObjectName("SecondaryButton")
         self.reset_recipes_btn = QPushButton("Reset")
+        self.reset_recipes_btn.setObjectName("DangerButton")
         self.in_progress_recipes_list = QListWidget()
         self.materials_table = QTableWidget()
         self.materials_table.setColumnCount(5)
@@ -409,6 +417,7 @@ class LobbiesTab(QWidget):
         self.watchlist_input = QLineEdit()
         self.watchlist_input.setPlaceholderText("Add keyword...")
         self.add_watchlist_button = QPushButton("Add")
+        self.add_watchlist_button.setObjectName("PrimaryButton")
         self.remove_watchlist_button = QPushButton("Remove")
 
         # Sound controls
