@@ -460,7 +460,7 @@ class SimpleWindow(QMainWindow):
                 font-family: "Segoe UI", sans-serif;
             }
             QMainWindow {
-                border: 1px solid #3c3c3c;
+                background-color: #1e1e1e;
             }
             #CustomTitleBar {
                 background-color: #1e1e1e;
