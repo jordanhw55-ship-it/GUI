@@ -697,6 +697,10 @@ class SimpleWindow(QMainWindow):
             QStackedWidget {
                 border: none;
             }
+            /* This targets the frame that QStackedWidget draws around its pages */
+            QStackedWidget > QFrame {
+                border: none;
+            }
         """
 
     def get_new_dark_style_legacy(self):
