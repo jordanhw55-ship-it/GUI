@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap, QPainter
+from PySide6.QtGui import (QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap, QPainter
+)
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -154,7 +155,7 @@ class NavigationSidebar(QWidget):
         # Add a label at the top for the title image
         self.title_label = QLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
+        self.title_label.setContentsMargins(0, 0, 0, 15) # Add 15px bottom margin for spacing
         main_layout.addWidget(self.title_label)
         
         # Icons using unicode characters
@@ -164,7 +165,7 @@ class NavigationSidebar(QWidget):
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help"]: continue # Handle these separately
+            if name in ["Settings", "Help"]: continue # Handle these separately at the bottom
             button = NavButton(icons[i], name)
             button.clicked.connect(lambda idx=i: self.set_current_index(idx))
             self.buttons.append(button)
