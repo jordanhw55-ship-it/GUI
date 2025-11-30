@@ -152,11 +152,11 @@ class NavigationSidebar(QWidget):
         
         # Icons using unicode characters
         icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
-                 "\u2699", "\u2753", "\U0001F504"] # Settings, Help, Reset GUI (repeat icon)
+                 "\U0001F3A8", "\u2699", "\u2753", "\U0001F504"] # Theme, Settings, Help, Reset GUI
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help", "Reset GUI"]: continue # Handle these separately
+            if name in ["Theme", "Settings", "Help", "Reset GUI"]: continue # Handle these separately
             button = NavButton(icons[i], name)
             button.setCheckable(True) # This enables the checked logic
             button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
@@ -168,7 +168,7 @@ class NavigationSidebar(QWidget):
         # Bottom-grouped buttons (Settings, Help)
         bottom_buttons_layout = QVBoxLayout()
         bottom_buttons_layout.setSpacing(5)
-        for name in ["Settings", "Help", "Reset GUI"]:
+        for name in ["Theme", "Settings", "Help", "Reset GUI"]:
             idx = tab_names.index(name)
             button = NavButton(icons[idx], name)
             button.setCheckable(True)
@@ -353,7 +353,7 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
-        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help", "Reset GUI"]
+        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Theme", "Settings", "Help", "Reset GUI"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
         self.navigation_sidebar.setAttribute(Qt.WA_StyledBackground, True)
         self.navigation_sidebar.setAutoFillBackground(True)
@@ -517,7 +517,12 @@ class SimpleWindow(QMainWindow):
         fonts_box.setLayout(fonts_layout)
         settings_layout.addWidget(fonts_box, row_below + 1, 0, 1, 4)
 
-        self.stacked_widget.addWidget(settings_tab_content)
+        self.stacked_widget.addWidget(settings_tab_content) # This is now the "Theme" tab
+
+        # New empty Settings Tab
+        settings_tab = self.create_settings_tab()
+        self.stacked_widget.addWidget(settings_tab)
+
 
         # New Help Tab
         help_tab = self.create_help_tab()
@@ -716,6 +721,16 @@ class SimpleWindow(QMainWindow):
         layout.addWidget(help_text)
         
         return help_widget
+
+    def create_settings_tab(self):
+        """Creates the content for the new, empty Settings tab."""
+        settings_widget = QWidget()
+        layout = QVBoxLayout(settings_widget)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        placeholder_label = QLabel("Future settings will be configured here.")
+        placeholder_label.setStyleSheet("font-size: 16px; color: gray;")
+        layout.addWidget(placeholder_label)
+        return settings_widget
 
     def create_reset_gui_tab(self):
         """Creates the content for the new Reset GUI tab."""
