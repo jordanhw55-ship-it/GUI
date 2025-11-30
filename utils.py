@@ -40,7 +40,7 @@ DARK_STYLE = """
         border-radius: 6px;
     }
     QGroupBox {
-        border: 1px solid #FF7F50; /* accent */
+        border: none; /* accent */
         border-radius: 8px;
         margin-top: 10px;
     }
@@ -84,7 +84,7 @@ LIGHT_STYLE = """
         border-radius: 6px;
     }
     QGroupBox {
-        border: 1px solid #DA3A9D;
+        border: none;
         border-radius: 8px;
         margin-top: 10px;
     }
@@ -124,7 +124,7 @@ FOREST_STYLE = """
         border-radius: 6px;
     }
     QGroupBox {
-        border: 1px solid #4169E1;
+        border: none;
         border-radius: 8px;
         margin-top: 10px;
     }
@@ -158,7 +158,7 @@ OCEAN_STYLE = """
         border-radius: 6px;
     }
     QGroupBox {
-        border: 1px solid #87CEEB;
+        border: none;
         border-radius: 8px;
         margin-top: 10px;
     }
