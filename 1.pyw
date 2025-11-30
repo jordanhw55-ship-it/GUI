@@ -175,7 +175,7 @@ class NavigationSidebar(QWidget):
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]: continue # Handle these separately
             button = NavButton(icons[i], name)
-            button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+            button.clicked.connect(lambda idx=i: self.set_current_index(idx))
             self.buttons.append(button)
             main_layout.addWidget(button)
 
@@ -185,7 +185,7 @@ class NavigationSidebar(QWidget):
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]:
                 button = NavButton(icons[i], name)
-                button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+                button.clicked.connect(lambda idx=i: self.set_current_index(idx))
                 self.buttons.append(button)
                 main_layout.addWidget(button)
 
