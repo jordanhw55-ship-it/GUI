@@ -271,7 +271,7 @@ class WC3UITab(QWidget):
         guide_text = """
 1. Click "Create Folders" after finding your _retail_ folder (if it isnt already selected)
 
-2. Click "Reg on" to enable customization of WC3, alternatively you can do the CMD "reg add "HKCU\SOFTWARE\Blizzard Entertainment\Warcraft III" /v "Allow Local Files" /t REG_DWORD /d 1 /f"
+2. Click "Reg on" to enable customization of WC3, alternatively you can do the CMD command by pressing Windows key + R > type cmd > reg add "HKCU\SOFTWARE\Blizzard Entertainment\Warcraft III" /v "Allow Local Files" /t REG_DWORD /d 1 /f
 
 3. Select 1 of each option and click Apply. Restart WC3 to see changes. 
 

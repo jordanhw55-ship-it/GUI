@@ -176,11 +176,6 @@ class NavigationSidebar(QWidget):
                 self.buttons.append(button)
                 main_layout.addWidget(button)
 
-        # Add the "Upgrade now" button at the bottom
-        self.upgrade_button = QPushButton("Upgrade now")
-        self.upgrade_button.setObjectName("UpgradeButton")
-        main_layout.addWidget(self.upgrade_button)
-
     def set_current_index(self, index: int):
         if self.current_index != -1:
             self.buttons[self.current_index].setChecked(False)
@@ -636,15 +631,6 @@ class SimpleWindow(QMainWindow):
                 font-weight: bold;
                 background-color: #3B3F42;
                 border-left: 3px solid #00A8E8; /* Teal accent */
-            }
-            #UpgradeButton {
-                background-color: #F05E16; /* Orange CTA */
-                color: #FFFFFF;
-                font-weight: bold;
-                border-radius: 4px;
-            }
-            #UpgradeButton:hover {
-                background-color: #FF7833;
             }
             QPushButton {
                 background-color: #4A4D4F;
