@@ -62,6 +62,10 @@ class NavButton(QPushButton):
     """A custom button with a separate icon and text label for precise alignment."""
     def __init__(self, icon: str, text: str):
         super().__init__()
+        # Store colors to manage hover state manually
+        self.default_bg = "transparent"
+        self.hover_bg = "#00A8E8" # Teal accent
+        self.checked_bg = "#007AAB" # Darker teal for checked
         self.setCheckable(True)
 
         layout = QHBoxLayout(self)
@@ -86,6 +90,26 @@ class NavButton(QPushButton):
         """Override setChecked to style the internal labels."""
         super().setChecked(checked)
         # The styling is now handled entirely by the main stylesheet for consistency.
+        self._update_style()
+
+    def enterEvent(self, event):
+        """Handle mouse entering the widget to apply hover effect."""
+        super().enterEvent(event)
+        self._update_style(is_hovering=True)
+
+    def leaveEvent(self, event):
+        """Handle mouse leaving the widget to remove hover effect."""
+        super().leaveEvent(event)
+        self._update_style(is_hovering=False)
+
+    def _update_style(self, is_hovering=False):
+        """Central method to set the button's style based on its state."""
+        if self.isChecked():
+            self.setStyleSheet(f"background-color: {self.checked_bg}; border-left: 3px solid {self.hover_bg};")
+        elif is_hovering:
+            self.setStyleSheet(f"background-color: {self.hover_bg}; border-left: 3px solid transparent;")
+        else:
+            self.setStyleSheet(f"background-color: {self.default_bg}; border-left: 3px solid transparent;")
 
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
@@ -579,14 +603,6 @@ class SimpleWindow(QMainWindow):
                 background-color: transparent;
                 border: none;
                 color: #D1D3D4;
-            }
-            #NavigationSidebar QPushButton:hover {
-                background-color: #00A8E8; /* Use theme accent color on hover */
-            }
-            /* Make text inside hovered button white */
-            #NavigationSidebar QPushButton:hover QLabel {
-                color: #FFFFFF;
-                background-color: transparent;
             }
             #NavigationSidebar QPushButton:checked {
                 color: #FFFFFF; /* White text for active item */
