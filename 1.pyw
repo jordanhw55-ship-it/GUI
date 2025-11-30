@@ -190,6 +190,7 @@ class SimpleWindow(QMainWindow):
         main_layout.setSpacing(0)
         main_widget = QWidget()
         main_widget.setObjectName("MainWidget") # Give the central widget a name for styling
+        main_widget.setAutoFillBackground(True) # Force the widget to paint its background
         main_widget.setLayout(main_layout) # This will be the central widget's layout
         self.setCentralWidget(main_widget)
 
@@ -460,10 +461,6 @@ class SimpleWindow(QMainWindow):
                 background-color: #1e1e1e; /* Deep charcoal */
                 color: #E6E6E6; /* Brighter Off-white for better readability */
                 font-family: "Segoe UI", Arial, sans-serif;
-            }
-            QMainWindow {
-                background-color: #252526; /* Match the content widget background */
-                border: none; /* Remove the window border */
             }
             #CustomTitleBar {
                 background-color: #252526; /* Match the content widget background */
