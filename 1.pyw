@@ -337,10 +337,13 @@ class SimpleWindow(QMainWindow):
         
         self.stacked_widget = QStackedWidget()
         # This is the definitive fix: Programmatically remove the frame that
-        # QStackedWidget inherits from QFrame. This is more reliable than
-        # stylesheets for removing this specific default border.
+        # QStackedWidget inherits from QFrame, disable its focus policy to
+        # prevent focus rectangles, and force its background color to match
+        # its parent container, eliminating any visual seams.
         self.stacked_widget.setFrameShape(QFrame.NoFrame)
         self.stacked_widget.setFrameShadow(QFrame.Plain)
+        self.stacked_widget.setFocusPolicy(Qt.NoFocus)
+        self.stacked_widget.setStyleSheet("QStackedWidget { background-color: #252526; border: none; }")
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
