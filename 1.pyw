@@ -93,6 +93,7 @@ class NavButton(QWidget):
         super().__init__()
         self.setObjectName("NavButton") # Use an object name for specific styling
         self.setCheckable(True) # We will manage the checked state manually
+        self._is_checkable = False
         self._checked = False
 
         # Set attributes to ensure background is painted correctly from stylesheet
@@ -122,13 +123,26 @@ class NavButton(QWidget):
             self.clicked.emit()
         super().mousePressEvent(event)
 
+    def isCheckable(self) -> bool:
+        """Returns whether the button is checkable."""
+        return self._is_checkable
+
+    def setCheckable(self, checkable: bool):
+        """Sets whether the button is checkable."""
+        self._is_checkable = checkable
+
+    def isChecked(self) -> bool:
+        """Returns whether the button is currently checked."""
+        return self._checked
+
     def setChecked(self, checked: bool):
         """Manually handle the checked state and trigger a style update."""
-        if self._checked != checked:
+        if self.isCheckable() and self._checked != checked:
             self._checked = checked
-            self.style().unpolish(self)
-            self.style().polish(self)
-            self.update()
+            # Set a dynamic property that the stylesheet can use.
+            self.setProperty("checked", checked)
+            # Repolish the widget to apply the new style state.
+            self.style().unpolish(self); self.style().polish(self)
 
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
