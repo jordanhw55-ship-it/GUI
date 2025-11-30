@@ -694,6 +694,9 @@ class SimpleWindow(QMainWindow):
             QTableWidget::item {
                 padding: 3px;
             }
+            QStackedWidget {
+                border: none;
+            }
         """
 
     def get_new_dark_style_legacy(self):
