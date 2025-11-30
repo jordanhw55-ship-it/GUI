@@ -189,6 +189,7 @@ class SimpleWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_widget = QWidget()
+        main_widget.setObjectName("MainWidget") # Give the central widget a name for styling
         main_widget.setLayout(main_layout) # This will be the central widget's layout
         self.setCentralWidget(main_widget)
 
@@ -466,6 +467,10 @@ class SimpleWindow(QMainWindow):
             }
             #CustomTitleBar {
                 background-color: #252526; /* Match the content widget background */
+            }
+            /* The main widget holding the sidebar and content */
+            QWidget#MainWidget {
+                background-color: #252526;
             }
             #CustomTitleBar QPushButton {
                 background-color: transparent;
