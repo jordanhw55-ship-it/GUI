@@ -452,7 +452,7 @@ class SimpleWindow(QMainWindow):
         self.lobby_manager.refresh_lobbies()
 
     def get_new_dark_style(self):
-        """Returns the new dark theme stylesheet."""
+        """Returns the CCleaner-inspired dark theme stylesheet."""
         return """
             QWidget {
                 background-color: #1e1e1e; /* Deep charcoal */
@@ -473,16 +473,16 @@ class SimpleWindow(QMainWindow):
                 font-weight: bold;
             }
             #CustomTitleBar QPushButton:hover {
-                background-color: #d9534f; /* Reddish hover for close */
+                background-color: #E81123; /* Brighter Red for close hover */
             }
             #NavigationSidebar {
-                background-color: #252526; /* Slightly lighter charcoal */
-                border-right: 1px solid #3c3c3c;
+                background-color: #2C3033; /* CCleaner sidebar color */
+                border-right: 1px solid #43474A;
             }
             #NavigationSidebar QPushButton {
                 background-color: transparent;
                 border: none;
-                color: #cccccc;
+                color: #D1D3D4; /* Light gray text */
                 padding: 10px;
                 text-align: left;
                 font-size: 14px;
@@ -492,10 +492,20 @@ class SimpleWindow(QMainWindow):
                 background-color: #333333;
             }
             #NavigationSidebar QPushButton:checked {
-                color: #ffffff;
+                color: #FFFFFF;
                 font-weight: bold;
-                background-color: #094771; /* Muted blue */
-                border-left: 3px solid #007acc; /* Teal accent */
+                background-color: #3B3F42;
+                border-left: 3px solid #00A8E8; /* Teal accent */
+            }
+            #UpgradeButton {
+                background-color: #F05E16; /* Orange CTA */
+                color: #FFFFFF;
+                font-weight: bold;
+                border-radius: 4px;
+                margin: 10px 5px;
+            }
+            #UpgradeButton:hover {
+                background-color: #FF7833;
             }
             QPushButton {
                 background-color: #3c3c3c;
@@ -1266,8 +1276,10 @@ class NavigationSidebar(QWidget):
         main_layout.setSpacing(5)
 
         # Icons using unicode characters
-        icons = ["\u2913", "\u2692", "\u26F0", "\u2699", "\u2328", "\U0001F4C8", "\u2699", "\u2753"]
-
+        # Minimal flat icons inspired by CCleaner's style
+        icons = ["\U0001F4C1", "\U0001F50D", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
+                 "\u2699", "\u2753"] # Settings, Help
+        
         # Main navigation buttons
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]: continue # Handle these separately
@@ -1287,6 +1299,12 @@ class NavigationSidebar(QWidget):
                 button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
                 self.buttons.append(button)
                 main_layout.addWidget(button)
+
+        # Add the "Upgrade now" button at the bottom
+        self.upgrade_button = QPushButton("Upgrade now")
+        self.upgrade_button.setObjectName("UpgradeButton")
+        # self.upgrade_button.clicked.connect(self.on_upgrade_clicked) # Add a function if needed
+        main_layout.addWidget(self.upgrade_button)
 
     def set_current_index(self, index: int):
         if self.current_index != -1:
