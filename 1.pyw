@@ -698,17 +698,19 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                border: none;
+                /* Definitive fix for groupbox borders: remove all visual frame elements */
+                border: none !important;
                 border-radius: 4px;
-                margin-top: 10px;
-                padding: 10px;
+                padding: 0;
+                margin: 0;
+                background-color: #252526; /* Match the page background */
             }
             QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left; /* Position at the top-left */
-                padding: 0 3px;
-                color: #9D9D9D; /* Muted title color */
-                margin-left: 5px;
+                /* Prevent the title from creating an inset frame */
+                subcontrol-origin: margin; 
+                padding: 0 4px;
+                background-color: transparent;
+                color: #E6E6E6;
             }
             /* Target widgets that inherit QFrame and remove their default border */
             QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox, QScrollArea {
