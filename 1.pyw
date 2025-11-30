@@ -342,22 +342,17 @@ class SimpleWindow(QMainWindow):
         content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
         content_layout.setSpacing(0)
 
-        # --- New Custom Title Bar ---
-        title_bar = QWidget()
-        title_bar.setObjectName("CustomTitleBar")
-        title_bar.setAttribute(Qt.WA_StyledBackground, True)
-        title_bar.setAutoFillBackground(True)
-        title_bar.setFixedHeight(30)
-        title_bar_layout = QHBoxLayout(title_bar)
-        title_bar_layout.setContentsMargins(0, 0, 5, 0)
-        title_bar_layout.addStretch()
+        # --- Integrated Window Controls ---
+        window_controls_layout = QHBoxLayout()
+        window_controls_layout.setContentsMargins(0, 5, 5, 0) # Add small margins for spacing
+        window_controls_layout.addStretch() # Push buttons to the right
         min_button = QPushButton("–"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 25); close_button.clicked.connect(self.close)
         min_button.setObjectName("WindowControlButton")
         close_button.setObjectName("WindowControlButton")
-        title_bar_layout.addWidget(min_button)
-        title_bar_layout.addWidget(close_button)
-        content_layout.addWidget(title_bar)
+        window_controls_layout.addWidget(min_button)
+        window_controls_layout.addWidget(close_button)
+        content_layout.addLayout(window_controls_layout)
         
         # Use the custom FlatStackedWidget to guarantee no borders are drawn.
         self.stacked_widget = FlatStackedWidget()
