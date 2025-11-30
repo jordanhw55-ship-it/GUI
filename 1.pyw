@@ -461,11 +461,11 @@ class SimpleWindow(QMainWindow):
                 color: #E6E6E6; /* Brighter Off-white for better readability */
                 font-family: "Segoe UI", Arial, sans-serif;
             }
-            QMainWindow, QWidget#MainWidget {
+            QMainWindow {
                 background-color: #252526; /* Set the main window background color */
             }
-            #CustomTitleBar {
-                background-color: #252526; /* Match the content widget background */
+            QWidget#MainWidget {
+                background-color: transparent; /* Allow QMainWindow's background to show through */
             }
             #CustomTitleBar QPushButton {
                 background-color: transparent;
