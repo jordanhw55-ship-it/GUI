@@ -329,10 +329,6 @@ class SimpleWindow(QMainWindow):
         main_widget.setAttribute(Qt.WA_StyledBackground, True)
         main_widget.setAutoFillBackground(True)
         self.setCentralWidget(main_widget)
-        
-        main_layout = QHBoxLayout(main_widget) # Set layout directly on main_widget
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
 
         # This is the content area to the right of the sidebar.
         # It uses a QVBoxLayout to stack the title bar and the stacked_widget.
@@ -341,6 +337,10 @@ class SimpleWindow(QMainWindow):
         content_widget.setAutoFillBackground(True)
         content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
         content_widget.setObjectName("ContentWidget")
+
+        main_layout = QHBoxLayout(main_widget) # Set layout directly on main_widget
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
         content_layout.setSpacing(0)
