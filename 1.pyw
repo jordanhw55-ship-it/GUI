@@ -587,6 +587,7 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
+                border: none;
             }
             #NavigationSidebar {
                 background-color: #2C3033; /* CCleaner sidebar color */
@@ -662,7 +663,7 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                border: 1px solid #43474A; /* Softer border */
+                border: none; /* Softer border */
                 border-radius: 4px;
                 margin-top: 10px;
                 padding: 10px;
