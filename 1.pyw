@@ -344,8 +344,9 @@ class SimpleWindow(QMainWindow):
 
         # --- Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
-        window_controls_layout.setContentsMargins(0, 5, 5, 0) # Add small margins for spacing
+        window_controls_layout.setContentsMargins(0, 0, 5, 0) # Remove top margin to prevent painting artifacts
         window_controls_layout.addStretch() # Push buttons to the right
+        content_layout.addSpacing(5) # Add a fixed 5px spacer at the top
         min_button = QPushButton("–"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 25); close_button.clicked.connect(self.close)
         min_button.setObjectName("WindowControlButton")
