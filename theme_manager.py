@@ -77,12 +77,19 @@ class ThemeManager:
             QGroupBox {{ border: 1px solid {accent}; border-radius: 8px; margin-top: 10px; }}
             QLineEdit, QTextEdit, QTableWidget, QListWidget {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; border-radius: 6px; padding: 6px; }}
             QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }}
-            QHeaderView::section {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; padding: 4px; }} 
-            QCheckBox::indicator {{
+            QHeaderView::section {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; padding: 4px; }}
+            QCheckBox::indicator, QListView::indicator, QTableView::indicator {{
                 border: 1px solid {accent};
                 border-radius: 3px;
+                width: 13px;
+                height: 13px;
             }}
-            QCheckBox::indicator:checked {{
+            QCheckBox::indicator:checked, QListView::indicator:checked, QTableView::indicator:checked {{
+                background-color: {accent};
+                image: url(none);
+            }}
+            QListView::indicator:checked, QTableView::indicator:checked {{
+                border: 1px solid {accent};
                 background-color: {accent};
                 image: url(none);
             }}
