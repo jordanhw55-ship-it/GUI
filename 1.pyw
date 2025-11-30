@@ -8,7 +8,7 @@ from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QFrame,
     QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
@@ -336,6 +336,11 @@ class SimpleWindow(QMainWindow):
         content_layout.addLayout(window_controls_layout)
         
         self.stacked_widget = QStackedWidget()
+        # This is the definitive fix: Programmatically remove the frame that
+        # QStackedWidget inherits from QFrame. This is more reliable than
+        # stylesheets for removing this specific default border.
+        self.stacked_widget.setFrameShape(QFrame.NoFrame)
+        self.stacked_widget.setFrameShadow(QFrame.Plain)
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
