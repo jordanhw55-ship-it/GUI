@@ -1358,6 +1358,39 @@ class SimpleWindow(QMainWindow):
 
         event.accept()
  
+class NavButton(QPushButton):
+    """A custom button with a separate icon and text label for precise alignment."""
+    def __init__(self, icon: str, text: str):
+        super().__init__()
+        self.setCheckable(True)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(15, 0, 15, 0) # Left and right padding
+        layout.setSpacing(10) # Space between icon and text
+
+        self.icon_label = QLabel(icon)
+        self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setStyleSheet("background-color: transparent; border: none;")
+
+        self.text_label = QLabel(text)
+        self.text_label.setStyleSheet("background-color: transparent; border: none;")
+
+        layout.addWidget(self.icon_label)
+        layout.addWidget(self.text_label)
+        layout.addStretch()
+
+    def setChecked(self, checked: bool):
+        """Override setChecked to style the internal labels."""
+        super().setChecked(checked)
+        if checked:
+            self.icon_label.setStyleSheet("background-color: transparent; border: none; color: #FFFFFF; font-weight: bold;")
+            self.text_label.setStyleSheet("background-color: transparent; border: none; color: #FFFFFF; font-weight: bold;")
+        else:
+            self.icon_label.setStyleSheet("background-color: transparent; border: none; color: #D1D3D4; font-weight: normal;")
+            self.text_label.setStyleSheet("background-color: transparent; border: none; color: #D1D3D4; font-weight: normal;")
+
+
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
     tab_selected = Signal(int)
@@ -1365,7 +1398,7 @@ class NavigationSidebar(QWidget):
     def __init__(self, tab_names: list[str]):
         super().__init__()
         self.setObjectName("NavigationSidebar")
-        self.setFixedWidth(160) # Increased width for more space
+        self.setFixedWidth(180) # Increased width for more space
         
         self.buttons: List[QPushButton] = []
         self.current_index = -1
@@ -1388,8 +1421,7 @@ class NavigationSidebar(QWidget):
         # Main navigation buttons
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]: continue # Handle these separately
-            button = QPushButton(f" {icons[i]}  {name}")
-            button.setCheckable(True)
+            button = NavButton(icons[i], name)
             button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
             self.buttons.append(button)
             main_layout.addWidget(button)
@@ -1399,8 +1431,7 @@ class NavigationSidebar(QWidget):
         # Bottom-grouped buttons (Settings, Help)
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]:
-                button = QPushButton(f" {icons[i]}  {name}")
-                button.setCheckable(True)
+                button = NavButton(icons[i], name)
                 button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
                 self.buttons.append(button)
                 main_layout.addWidget(button)
