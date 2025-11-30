@@ -828,7 +828,7 @@ class SimpleWindow(QMainWindow):
             self.reset_state()
 
     def reset_state(self):
-        self.resize(700, 800)
+        self.resize(950, 700)
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
         self.apply_new_style()
         self.current_theme_index = -1 # Explicitly set to custom theme
