@@ -193,40 +193,23 @@ class SimpleWindow(QMainWindow):
         main_widget.setLayout(main_layout) # This will be the central widget's layout
         self.setCentralWidget(main_widget)
 
-        # Title bar
-        self.title_bar = QWidget()
-        self.title_bar.setObjectName("CustomTitleBar")
-        self.title_bar.setFixedHeight(30)
-        title_bar_layout = QGridLayout(self.title_bar)
-        title_bar_layout.setContentsMargins(5, 0, 5, 0)
-        title_bar_layout.setSpacing(0)
-
-        # Create a placeholder for the title widget, which will be populated by set_title_image
-        self.title_widget_container = QWidget()
-        self.title_widget_container.setLayout(QHBoxLayout())
-        self.title_widget_container.setStyleSheet("background-color: transparent;")
-        self.title_widget_container.layout().setContentsMargins(0,0,0,0)
-
-        min_button = QPushButton("_"); min_button.setFixedSize(30, 30); min_button.clicked.connect(self.showMinimized)
-        close_button = QPushButton("X"); close_button.setFixedSize(30, 30); close_button.clicked.connect(self.close)
-
-        # Create a separate layout for the buttons (only minimize and close)
-        button_layout = QHBoxLayout()
-        button_layout.setContentsMargins(0, 0, 0, 0)
-        button_layout.setSpacing(0)
-        button_layout.addWidget(min_button)
-        button_layout.addWidget(close_button)
-
-        title_bar_layout.addWidget(self.title_widget_container, 0, 0, 1, 1, Qt.AlignmentFlag.AlignLeft) # Title left-aligned
-        title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
-
         # --- New Main Layout Structure ---
         content_widget = QWidget()
         content_widget.setObjectName("ContentWidget") # For specific styling
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 0, 10, 10)
+        content_layout.setContentsMargins(10, 5, 10, 10) # Add top margin for controls
         content_layout.setSpacing(10)
-        content_layout.addWidget(self.title_bar)
+
+        # --- New Integrated Window Controls ---
+        window_controls_layout = QHBoxLayout()
+        window_controls_layout.addStretch() # Push buttons to the right
+        min_button = QPushButton("_"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
+        close_button = QPushButton("X"); close_button.setFixedSize(30, 25); close_button.clicked.connect(self.close)
+        min_button.setObjectName("WindowControlButton")
+        close_button.setObjectName("WindowControlButton")
+        window_controls_layout.addWidget(min_button)
+        window_controls_layout.addWidget(close_button)
+        content_layout.addLayout(window_controls_layout)
         
         self.stacked_widget = QStackedWidget()
         content_layout.addWidget(self.stacked_widget)
@@ -467,14 +450,14 @@ class SimpleWindow(QMainWindow):
             QWidget#MainWidget {
                 background-color: transparent; /* Allow QMainWindow's background to show through */
             }
-            #CustomTitleBar QPushButton {
+            QPushButton#WindowControlButton {
                 background-color: transparent;
                 border: none;
                 color: #d4d4d4;
                 font-size: 16px;
                 font-weight: bold;
             }
-            #CustomTitleBar QPushButton:hover {
+            QPushButton#WindowControlButton:hover {
                 background-color: #E81123; /* Brighter Red for close hover */
             }
             /* The main content area to the right of the sidebar */
@@ -649,7 +632,10 @@ class SimpleWindow(QMainWindow):
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton and self.title_bar.underMouse():
+        # Allow dragging from the top 30px of the window, as long as it's not over the sidebar
+        if event.button() == Qt.MouseButton.LeftButton and event.pos().y() < 30:
+            if self.navigation_sidebar and self.navigation_sidebar.geometry().contains(event.pos()):
+                return # Don't drag if clicking on the sidebar
             self.old_pos = event.globalPosition().toPoint()
     def mouseMoveEvent(self, event: QMouseEvent):
         if self.old_pos is not None and event.buttons() == Qt.MouseButton.LeftButton:
@@ -713,35 +699,9 @@ class SimpleWindow(QMainWindow):
 
     def set_title_image(self, image_name: str | None):
         """Sets the title bar image, or falls back to text if not found."""
-        # Clear the existing title widget
-        while self.title_widget_container.layout().count():
-            child = self.title_widget_container.layout().takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-
-        title_widget = None
-        if image_name:
-            image_path = image_name if os.path.isabs(image_name) else os.path.join(get_base_path(), "contents", image_name)
-            if os.path.exists(image_path):
-                title_widget = QLabel()
-                pixmap = QPixmap(image_path)
-                title_widget.setPixmap(pixmap.scaled(pixmap.width(), 26, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-                title_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                title_widget.setStyleSheet("background-color: transparent;")
-
-        if not title_widget:
-            # Fallback to icon and text if no image or image not found
-            title_widget = QWidget()
-            title_widget.setStyleSheet("background-color: transparent;")
-            title_layout = QHBoxLayout(title_widget)
-            title_layout.setContentsMargins(0,0,0,0)
-            title_layout.setSpacing(5)
-            icon_label = QLabel()
-            icon_pixmap = QPixmap(os.path.join(get_base_path(), "contents", "icon.ico"))
-            icon_label.setPixmap(icon_pixmap.scaled(19, 19, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            title_layout.addWidget(icon_label); title_layout.addWidget(QLabel("Hellfire Helper"))
-
-        self.title_widget_container.layout().addWidget(title_widget, 0, Qt.AlignmentFlag.AlignVCenter)
+        # This function is no longer needed as the title bar has been removed.
+        # The window title is set via self.setWindowTitle() and the icon via self.setWindowIcon().
+        pass
 
     def select_custom_title_image(self):
         """Opens a file dialog to select an image for the custom theme title."""
