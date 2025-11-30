@@ -78,7 +78,7 @@ class AlignedTableWidgetItem(QTableWidgetItem):
         self.setTextAlignment(alignment)
 
 class NavButton(QWidget):
-    clicked = Signal()
+    clicked = Signal(bool) # Change signal to emit a boolean 'checked' status
 
     def __init__(self, icon: str, text: str):
         super().__init__()
@@ -107,7 +107,8 @@ class NavButton(QWidget):
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
+            # When clicked, toggle the checked state and emit it.
+            self.clicked.emit(not self.isChecked())
         super().mousePressEvent(event)
 
     def isCheckable(self) -> bool:
@@ -157,7 +158,7 @@ class NavigationSidebar(QWidget):
         for i, name in enumerate(tab_names):
             if name in ["Settings", "Help"]: continue # Handle these separately
             button = NavButton(icons[i], name)
-            button.setCheckable(True)
+            button.setCheckable(True) # This enables the checked logic
             button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
             self.buttons.append(button)
             main_layout.addWidget(button)
@@ -170,7 +171,7 @@ class NavigationSidebar(QWidget):
                 # Find the correct index from the original tab_names list
                 idx = tab_names.index(name)
                 button = NavButton(icons[i], name)
-                button.setCheckable(True)
+                button.setCheckable(True) # This enables the checked logic
                 button.clicked.connect(lambda checked, i=idx: self.set_current_index(i))
                 self.buttons.append(button)
                 main_layout.addWidget(button)
