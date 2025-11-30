@@ -352,7 +352,7 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
-        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help"]
+        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help", "Reset GUI"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
         self.navigation_sidebar.setAttribute(Qt.WA_StyledBackground, True)
         self.navigation_sidebar.setAutoFillBackground(True)
@@ -532,6 +532,10 @@ class SimpleWindow(QMainWindow):
         # New Help Tab
         help_tab = self.create_help_tab()
         self.stacked_widget.addWidget(help_tab)
+
+        # New Reset GUI Tab
+        reset_gui_tab = self.create_reset_gui_tab()
+        self.stacked_widget.addWidget(reset_gui_tab)
 
         # --- CRITICAL FIX for bleed-through ---
         # Force every page inside the stacked widget to have an opaque, styled background.
@@ -722,6 +726,29 @@ class SimpleWindow(QMainWindow):
         layout.addWidget(help_text)
         
         return help_widget
+
+    def create_reset_gui_tab(self):
+        """Creates the content for the new Reset GUI tab."""
+        reset_widget = QWidget()
+        layout = QVBoxLayout(reset_widget)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter) # Center content
+
+        title = QLabel("Reset Application")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        description = QLabel("This will reset all application settings to their defaults.")
+        description.setWordWrap(True)
+        description.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        reset_button = QPushButton("Reset Application")
+        reset_button.setObjectName("DangerButton") # Style it like the other reset button
+        reset_button.setFixedWidth(200) # Give it a reasonable size
+        reset_button.clicked.connect(self.confirm_reset)
+
+        layout.addStretch()
+        layout.addWidget(title); layout.addWidget(description); layout.addSpacing(20); layout.addWidget(reset_button, 0, Qt.AlignmentFlag.AlignCenter); layout.addStretch()
+        return reset_widget
 
     def update_automation_button_style(self, is_running: bool):
         """Updates the 'Start/F5' button color based on automation state."""
