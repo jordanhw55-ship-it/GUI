@@ -279,6 +279,14 @@ closePause() {{
             if not original_key: continue
             
             quickcast = key_info.get("quickcast", False)
+
+            # Determine if the key has been remapped from its default
+            raw_default_key = name.split('_')[-1]
+            is_numpad_control = "numpad" in name.lower()
+            canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
+            is_remapped = hotkey != canonical_default
+
+            if not is_remapped and not quickcast: continue
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
             script_content += f"\n${ahk_hotkey}:: {function_call}"
