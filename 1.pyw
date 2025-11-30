@@ -156,7 +156,7 @@ class NavigationSidebar(QWidget):
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help"]: continue # Handle these separately
+            if name in ["Settings", "Help", "Reset GUI"]: continue # Handle these separately
             button = NavButton(icons[i], name)
             button.setCheckable(True) # This enables the checked logic
             button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
