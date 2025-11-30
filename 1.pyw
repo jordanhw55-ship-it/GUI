@@ -691,9 +691,9 @@ class SimpleWindow(QMainWindow):
                 border: 1px solid #3c3c3c;
                 padding: 4px;
             }
-            /* This targets the QStackedWidget container itself, which can sometimes
-               draw its own frame depending on the style and theme. */
-            QStackedWidget {
+            /* FINAL FIX: This targets the default frame that Qt's QStackedWidget
+               draws around its content area, which was inheriting a border. */
+            QStackedWidget > QFrame {
                 border: none;
             }
         """
