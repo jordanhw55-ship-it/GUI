@@ -1279,14 +1279,14 @@ class NavigationSidebar(QWidget):
     def __init__(self, tab_names: list[str]):
         super().__init__()
         self.setObjectName("NavigationSidebar")
-        self.setFixedWidth(160) /* Increased width for more space */
+        self.setFixedWidth(160) # Increased width for more space
         
         self.buttons: List[QPushButton] = []
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 10, 0, 10)
-        main_layout.setSpacing(2) /* Reduced spacing between buttons */
+        main_layout.setSpacing(2) # Reduced spacing between buttons
 
         # Icons using unicode characters
         # Refined, more modern-looking unicode characters
