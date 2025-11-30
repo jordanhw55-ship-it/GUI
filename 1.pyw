@@ -339,19 +339,23 @@ class SimpleWindow(QMainWindow):
         content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
         content_widget.setObjectName("ContentWidget")
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 5, 10, 10) # Add top margin for controls
-        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
+        content_layout.setSpacing(0)
 
-        # --- New Integrated Window Controls ---
-        window_controls_layout = QHBoxLayout()
-        window_controls_layout.addStretch() # Push buttons to the right
+        # --- New Custom Title Bar ---
+        title_bar = QWidget()
+        title_bar.setObjectName("CustomTitleBar")
+        title_bar.setFixedHeight(30)
+        title_bar_layout = QHBoxLayout(title_bar)
+        title_bar_layout.setContentsMargins(0, 0, 5, 0)
+        title_bar_layout.addStretch()
         min_button = QPushButton("–"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 25); close_button.clicked.connect(self.close)
         min_button.setObjectName("WindowControlButton")
         close_button.setObjectName("WindowControlButton")
-        window_controls_layout.addWidget(min_button)
-        window_controls_layout.addWidget(close_button)
-        content_layout.addLayout(window_controls_layout)
+        title_bar_layout.addWidget(min_button)
+        title_bar_layout.addWidget(close_button)
+        content_layout.addWidget(title_bar)
         
         # Use the custom FlatStackedWidget to guarantee no borders are drawn.
         self.stacked_widget = FlatStackedWidget()
@@ -601,6 +605,10 @@ class SimpleWindow(QMainWindow):
             QMainWindow {
                 background-color: #252526; /* Set the main window background color */
             }
+            #CustomTitleBar {
+                background-color: #252526; /* Match the content background */
+                border: none;
+            }
             QPushButton#WindowControlButton {
                 background-color: transparent;
                 border: none;
@@ -614,6 +622,7 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
+                border: none;
             }
             #NavigationSidebar {
                 background-color: #2C3033; /* CCleaner sidebar color */
@@ -651,6 +660,7 @@ class SimpleWindow(QMainWindow):
                 color: #f0f0f0;
                 border: 1px solid #555555;
                 padding: 8px;
+                border-radius: 4px;
             }
             QPushButton:hover {
                 background-color: #4c4c4c;
@@ -672,6 +682,7 @@ class SimpleWindow(QMainWindow):
                 border: 1px solid #43474A; /* Softer border */
                 border-radius: 4px;
                 margin-top: 10px;
+                padding: 10px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -683,12 +694,17 @@ class SimpleWindow(QMainWindow):
             QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
                 background-color: #252526;
                 border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 5px;
                 color: #d4d4d4;
             }
             QHeaderView::section {
                 background-color: #3B3F42;
                 border: 1px solid #3c3c3c;
                 padding: 4px;
+            }
+            QTableWidget::item {
+                padding: 3px;
             }
             /* This combination should finally remove any borders from the
                stacked widget container and its direct pages. */
