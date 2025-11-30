@@ -8,7 +8,7 @@ from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QFrame,
     QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
