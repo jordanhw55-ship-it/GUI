@@ -216,7 +216,7 @@ class SimpleWindow(QMainWindow):
         button_layout.addWidget(min_button)
         button_layout.addWidget(close_button)
 
-        title_bar_layout.addWidget(self.title_widget_container, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
+        title_bar_layout.addWidget(self.title_widget_container, 0, 0, 1, 1, Qt.AlignmentFlag.AlignLeft) # Title left-aligned
         title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
 
         # --- New Main Layout Structure ---
@@ -464,7 +464,6 @@ class SimpleWindow(QMainWindow):
             }
             #CustomTitleBar {
                 background-color: #1e1e1e;
-                border-bottom: 1px solid #3c3c3c;
             }
             #CustomTitleBar QPushButton {
                 background-color: transparent;
