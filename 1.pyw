@@ -85,6 +85,9 @@ class NavButton(QPushButton):
         layout.addWidget(self.icon_label)
         layout.addWidget(self.text_label)
         layout.addStretch()
+        
+        # Set the initial default style on creation
+        self._update_style()
 
     def setChecked(self, checked: bool):
         """Override setChecked to style the internal labels."""
