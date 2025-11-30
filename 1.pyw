@@ -573,13 +573,18 @@ class SimpleWindow(QMainWindow):
                 border-left: 3px solid transparent;
             }
             #NavigationSidebar QPushButton:hover {
-                background-color: #3B3F42;
+                background-color: #00A8E8; /* Use theme accent color on hover */
+            }
+            /* Make text inside hovered button white */
+            #NavigationSidebar QPushButton:hover QLabel {
+                color: #FFFFFF;
+                background-color: transparent;
             }
             #NavigationSidebar QPushButton:checked {
                 color: #FFFFFF; /* White text for active item */
                 font-weight: bold;
-                background-color: #3B3F42;
-                border-left: 3px solid #00A8E8; /* Teal accent */
+                background-color: #007AAB; /* Use a slightly darker accent for checked */
+                border-left: 3px solid #00A8E8; /* Keep the bright accent border */
             }
             /* Style the text and icon inside the checked button */
             #NavigationSidebar QPushButton:checked QLabel {
