@@ -86,33 +86,11 @@ class NavButton(QPushButton):
         layout.addWidget(self.text_label)
         layout.addStretch()
         
-        # Set the initial default style on creation
-        self._update_style()
-
     def setChecked(self, checked: bool):
         """Override setChecked to style the internal labels."""
         super().setChecked(checked)
-        # The styling is now handled entirely by the main stylesheet for consistency.
-        self._update_style()
-
-    def enterEvent(self, event):
-        """Handle mouse entering the widget to apply hover effect."""
-        super().enterEvent(event)
-        self._update_style(is_hovering=True)
-
-    def leaveEvent(self, event):
-        """Handle mouse leaving the widget to remove hover effect."""
-        super().leaveEvent(event)
-        self._update_style(is_hovering=False)
-
-    def _update_style(self, is_hovering=False):
-        """Central method to set the button's style based on its state."""
-        if self.isChecked():
-            self.setStyleSheet(f"background-color: {self.checked_bg}; border-left: 3px solid {self.hover_bg};")
-        elif is_hovering:
-            self.setStyleSheet(f"background-color: {self.hover_bg}; border-left: 3px solid transparent;")
-        else:
-            self.setStyleSheet(f"background-color: {self.default_bg}; border-left: 3px solid transparent;")
+        # The styling is now handled entirely by the main stylesheet for consistency,
+        # so this method only needs to call the parent implementation.
 
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
