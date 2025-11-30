@@ -375,9 +375,6 @@ class SimpleWindow(QMainWindow):
         self.items_tab = ItemsTab(self)
         self.stacked_widget.addWidget(self.items_tab)
 
-        # Force all pages in the stacked widget to have a styled, opaque background
-        # to prevent any transparency or theme bleed-through at the edges.
-
         # Initialize the ItemsManager to handle all logic for the Items tab
         self.items_manager = ItemsManager(self)
         self.items_manager.switch_items_sub_tab(0)
@@ -541,6 +538,14 @@ class SimpleWindow(QMainWindow):
         # New Help Tab
         help_tab = self.create_help_tab()
         self.stacked_widget.addWidget(help_tab)
+
+        # --- CRITICAL FIX for bleed-through ---
+        # Force every page inside the stacked widget to have an opaque, styled background.
+        # This is the definitive fix to prevent visual artifacts from other tabs showing through.
+        for i in range(self.stacked_widget.count()):
+            page = self.stacked_widget.widget(i)
+            page.setAttribute(Qt.WA_StyledBackground, True)
+            page.setAutoFillBackground(True)
 
         # Finalize
 
