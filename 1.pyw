@@ -91,6 +91,7 @@ class NavButton(QPushButton):
         self.hover_bg = "#00A8E8" # Teal accent
         self.checked_bg = "#007AAB" # Darker teal for checked
         self.setCheckable(True)
+        self.setFlat(True) # This is the key: stops the button from drawing its own frame.
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
