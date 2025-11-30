@@ -695,18 +695,15 @@ class SimpleWindow(QMainWindow):
                 background-color: #FF7833;
             }
             QPushButton {
-                /* This is the restored style for all standard buttons */
-                background-color: #3A3D41;
-                color: #E6E6E6;
-                border: 1px solid #5A5A5A;
-                padding: 6px 12px;
+                /* This is the correct theme style for all standard buttons */
+                background-color: #007AAB; /* CCleaner's blue */
+                color: #FFFFFF;
+                border: 1px solid #007AAB;
+                padding: 5px;
                 border-radius: 4px;
             }
             QPushButton:hover {
-                background-color: #505357;
-            }
-            QPushButton:pressed {
-                background-color: #2C3033;
+                background-color: #0095CC;
             }
             /* Secondary buttons have a visible border but no fill */
             QPushButton#SecondaryButton {
