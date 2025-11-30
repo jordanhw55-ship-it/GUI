@@ -152,7 +152,7 @@ class NavigationSidebar(QWidget):
         
         # Icons using unicode characters
         icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
-                 "\u2699", "\u2753"] # Settings, Help (kept the same)
+                 "\u2699", "\u2753", "\U0001F504"] # Settings, Help, Reset GUI (repeat icon)
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
@@ -166,15 +166,16 @@ class NavigationSidebar(QWidget):
         main_layout.addStretch()
 
         # Bottom-grouped buttons (Settings, Help)
-        for i, name in enumerate(tab_names): # This will iterate through all names again
-            if name in ["Settings", "Help"]:
-                # Find the correct index from the original tab_names list
-                idx = tab_names.index(name)
-                button = NavButton(icons[i], name)
-                button.setCheckable(True) # This enables the checked logic
-                button.clicked.connect(lambda checked, i=idx: self.set_current_index(i))
-                self.buttons.append(button)
-                main_layout.addWidget(button)
+        bottom_buttons_layout = QVBoxLayout()
+        bottom_buttons_layout.setSpacing(5)
+        for name in ["Settings", "Help", "Reset GUI"]:
+            idx = tab_names.index(name)
+            button = NavButton(icons[idx], name)
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked, i=idx: self.set_current_index(i))
+            self.buttons.append(button)
+            bottom_buttons_layout.addWidget(button)
+        main_layout.addLayout(bottom_buttons_layout)
 
     def set_current_index(self, index: int):
         if self.current_index != -1:
