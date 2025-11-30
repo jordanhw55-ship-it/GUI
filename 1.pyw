@@ -82,17 +82,24 @@ class AlignedTableWidgetItem(QTableWidgetItem):
         super().__init__(text)
         self.setTextAlignment(alignment)
 
-class NavButton(QPushButton):
-    """A custom button with a separate icon and text label for precise alignment."""
+class NavButton(QWidget):
+    """
+    A custom clickable widget that acts like a button but gives full style control.
+    Inherits from QWidget instead of QPushButton to avoid all default button styling.
+    """
+    clicked = Signal()
+
     def __init__(self, icon: str, text: str):
         super().__init__()
-        # Store colors to manage hover state manually
-        self.default_bg = "transparent"
-        self.hover_bg = "#00A8E8" # Teal accent
-        self.checked_bg = "#007AAB" # Darker teal for checked
-        self.setCheckable(True)
-        self.setFlat(True) # This is the key: stops the button from drawing its own frame.
+        self.setObjectName("NavButton") # Use an object name for specific styling
+        self.setCheckable(True) # We will manage the checked state manually
+        self._checked = False
 
+        # Set attributes to ensure background is painted correctly from stylesheet
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAutoFillBackground(True)
+
+        # Main layout for the custom widget
         layout = QHBoxLayout(self)
         layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
         layout.setSpacing(10) # Space between icon and text
@@ -101,21 +108,27 @@ class NavButton(QPushButton):
         self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
-        # self.icon_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
 
         self.text_label = QLabel(text)
-        # self.text_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
         self.text_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
 
         layout.addWidget(self.icon_label)
         layout.addWidget(self.text_label)
         layout.addStretch()
-        
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """Emit the clicked signal on a left-click."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
     def setChecked(self, checked: bool):
-        """Override setChecked to style the internal labels."""
-        super().setChecked(checked)
-        # The styling is now handled entirely by the main stylesheet for consistency,
-        # so this method only needs to call the parent implementation.
+        """Manually handle the checked state and trigger a style update."""
+        if self._checked != checked:
+            self._checked = checked
+            self.style().unpolish(self)
+            self.style().polish(self)
+            self.update()
 
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
@@ -126,7 +139,7 @@ class NavigationSidebar(QWidget):
         self.setObjectName("NavigationSidebar")
         self.setFixedWidth(180) # Increased width for more space
         
-        self.buttons: List[QPushButton] = []
+        self.buttons: List[NavButton] = []
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
@@ -629,12 +642,12 @@ class SimpleWindow(QMainWindow):
             QFrame#SidebarSeparator {
                 background-color: #43474A;
             }
-            #NavigationSidebar QPushButton {
+            QWidget#NavButton {
                 background-color: transparent;
                 border: none !important; /* Final fix: Force no border to override any other style */
                 border-image: none; /* Explicitly disable any theme-drawn border images */
                 outline: none; /* Explicitly remove outline */
-                color: #D1D3D4;
+                border-radius: 4px; /* Add a radius for the background color change */
                 padding: 12px 15px; /* Increased left padding to move text right */
                 text-align: left;
                 font-size: 15px;
@@ -646,13 +659,13 @@ class SimpleWindow(QMainWindow):
                 outline: none; /* Explicitly remove outline */
                 color: #D1D3D4;
             }
-            #NavigationSidebar QPushButton:checked {
+            QWidget#NavButton[checked="true"] {
                 color: #FFFFFF; /* White text for active item */
                 font-weight: bold;
                 background-color: #007AAB; /* Use a slightly darker accent for checked */
             }
             /* Style the text and icon inside the checked button */
-            #NavigationSidebar QPushButton:checked QLabel {
+            QWidget#NavButton[checked="true"] QLabel {
                 color: #FFFFFF;
                 font-weight: bold;
                 background-color: transparent;
