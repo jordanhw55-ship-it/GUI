@@ -71,10 +71,12 @@ class NavButton(QPushButton):
         self.icon_label = QLabel(icon)
         self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
         # self.icon_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
 
         self.text_label = QLabel(text)
         # self.text_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
+        self.text_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
 
         layout.addWidget(self.icon_label)
         layout.addWidget(self.text_label)
