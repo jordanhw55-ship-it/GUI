@@ -322,19 +322,20 @@ class SimpleWindow(QMainWindow):
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
 
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+        # This is the main widget that holds the entire UI.
+        # It uses a QHBoxLayout to place the sidebar and content area side-by-side.
         main_widget = QWidget()
         main_widget.setObjectName("MainWidget")
         main_widget.setAttribute(Qt.WA_StyledBackground, True)
         main_widget.setAutoFillBackground(True)
-        main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+        
+        main_layout = QHBoxLayout(main_widget) # Set layout directly on main_widget
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # The central widget will now be a simple QWidget with the main layout.
-        central_widget = QWidget()
-        central_widget.setLayout(main_layout)
+        # This is the content area to the right of the sidebar.
+        # It uses a QVBoxLayout to stack the title bar and the stacked_widget.
         content_widget = QWidget()
         content_widget.setAttribute(Qt.WA_StyledBackground, True)
         content_widget.setAutoFillBackground(True)
@@ -343,11 +344,6 @@ class SimpleWindow(QMainWindow):
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
         content_layout.setSpacing(0)
-
-        # The central widget will now be a simple QWidget with the main layout.
-        central_widget = QWidget()
-        central_widget.setLayout(main_layout)
-        self.setCentralWidget(central_widget)
 
         # --- Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
