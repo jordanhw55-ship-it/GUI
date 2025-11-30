@@ -792,7 +792,7 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                border: 1px solid #43474A; /* Softer border */
+                border: none; /* No border for group boxes */
                 border-radius: 4px;
                 margin-top: 10px;
                 padding: 10px;
