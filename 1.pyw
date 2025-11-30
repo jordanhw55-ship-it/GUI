@@ -691,10 +691,6 @@ class SimpleWindow(QMainWindow):
                 border: 1px solid #3c3c3c;
                 padding: 4px;
             }
-            /* This targets the frame that QStackedWidget draws around its pages */
-            QStackedWidget > QFrame {
-                border: none;
-            }
             /* This is the key: The QStackedWidget's pages are QWidgets.
                This selector removes the border from the page container itself. */
             QStackedWidget > QWidget {
