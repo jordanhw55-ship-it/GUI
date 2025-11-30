@@ -73,6 +73,8 @@ class ThemeManager:
             #CustomTitleBar QPushButton:hover {{ background-color: {accent}; }}
             QPushButton {{ background-color: {accent}; color: {bg}; border: 1px solid {accent}; padding: 5px; border-radius: 6px; }}
             QPushButton:hover {{ background-color: {bg}; color: {accent}; }}
+            QLineEdit, QTextEdit, QTableWidget, QListWidget {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; border-radius: 6px; padding: 6px; }}
+            QGroupBox {{ border: 1px solid {accent}; border-radius: 8px; margin-top: 10px; }}
             QLineEdit, QTextEdit, QTableWidget, QListWidget {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; border-radius: 6px; padding: 6px; }}            
             QGroupBox {{ border: none; border-radius: 8px; margin-top: 10px; }}
             QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }}
