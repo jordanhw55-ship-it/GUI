@@ -596,6 +596,7 @@ class SimpleWindow(QMainWindow):
             #NavigationSidebar QPushButton {
                 background-color: transparent;
                 border: none;
+                outline: none; /* Explicitly remove outline */
                 color: #D1D3D4;
                 padding: 12px 15px; /* Increased left padding to move text right */
                 text-align: left;
@@ -606,6 +607,7 @@ class SimpleWindow(QMainWindow):
             #NavigationSidebar QPushButton QLabel {
                 background-color: transparent;
                 border: none;
+                outline: none; /* Explicitly remove outline */
                 color: #D1D3D4;
             }
             #NavigationSidebar QPushButton:checked {
