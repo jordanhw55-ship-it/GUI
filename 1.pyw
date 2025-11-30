@@ -830,7 +830,8 @@ class SimpleWindow(QMainWindow):
     def reset_state(self):
         self.resize(700, 800)
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
-        self.apply_new_style()
+        self.current_theme_index = -1 # Explicitly set to custom theme
+        self.theme_manager.apply_custom_theme() # Apply the reset theme directly
         self.navigation_sidebar.set_current_index(0)
         self.lobby_manager.watchlist = ["hellfire", "rpg"]
         self.custom_title_image_path = "" # Reset custom title image path
