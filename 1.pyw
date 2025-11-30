@@ -329,23 +329,17 @@ class SimpleWindow(QMainWindow):
         main_widget.setAttribute(Qt.WA_StyledBackground, True)
         main_widget.setAutoFillBackground(True)
         self.setCentralWidget(main_widget)
-
-        # This is the content area to the right of the sidebar.
-        # It uses a QVBoxLayout to stack the title bar and the stacked_widget.
-        content_widget = QWidget()
-        content_widget.setAttribute(Qt.WA_StyledBackground, True)
-        content_widget.setAutoFillBackground(True)
-        content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
-        content_widget.setObjectName("ContentWidget")
-
+        
         main_layout = QHBoxLayout(main_widget) # Set layout directly on main_widget
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
-        content_layout.setSpacing(0)
 
         # --- Integrated Window Controls ---
+        content_area_widget = QWidget()
+        content_area_widget.setObjectName("ContentWidget")
+        content_layout = QVBoxLayout(content_area_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
         window_controls_layout = QHBoxLayout()
         window_controls_layout.setContentsMargins(0, 0, 5, 0) # Remove top margin to prevent painting artifacts
         window_controls_layout.addStretch() # Push buttons to the right
@@ -369,7 +363,7 @@ class SimpleWindow(QMainWindow):
         self.navigation_sidebar.setAutoFillBackground(True)
         
         main_layout.addWidget(self.navigation_sidebar)
-        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor
+        main_layout.addWidget(content_area_widget, 1) # Add content widget with stretch factor
         self.navigation_sidebar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
