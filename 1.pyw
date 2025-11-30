@@ -59,105 +59,6 @@ class AlignedTableWidgetItem(QTableWidgetItem):
         self.setTextAlignment(alignment)
 
 
-class CustomTabBar(QWidget):
-    tab_selected = Signal(int)
-    def __init__(self, tab_names: list[str], tabs_per_row: int = 4):
-        super().__init__()
-        self.tab_names = tab_names
-        self.tabs_per_row = tabs_per_row
-        self.buttons: List[QPushButton] = []
-        self.current_index = -1
-        self.layout = QGridLayout(self)
-        self.layout.setContentsMargins(5, 0, 5, 0)
-        self.layout.setSpacing(2)
-        self._create_buttons()
-    def _create_buttons(self):
-        for i, name in enumerate(self.tab_names):
-            button = QPushButton(name)
-            button.setCheckable(True)
-            button.clicked.connect(lambda checked, idx=i: self._on_button_clicked(idx))
-            self.buttons.append(button)
-            row = i // self.tabs_per_row
-            col = i % self.tabs_per_row
-            self.layout.addWidget(button, row, col)
-        if self.buttons:
-            self._on_button_clicked(0)
-    def _on_button_clicked(self, index: int):
-        if self.current_index != index:
-            if self.current_index != -1:
-                self.buttons[self.current_index].setChecked(False)
-            self.buttons[index].setChecked(True)
-            self.current_index = index
-            self.tab_selected.emit(index)
-    def apply_style(self, theme_name: str, dark_mode: bool):
-        if theme_name == "Black/Orange":
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #2A2A2C;
-                    border: 1px solid #444444;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #F0F0F0;
-                    font-size: 16px;
-                }
-                QPushButton:hover { background-color: #FFA64D; }
-                QPushButton:checked {
-                    background-color: #FF7F50;
-                    color: #F0F0F0;
-                    border-color: #FF7F50;
-                }
-            """)
-        elif dark_mode:
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #2A2A2C;
-                    border: 1px solid #444444;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #EAEAEA;
-                    font-size: 16px;
-                }
-                QPushButton:hover { background-color: #4682B4; }
-                QPushButton:checked {
-                    background-color: #1E90FF;
-                    color: #EAEAEA;
-                    border-color: #4169E1;
-                }
-            """)
-        elif theme_name == "White/Blue":
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #87CEEB;
-                    border: 1px solid #4682B4;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #000080;
-                    font-size: 16px;
-                }
-                QPushButton:hover { background-color: #87CEFA; }
-                QPushButton:checked {
-                    background-color: #4682B4;
-                    color: #F0F8FF;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QPushButton {
-                    background-color: #FFC0CB;
-                    border: 1px solid #E6A8B8;
-                    padding: 8px;
-                    border-radius: 6px;
-                    color: #2E3440;
-                    font-size: 16px;
-                }
-                QPushButton:hover { background-color: #F6B3F5; }
-                QPushButton:checked {
-                    background-color: #DB7093;
-                    color: #2E3440;
-                }
-            """)
-
-
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
     stop_automation_signal = Signal()
@@ -167,6 +68,7 @@ class SimpleWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.navigation_sidebar = None
 
         self.settings_manager = SettingsManager()
 
@@ -263,13 +165,13 @@ class SimpleWindow(QMainWindow):
         self.audio_output = QAudioOutput()
         self.player.setAudioOutput(self.audio_output)
 
-        self.setWindowFlags(Qt.FramelessWindowHint)
-        self.resize(700, 800)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.resize(950, 700)
 
         self.setWindowTitle("Hellfire Helper")
         self.setWindowIcon(QIcon(os.path.join(get_base_path(), "contents", "icon.ico"))) # Set the application icon
         self.apply_loaded_settings() # Load settings before creating UI elements that depend on them
-
+        self.setStyleSheet(self.get_new_dark_style())
         # Apply font settings at startup
         initial_font = QFont(self.font_family, self.font_size)
         QApplication.instance().setFont(initial_font)
@@ -283,11 +185,11 @@ class SimpleWindow(QMainWindow):
             frame_geometry.moveCenter(center_point)
             self.move(frame_geometry.topLeft())
 
-        main_layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(5)
+        main_layout.setSpacing(0)
         main_widget = QWidget()
-        main_widget.setLayout(main_layout)
+        main_widget.setLayout(main_layout) # This will be the central widget's layout
         self.setCentralWidget(main_widget)
 
         # Title bar
@@ -316,17 +218,23 @@ class SimpleWindow(QMainWindow):
 
         title_bar_layout.addWidget(self.title_widget_container, 0, 0, 1, 1, Qt.AlignmentFlag.AlignCenter) # Title centered
         title_bar_layout.addLayout(button_layout, 0, 0, 1, 1, Qt.AlignmentFlag.AlignRight) # Buttons right-aligned
-        main_layout.addWidget(self.title_bar)
 
-        # Tabs
-        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Theme", "Reset"]
-        self.custom_tab_bar = CustomTabBar(self.tab_names, tabs_per_row=4)
-        main_layout.addWidget(self.custom_tab_bar)
-
+        # --- New Main Layout Structure ---
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(10, 0, 10, 10)
+        content_layout.setSpacing(10)
+        content_layout.addWidget(self.title_bar)
+        
         self.stacked_widget = QStackedWidget()
-        main_layout.addWidget(self.stacked_widget)
+        content_layout.addWidget(self.stacked_widget)
 
-        self.custom_tab_bar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
+        # Sidebar Navigation
+        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help"]
+        self.navigation_sidebar = NavigationSidebar(self.tab_names)
+        main_layout.addWidget(self.navigation_sidebar)
+        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor
+        self.navigation_sidebar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
@@ -400,7 +308,7 @@ class SimpleWindow(QMainWindow):
         self.lobby_manager = LobbyManager(self)
 
         # Settings tab (themes + custom theme picker)
-        settings_tab_content = QWidget()
+        settings_tab_content = QWidget() # This will be the "Settings" tab
         settings_layout = QGridLayout(settings_tab_content)
 
         self.theme_manager = ThemeManager(self)
@@ -485,20 +393,22 @@ class SimpleWindow(QMainWindow):
 
         self.stacked_widget.addWidget(settings_tab_content)
 
+        # Add a reset button to the settings tab
+        reset_group = QGroupBox("Application Reset")
+        reset_layout = QVBoxLayout(reset_group)
+        reset_warning = QLabel("This will reset all application settings to their defaults.")
+        self.reset_gui_button = QPushButton("Reset Application")
+        self.reset_gui_button.setObjectName("DangerButton") # For specific styling
+        reset_layout.addWidget(reset_warning)
+        reset_layout.addWidget(self.reset_gui_button)
+        settings_layout.addWidget(reset_group, row_below + 2, 0, 1, 4)
+        self.reset_gui_button.clicked.connect(self.confirm_reset)
 
-        # Reset tab
-        reset_tab_content = QWidget()
-        self.reset_layout = QVBoxLayout(reset_tab_content)
-        warning_text = QLabel("This will reset the GUI to its default state.\nAre you sure you want to continue?")
-        warning_text.setStyleSheet("font-weight: bold;")
-        self.reset_layout.addWidget(warning_text, 0, Qt.AlignmentFlag.AlignCenter)
-        reset_button = QPushButton("Reset GUI"); reset_button.clicked.connect(self.confirm_reset)
-        self.reset_layout.addWidget(reset_button, 0, Qt.AlignmentFlag.AlignCenter)
-        self.reset_layout.addStretch()
-        self.stacked_widget.addWidget(reset_tab_content)
+        # New Help Tab
+        help_tab = self.create_help_tab()
+        self.stacked_widget.addWidget(help_tab)
 
         # Finalize
-        self.custom_tab_bar.tab_selected.connect(self.on_main_tab_selected)
 
         # Connect the thread-safe signal to the automation toggle slot
         self.start_automation_signal.connect(self.automation_manager.start_automation)
@@ -520,7 +430,7 @@ class SimpleWindow(QMainWindow):
 
 
         # Finalize UI state
-        self.custom_tab_bar._on_button_clicked(self.last_tab_index)
+        self.navigation_sidebar.set_current_index(self.last_tab_index)
         
         # Load saved recipes after the UI is fully initialized
         self.item_database.load_recipes()
@@ -540,6 +450,136 @@ class SimpleWindow(QMainWindow):
 
         # Initial data load for lobbies
         self.lobby_manager.refresh_lobbies()
+
+    def get_new_dark_style(self):
+        """Returns the new dark theme stylesheet."""
+        return """
+            QWidget {
+                background-color: #1e1e1e; /* Deep charcoal */
+                color: #d4d4d4; /* Off-white */
+                font-family: "Segoe UI", sans-serif;
+            }
+            QMainWindow {
+                border: 1px solid #3c3c3c;
+            }
+            #CustomTitleBar {
+                background-color: #1e1e1e;
+                border-bottom: 1px solid #3c3c3c;
+            }
+            #CustomTitleBar QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #d4d4d4;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            #CustomTitleBar QPushButton:hover {
+                background-color: #d9534f; /* Reddish hover for close */
+            }
+            #NavigationSidebar {
+                background-color: #252526; /* Slightly lighter charcoal */
+                border-right: 1px solid #3c3c3c;
+            }
+            #NavigationSidebar QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #cccccc;
+                padding: 10px;
+                text-align: left;
+                font-size: 14px;
+                border-left: 3px solid transparent;
+            }
+            #NavigationSidebar QPushButton:hover {
+                background-color: #333333;
+            }
+            #NavigationSidebar QPushButton:checked {
+                color: #ffffff;
+                font-weight: bold;
+                background-color: #094771; /* Muted blue */
+                border-left: 3px solid #007acc; /* Teal accent */
+            }
+            QPushButton {
+                background-color: #3c3c3c;
+                color: #f0f0f0;
+                border: 1px solid #555555;
+                padding: 8px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #4c4c4c;
+                border-color: #666666;
+            }
+            QPushButton#DangerButton {
+                background-color: #B22222; /* FireBrick */
+            }
+            QPushButton#DangerButton:hover {
+                background-color: #c83e3e;
+            }
+            QGroupBox {
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 0 5px;
+                margin-left: 5px;
+            }
+            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
+                background-color: #252526;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 5px;
+                color: #d4d4d4;
+            }
+            QHeaderView::section {
+                background-color: #252526;
+                border: 1px solid #3c3c3c;
+                padding: 4px;
+            }
+            QTableWidget::item {
+                padding: 3px;
+            }
+        """
+
+    def create_help_tab(self):
+        """Creates the content for the new Help tab."""
+        help_widget = QWidget()
+        layout = QVBoxLayout(help_widget)
+        
+        title = QLabel("Help & Information")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        
+        help_text = QTextEdit()
+        help_text.setReadOnly(True)
+        help_text.setHtml("""
+            <h3>Welcome to Hellfire Helper!</h3>
+            <p>This utility is designed to assist with various tasks related to Warcraft III.</p>
+            
+            <h4><b>Global Hotkeys:</b></h4>
+            <ul>
+                <li><b>F2:</b> Activate/Deactivate Quickcast (requires AutoHotkey).</li>
+                <li><b>F3:</b> Load selected character in the 'Load' tab.</li>
+                <li><b>F5:</b> Start Automation.</li>
+                <li><b>F6:</b> Stop Automation.</li>
+            </ul>
+
+            <h4><b>General Usage:</b></h4>
+            <p>Use the navigation sidebar on the left to switch between different modules. Most settings are saved automatically when you close the application.</p>
+            
+            <h4><b>Quickcast (AHK):</b></h4>
+            <p>The Quickcast feature requires <b>AutoHotkey v2</b> to be installed. You can find installation links in the 'Quickcast' tab. Once activated, you can remap keys and enable quickcasting, which simulates a mouse click after a key press.</p>
+
+            <h4><b>Troubleshooting:</b></h4>
+            <p>If you encounter issues, a good first step is to reset the application via the 'Settings' tab. This will restore all settings to their default values.</p>
+        """)
+        
+        layout.addWidget(title)
+        layout.addWidget(help_text)
+        
+        return help_widget
 
     def update_automation_button_style(self, is_running: bool):
         """Updates the 'Start/F5' button color based on automation state."""
@@ -575,7 +615,7 @@ class SimpleWindow(QMainWindow):
         is_dark = theme.get("is_dark", self.dark_mode)
         checked_fg = "#000000" if not is_dark else "#FFFFFF"
         if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
-        
+
         selected_sound = self.lobby_manager.selected_sound
         for sound, btn in self.lobby_manager.lobbies_tab.ping_buttons.items():
             btn.setChecked(sound == selected_sound)
@@ -623,8 +663,8 @@ class SimpleWindow(QMainWindow):
     def reset_state(self):
         self.resize(700, 800)
         self.custom_theme = {"bg": "#121212", "fg": "#F0F0F0", "accent": "#FF7F50"}
-        self.theme_manager.apply_theme(0)
-        self.custom_tab_bar._on_button_clicked(0)
+        self.apply_new_style()
+        self.navigation_sidebar.set_current_index(0)
         self.lobby_manager.watchlist = ["hellfire", "rpg"]
         self.custom_title_image_path = "" # Reset custom title image path
         self.lobby_manager.lobbies_tab.watchlist_widget.clear(); self.lobby_manager.lobbies_tab.watchlist_widget.addItems(self.lobby_manager.watchlist)
@@ -643,6 +683,10 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
+
+    def apply_new_style(self):
+        self.setStyleSheet(self.get_new_dark_style())
+        self.theme_manager.reapply_current_theme()
 
     def set_title_image(self, image_name: str | None):
         """Sets the title bar image, or falls back to text if not found."""
@@ -1027,17 +1071,6 @@ class SimpleWindow(QMainWindow):
         self.character_load_manager.load_selected_character()
         self.showMinimized()
 
-    # Tab select logic
-    def on_main_tab_selected(self, index: int):
-        self.stacked_widget.setCurrentIndex(index)
-        tab_name = self.tab_names[index]
-        if tab_name == "Items" and not self.items_manager.item_database.all_items_data:
-            self.items_manager.switch_items_sub_tab(0) # Lazy load
-        elif tab_name == "Lobbies" and not self.lobby_manager.lobbies_tab.lobbies_table.rowCount():
-            self.lobby_manager.refresh_lobbies() # Refresh when tab is first viewed
-        elif tab_name == "Automation":
-            self.load_message_hotkeys()
-
     def _reset_automation_button_style(self):
         """Resets the automation button to its default theme color."""
         accent_color = self.custom_theme.get("accent", "#FF7F50")
@@ -1217,6 +1250,51 @@ class SimpleWindow(QMainWindow):
 
         event.accept()
  
+class NavigationSidebar(QWidget):
+    """A vertical navigation bar with buttons."""
+    tab_selected = Signal(int)
+
+    def __init__(self, tab_names: list[str]):
+        super().__init__()
+        self.setObjectName("NavigationSidebar")
+        self.setFixedWidth(150)
+        
+        self.buttons: List[QPushButton] = []
+        self.current_index = -1
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 10, 0, 10)
+        main_layout.setSpacing(5)
+
+        # Icons using unicode characters
+        icons = ["\u2913", "\u2692", "\u26F0", "\u2699", "\u2328", "\U0001F4C8", "\u2699", "\u2753"]
+
+        # Main navigation buttons
+        for i, name in enumerate(tab_names):
+            if name in ["Settings", "Help"]: continue # Handle these separately
+            button = QPushButton(f" {icons[i]}  {name}")
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+            self.buttons.append(button)
+            main_layout.addWidget(button)
+
+        main_layout.addStretch()
+
+        # Bottom-grouped buttons (Settings, Help)
+        for i, name in enumerate(tab_names):
+            if name in ["Settings", "Help"]:
+                button = QPushButton(f" {icons[i]}  {name}")
+                button.setCheckable(True)
+                button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+                self.buttons.append(button)
+                main_layout.addWidget(button)
+
+    def set_current_index(self, index: int):
+        if self.current_index != -1:
+            self.buttons[self.current_index].setChecked(False)
+        self.buttons[index].setChecked(True)
+        self.current_index = index
+        self.tab_selected.emit(index)
 
 
 if __name__ == "__main__":

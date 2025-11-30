@@ -53,7 +53,6 @@ class ThemeManager:
 
         self.main_window.dark_mode = theme["is_dark"]
         self.main_window.setStyleSheet(theme["style"])
-        self.main_window.custom_tab_bar.apply_style(theme['name'], self.main_window.dark_mode)
         self.main_window.set_title_image(theme.get("title_image"))
 
         for i, preview in enumerate(self.theme_previews):
@@ -91,11 +90,6 @@ class ThemeManager:
 
         self.main_window.setStyleSheet(self.build_custom_stylesheet())
         self.main_window.set_title_image(self.main_window.custom_title_image_path)
-        self.main_window.custom_tab_bar.setStyleSheet(f"""            
-            QPushButton {{ background-color: {custom_theme['bg']}; border: 1px solid {custom_theme['fg']}; padding: 8px; border-radius: 6px; color: {custom_theme['fg']}; font-size: 16px; }}
-            QPushButton:hover {{ background-color: {custom_theme['accent']}; }}
-            QPushButton:checked {{ background-color: {custom_theme['accent']}; color: {custom_theme['bg']}; border-color: {custom_theme['accent']}; }}
-        """)
         
         for preview in self.theme_previews:
             preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")
