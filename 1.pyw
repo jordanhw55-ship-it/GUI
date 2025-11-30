@@ -787,7 +787,7 @@ class SimpleWindow(QMainWindow):
     def mousePressEvent(self, event: QMouseEvent):
         # Allow dragging from the top 30px of the window, as long as it's not over the sidebar
         if event.button() == Qt.MouseButton.LeftButton and event.position().y() < 30:
-            if self.navigation_sidebar and self.navigation_sidebar.geometry().contains(event.position()):
+            if self.navigation_sidebar and self.navigation_sidebar.geometry().contains(event.position().toPoint()):
                 return # Don't drag if clicking on the sidebar
             self.old_pos = event.globalPosition().toPoint()
     def mouseMoveEvent(self, event: QMouseEvent):
