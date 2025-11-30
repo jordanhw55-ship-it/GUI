@@ -335,16 +335,17 @@ class SimpleWindow(QMainWindow):
         # The central widget will now be a simple QWidget with the main layout.
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
-        self.setCentralWidget(central_widget)
-        # --- New Main Layout Structure ---
-        content_widget = QWidget()
-        content_widget.setAttribute(Qt.WA_StyledBackground, True)
         content_widget.setAutoFillBackground(True)
         content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
         content_widget.setObjectName("ContentWidget")
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0) # Remove margins to prevent seams
         content_layout.setSpacing(0)
+
+        # The central widget will now be a simple QWidget with the main layout.
+        central_widget = QWidget()
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
 
         # --- Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
@@ -620,7 +621,6 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
-                background-color: transparent;
                 border: none;
             }
             #NavigationSidebar {
