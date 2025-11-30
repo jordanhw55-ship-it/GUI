@@ -691,9 +691,12 @@ class SimpleWindow(QMainWindow):
                 border: 1px solid #3c3c3c;
                 padding: 4px;
             }
-            /* FINAL FIX: This targets the default frame that Qt's QStackedWidget
-               draws around its content area, which was inheriting a border. */
-            QStackedWidget > QFrame {
+            /* This combination should finally remove any borders from the
+               stacked widget container and its direct pages. */
+            QStackedWidget {
+                border: 0px;
+            }
+            QStackedWidget > QWidget {
                 border: none;
             }
         """
