@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
 
-from PySide6.QtWidgets import 
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
     QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QFrame,
