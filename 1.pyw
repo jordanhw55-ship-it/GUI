@@ -221,6 +221,7 @@ class SimpleWindow(QMainWindow):
 
         # --- New Main Layout Structure ---
         content_widget = QWidget()
+        content_widget.setObjectName("ContentWidget") # For specific styling
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(10, 0, 10, 10)
         content_layout.setSpacing(10)
@@ -454,10 +455,10 @@ class SimpleWindow(QMainWindow):
     def get_new_dark_style(self):
         """Returns the CCleaner-inspired dark theme stylesheet."""
         return """
-            QWidget {
+            QMainWindow, QWidget {
                 background-color: #1e1e1e; /* Deep charcoal */
-                color: #d4d4d4; /* Off-white */
-                font-family: "Segoe UI", sans-serif;
+                color: #E6E6E6; /* Brighter Off-white for better readability */
+                font-family: "Segoe UI", Arial, sans-serif;
             }
             QMainWindow {
                 background-color: #1e1e1e;
@@ -475,6 +476,10 @@ class SimpleWindow(QMainWindow):
             #CustomTitleBar QPushButton:hover {
                 background-color: #E81123; /* Brighter Red for close hover */
             }
+            /* The main content area to the right of the sidebar */
+            QWidget#ContentWidget {
+                background-color: #252526; /* Slightly lighter charcoal for the content panel */
+            }
             #NavigationSidebar {
                 background-color: #2C3033; /* CCleaner sidebar color */
                 border-right: 1px solid #43474A;
@@ -482,17 +487,17 @@ class SimpleWindow(QMainWindow):
             #NavigationSidebar QPushButton {
                 background-color: transparent;
                 border: none;
-                color: #D1D3D4; /* Light gray text */
-                padding: 10px;
+                color: #D1D3D4;
+                padding: 12px 10px;
                 text-align: left;
-                font-size: 14px;
+                font-size: 15px;
                 border-left: 3px solid transparent;
             }
             #NavigationSidebar QPushButton:hover {
                 background-color: #333333;
             }
             #NavigationSidebar QPushButton:checked {
-                color: #FFFFFF;
+                color: #FFFFFF; /* White text for active item */
                 font-weight: bold;
                 background-color: #3B3F42;
                 border-left: 3px solid #00A8E8; /* Teal accent */
@@ -508,7 +513,7 @@ class SimpleWindow(QMainWindow):
                 background-color: #FF7833;
             }
             QPushButton {
-                background-color: #3c3c3c;
+                background-color: #4A4D4F;
                 color: #f0f0f0;
                 border: 1px solid #555555;
                 padding: 8px;
@@ -518,6 +523,13 @@ class SimpleWindow(QMainWindow):
                 background-color: #4c4c4c;
                 border-color: #666666;
             }
+            /* Primary action buttons, like 'Apply' or 'Start' */
+            QPushButton#PrimaryButton {
+                background-color: #007AAB; /* CCleaner's blue */
+            }
+            QPushButton#PrimaryButton:hover {
+                background-color: #0095CC;
+            }
             QPushButton#DangerButton {
                 background-color: #B22222; /* FireBrick */
             }
@@ -525,15 +537,16 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                border: 1px solid #3c3c3c;
+                border: 1px solid #43474A; /* Softer border */
                 border-radius: 4px;
                 margin-top: 10px;
                 padding: 10px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 5px;
+                subcontrol-position: top left; /* Position at the top-left */
+                padding: 0 3px;
+                color: #9D9D9D; /* Muted title color */
                 margin-left: 5px;
             }
             QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
@@ -544,7 +557,7 @@ class SimpleWindow(QMainWindow):
                 color: #d4d4d4;
             }
             QHeaderView::section {
-                background-color: #252526;
+                background-color: #3B3F42;
                 border: 1px solid #3c3c3c;
                 padding: 4px;
             }
@@ -1266,19 +1279,19 @@ class NavigationSidebar(QWidget):
     def __init__(self, tab_names: list[str]):
         super().__init__()
         self.setObjectName("NavigationSidebar")
-        self.setFixedWidth(150)
+        self.setFixedWidth(160) /* Increased width for more space */
         
         self.buttons: List[QPushButton] = []
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 10, 0, 10)
-        main_layout.setSpacing(5)
+        main_layout.setSpacing(2) /* Reduced spacing between buttons */
 
         # Icons using unicode characters
-        # Minimal flat icons inspired by CCleaner's style
-        icons = ["\U0001F4C1", "\U0001F50D", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
-                 "\u2699", "\u2753"] # Settings, Help
+        # Refined, more modern-looking unicode characters
+        icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
+                 "\u2699", "\u2753"] # Settings, Help (kept the same)
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
