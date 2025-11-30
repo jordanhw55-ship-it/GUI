@@ -64,12 +64,16 @@ class AutomationTab(QWidget):
         ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
-            edit = QLineEdit("15000" if key == "Complete Quest" else "500")
-            edit.setFixedWidth(35)
+            if key == "Complete Quest":
+                edit = QLineEdit("15000")
+                edit.setFixedWidth(55) # Make this one wider
+            else:
+                edit = QLineEdit("500")
+                edit.setFixedWidth(35)
             self.automation_key_ctrls[key] = {"chk": chk, "edit": edit}
 
         self.custom_action_btn = QCheckBox("Custom")
-        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(35)
+        self.custom_action_edit1 = QLineEdit("30000"); self.custom_action_edit1.setFixedWidth(55)
         self.custom_action_edit2 = QLineEdit("-save x"); self.custom_action_edit2.setFixedWidth(120)
 
         # Automation log box
