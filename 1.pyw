@@ -636,7 +636,6 @@ class SimpleWindow(QMainWindow):
                 padding: 12px 15px; /* Increased left padding to move text right */
                 text-align: left;
                 font-size: 15px;
-                border-left: 3px solid transparent;
             }
             /* Default state for labels inside the nav buttons */
             #NavigationSidebar QPushButton QLabel {
@@ -649,7 +648,6 @@ class SimpleWindow(QMainWindow):
                 color: #FFFFFF; /* White text for active item */
                 font-weight: bold;
                 background-color: #007AAB; /* Use a slightly darker accent for checked */
-                border-left: 3px solid #00A8E8; /* Keep the bright accent border */
             }
             /* Style the text and icon inside the checked button */
             #NavigationSidebar QPushButton:checked QLabel {
