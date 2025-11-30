@@ -488,6 +488,12 @@ class SimpleWindow(QMainWindow):
                 background-color: #3B3F42;
                 border-left: 3px solid #00A8E8; /* Teal accent */
             }
+            /* Style the text and icon inside the checked button */
+            #NavigationSidebar QPushButton:checked QLabel {
+                color: #FFFFFF;
+                font-weight: bold;
+                background-color: transparent;
+            }
             #UpgradeButton {
                 background-color: #F05E16; /* Orange CTA */
                 color: #FFFFFF;
@@ -1401,15 +1407,7 @@ class NavButton(QPushButton):
     def setChecked(self, checked: bool):
         """Override setChecked to style the internal labels."""
         super().setChecked(checked)
-        if checked:
-            self.icon_label.setStyleSheet("background-color: transparent; border: none; color: #FFFFFF; font-weight: bold;")
-            self.text_label.setStyleSheet("background-color: transparent; border: none; color: #FFFFFF; font-weight: bold;")
-        else:
-            self.icon_label.setStyleSheet("background-color: transparent; border: none; color: #D1D3D4; font-weight: normal;")
-            self.text_label.setStyleSheet("background-color: transparent; border: none; color: #D1D3D4; font-weight: normal;")
-
-
-class NavigationSidebar(QWidget):
+        # The styling is now handled entirely by the main stylesheet for consistency.
     """A vertical navigation bar with buttons."""
     tab_selected = Signal(int)
 
