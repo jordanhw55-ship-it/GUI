@@ -335,6 +335,8 @@ class SimpleWindow(QMainWindow):
         # The central widget will now be a simple QWidget with the main layout.
         central_widget = QWidget()
         central_widget.setLayout(main_layout)
+        content_widget = QWidget()
+        content_widget.setAttribute(Qt.WA_StyledBackground, True)
         content_widget.setAutoFillBackground(True)
         content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
         content_widget.setObjectName("ContentWidget")
