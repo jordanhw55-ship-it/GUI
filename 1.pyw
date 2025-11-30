@@ -630,7 +630,7 @@ class SimpleWindow(QMainWindow):
             }
             #NavigationSidebar QPushButton {
                 background-color: transparent;
-                border: none;
+                border: none !important; /* Final fix: Force no border to override any other style */
                 outline: none; /* Explicitly remove outline */
                 color: #D1D3D4;
                 padding: 12px 15px; /* Increased left padding to move text right */
