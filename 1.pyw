@@ -616,6 +616,7 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
+                background-color: transparent;
                 border: none;
             }
             #NavigationSidebar {
