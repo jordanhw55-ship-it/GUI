@@ -67,15 +67,6 @@ class FlatStackedWidget(QStackedWidget):
         self.setMidLineWidth(0)
         self.setFocusPolicy(Qt.NoFocus)
         self.setAttribute(Qt.WA_OpaquePaintEvent, True)
-        self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setAutoFillBackground(True)
-        self.setStyleSheet("background-color: #252526; border: none;")
-
-    def paintEvent(self, event):
-        # Explicitly fill the background to prevent any theme bleed-through.
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), self.palette().color(self.backgroundRole()))
-        # The original paintEvent is not called to prevent it from drawing a frame.
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -634,9 +625,6 @@ class SimpleWindow(QMainWindow):
             QWidget#MainWidget {
                 background-color: #252526;
             }
-            QWidget#MainWidget {
-                background-color: transparent; /* Allow QMainWindow's background to show through */
-            }
             QPushButton#WindowControlButton {
                 background-color: transparent;
                 border: none;
@@ -650,7 +638,6 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
-                background-color: #252526;
                 border: none;
             }
             #NavigationSidebar {
@@ -663,9 +650,7 @@ class SimpleWindow(QMainWindow):
             }
             QWidget#NavButton {
                 background-color: transparent;
-                border: none !important; /* Final fix: Force no border to override any other style */
-                border-image: none; /* Explicitly disable any theme-drawn border images */
-                outline: none; /* Explicitly remove outline */
+                border: none;
                 border-radius: 4px; /* Add a radius for the background color change */
                 padding: 12px 15px; /* Increased left padding to move text right */
                 text-align: left;
@@ -674,8 +659,7 @@ class SimpleWindow(QMainWindow):
             /* Default state for labels inside the nav buttons */
             #NavigationSidebar QPushButton QLabel {
                 background-color: transparent;
-                border: none;
-                outline: none; /* Explicitly remove outline */
+                border: none; 
                 color: #D1D3D4;
             }
             QWidget#NavButton[checked="true"] {
@@ -703,7 +687,7 @@ class SimpleWindow(QMainWindow):
                 /* This is the correct theme style for all standard buttons */
                 background-color: #007AAB; /* CCleaner's blue */
                 color: #FFFFFF;
-                border: 1px solid #007AAB;
+                border: none;
                 padding: 5px;
                 border-radius: 4px;
             }
@@ -731,10 +715,9 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                /* Definitive fix for groupbox borders: remove all visual frame elements */
-                border: none !important;
+                border: 1px solid #43474A;
                 border-radius: 4px;
-                padding: 0;
+                padding: 10px;
                 margin: 0;
                 background-color: #252526; /* Match the page background */
             }
@@ -742,7 +725,7 @@ class SimpleWindow(QMainWindow):
                 /* Prevent the title from creating an inset frame */
                 subcontrol-origin: margin; 
                 padding: 0 4px;
-                background-color: transparent;
+                margin-left: 5px;
                 color: #E6E6E6;
             }
             /* Target widgets that inherit QFrame and remove their default border */
@@ -760,10 +743,11 @@ class SimpleWindow(QMainWindow):
             /* This combination should finally remove any borders from the
                stacked widget container and its direct pages. */
             QStackedWidget {
-                border: 0px;
+                border: none;
             }
             QStackedWidget > QWidget {
                 border: none;
+                background-color: #252526;
             }
         """
 
