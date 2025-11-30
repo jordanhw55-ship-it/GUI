@@ -823,7 +823,6 @@ class SimpleWindow(QMainWindow):
             self.reset_state()
 
     def reset_state(self):
-        self.resize(950, 700)
         self.custom_title_image_path = "" # Reset custom title image path
         self.theme_manager.apply_theme(0) # Reset to the default (first) theme
         self.navigation_sidebar.set_current_index(0)
@@ -844,6 +843,9 @@ class SimpleWindow(QMainWindow):
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
+
+        # Resize the window last, after all content and fonts have been reset.
+        self.resize(950, 700)
 
     def apply_new_style(self):
         self.setStyleSheet(self.get_new_dark_style())
