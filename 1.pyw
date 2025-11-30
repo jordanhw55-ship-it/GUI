@@ -700,6 +700,11 @@ class SimpleWindow(QMainWindow):
             QStackedWidget > QWidget {
                 border: none;
             }
+            /* FINAL FIX: This targets the default frame that Qt draws around the
+               main content area, which was inheriting a border style. */
+            QWidget#ContentWidget > QFrame {
+                border: none;
+            }
         """
 
     def get_new_dark_style_legacy(self):
