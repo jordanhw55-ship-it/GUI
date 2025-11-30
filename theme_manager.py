@@ -53,7 +53,7 @@ class ThemeManager:
 
         self.main_window.dark_mode = theme["is_dark"]
         self.main_window.setStyleSheet(theme["style"])
-        self.main_window.set_title_image(theme.get("title_image"))
+        self.main_window.set_title_image(theme.get("title_image")) # Re-enable this call
 
         for i, preview in enumerate(self.theme_previews):
             border_style = "border: 2px solid #FF7F50;" if i == theme_index else "border: 2px solid transparent;"
@@ -89,7 +89,7 @@ class ThemeManager:
         self.main_window.dark_mode = bg_color.lightness() < 128
 
         self.main_window.setStyleSheet(self.build_custom_stylesheet())
-        self.main_window.set_title_image(self.main_window.custom_title_image_path)
+        self.main_window.set_title_image(self.main_window.custom_title_image_path) # Re-enable this call
         
         for preview in self.theme_previews:
             preview.setStyleSheet(f"#ThemePreview {{ border: 2px solid transparent; border-radius: 8px; background-color: {'#2A2A2C' if self.main_window.dark_mode else '#D8DEE9'}; }}")

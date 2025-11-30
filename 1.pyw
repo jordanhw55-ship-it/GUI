@@ -472,6 +472,120 @@ class SimpleWindow(QMainWindow):
                 background-color: transparent;
                 border: none;
                 color: #D1D3D4;
+                padding: 12px 15px; /* Increased left padding to move text right */
+                text-align: left;
+                font-size: 15px;
+                border-left: 3px solid transparent;
+            }
+            #NavigationSidebar QPushButton:hover {
+                background-color: #3B3F42;
+            }
+            #NavigationSidebar QPushButton:checked {
+                color: #FFFFFF; /* White text for active item */
+                font-weight: bold;
+                background-color: #3B3F42;
+                border-left: 3px solid #00A8E8; /* Teal accent */
+            }
+            #UpgradeButton {
+                background-color: #F05E16; /* Orange CTA */
+                color: #FFFFFF;
+                font-weight: bold;
+                border-radius: 4px;
+                margin: 10px 5px;
+            }
+            #UpgradeButton:hover {
+                background-color: #FF7833;
+            }
+            QPushButton {
+                background-color: #4A4D4F;
+                color: #f0f0f0;
+                border: 1px solid #555555;
+                padding: 8px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #4c4c4c;
+                border-color: #666666;
+            }
+            /* Primary action buttons, like 'Apply' or 'Start' */
+            QPushButton#PrimaryButton {
+                background-color: #007AAB; /* CCleaner's blue */
+            }
+            QPushButton#PrimaryButton:hover {
+                background-color: #0095CC;
+            }
+            QPushButton#DangerButton {
+                background-color: #B22222; /* FireBrick */
+            }
+            QPushButton#DangerButton:hover {
+                background-color: #c83e3e;
+            }
+            QGroupBox {
+                border: 1px solid #43474A; /* Softer border */
+                border-radius: 4px;
+                margin-top: 10px;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left; /* Position at the top-left */
+                padding: 0 3px;
+                color: #9D9D9D; /* Muted title color */
+                margin-left: 5px;
+            }
+            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
+                background-color: #252526;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 5px;
+                color: #d4d4d4;
+            }
+            QHeaderView::section {
+                background-color: #3B3F42;
+                border: 1px solid #3c3c3c;
+                padding: 4px;
+            }
+            QTableWidget::item {
+                padding: 3px;
+            }
+        """
+
+    def get_new_dark_style_legacy(self):
+        """Returns the CCleaner-inspired dark theme stylesheet."""
+        return """
+            QWidget {
+                background-color: #1e1e1e; /* Deep charcoal */
+                color: #E6E6E6; /* Brighter Off-white for better readability */
+                font-family: "Segoe UI", Arial, sans-serif;
+            }
+            QMainWindow {
+                background-color: #252526; /* Set the main window background color */
+            }
+            QWidget#MainWidget {
+                background-color: transparent; /* Allow QMainWindow's background to show through */
+            }
+            QPushButton#WindowControlButton {
+                background-color: transparent;
+                border: none;
+                color: #d4d4d4;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton#WindowControlButton:hover {
+                background-color: #E81123; /* Brighter Red for close hover */
+            }
+            /* The main content area to the right of the sidebar */
+            QWidget#ContentWidget {
+                background-color: #252526; /* Slightly lighter charcoal for the content panel */
+            }
+            #NavigationSidebar {
+                background-color: #2C3033; /* CCleaner sidebar color */
+                border-right: 1px solid #43474A;
+            }
+            #NavigationSidebar QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #D1D3D4;
                 padding: 12px 10px;
                 text-align: left;
                 font-size: 15px;
@@ -698,10 +812,21 @@ class SimpleWindow(QMainWindow):
         self.theme_manager.reapply_current_theme()
 
     def set_title_image(self, image_name: str | None):
-        """Sets the title bar image, or falls back to text if not found."""
-        # This function is no longer needed as the title bar has been removed.
-        # The window title is set via self.setWindowTitle() and the icon via self.setWindowIcon().
-        pass
+        """Finds the title image and tells the sidebar to display it."""
+        image_path = None
+        if image_name:
+            # Check if it's an absolute path (from custom theme) or a relative name
+            if os.path.isabs(image_name):
+                if os.path.exists(image_name):
+                    image_path = image_name
+            else:
+                # It's a relative name, look in the contents folder
+                path = os.path.join(get_base_path(), "contents", image_name)
+                if os.path.exists(path):
+                    image_path = path
+
+        if self.navigation_sidebar:
+            self.navigation_sidebar.setTitleImage(image_path)
 
     def select_custom_title_image(self):
         """Opens a file dialog to select an image for the custom theme title."""
@@ -1246,9 +1371,15 @@ class NavigationSidebar(QWidget):
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 10, 0, 10)
-        main_layout.setSpacing(2) # Reduced spacing between buttons
+        main_layout.setContentsMargins(0, 20, 0, 10) # Increased top margin to move buttons down
+        main_layout.setSpacing(5) # Increased spacing between buttons
 
+        # Add a label at the top for the title image
+        self.title_label = QLabel()
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setContentsMargins(0, 0, 0, 15) # Add space below the title
+        main_layout.addWidget(self.title_label)
+        
         # Icons using unicode characters
         # Refined, more modern-looking unicode characters
         icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
@@ -1286,6 +1417,15 @@ class NavigationSidebar(QWidget):
         self.buttons[index].setChecked(True)
         self.current_index = index
         self.tab_selected.emit(index)
+
+    def setTitleImage(self, image_path: str | None):
+        """Sets the pixmap for the title label."""
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            # Scale pixmap to fit the sidebar width minus some padding
+            self.title_label.setPixmap(pixmap.scaledToWidth(self.width() - 20, Qt.TransformationMode.SmoothTransformation))
+        else:
+            self.title_label.clear() # Clear the image if path is invalid
 
 
 if __name__ == "__main__":
