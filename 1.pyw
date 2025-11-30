@@ -695,6 +695,11 @@ class SimpleWindow(QMainWindow):
             QStackedWidget > QFrame {
                 border: none;
             }
+            /* This is the key: The QStackedWidget's pages are QWidgets.
+               This selector removes the border from the page container itself. */
+            QStackedWidget > QWidget {
+                border: none;
+            }
         """
 
     def get_new_dark_style_legacy(self):
