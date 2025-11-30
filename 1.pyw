@@ -1404,7 +1404,7 @@ class NavigationSidebar(QWidget):
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(5, 19, 5, 10) # Add 5px margin on left/right
+        main_layout.setContentsMargins(8, 19, 5, 10) # Increased left margin by 3px
         main_layout.setSpacing(5) # Increased spacing between buttons
 
         # Add a label at the top for the title image
