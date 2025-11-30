@@ -8,111 +8,6 @@ import re
 import subprocess
 from typing import List
 
-# Ensure the AHK process is terminated on exit
-        self.quickcast_manager.deactivate_ahk_script_if_running(inform_user=False)
-
-        # Clean up updater script if it exists
-        updater_script_path = os.path.join(get_base_path(), "updater.bat")
-        if os.path.exists(updater_script_path):
-            try:
-                os.remove(updater_script_path)
-            except OSError as e:
-                print(f"Could not remove updater script: {e}")
-
-        event.accept()
-
-    def check_for_updates(self):
-        """Checks GitHub for a new release and prompts the user to update."""
-        api_url = "https://api.github.com/repos/jordanhw55-ship-it/GUI/releases/latest"
-        try:
-            response = requests.get(api_url, timeout=10)
-            response.raise_for_status()
-            latest_release = response.json()
-            latest_version_str = latest_release.get("tag_name", "0.0.0").lstrip('v')
-
-            # Simple version comparison
-            if latest_version_str > self.VERSION:
-                release_notes = latest_release.get("body", "No release notes provided.")
-                reply = QMessageBox.question(self, "Update Available",
-                                             f"A new version ({latest_version_str}) is available!\n\n"
-                                             f"Your current version: {self.VERSION}\n\n"
-                                             f"Release Notes:\n{release_notes}\n\n"
-                                             "Would you like to download and install it now?",
-                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-                if reply == QMessageBox.StandardButton.Yes:
-                    self.download_and_apply_update(latest_release)
-            else:
-                QMessageBox.information(self, "Up to Date", "You are already running the latest version.")
-
-        except requests.RequestException as e:
-            QMessageBox.critical(self, "Update Check Failed", f"Could not check for updates. Please check your internet connection.\n\nError: {e}")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An unexpected error occurred during the update check: {e}")
-
-    def download_and_apply_update(self, release_data):
-        """Downloads the release asset and runs the updater script."""
-        # Look for a .zip file in the release assets.
-        assets = release_data.get("assets", [])
-        asset_to_download = next((asset for asset in assets if asset.get("name", "").endswith(".zip")), None)
-
-        if not asset_to_download:
-            QMessageBox.critical(self, "Update Error", "Could not find a downloadable .zip file in the latest release.")
-            return
-
-        download_url = asset_to_download.get("browser_download_url")
-        base_path = get_base_path()
-        zip_path = os.path.join(base_path, "update.zip")
-        extract_path = os.path.join(base_path, "update_temp")
-
-        try:
-            # Download the zip file
-            with requests.get(download_url, stream=True) as r:
-                r.raise_for_status()
-                with open(zip_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-            # Extract the zip file
-            if os.path.exists(extract_path):
-                shutil.rmtree(extract_path)
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-
-            # Create the updater batch script
-            current_exe = os.path.basename(sys.executable)
-            updater_script_path = os.path.join(base_path, "updater.bat")
-            
-            # This script will wait, replace the contents folder and the exe, then restart and clean up.
-            script_content = f"""
-@echo off
-echo Waiting for the application to close...
-timeout /t 3 /nobreak > nul
-
-echo Backing up old files...
-if exist "contents" ( rmdir /s /q "contents_old" & ren "contents" "contents_old" )
-if exist "{current_exe}" ( del "{current_exe}.bak" & ren "{current_exe}" "{current_exe}.bak" )
-
-echo Applying update...
-xcopy /E /Y "{extract_path}\\*" ".\\"
-
-echo Relaunching application...
-start "" "{current_exe}"
-
-echo Cleaning up...
-rmdir /s /q "{extract_path}"
-del "{zip_path}"
-del "%~f0"
-"""
-            with open(updater_script_path, "w") as f:
-                f.write(script_content)
-
-            # Run the updater script and close the application
-            subprocess.Popen([updater_script_path], creationflags=subprocess.CREATE_NO_WINDOW)
-            self.close()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Update Failed", f"An error occurred while downloading or applying the update:\n\n{e}")
-
 if __name__ == "__main__":
 
     # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
@@ -1504,6 +1399,14 @@ class SimpleWindow(QMainWindow):
 
         # Ensure the AHK process is terminated on exit
         self.quickcast_manager.deactivate_ahk_script_if_running(inform_user=False)
+
+        # Clean up updater script if it exists
+        updater_script_path = os.path.join(get_base_path(), "updater.bat")
+        if os.path.exists(updater_script_path):
+            try:
+                os.remove(updater_script_path)
+            except OSError as e:
+                print(f"Could not remove updater script: {e}")
 
         event.accept()
 
