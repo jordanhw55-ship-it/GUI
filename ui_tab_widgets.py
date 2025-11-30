@@ -117,7 +117,7 @@ class AutomationTab(QWidget):
         top_level_grid.setColumnStretch(1, 1) # Numpad keys column takes less space
 
         # --- Box 1: Top-Left (Main Keys) ---
-        main_keys_group = QGroupBox("Main Keys")
+        main_keys_group = QGroupBox("Main")
         main_keys_grid = QGridLayout(main_keys_group)
         main_keys_grid.setHorizontalSpacing(10); main_keys_grid.setVerticalSpacing(2)
         main_keys_layout_def = [
@@ -134,7 +134,7 @@ class AutomationTab(QWidget):
         top_level_grid.addWidget(main_keys_group, 0, 0)
 
         # --- Box 2: Top-Right (Numpad Keys) ---
-        numpad_group = QGroupBox("Numpad Keys")
+        numpad_group = QGroupBox("Inventory")
         numpad_grid = QGridLayout(numpad_group)
         numpad_grid.setHorizontalSpacing(10); numpad_grid.setVerticalSpacing(2)
         numpad_layout_def = [["Num7", "Num8"], ["Num4", "Num5"], ["Num1", "Num2"]]
