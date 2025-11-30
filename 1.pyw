@@ -611,15 +611,15 @@ class SimpleWindow(QMainWindow):
                 background-color: #FF7833;
             }
             QPushButton {
-                background-color: #4A4D4F;
+                background-color: transparent;
                 color: #f0f0f0;
-                border: 1px solid #555555;
+                border: 1px solid transparent; /* Hidden by default */
                 padding: 8px;
                 border-radius: 4px;
             }
             QPushButton:hover {
-                background-color: #4c4c4c;
-                border-color: #666666;
+                background-color: #3c3c3c; /* Lighten on hover */
+                border-color: #555555; /* Show border on hover */
             }
             /* Primary action buttons, like 'Apply' or 'Start' */
             QPushButton#PrimaryButton {
