@@ -71,10 +71,10 @@ class NavButton(QPushButton):
         self.icon_label = QLabel(icon)
         self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setStyleSheet("background-color: transparent; border: none;")
+        # self.icon_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
 
         self.text_label = QLabel(text)
-        self.text_label.setStyleSheet("background-color: transparent; border: none;")
+        # self.text_label.setStyleSheet("background-color: transparent; border: none;") # Removed to allow global stylesheet to work
 
         layout.addWidget(self.icon_label)
         layout.addWidget(self.text_label)
@@ -571,6 +571,12 @@ class SimpleWindow(QMainWindow):
                 text-align: left;
                 font-size: 15px;
                 border-left: 3px solid transparent;
+            }
+            /* Default state for labels inside the nav buttons */
+            #NavigationSidebar QPushButton QLabel {
+                background-color: transparent;
+                border: none;
+                color: #D1D3D4;
             }
             #NavigationSidebar QPushButton:hover {
                 background-color: #00A8E8; /* Use theme accent color on hover */
