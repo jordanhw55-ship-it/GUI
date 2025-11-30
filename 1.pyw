@@ -679,10 +679,10 @@ class SimpleWindow(QMainWindow):
                 color: #9D9D9D; /* Muted title color */
                 margin-left: 5px;
             }
-            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
+            /* Target widgets that inherit QFrame and remove their default border */
+            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox, QScrollArea {
                 background-color: #252526;
                 border: 1px solid #3c3c3c;
-                border-radius: 4px;
                 padding: 5px;
                 color: #d4d4d4;
             }
@@ -690,16 +690,6 @@ class SimpleWindow(QMainWindow):
                 background-color: #3B3F42;
                 border: 1px solid #3c3c3c;
                 padding: 4px;
-            }
-            QTableWidget::item {
-                padding: 3px;
-            }
-            QStackedWidget {
-                border: none;
-            }
-            /* This targets the frame that QStackedWidget draws around its pages */
-            QStackedWidget > QFrame {
-                border: none;
             }
             /* This targets the frame that QStackedWidget draws around its pages */
             QStackedWidget > QFrame {
@@ -813,7 +803,8 @@ class SimpleWindow(QMainWindow):
                 color: #9D9D9D; /* Muted title color */
                 margin-left: 5px;
             }
-            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
+            /* Target widgets that inherit QFrame and remove their default border */
+            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox, QScrollArea {
                 background-color: #252526;
                 border: 1px solid #3c3c3c;
                 border-radius: 4px;
