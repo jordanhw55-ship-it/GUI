@@ -1410,8 +1410,6 @@ if __name__ == "__main__":
         # This can help refresh the icon cache if the .exe is moved.
         SHCNE_ASSOCCHANGED = 0x08000000
         shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
