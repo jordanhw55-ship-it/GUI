@@ -1371,13 +1371,13 @@ class NavigationSidebar(QWidget):
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 20, 0, 10) # Increased top margin to move buttons down
+        main_layout.setContentsMargins(0, 19, 0, 10) # Move everything up by 1px
         main_layout.setSpacing(5) # Increased spacing between buttons
 
         # Add a label at the top for the title image
         self.title_label = QLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setContentsMargins(0, 0, 0, 15) # Add space below the title
+        self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
         main_layout.addWidget(self.title_label)
         
         # Icons using unicode characters
