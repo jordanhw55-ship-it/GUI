@@ -464,7 +464,7 @@ class SimpleWindow(QMainWindow):
                 background-color: #1e1e1e;
             }
             #CustomTitleBar {
-                background-color: #1e1e1e;
+                background-color: #252526; /* Match the content widget background */
             }
             #CustomTitleBar QPushButton {
                 background-color: transparent;
