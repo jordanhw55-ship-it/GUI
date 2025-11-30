@@ -58,6 +58,99 @@ class AlignedTableWidgetItem(QTableWidgetItem):
         super().__init__(text)
         self.setTextAlignment(alignment)
 
+class NavButton(QPushButton):
+    """A custom button with a separate icon and text label for precise alignment."""
+    def __init__(self, icon: str, text: str):
+        super().__init__()
+        self.setCheckable(True)
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
+        layout.setSpacing(10) # Space between icon and text
+
+        self.icon_label = QLabel(icon)
+        self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setStyleSheet("background-color: transparent; border: none;")
+
+        self.text_label = QLabel(text)
+        self.text_label.setStyleSheet("background-color: transparent; border: none;")
+
+        layout.addWidget(self.icon_label)
+        layout.addWidget(self.text_label)
+        layout.addStretch()
+
+    def setChecked(self, checked: bool):
+        """Override setChecked to style the internal labels."""
+        super().setChecked(checked)
+        # The styling is now handled entirely by the main stylesheet for consistency.
+
+class NavigationSidebar(QWidget):
+    """A vertical navigation bar with buttons."""
+    tab_selected = Signal(int)
+
+    def __init__(self, tab_names: list[str]):
+        super().__init__()
+        self.setObjectName("NavigationSidebar")
+        self.setFixedWidth(180) # Increased width for more space
+        
+        self.buttons: List[QPushButton] = []
+        self.current_index = -1
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 19, 5, 10) # Increased left margin by 3px
+        main_layout.setSpacing(5) # Increased spacing between buttons
+
+        # Add a label at the top for the title image
+        self.title_label = QLabel()
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
+        main_layout.addWidget(self.title_label)
+        
+        # Icons using unicode characters
+        # Refined, more modern-looking unicode characters
+        icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
+                 "\u2699", "\u2753"] # Settings, Help (kept the same)
+        
+        # Main navigation buttons
+        for i, name in enumerate(tab_names):
+            if name in ["Settings", "Help"]: continue # Handle these separately
+            button = NavButton(icons[i], name)
+            button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+            self.buttons.append(button)
+            main_layout.addWidget(button)
+
+        main_layout.addStretch()
+
+        # Bottom-grouped buttons (Settings, Help)
+        for i, name in enumerate(tab_names):
+            if name in ["Settings", "Help"]:
+                button = NavButton(icons[i], name)
+                button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
+                self.buttons.append(button)
+                main_layout.addWidget(button)
+
+        # Add the "Upgrade now" button at the bottom
+        self.upgrade_button = QPushButton("Upgrade now")
+        self.upgrade_button.setObjectName("UpgradeButton")
+        # self.upgrade_button.clicked.connect(self.on_upgrade_clicked) # Add a function if needed
+        main_layout.addWidget(self.upgrade_button)
+
+    def set_current_index(self, index: int):
+        if self.current_index != -1:
+            self.buttons[self.current_index].setChecked(False)
+        self.buttons[index].setChecked(True)
+        self.current_index = index
+        self.tab_selected.emit(index)
+
+    def setTitleImage(self, image_path: str | None):
+        """Sets the pixmap for the title label."""
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            # Scale pixmap to fit the sidebar width minus some padding
+            self.title_label.setPixmap(pixmap.scaledToWidth(self.width() - 20, Qt.TransformationMode.SmoothTransformation))
+        else:
+            self.title_label.clear() # Clear the image if path is invalid
 
 class SimpleWindow(QMainWindow):
     start_automation_signal = Signal()
@@ -1382,98 +1475,6 @@ class SimpleWindow(QMainWindow):
 
         event.accept()
  
-class NavButton(QPushButton):
-    """A custom button with a separate icon and text label for precise alignment."""
-    def __init__(self, icon: str, text: str):
-        super().__init__()
-        self.setCheckable(True)
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
-        layout.setSpacing(10) # Space between icon and text
-
-        self.icon_label = QLabel(icon)
-        self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setStyleSheet("background-color: transparent; border: none;")
-
-        self.text_label = QLabel(text)
-        self.text_label.setStyleSheet("background-color: transparent; border: none;")
-
-        layout.addWidget(self.icon_label)
-        layout.addWidget(self.text_label)
-        layout.addStretch()
-
-    def setChecked(self, checked: bool):
-        """Override setChecked to style the internal labels."""
-        super().setChecked(checked)
-        # The styling is now handled entirely by the main stylesheet for consistency.
-    """A vertical navigation bar with buttons."""
-    tab_selected = Signal(int)
-
-    def __init__(self, tab_names: list[str]):
-        super().__init__()
-        self.setObjectName("NavigationSidebar")
-        self.setFixedWidth(180) # Increased width for more space
-        
-        self.buttons: List[QPushButton] = []
-        self.current_index = -1
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 19, 5, 10) # Increased left margin by 3px
-        main_layout.setSpacing(5) # Increased spacing between buttons
-
-        # Add a label at the top for the title image
-        self.title_label = QLabel()
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
-        main_layout.addWidget(self.title_label)
-        
-        # Icons using unicode characters
-        # Refined, more modern-looking unicode characters
-        icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
-                 "\u2699", "\u2753"] # Settings, Help (kept the same)
-        
-        # Main navigation buttons
-        for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help"]: continue # Handle these separately
-            button = NavButton(icons[i], name)
-            button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
-            self.buttons.append(button)
-            main_layout.addWidget(button)
-
-        main_layout.addStretch()
-
-        # Bottom-grouped buttons (Settings, Help)
-        for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help"]:
-                button = NavButton(icons[i], name)
-                button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
-                self.buttons.append(button)
-                main_layout.addWidget(button)
-
-        # Add the "Upgrade now" button at the bottom
-        self.upgrade_button = QPushButton("Upgrade now")
-        self.upgrade_button.setObjectName("UpgradeButton")
-        # self.upgrade_button.clicked.connect(self.on_upgrade_clicked) # Add a function if needed
-        main_layout.addWidget(self.upgrade_button)
-
-    def set_current_index(self, index: int):
-        if self.current_index != -1:
-            self.buttons[self.current_index].setChecked(False)
-        self.buttons[index].setChecked(True)
-        self.current_index = index
-        self.tab_selected.emit(index)
-
-    def setTitleImage(self, image_path: str | None):
-        """Sets the pixmap for the title label."""
-        if image_path and os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-            # Scale pixmap to fit the sidebar width minus some padding
-            self.title_label.setPixmap(pixmap.scaledToWidth(self.width() - 20, Qt.TransformationMode.SmoothTransformation))
-        else:
-            self.title_label.clear() # Clear the image if path is invalid
-
 
 if __name__ == "__main__":
 
