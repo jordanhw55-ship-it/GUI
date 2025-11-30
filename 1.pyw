@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
-from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap
+from PySide6.QtGui import QMouseEvent, QColor, QIntValidator, QFont, QPalette, QAction, QDesktopServices, QShortcut, QKeySequence, QIcon, QPixmap, QPainter
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
 import keyboard   # type: ignore
@@ -52,6 +52,30 @@ class ThemePreview(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
+
+class FlatStackedWidget(QStackedWidget):
+    """
+    A QStackedWidget subclass that overrides the paint event to ensure no borders
+    or frames are ever drawn by the style engine. This is a definitive fix for
+    phantom border/seam rendering artifacts.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setFrameShape(QFrame.NoFrame)
+        self.setFrameShadow(QFrame.Plain)
+        self.setLineWidth(0)
+        self.setMidLineWidth(0)
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAutoFillBackground(True)
+        self.setStyleSheet("background-color: #252526; border: none;")
+
+    def paintEvent(self, event):
+        # Explicitly fill the background to prevent any theme bleed-through.
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), self.palette().color(self.backgroundRole()))
+        # The original paintEvent is not called to prevent it from drawing a frame.
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -314,6 +338,9 @@ class SimpleWindow(QMainWindow):
         main_layout.setSpacing(0)
         main_widget = QWidget()
         main_widget.setObjectName("MainWidget") # Give the central widget a name for styling
+        # Ensure the central widget paints its background fully to prevent seams.
+        main_widget.setAttribute(Qt.WA_StyledBackground, True)
+        main_widget.setAutoFillBackground(True)
         main_widget.setLayout(main_layout) # This will be the central widget's layout
         self.setCentralWidget(main_widget)
 
@@ -321,7 +348,8 @@ class SimpleWindow(QMainWindow):
         content_widget = QWidget()
         # Force styled background to prevent theme bleed-through
         content_widget.setAttribute(Qt.WA_StyledBackground, True)
-        content_widget.setAutoFillBackground(True)
+        content_widget.setAutoFillBackground(True)        
+        content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
         content_widget.setObjectName("ContentWidget") # For specific styling
         content_layout = QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0) # Zero out margins to prevent seams
@@ -338,15 +366,8 @@ class SimpleWindow(QMainWindow):
         window_controls_layout.addWidget(close_button)
         content_layout.addLayout(window_controls_layout)
         
-        self.stacked_widget = QStackedWidget()
-        # This is the definitive fix: Programmatically remove the frame that
-        # QStackedWidget inherits from QFrame, disable its focus policy to
-        # prevent focus rectangles, and force its background color to match
-        # its parent container, eliminating any visual seams.
-        self.stacked_widget.setFrameShape(QFrame.NoFrame)
-        self.stacked_widget.setFrameShadow(QFrame.Plain)
-        self.stacked_widget.setFocusPolicy(Qt.NoFocus)
-        self.stacked_widget.setStyleSheet("QStackedWidget { background-color: #252526; border: none; }")
+        # Use the custom FlatStackedWidget to guarantee no borders are drawn.
+        self.stacked_widget = FlatStackedWidget()
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
@@ -374,6 +395,13 @@ class SimpleWindow(QMainWindow):
         self.item_database = ItemDatabase()
         self.items_tab = ItemsTab(self)
         self.stacked_widget.addWidget(self.items_tab)
+
+        # Force all pages in the stacked widget to have a styled, opaque background
+        # to prevent any transparency or theme bleed-through at the edges.
+        for i in range(self.stacked_widget.count()):
+            page = self.stacked_widget.widget(i)
+            page.setAttribute(Qt.WA_StyledBackground, True)
+            page.setAutoFillBackground(True)
 
         # Initialize the ItemsManager to handle all logic for the Items tab
         self.items_manager = ItemsManager(self)
@@ -595,6 +623,9 @@ class SimpleWindow(QMainWindow):
                 background-color: #252526; /* Set the main window background color */
             }
             QWidget#MainWidget {
+                background-color: #252526;
+            }
+            QWidget#MainWidget {
                 background-color: transparent; /* Allow QMainWindow's background to show through */
             }
             QPushButton#WindowControlButton {
@@ -610,6 +641,7 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
+                background-color: #252526;
                 border: none;
             }
             #NavigationSidebar {
@@ -1559,8 +1591,13 @@ if __name__ == "__main__":
         SHCNE_ASSOCCHANGED = 0x08000000
         shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
 
+    # Enable High DPI scaling for better rendering on scaled displays.
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+
     app = QApplication(sys.argv)
-    app.setStyle("Fusion")
+    # Set the style to Fusion for more predictable cross-platform rendering.
+    app.setStyle("Fusion") 
     window = SimpleWindow()
     window.show()
     sys.exit(app.exec())
