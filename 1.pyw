@@ -8,7 +8,7 @@ from typing import List
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
     QStackedWidget, QGridLayout, QMessageBox, QHBoxLayout, QLineEdit, QTableWidget,
-    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit, QFrame,
+    QTableWidgetItem, QHeaderView, QListWidget, QGroupBox, QFileDialog, QTextEdit,
     QListWidgetItem, QColorDialog, QCheckBox, QSlider, QFontComboBox, QSpinBox
 )
 from PySide6.QtCore import Signal, Qt, QThread, QTimer, QUrl, QPoint
@@ -67,7 +67,10 @@ class FlatStackedWidget(QStackedWidget):
         self.setLineWidth(0)
         self.setMidLineWidth(0)
         self.setFocusPolicy(Qt.NoFocus)
-        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        # Set attributes to ensure it's painted correctly by the stylesheet
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAutoFillBackground(True)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True) # Crucial for preventing paint-through
 
 class AlignedTableWidgetItem(QTableWidgetItem):
     def __init__(self, text, alignment=Qt.AlignmentFlag.AlignCenter):
@@ -75,24 +78,17 @@ class AlignedTableWidgetItem(QTableWidgetItem):
         self.setTextAlignment(alignment)
 
 class NavButton(QWidget):
-    """
-    A custom clickable widget that acts like a button but gives full style control.
-    Inherits from QWidget instead of QPushButton to avoid all default button styling.
-    """
     clicked = Signal()
 
     def __init__(self, icon: str, text: str):
         super().__init__()
         self.setObjectName("NavButton") # Use an object name for specific styling
-        self.setCheckable(True) # We will manage the checked state manually
         self._is_checkable = False
         self._checked = False
 
-        # Set attributes to ensure background is painted correctly from stylesheet
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
 
-        # Main layout for the custom widget
         layout = QHBoxLayout(self)
         layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
         layout.setSpacing(10) # Space between icon and text
@@ -100,41 +96,36 @@ class NavButton(QWidget):
         self.icon_label = QLabel(icon)
         self.icon_label.setFixedWidth(20) # Fixed width for icon alignment
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
+        self.icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self.text_label = QLabel(text)
-        self.text_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents) # Allow parent to handle hover
+        self.text_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         layout.addWidget(self.icon_label)
         layout.addWidget(self.text_label)
         layout.addStretch()
 
     def mousePressEvent(self, event: QMouseEvent):
-        """Emit the clicked signal on a left-click."""
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
 
     def isCheckable(self) -> bool:
-        """Returns whether the button is checkable."""
         return self._is_checkable
 
     def setCheckable(self, checkable: bool):
-        """Sets whether the button is checkable."""
         self._is_checkable = checkable
 
     def isChecked(self) -> bool:
-        """Returns whether the button is currently checked."""
         return self._checked
 
     def setChecked(self, checked: bool):
-        """Manually handle the checked state and trigger a style update."""
-        if self.isCheckable() and self._checked != checked:
-            self._checked = checked
-            # Set a dynamic property that the stylesheet can use.
-            self.setProperty("checked", checked)
-            # Repolish the widget to apply the new style state.
-            self.style().unpolish(self); self.style().polish(self)
+        if not self.isCheckable() or self._checked == checked:
+            return
+        self._checked = checked
+        self.setProperty("checked", checked)
+        self.style().unpolish(self)
+        self.style().polish(self)
 
 class NavigationSidebar(QWidget):
     """A vertical navigation bar with buttons."""
@@ -143,48 +134,50 @@ class NavigationSidebar(QWidget):
     def __init__(self, tab_names: list[str]):
         super().__init__()
         self.setObjectName("NavigationSidebar")
-        self.setFixedWidth(180) # Increased width for more space
+        self.setFixedWidth(180)
         
-        self.buttons: List[NavButton] = []
+        self.buttons: List[QPushButton] = []
         self.current_index = -1
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 19, 5, 10) # Increased left margin by 3px
-        main_layout.setSpacing(5) # Increased spacing between buttons
+        main_layout.setContentsMargins(8, 19, 5, 10)
+        main_layout.setSpacing(5)
 
         # Add a label at the top for the title image
         self.title_label = QLabel()
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setContentsMargins(0, 0, 0, 15) # Add 15px bottom margin for spacing
+        self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
         main_layout.addWidget(self.title_label)
         
         # Icons using unicode characters
-        # Refined, more modern-looking unicode characters
         icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
                  "\u2699", "\u2753"] # Settings, Help (kept the same)
         
         # Main navigation buttons
         for i, name in enumerate(tab_names):
-            if name in ["Settings", "Help"]: continue # Handle these separately at the bottom
+            if name in ["Settings", "Help"]: continue # Handle these separately
             button = NavButton(icons[i], name)
-            button.clicked.connect(lambda idx=i: self.set_current_index(idx))
+            button.setCheckable(True)
+            button.clicked.connect(lambda checked, idx=i: self.set_current_index(idx))
             self.buttons.append(button)
             main_layout.addWidget(button)
 
         main_layout.addStretch()
 
         # Bottom-grouped buttons (Settings, Help)
-        for i, name in enumerate(tab_names):
+        for i, name in enumerate(tab_names): # This will iterate through all names again
             if name in ["Settings", "Help"]:
+                # Find the correct index from the original tab_names list
+                idx = tab_names.index(name)
                 button = NavButton(icons[i], name)
-                button.clicked.connect(lambda idx=i: self.set_current_index(idx))
+                button.setCheckable(True)
+                button.clicked.connect(lambda checked, i=idx: self.set_current_index(i))
                 self.buttons.append(button)
                 main_layout.addWidget(button)
 
         # Add the "Upgrade now" button at the bottom
         self.upgrade_button = QPushButton("Upgrade now")
         self.upgrade_button.setObjectName("UpgradeButton")
-        # self.upgrade_button.clicked.connect(self.on_upgrade_clicked) # Add a function if needed
         main_layout.addWidget(self.upgrade_button)
 
     def set_current_index(self, index: int):
@@ -197,9 +190,8 @@ class NavigationSidebar(QWidget):
     def setTitleImage(self, image_path: str | None):
         """Sets the pixmap for the title label."""
         if image_path and os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-            # Scale pixmap to fit the sidebar width minus some padding
-            self.title_label.setPixmap(pixmap.scaledToWidth(self.width() - 20, Qt.TransformationMode.SmoothTransformation))
+            pixmap = QPixmap(image_path).scaledToWidth(self.width() - 20, Qt.TransformationMode.SmoothTransformation)
+            self.title_label.setPixmap(pixmap)
         else:
             self.title_label.clear() # Clear the image if path is invalid
 
@@ -333,23 +325,21 @@ class SimpleWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_widget = QWidget()
-        main_widget.setObjectName("MainWidget") # Give the central widget a name for styling
-        # Ensure the central widget paints its background fully to prevent seams.
+        main_widget.setObjectName("MainWidget")
         main_widget.setAttribute(Qt.WA_StyledBackground, True)
         main_widget.setAutoFillBackground(True)
-        main_widget.setLayout(main_layout) # This will be the central widget's layout
+        main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
         # --- New Main Layout Structure ---
         content_widget = QWidget()
-        # Force styled background to prevent theme bleed-through
         content_widget.setAttribute(Qt.WA_StyledBackground, True)
-        content_widget.setAutoFillBackground(True)        
+        content_widget.setAutoFillBackground(True)
         content_widget.setAttribute(Qt.WA_OpaquePaintEvent, True)
-        content_widget.setObjectName("ContentWidget") # For specific styling
+        content_widget.setObjectName("ContentWidget")
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0) # Zero out margins to prevent seams
-        content_layout.setSpacing(0)
+        content_layout.setContentsMargins(10, 5, 10, 10) # Add top margin for controls
+        content_layout.setSpacing(10)
 
         # --- New Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
@@ -369,24 +359,16 @@ class SimpleWindow(QMainWindow):
         # Sidebar Navigation
         self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
-        # Force styled background to prevent theme bleed-through
         self.navigation_sidebar.setAttribute(Qt.WA_StyledBackground, True)
         self.navigation_sidebar.setAutoFillBackground(True)
         
-        # Add a dedicated separator widget instead of using a CSS border to avoid rendering artifacts.
-        separator = QFrame()
-        separator.setFixedWidth(1)
-        separator.setObjectName("SidebarSeparator")
-
         main_layout.addWidget(self.navigation_sidebar)
-        main_layout.addWidget(separator)
-        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor        
+        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor
         self.navigation_sidebar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
         self.character_load_manager = CharacterLoadManager(self)
-        self.load_tab.browse_btn.setObjectName("SecondaryButton")
         # Items tab
         self.item_database = ItemDatabase()
         self.items_tab = ItemsTab(self)
@@ -394,10 +376,6 @@ class SimpleWindow(QMainWindow):
 
         # Force all pages in the stacked widget to have a styled, opaque background
         # to prevent any transparency or theme bleed-through at the edges.
-        for i in range(self.stacked_widget.count()):
-            page = self.stacked_widget.widget(i)
-            page.setAttribute(Qt.WA_StyledBackground, True)
-            page.setAutoFillBackground(True)
 
         # Initialize the ItemsManager to handle all logic for the Items tab
         self.items_manager = ItemsManager(self)
@@ -427,7 +405,6 @@ class SimpleWindow(QMainWindow):
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
         self.automation_manager.log_message.connect(self.update_automation_log)
-        self.automation_tab.add_msg_btn.setObjectName("PrimaryButton")
 
         # Add validators to the line edits in the new tab
         int_validator = QIntValidator(50, 600000, self)
@@ -454,8 +431,6 @@ class SimpleWindow(QMainWindow):
                 # Connections for AHK installation buttons
         self.quickcast_tab.install_ahk_cmd_btn.clicked.connect(self.quickcast_manager.show_ahk_install_cmd)
         self.quickcast_tab.install_ahk_web_btn.clicked.connect(self.quickcast_manager.open_ahk_website)
-        self.quickcast_tab.install_ahk_cmd_btn.setObjectName("PrimaryButton")
-        self.quickcast_tab.install_ahk_web_btn.setObjectName("PrimaryButton")
         self.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
         
         # Lobbies tab
@@ -464,7 +439,6 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the LobbyManager to handle all logic for the Lobbies tab
         self.lobby_manager = LobbyManager(self)
-        self.lobbies_tab.refresh_button.setObjectName("SecondaryButton")
 
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget() # This will be the "Settings" tab
@@ -503,7 +477,6 @@ class SimpleWindow(QMainWindow):
 
         self.apply_custom_btn = QPushButton("Apply")
         self.apply_custom_btn.clicked.connect(self.theme_manager.apply_custom_theme)
-        self.apply_custom_btn.setObjectName("PrimaryButton")
         self.reset_custom_btn = QPushButton("Reset custom")
         self.reset_custom_btn.clicked.connect(self.reset_custom_theme_and_title)
 
@@ -543,7 +516,6 @@ class SimpleWindow(QMainWindow):
         font_buttons_layout.addStretch()
         self.reset_font_btn = QPushButton("Reset Font")
         self.apply_font_btn = QPushButton("Apply Font")
-        self.apply_font_btn.setObjectName("PrimaryButton")
         font_buttons_layout.addWidget(self.reset_font_btn)
         font_buttons_layout.addWidget(self.apply_font_btn)
 
@@ -623,9 +595,6 @@ class SimpleWindow(QMainWindow):
             QMainWindow {
                 background-color: #252526; /* Set the main window background color */
             }
-            QWidget#MainWidget {
-                background-color: #252526;
-            }
             QPushButton#WindowControlButton {
                 background-color: transparent;
                 border: none;
@@ -639,68 +608,46 @@ class SimpleWindow(QMainWindow):
             /* The main content area to the right of the sidebar */
             QWidget#ContentWidget {
                 background-color: #252526; /* Slightly lighter charcoal for the content panel */
-                border: none;
             }
             #NavigationSidebar {
                 background-color: #2C3033; /* CCleaner sidebar color */
-                border-right: none; /* Replaced with a dedicated separator widget */
-            }
-            /* Style for the new separator widget */
-            QFrame#SidebarSeparator {
                 background-color: #43474A;
             }
-            QWidget#NavButton {
+            #NavigationSidebar QPushButton {
                 background-color: transparent;
                 border: none;
-                border-radius: 4px; /* Add a radius for the background color change */
-                padding: 12px 15px; /* Increased left padding to move text right */
+                color: #D1D3D4;
+                padding: 12px 10px;
                 text-align: left;
                 font-size: 15px;
+                border-left: 3px solid transparent;
             }
-            /* Default state for labels inside the nav buttons */
-            #NavigationSidebar QPushButton QLabel {
-                background-color: transparent;
-                border: none; 
-                color: #D1D3D4;
+            #NavigationSidebar QPushButton:hover {
+                background-color: #333333;
             }
-            QWidget#NavButton[checked="true"] {
+            #NavigationSidebar QPushButton:checked {
                 color: #FFFFFF; /* White text for active item */
                 font-weight: bold;
-                background-color: #007AAB; /* Use a slightly darker accent for checked */
-            }
-            /* Style the text and icon inside the checked button */
-            QWidget#NavButton[checked="true"] QLabel {
-                color: #FFFFFF;
-                font-weight: bold;
-                background-color: transparent;
+                background-color: #3B3F42;
+                border-left: 3px solid #00A8E8; /* Teal accent */
             }
             #UpgradeButton {
                 background-color: #F05E16; /* Orange CTA */
                 color: #FFFFFF;
                 font-weight: bold;
                 border-radius: 4px;
-                margin: 10px 5px;
             }
             #UpgradeButton:hover {
                 background-color: #FF7833;
             }
             QPushButton {
-                /* This is the correct theme style for all standard buttons */
-                background-color: #007AAB; /* CCleaner's blue */
-                color: #FFFFFF;
-                border: none;
-                padding: 5px;
-                border-radius: 4px;
+                background-color: #4A4D4F;
+                color: #f0f0f0;
+                border: 1px solid #555555;
+                padding: 8px;
             }
             QPushButton:hover {
-                background-color: #0095CC;
-            }
-            /* Secondary buttons have a visible border but no fill */
-            QPushButton#SecondaryButton {
-                border: 1px solid #555555;
-            }
-            QPushButton#SecondaryButton:hover {
-                background-color: #3c3c3c;
+                background-color: #4c4c4c;
                 border-color: #666666;
             }
             QPushButton#PrimaryButton {
@@ -716,24 +663,20 @@ class SimpleWindow(QMainWindow):
                 background-color: #c83e3e;
             }
             QGroupBox {
-                border: 1px solid #43474A;
+                border: 1px solid #43474A; /* Softer border */
                 border-radius: 4px;
-                padding: 10px;
-                margin: 0;
-                background-color: #252526; /* Match the page background */
+                margin-top: 10px;
             }
             QGroupBox::title {
-                /* Prevent the title from creating an inset frame */
-                subcontrol-origin: margin; 
-                padding: 0 4px;
+                subcontrol-origin: margin;
+                subcontrol-position: top left; /* Position at the top-left */
+                padding: 0 3px;
+                color: #9D9D9D; /* Muted title color */
                 margin-left: 5px;
-                color: #E6E6E6;
             }
-            /* Target widgets that inherit QFrame and remove their default border */
-            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox, QScrollArea {
+            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox {
                 background-color: #252526;
                 border: 1px solid #3c3c3c;
-                padding: 5px;
                 color: #d4d4d4;
             }
             QHeaderView::section {
@@ -743,13 +686,6 @@ class SimpleWindow(QMainWindow):
             }
             /* This combination should finally remove any borders from the
                stacked widget container and its direct pages. */
-            QStackedWidget {
-                border: none;
-            }
-            QStackedWidget > QWidget {
-                border: none;
-                background-color: #252526;
-            }
         """
 
     def create_help_tab(self):
@@ -764,14 +700,14 @@ class SimpleWindow(QMainWindow):
         help_text.setReadOnly(True)
         help_text.setHtml("""
             <h3>Welcome to Hellfire Helper!</h3>
-            <p>This utility is designed to assist with various tasks related to Warcraft III.</p>
+            <p>This utility is designed to assist with various tasks related to Warcraft III.</p> 
             
             <h4><b>Global Hotkeys:</b></h4>
             <ul>
                 <li><b>F2:</b> Activate/Deactivate Quickcast (requires AutoHotkey).</li>
                 <li><b>F3:</b> Load selected character in the 'Load' tab.</li>
                 <li><b>F5:</b> Start Automation.</li>
-                <li><b>F6:</b> Stop Automation.</li>
+                <li><b>F6:</b> Stop Automation.</li> 
             </ul>
 
             <h4><b>General Usage:</b></h4>
@@ -779,7 +715,6 @@ class SimpleWindow(QMainWindow):
             
             <h4><b>Quickcast (AHK):</b></h4>
             <p>The Quickcast feature requires <b>AutoHotkey v2</b> to be installed. You can find installation links in the 'Quickcast' tab. Once activated, you can remap keys and enable quickcasting, which simulates a mouse click after a key press.</p>
-
             <h4><b>Troubleshooting:</b></h4>
             <p>If you encounter issues, a good first step is to reset the application via the 'Settings' tab. This will restore all settings to their default values.</p>
         """)
@@ -835,8 +770,8 @@ class SimpleWindow(QMainWindow):
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
         # Allow dragging from the top 30px of the window, as long as it's not over the sidebar
-        if event.button() == Qt.MouseButton.LeftButton and event.position().y() < 30:
-            if self.navigation_sidebar and self.navigation_sidebar.geometry().contains(event.position().toPoint()):
+        if event.button() == Qt.MouseButton.LeftButton and event.pos().y() < 30:
+            if self.navigation_sidebar and self.navigation_sidebar.geometry().contains(event.pos()):
                 return # Don't drag if clicking on the sidebar
             self.old_pos = event.globalPosition().toPoint()
     def mouseMoveEvent(self, event: QMouseEvent):
@@ -896,7 +831,7 @@ class SimpleWindow(QMainWindow):
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
 
     def apply_new_style(self):
-        self.setStyleSheet(self.get_new_dark_style()) # Ensure this calls the correct method
+        self.setStyleSheet(self.get_new_dark_style())
         self.theme_manager.reapply_current_theme()
 
     def set_title_image(self, image_name: str | None):
@@ -1459,14 +1394,11 @@ if __name__ == "__main__":
         # This can help refresh the icon cache if the .exe is moved.
         SHCNE_ASSOCCHANGED = 0x08000000
         shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
-
-    # Enable High DPI scaling for better rendering on scaled displays.
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
     app = QApplication(sys.argv)
-    # Set the style to Fusion for more predictable cross-platform rendering.
-    app.setStyle("Fusion") 
+    app.setStyle("Fusion")
     window = SimpleWindow()
     window.show()
     sys.exit(app.exec())
