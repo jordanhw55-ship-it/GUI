@@ -319,10 +319,13 @@ class SimpleWindow(QMainWindow):
 
         # --- New Main Layout Structure ---
         content_widget = QWidget()
+        # Force styled background to prevent theme bleed-through
+        content_widget.setAttribute(Qt.WA_StyledBackground, True)
+        content_widget.setAutoFillBackground(True)
         content_widget.setObjectName("ContentWidget") # For specific styling
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 5, 10, 10) # Add top margin for controls
-        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(0, 0, 0, 0) # Zero out margins to prevent seams
+        content_layout.setSpacing(0)
 
         # --- New Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
@@ -349,6 +352,9 @@ class SimpleWindow(QMainWindow):
         # Sidebar Navigation
         self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
+        # Force styled background to prevent theme bleed-through
+        self.navigation_sidebar.setAttribute(Qt.WA_StyledBackground, True)
+        self.navigation_sidebar.setAutoFillBackground(True)
         
         # Add a dedicated separator widget instead of using a CSS border to avoid rendering artifacts.
         separator = QFrame()
