@@ -707,6 +707,7 @@ class SimpleWindow(QMainWindow):
             QWidget {
                 background-color: #1e1e1e; /* Deep charcoal */
                 color: #E6E6E6; /* Brighter Off-white for better readability */
+                outline: none; /* FINAL FIX: Remove the focus outline from all widgets */
                 font-family: "Segoe UI", Arial, sans-serif;
             }
             QMainWindow {
