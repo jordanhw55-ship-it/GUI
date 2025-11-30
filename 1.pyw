@@ -203,7 +203,7 @@ class SimpleWindow(QMainWindow):
         # --- New Integrated Window Controls ---
         window_controls_layout = QHBoxLayout()
         window_controls_layout.addStretch() # Push buttons to the right
-        min_button = QPushButton("_"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
+        min_button = QPushButton("–"); min_button.setFixedSize(30, 25); min_button.clicked.connect(self.showMinimized)
         close_button = QPushButton("X"); close_button.setFixedSize(30, 25); close_button.clicked.connect(self.close)
         min_button.setObjectName("WindowControlButton")
         close_button.setObjectName("WindowControlButton")
