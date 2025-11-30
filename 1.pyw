@@ -1365,7 +1365,7 @@ class NavButton(QPushButton):
         self.setCheckable(True)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 0, 15, 0) # Left and right padding
+        layout.setContentsMargins(25, 0, 15, 0) # Increased left padding for more space
         layout.setSpacing(10) # Space between icon and text
 
         self.icon_label = QLabel(icon)
