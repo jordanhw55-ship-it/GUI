@@ -224,6 +224,7 @@ class SimpleWindow(QMainWindow):
         # Load tab
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
         self.character_load_manager = CharacterLoadManager(self)
+        self.load_tab.browse_btn.setObjectName("SecondaryButton")
         # Items tab
         self.item_database = ItemDatabase()
         self.items_tab = ItemsTab(self)
@@ -291,6 +292,7 @@ class SimpleWindow(QMainWindow):
 
         # Initialize the LobbyManager to handle all logic for the Lobbies tab
         self.lobby_manager = LobbyManager(self)
+        self.lobbies_tab.refresh_button.setObjectName("SecondaryButton")
 
         # Settings tab (themes + custom theme picker)
         settings_tab_content = QWidget() # This will be the "Settings" tab
@@ -611,17 +613,25 @@ class SimpleWindow(QMainWindow):
                 background-color: #FF7833;
             }
             QPushButton {
-                background-color: transparent;
+                background-color: transparent; /* Fade into background */
                 color: #f0f0f0;
                 border: 1px solid transparent; /* Hidden by default */
                 padding: 8px;
                 border-radius: 4px;
             }
             QPushButton:hover {
-                background-color: #3c3c3c; /* Lighten on hover */
+                background-color: #3c3c3c; /* Reveal on hover */
                 border-color: #555555; /* Show border on hover */
             }
-            /* Primary action buttons, like 'Apply' or 'Start' */
+            /* Secondary buttons have a visible border but no fill */
+            QPushButton#SecondaryButton {
+                background-color: transparent;
+                border: 1px solid #555555;
+            }
+            QPushButton#SecondaryButton:hover {
+                background-color: #3c3c3c;
+                border-color: #666666;
+            }
             QPushButton#PrimaryButton {
                 background-color: #007AAB; /* CCleaner's blue */
             }
