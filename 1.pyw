@@ -345,6 +345,8 @@ class SimpleWindow(QMainWindow):
         # --- New Custom Title Bar ---
         title_bar = QWidget()
         title_bar.setObjectName("CustomTitleBar")
+        title_bar.setAttribute(Qt.WA_StyledBackground, True)
+        title_bar.setAutoFillBackground(True)
         title_bar.setFixedHeight(30)
         title_bar_layout = QHBoxLayout(title_bar)
         title_bar_layout.setContentsMargins(0, 0, 5, 0)
