@@ -349,8 +349,15 @@ class SimpleWindow(QMainWindow):
         # Sidebar Navigation
         self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Settings", "Help"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
+        
+        # Add a dedicated separator widget instead of using a CSS border to avoid rendering artifacts.
+        separator = QFrame()
+        separator.setFixedWidth(1)
+        separator.setObjectName("SidebarSeparator")
+
         main_layout.addWidget(self.navigation_sidebar)
-        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor
+        main_layout.addWidget(separator)
+        main_layout.addWidget(content_widget, 1) # Add content widget with stretch factor        
         self.navigation_sidebar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
@@ -601,7 +608,11 @@ class SimpleWindow(QMainWindow):
             }
             #NavigationSidebar {
                 background-color: #2C3033; /* CCleaner sidebar color */
-                border-right: 1px solid #43474A;
+                border-right: none; /* Replaced with a dedicated separator widget */
+            }
+            /* Style for the new separator widget */
+            QFrame#SidebarSeparator {
+                background-color: #43474A;
             }
             #NavigationSidebar QPushButton {
                 background-color: transparent;
