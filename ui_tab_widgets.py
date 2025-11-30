@@ -60,7 +60,7 @@ class AutomationTab(QWidget):
         # All keys that can be in the automation grid
         self.automationKeys = [ 
             "y", "s", "h", "a", "p", "d", "f", "t", "q", "w", "e", "r", "Complete Quest",
-            "Num7", "Num8", "Num4", "Num5", "Num1", "Num2"
+            "Num7", "Num8", "Num4", "Num5", "Num1", "Num2", "z", "x"
         ]
         for key in self.automationKeys:
             chk = QCheckBox(key.upper() if key != "Complete Quest" else "Complete Quest")
@@ -150,6 +150,8 @@ class AutomationTab(QWidget):
         other_actions_group = QGroupBox("Other Actions")
         other_actions_layout = QVBoxLayout(other_actions_group)
         other_actions_layout.addLayout(self._create_control_pair(self.automation_key_ctrls["Complete Quest"]))
+        other_actions_layout.addLayout(self._create_control_pair(self.automation_key_ctrls["z"]))
+        other_actions_layout.addLayout(self._create_control_pair(self.automation_key_ctrls["x"]))
         other_actions_layout.addLayout(self._create_custom_action_layout())
         top_level_grid.addWidget(other_actions_group, 1, 0)
 
