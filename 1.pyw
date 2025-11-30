@@ -695,14 +695,18 @@ class SimpleWindow(QMainWindow):
                 background-color: #FF7833;
             }
             QPushButton {
-                background-color: #007AAB; /* CCleaner's blue */
-                color: #FFFFFF;
-                border: 1px solid #007AAB;
-                padding: 5px;
+                /* This is the restored style for all standard buttons */
+                background-color: #3A3D41;
+                color: #E6E6E6;
+                border: 1px solid #5A5A5A;
+                padding: 6px 12px;
                 border-radius: 4px;
             }
             QPushButton:hover {
-                background-color: #0095CC;
+                background-color: #505357;
+            }
+            QPushButton:pressed {
+                background-color: #2C3033;
             }
             /* Secondary buttons have a visible border but no fill */
             QPushButton#SecondaryButton {
@@ -759,130 +763,6 @@ class SimpleWindow(QMainWindow):
             }
             QStackedWidget > QWidget {
                 border: none;
-            }
-        """
-
-    def get_new_dark_style_legacy(self):
-        """Returns the CCleaner-inspired dark theme stylesheet."""
-        return """
-            QWidget {
-                background-color: #1e1e1e; /* Deep charcoal */
-                color: #E6E6E6; /* Brighter Off-white for better readability */
-                outline: none; /* FINAL FIX: Remove the focus outline from all widgets */
-                font-family: "Segoe UI", Arial, sans-serif;
-            }
-            QMainWindow {
-                background-color: #252526; /* Set the main window background color */
-            }
-            QWidget#MainWidget {
-                background-color: transparent; /* Allow QMainWindow's background to show through */
-            }
-            QPushButton#WindowControlButton {
-                background-color: transparent;
-                border: none;
-                color: #d4d4d4;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton#WindowControlButton:hover {
-                background-color: #E81123; /* Brighter Red for close hover */
-            }
-            /* The main content area to the right of the sidebar */
-            QWidget#ContentWidget {
-                background-color: #252526; /* Slightly lighter charcoal for the content panel */
-                border: none;
-            }
-            #NavigationSidebar {
-                background-color: #2C3033; /* CCleaner sidebar color */
-                border-right: 1px solid #43474A;
-            }
-            #NavigationSidebar QPushButton {
-                background-color: transparent;
-                border: none;
-                color: #D1D3D4;
-                padding: 12px 10px;
-                text-align: left;
-                font-size: 15px;
-                border-left: 3px solid transparent;
-            }
-            #NavigationSidebar QPushButton:hover {
-                background-color: #333333;
-            }
-            #NavigationSidebar QPushButton:checked {
-                color: #FFFFFF; /* White text for active item */
-                font-weight: bold;
-                background-color: #3B3F42;
-                border-left: 3px solid #00A8E8; /* Teal accent */
-            }
-            #UpgradeButton {
-                background-color: #F05E16; /* Orange CTA */
-                color: #FFFFFF;
-                font-weight: bold;
-                border-radius: 4px;
-                margin: 10px 5px;
-            }
-            #UpgradeButton:hover {
-                background-color: #FF7833;
-            }
-            QPushButton {
-                background-color: #007AAB; /* CCleaner's blue */
-                color: #FFFFFF;
-                border: 1px solid #007AAB;
-                padding: 5px;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #0095CC;
-            }
-            /* Secondary buttons have a visible border but no fill */
-            QPushButton#SecondaryButton {
-                background-color: transparent;
-                border: 1px solid #555555;
-            }
-            QPushButton#SecondaryButton:hover {
-                background-color: #3c3c3c;
-                border-color: #666666;
-            }
-            QPushButton#PrimaryButton {
-                background-color: #007AAB; /* CCleaner's blue */
-            }
-            QPushButton#PrimaryButton:hover {
-                background-color: #0095CC;
-            }
-            QPushButton#DangerButton {
-                background-color: #B22222; /* FireBrick */
-            }
-            QPushButton#DangerButton:hover {
-                background-color: #c83e3e;
-            }
-            QGroupBox {
-                border: none; /* No border for group boxes */
-                border-radius: 4px;
-                margin-top: 10px;
-                padding: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left; /* Position at the top-left */
-                padding: 0 3px;
-                color: #9D9D9D; /* Muted title color */
-                margin-left: 5px;
-            }
-            /* Target widgets that inherit QFrame and remove their default border */
-            QLineEdit, QTextEdit, QTableWidget, QListWidget, QSpinBox, QFontComboBox, QScrollArea {
-                background-color: #252526;
-                border: 1px solid #3c3c3c;
-                border-radius: 4px;
-                padding: 5px;
-                color: #d4d4d4;
-            }
-            QHeaderView::section {
-                background-color: #3B3F42;
-                border: 1px solid #3c3c3c;
-                padding: 4px;
-            }
-            QTableWidget::item {
-                padding: 3px;
             }
         """
 
@@ -1030,7 +910,7 @@ class SimpleWindow(QMainWindow):
         self.register_global_hotkeys() # This will unhook old and register new (just F5)
 
     def apply_new_style(self):
-        self.setStyleSheet(self.get_new_dark_style())
+        self.setStyleSheet(self.get_new_dark_style()) # Ensure this calls the correct method
         self.theme_manager.reapply_current_theme()
 
     def set_title_image(self, image_name: str | None):
