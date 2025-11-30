@@ -1,16 +1,9 @@
 import sys
 import json
 import os
-import zipfile
-import shutil
-import requests
 import re
 import subprocess
 from typing import List
-
-if __name__ == "__main__":
-
-    # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget,
@@ -212,7 +205,6 @@ class SimpleWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.VERSION = "1.0.0" # Application version
         self.navigation_sidebar = None
 
         self.settings_manager = SettingsManager()
@@ -375,7 +367,6 @@ class SimpleWindow(QMainWindow):
         self.navigation_sidebar.tab_selected.connect(self.stacked_widget.setCurrentIndex)
 
         # Load tab
-        self.navigation_sidebar.upgrade_button.clicked.connect(self.check_for_updates)
         self.load_tab = CharacterLoadTab(self); self.stacked_widget.addWidget(self.load_tab)
         self.character_load_manager = CharacterLoadManager(self)
         # Items tab
@@ -1400,86 +1391,8 @@ class SimpleWindow(QMainWindow):
         # Ensure the AHK process is terminated on exit
         self.quickcast_manager.deactivate_ahk_script_if_running(inform_user=False)
 
-        # Clean up updater script if it exists
-        updater_script_path = os.path.join(get_base_path(), "updater.bat")
-        if os.path.exists(updater_script_path):
-            try:
-                os.remove(updater_script_path)
-            except OSError as e:
-                print(f"Could not remove updater script: {e}")
-
         event.accept()
-
-    def check_for_updates(self):
-        """Checks GitHub for a new release and prompts the user to update."""
-        api_url = "https://api.github.com/repos/jordanhw55-ship-it/GUI/releases/latest"
-        try:
-            response = requests.get(api_url, timeout=10)
-            response.raise_for_status()
-            latest_release = response.json()
-            latest_version_str = latest_release.get("tag_name", "0.0.0").lstrip('v')
-
-            # Simple version comparison
-            if latest_version_str > self.VERSION:
-                release_notes = latest_release.get("body", "No release notes provided.")
-                reply = QMessageBox.question(self, "Update Available",
-                                             f"A new version ({latest_version_str}) is available!\n\n"
-                                             f"Your current version: {self.VERSION}\n\n"
-                                             f"Release Notes:\n{release_notes}\n\n"
-                                             "Would you like to download and install it now?",
-                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-                if reply == QMessageBox.StandardButton.Yes:
-                    self.download_and_apply_update(latest_release)
-            else:
-                QMessageBox.information(self, "Up to Date", "You are already running the latest version.")
-
-        except requests.RequestException as e:
-            QMessageBox.critical(self, "Update Check Failed", f"Could not check for updates. Please check your internet connection.\n\nError: {e}")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An unexpected error occurred during the update check: {e}")
-
-    def download_and_apply_update(self, release_data):
-        """Downloads the release asset and runs the updater script."""
-        assets = release_data.get("assets", [])
-        # Assuming the release asset is a .exe file.
-        asset_to_download = next((asset for asset in assets if asset.get("name", "").endswith(".exe")), None)
-
-        if not asset_to_download:
-            QMessageBox.critical(self, "Update Error", "Could not find a downloadable .exe file in the latest release.")
-            return
-
-        download_url = asset_to_download.get("browser_download_url")
-        new_exe_name = "Hellfire_Helper_new.exe"
-        new_exe_path = os.path.join(get_base_path(), new_exe_name)
-
-        try:
-            with requests.get(download_url, stream=True) as r:
-                r.raise_for_status()
-                with open(new_exe_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-            current_exe = os.path.basename(sys.executable)
-            updater_script_path = os.path.join(get_base_path(), "updater.bat")
-            script_content = f"""
-@echo off
-echo Waiting for the application to close...
-timeout /t 2 /nobreak > nul
-echo Replacing executable...
-del "{current_exe}"
-ren "{new_exe_name}" "{current_exe}"
-echo Relaunching application...
-start "" "{current_exe}"
-del "%~f0"
-"""
-            with open(updater_script_path, "w") as f:
-                f.write(script_content)
-
-            subprocess.Popen([updater_script_path], creationflags=subprocess.CREATE_NO_WINDOW)
-            self.close()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Update Failed", f"An error occurred while downloading or applying the update:\n\n{e}")
+ 
 
 if __name__ == "__main__":
 
