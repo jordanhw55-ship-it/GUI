@@ -519,17 +519,6 @@ class SimpleWindow(QMainWindow):
 
         self.stacked_widget.addWidget(settings_tab_content)
 
-        # Add a reset button to the settings tab
-        reset_group = QGroupBox("Application Reset")
-        reset_layout = QVBoxLayout(reset_group)
-        reset_warning = QLabel("This will reset all application settings to their defaults.")
-        self.reset_gui_button = QPushButton("Reset Application")
-        self.reset_gui_button.setObjectName("DangerButton") # For specific styling
-        reset_layout.addWidget(reset_warning)
-        reset_layout.addWidget(self.reset_gui_button)
-        settings_layout.addWidget(reset_group, row_below + 2, 0, 1, 4)
-        self.reset_gui_button.clicked.connect(self.confirm_reset)
-
         # New Help Tab
         help_tab = self.create_help_tab()
         self.stacked_widget.addWidget(help_tab)
