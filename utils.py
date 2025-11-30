@@ -50,6 +50,14 @@ DARK_STYLE = """
         padding: 0 10px;
         font-weight: bold;
     }
+    QCheckBox::indicator {
+        border: 1px solid #FF7F50; /* accent */
+        border-radius: 3px;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #FF7F50; /* accent */
+        image: url(none); /* Hide the default checkmark */
+    }
 """
 
 LIGHT_STYLE = """
@@ -94,6 +102,14 @@ LIGHT_STYLE = """
         padding: 0 10px;
         font-weight: bold;
     }
+    QCheckBox::indicator {
+        border: 1px solid #DA3A9D;
+        border-radius: 3px;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #DA3A9D;
+        image: url(none);
+    }
 """
 
 FOREST_STYLE = """
@@ -127,6 +143,14 @@ FOREST_STYLE = """
         border: 1px solid #4169E1;
         border-radius: 8px;
         margin-top: 10px;
+    }
+    QCheckBox::indicator {
+        border: 1px solid #1E90FF; /* accent */
+        border-radius: 3px;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #1E90FF; /* accent */
+        image: url(none);
     }
     QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
 """
@@ -163,6 +187,14 @@ OCEAN_STYLE = """
         margin-top: 10px;
     }
     QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }
+    QCheckBox::indicator {
+        border: 1px solid #000080;
+        border-radius: 3px;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #87CEEB; /* accent */
+        image: url(none);
+    }
 """
 
 def get_base_path():

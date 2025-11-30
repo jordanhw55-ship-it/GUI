@@ -77,8 +77,15 @@ class ThemeManager:
             QGroupBox {{ border: 1px solid {accent}; border-radius: 8px; margin-top: 10px; }}
             QLineEdit, QTextEdit, QTableWidget, QListWidget {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; border-radius: 6px; padding: 6px; }}
             QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top center; padding: 0 10px; font-weight: bold; }}
-            QHeaderView::section {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; padding: 4px; }}
-            QCheckBox::indicator {{ border: 1px solid {accent}; }}
+            QHeaderView::section {{ background-color: #2E2E2E; color: {fg}; border: 1px solid {accent}; padding: 4px; }} 
+            QCheckBox::indicator {{
+                border: 1px solid {accent};
+                border-radius: 3px;
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {accent};
+                image: url(none);
+            }}
         """
 
     def apply_custom_theme(self):
