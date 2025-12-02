@@ -118,12 +118,15 @@ class WC3UITab(QWidget):
     def _create_loading_placeholders(self):
         """Creates a simple 'Loading...' placeholder for each tab."""
         tabs_to_setup = [self.ui_tab, self.unit_select_tab, self.hp_bar_tab, self.reticle_tab]
-        for tab in tabs_to_setup:
-            layout = QVBoxLayout(tab)
+        for i, tab in enumerate(tabs_to_setup):
+            # Use a QGridLayout from the start to avoid layout type conflicts later
+            layout = QGridLayout(tab)
             layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
             loading_label = QLabel("Loading Content...")
             loading_label.setStyleSheet("font-size: 16px; color: gray;")
-            layout.addWidget(loading_label)
+            # Give the label a unique object name for easy finding later
+            loading_label.setObjectName(f"loading_label_{i}")
+            layout.addWidget(loading_label, 0, 0, 1, 2) # Span across columns
 
     def _clear_layout(self, layout):
         """Helper to remove all widgets from a layout."""
@@ -134,12 +137,12 @@ class WC3UITab(QWidget):
 
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
-        # --- FIX: Get existing layouts instead of creating new ones ---
         # UI Tab
-        self._clear_layout(self.ui_tab.layout()) # Clear the old QVBoxLayout
-        ui_layout = QGridLayout() # Create a new QGridLayout
-        self.ui_tab.setLayout(ui_layout) # <-- FIX: Set the new layout on the tab
-        ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
+        ui_layout = self.ui_tab.layout() # Get the existing QGridLayout
+        # Find and remove the specific loading label
+        loading_widget = self.ui_tab.findChild(QLabel, "loading_label_0")
+        if loading_widget:
+            loading_widget.deleteLater()
 
         self.theme_buttons = []
 
@@ -166,10 +169,11 @@ class WC3UITab(QWidget):
         ui_layout.setRowStretch(6, 1)     # Add stretch below the last row
 
         # HP Bar Tab
-        self._clear_layout(self.hp_bar_tab.layout())
-        hp_bar_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
-        self.hp_bar_tab.setLayout(hp_bar_layout) # <-- FIX: Set the new layout on the tab
-        hp_bar_layout.setVerticalSpacing(10)
+        hp_bar_layout = self.hp_bar_tab.layout()
+        loading_widget = self.hp_bar_tab.findChild(QLabel, "loading_label_1")
+        if loading_widget:
+            loading_widget.deleteLater()
+
         self.hp_bar_buttons = []
         hp_bar_options = ["4Bar", "8Bar", "30Bar"]
 
@@ -203,10 +207,11 @@ class WC3UITab(QWidget):
         hp_bar_layout.setRowStretch(len(hp_bar_options), 1)
 
         # Unit Select Tab
-        self._clear_layout(self.unit_select_tab.layout())
-        unit_select_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
-        self.unit_select_tab.setLayout(unit_select_layout) # <-- FIX: Set the new layout on the tab
-        unit_select_layout.setVerticalSpacing(10)
+        unit_select_layout = self.unit_select_tab.layout()
+        loading_widget = self.unit_select_tab.findChild(QLabel, "loading_label_2")
+        if loading_widget:
+            loading_widget.deleteLater()
+
         self.unit_select_buttons = []
         unit_select_options = ["Chain", "Dragon", "Eye", "Skeleton", "Square", "Sun", "Target"]
 
@@ -247,11 +252,12 @@ class WC3UITab(QWidget):
 
         # Populate other tabs with placeholders
         reticle_tab = self.reticle_tab
-        self._clear_layout(reticle_tab.layout())
-        layout = reticle_tab.layout() # This is a QVBoxLayout, which is fine for a placeholder
+        layout = reticle_tab.layout()
+        loading_widget = reticle_tab.findChild(QLabel, "loading_label_3")
+        if loading_widget:
+            loading_widget.deleteLater()
         tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
         layout.addWidget(QLabel(f"Content for {tab_name} tab."))
-        layout.addStretch()
 
     def on_option_selected(self, clicked_button: QPushButton, button_group: list, category: str):
         """Handles the logic when an option button is clicked, ensuring only one is selected."""
