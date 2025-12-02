@@ -4,7 +4,7 @@ import subprocess
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QLabel, QPushButton, QGridLayout, QHBoxLayout, QLineEdit, QFileDialog, QMessageBox, QGroupBox, QListWidget
 )
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QMovie
 from PySide6.QtCore import Qt
 
 from utils import get_base_path
@@ -17,6 +17,9 @@ class WC3UITab(QWidget):
         self.selected_theme = None
         self.selected_hp_bar = None
         self.selected_unit_select = None
+
+        # Flag to track if tabs have been populated to prevent re-loading
+        self._is_populated = False
         
         main_layout = QHBoxLayout(self)
         self.tab_widget = QTabWidget()
@@ -91,7 +94,10 @@ class WC3UITab(QWidget):
         self.tab_widget.addTab(self.hp_bar_tab, "HP Bar")
         self.tab_widget.addTab(self.reticle_tab, "Reticle")
 
-        self._populate_tabs()
+        # Defer the expensive population until the tab is shown
+        self._create_loading_placeholders()
+
+        self.tab_widget.currentChanged.connect(self.populate_if_needed)
 
         self.browse_button.clicked.connect(self.browse_for_wc3_path)
         self.create_folders_button.clicked.connect(self.create_interface_folders)
@@ -102,12 +108,37 @@ class WC3UITab(QWidget):
         self.reg_off_button.clicked.connect(self.run_reg_off)
         self.reset_default_button.clicked.connect(self.reset_to_default)
 
+    def populate_if_needed(self):
+        """Populates the tabs with their content if they haven't been already."""
+        if not self._is_populated:
+            print("[INFO] Loading WC3 UI tab content for the first time...")
+            self._populate_tabs()
+            self._is_populated = True
+
+    def _create_loading_placeholders(self):
+        """Creates a simple 'Loading...' placeholder for each tab."""
+        tabs_to_setup = [self.ui_tab, self.unit_select_tab, self.hp_bar_tab, self.reticle_tab]
+        for tab in tabs_to_setup:
+            layout = QVBoxLayout(tab)
+            layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            loading_label = QLabel("Loading Content...")
+            loading_label.setStyleSheet("font-size: 16px; color: gray;")
+            layout.addWidget(loading_label)
+
+    def _clear_layout(self, layout):
+        """Helper to remove all widgets from a layout."""
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
         # UI Tab
         ui_layout = QGridLayout(self.ui_tab)
         ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
         self.theme_buttons = []
+        self._clear_layout(self.ui_tab.layout())
 
         for i in range(1, 7):
             button = QPushButton(f"Theme {i}")
@@ -135,6 +166,7 @@ class WC3UITab(QWidget):
         hp_bar_layout = QGridLayout(self.hp_bar_tab)
         hp_bar_layout.setVerticalSpacing(10)
         self.hp_bar_buttons = []
+        self._clear_layout(self.hp_bar_tab.layout())
         hp_bar_options = ["4Bar", "8Bar", "30Bar"]
 
         for i, option_name in enumerate(hp_bar_options):
@@ -170,6 +202,7 @@ class WC3UITab(QWidget):
         unit_select_layout = QGridLayout(self.unit_select_tab)
         unit_select_layout.setVerticalSpacing(10)
         self.unit_select_buttons = []
+        self._clear_layout(self.unit_select_tab.layout())
         unit_select_options = ["Chain", "Dragon", "Eye", "Skeleton", "Square", "Sun", "Target"]
 
         for i, option_name in enumerate(unit_select_options):
@@ -208,10 +241,11 @@ class WC3UITab(QWidget):
             button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.unit_select_buttons, 'unit_select'))
 
         # Populate other tabs with placeholders
-        other_tabs = [self.reticle_tab]
-        for tab in other_tabs:
-            tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(tab))
-            layout = QVBoxLayout(tab)
+        reticle_tab = self.reticle_tab
+        if reticle_tab.layout():
+            self._clear_layout(reticle_tab.layout())
+            tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
+            layout = QVBoxLayout(reticle_tab)
             layout.addWidget(QLabel(f"Content for {tab_name} tab."))
             layout.addStretch()
 
