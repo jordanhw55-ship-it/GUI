@@ -450,21 +450,19 @@ class ImageEditorApp:
         self.canvas.create_window(10, 10, window=status_box_frame, anchor="nw")
 
 
-        # --- NEW: Draw the Image Asset Dock Area ---
-        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12), tags="no_zoom")
-        self.canvas.create_rectangle(0, self.IMAGE_DOCK_Y, CANVAS_WIDTH, self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
-                                     fill="#374151", # Match composition area
-                                     outline="#4b5563",
-                                     width=3,
-                                     tags="no_zoom")
+        # --- DEFINITIVE REWRITE V10: Create a single, solid "cover" for the entire dock area ---
+        # This acts as a higher "strata" that tiles will render underneath.
+        self.dock_cover_rect = self.canvas.create_rectangle(
+            0, self.COMP_AREA_Y2, CANVAS_WIDTH, CANVAS_HEIGHT,
+            fill="#374151",  # Same color as the dock background
+            outline="#4b5563",
+            width=3,
+            tags="dock_cover"
+        )
 
-        # --- NEW: Draw the Border Asset Dock Area ---
-        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12), tags="no_zoom")
-        self.canvas.create_rectangle(0, self.BORDER_DOCK_Y, CANVAS_WIDTH, self.BORDER_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
-                                     fill="#374151", # Match composition area
-                                     outline="#4b5563",
-                                     width=3,
-                                     tags="no_zoom")
+        # Add text labels on top of the cover
+        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12), tags="dock_cover_text")
+        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12), tags="dock_cover_text")
 
 
         # --- 2. Initialize Draggable Components (Layers) ---
@@ -1459,10 +1457,14 @@ class ImageEditorApp:
 
     def _keep_docks_on_top(self):
         """Iterates through all components and raises any dock assets to the top of the Z-order."""
+        # First, raise the solid cover that hides the tiles.
+        self.canvas.tag_raise("dock_cover")
+        self.canvas.tag_raise("dock_cover_text")
+
+        # Then, raise the individual clickable assets on top of the cover.
         for comp in self.components.values():
             if comp.is_dock_asset:
                 self.canvas.tag_raise(comp.tag)
-
 
     def apply_preview_layout(self):
         """Makes all components visible and moves them to the 'Show All' layout positions."""
