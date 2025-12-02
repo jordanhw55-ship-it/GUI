@@ -381,12 +381,17 @@ class SimpleWindow(QMainWindow):
         # UI Creator Tab
         self.ui_creator_tab = QWidget()
         ui_creator_layout = QVBoxLayout(self.ui_creator_tab)
-        ui_creator_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        ui_creator_label = QLabel("UI Creator will be here!")
-        ui_creator_layout.addWidget(ui_creator_label)
+        ui_creator_layout.addStretch()
+        
+        # Button to launch the separate UI creator tool
+        self.launch_ui_creator_btn = QPushButton("Open UI Creator")
+        self.launch_ui_creator_btn.setObjectName("PrimaryButton")
+        self.launch_ui_creator_btn.setFixedSize(250, 60) # Make the button larger
+        self.launch_ui_creator_btn.clicked.connect(self.launch_ui_creator)
+        
+        ui_creator_layout.addWidget(self.launch_ui_creator_btn, 0, Qt.AlignmentFlag.AlignCenter)
+        ui_creator_layout.addStretch()
         self.stacked_widget.addWidget(self.ui_creator_tab)
-        # Recipes tab
-        self.in_progress_recipes = {}
 
         # Automation tab
         self.automation_tab = AutomationTab(self)
@@ -394,6 +399,9 @@ class SimpleWindow(QMainWindow):
 
         # Initialize managers after all tabs are created
         self.automation_manager = AutomationManager(self)
+        
+        # Recipes data (moved from between tabs)
+        self.in_progress_recipes = {}
         self.quickcast_manager = QuickcastManager(self)
 
 
@@ -1407,6 +1415,22 @@ class SimpleWindow(QMainWindow):
     def play_notification_sound(self):
         """Plays the currently selected notification sound."""
         self.play_specific_sound(self.lobby_manager.selected_sound)
+
+    def launch_ui_creator(self):
+        """Launches the Tkinter UI creator as a separate process."""
+        try:
+            # Construct the path to the script relative to the main script's location
+            ui_creator_script_path = os.path.join(get_base_path(), "new mini gui.py")
+            
+            if not os.path.exists(ui_creator_script_path):
+                QMessageBox.critical(self, "Error", f"UI Creator script not found at:\n{ui_creator_script_path}")
+                return
+
+            # Launch the script using the python interpreter that's running this app
+            # This is more reliable than just calling the script directly.
+            subprocess.Popen([sys.executable, ui_creator_script_path])
+        except Exception as e:
+            QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}")
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
