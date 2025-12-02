@@ -288,6 +288,7 @@ class ImageEditorApp:
         self.zoom_scale = 1.0
         self.pan_start_x = 0
         self.pan_start_y = 0
+        self.zoom_label_var = tk.StringVar(value="100%") # NEW: For zoom display
         master.bind("<Control-MouseWheel>", self.on_zoom)
         master.bind("<Control-plus>", self.zoom_in)
         master.bind("<Control-equal>", self.zoom_in) # For keyboards where '+' is shift+'='
@@ -330,14 +331,6 @@ class ImageEditorApp:
         self.main_frame = tk.Frame(master, padx=10, pady=10, bg="#1f2937")
         self.main_frame.pack(fill="both", expand=True)
 
-        # --- NEW: Top Toolbar for global actions like Undo ---
-        top_toolbar = tk.Frame(self.main_frame, bg="#1f2937")
-        top_toolbar.grid(row=0, column=0, sticky="nw", pady=(0, 5))
-        self.undo_button = tk.Button(top_toolbar, text="Undo (Ctrl+Z)", bg='#4b5563', fg='white', relief='flat', font=('Inter', 10, 'bold'),
-                                     command=self.undo_last_action, state='disabled')
-        self.undo_button.pack(side=tk.LEFT)
-
-
         # --- NEW: Scan for available image sets (subdirectories) ---
         self.image_sets = []
         if os.path.isdir(self.image_base_dir):
@@ -352,7 +345,7 @@ class ImageEditorApp:
                                  bg="#2d3748", # Darker canvas background
                                  highlightthickness=0)
         # Use grid to place the canvas, leaving space for the toolbar above
-        self.canvas.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
+        self.canvas.grid(row=0, column=0, padx=(0, 10), sticky="nsew", rowspan=2)
         self.main_frame.grid_columnconfigure(0, weight=1) 
         self.main_frame.grid_rowconfigure(0, weight=1)
         
@@ -394,6 +387,20 @@ class ImageEditorApp:
                                      fill="#374151", # Slightly lighter than canvas bg
                                      outline="#4b5563",
                                      width=3)
+
+        # --- NEW: Create the floating status box in the top-left ---
+        status_box_frame = tk.Frame(self.canvas, bg="#1f2937", bd=1, relief="solid", highlightbackground="#4b5563", highlightthickness=1)
+        
+        self.undo_button = tk.Button(status_box_frame, text="Undo", bg='#4b5563', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                                     command=self.undo_last_action, state='disabled', padx=5, pady=2)
+        self.undo_button.pack(side=tk.LEFT, padx=5, pady=5)
+        
+        zoom_label = tk.Label(status_box_frame, textvariable=self.zoom_label_var, bg="#1f2937", fg="#d1d5db", font=('Inter', 10, 'bold'))
+        zoom_label.pack(side=tk.LEFT, padx=(0, 5), pady=5)
+
+        # Place the frame on the canvas without it being a canvas item
+        self.canvas.create_window(10, 10, window=status_box_frame, anchor="nw")
+
 
         # --- NEW: Draw the Image Asset Dock Area ---
         self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12))
@@ -974,28 +981,36 @@ class ImageEditorApp:
 
         factor = 1.1 if event.delta > 0 else 0.9
         self.zoom_scale *= factor
+        self._update_zoom_display()
         self.canvas.scale("zoom_target", event.x, event.y, factor, factor)
-        print(f"Zoom: {self.zoom_scale:.2f}x")
 
     def zoom_in(self, event=None):
         """Zooms in on the center of the canvas."""
         factor = 1.1
         self.zoom_scale *= factor
+        self._update_zoom_display()
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
         self.canvas.scale("zoom_target", x, y, factor, factor)
-        print(f"Zoom: {self.zoom_scale:.2f}x")
         return "break" # Prevents the event from propagating
 
     def zoom_out(self, event=None):
         """Zooms out from the center of the canvas."""
         factor = 0.9
         self.zoom_scale *= factor
+        self._update_zoom_display()
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
         self.canvas.scale("zoom_target", x, y, factor, factor)
-        print(f"Zoom: {self.zoom_scale:.2f}x")
         return "break" # Prevents the event from propagating
+
+    def _update_zoom_display(self):
+        """Updates the zoom percentage label."""
+        # Format the zoom scale as a percentage string
+        zoom_percentage = f"{self.zoom_scale * 100:.0f}%"
+        self.zoom_label_var.set(zoom_percentage)
+        print(f"Zoom: {self.zoom_scale:.2f}x")
+
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
