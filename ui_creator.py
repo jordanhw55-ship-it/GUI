@@ -1879,6 +1879,7 @@ class ImageEditorApp:
                 # --- BUG FIX: Use the correct size for the decal layer ---
                 decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
                 # Paste the cropped stamp onto this layer at the correct position.
+                # --- FIX: The third argument (mask) must be the stamp itself to respect its transparency. ---
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
                 # --- FIX: Conditionally respect transparency of the underlying tile ---
