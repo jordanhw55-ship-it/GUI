@@ -134,11 +134,12 @@ class WC3UITab(QWidget):
 
     def _populate_tabs(self):
         """Adds content to the sub-tabs."""
+        # --- FIX: Get existing layouts instead of creating new ones ---
         # UI Tab
-        ui_layout = QGridLayout(self.ui_tab)
+        self._clear_layout(self.ui_tab.layout())
+        ui_layout = self.ui_tab.layout()
         ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
         self.theme_buttons = []
-        self._clear_layout(self.ui_tab.layout())
 
         for i in range(1, 7):
             button = QPushButton(f"Theme {i}")
@@ -163,10 +164,11 @@ class WC3UITab(QWidget):
         ui_layout.setRowStretch(6, 1)     # Add stretch below the last row
 
         # HP Bar Tab
-        hp_bar_layout = QGridLayout(self.hp_bar_tab)
+        self._clear_layout(self.hp_bar_tab.layout())
+        hp_bar_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
+        self.hp_bar_tab.setLayout(hp_bar_layout)
         hp_bar_layout.setVerticalSpacing(10)
         self.hp_bar_buttons = []
-        self._clear_layout(self.hp_bar_tab.layout())
         hp_bar_options = ["4Bar", "8Bar", "30Bar"]
 
         for i, option_name in enumerate(hp_bar_options):
@@ -199,10 +201,11 @@ class WC3UITab(QWidget):
         hp_bar_layout.setRowStretch(len(hp_bar_options), 1)
 
         # Unit Select Tab
-        unit_select_layout = QGridLayout(self.unit_select_tab)
+        self._clear_layout(self.unit_select_tab.layout())
+        unit_select_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
+        self.unit_select_tab.setLayout(unit_select_layout)
         unit_select_layout.setVerticalSpacing(10)
         self.unit_select_buttons = []
-        self._clear_layout(self.unit_select_tab.layout())
         unit_select_options = ["Chain", "Dragon", "Eye", "Skeleton", "Square", "Sun", "Target"]
 
         for i, option_name in enumerate(unit_select_options):
@@ -242,12 +245,11 @@ class WC3UITab(QWidget):
 
         # Populate other tabs with placeholders
         reticle_tab = self.reticle_tab
-        if reticle_tab.layout():
-            self._clear_layout(reticle_tab.layout())
-            tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
-            layout = QVBoxLayout(reticle_tab)
-            layout.addWidget(QLabel(f"Content for {tab_name} tab."))
-            layout.addStretch()
+        self._clear_layout(reticle_tab.layout())
+        layout = reticle_tab.layout()
+        tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
+        layout.addWidget(QLabel(f"Content for {tab_name} tab."))
+        layout.addStretch()
 
     def on_option_selected(self, clicked_button: QPushButton, button_group: list, category: str):
         """Handles the logic when an option button is clicked, ensuring only one is selected."""
