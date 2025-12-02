@@ -579,8 +579,6 @@ class SimpleWindow(QMainWindow):
         # Finalize UI state
         self.navigation_sidebar.set_current_index(self.last_tab_index)
         
-        # Load saved recipes after the UI is fully initialized
-        self.item_database.load_recipes()
         self.apply_saved_recipes() # This call is now safe
 
         # Register global hotkeys (F5 for automation, etc.)

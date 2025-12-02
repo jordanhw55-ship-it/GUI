@@ -55,7 +55,9 @@ class ItemsManager:
         if is_recipe_tab:
             self.items_tab.main_stack.setCurrentIndex(1)
             self.items_tab.search_box.setPlaceholderText("Search...")
+            # DEFERRED LOADING: Load recipes only when this tab is first opened.
             if not self.item_database.recipes_data:
+                print("[INFO] Loading recipes for the first time...")
                 self.item_database.load_recipes()
             self.filter_recipes_list()
             self.rebuild_materials_table()
