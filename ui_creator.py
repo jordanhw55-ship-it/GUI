@@ -270,6 +270,7 @@ class ImageEditorApp:
         self.master = master
         master.configure(bg="#1f2937") # NEW: Set a dark background for the root window
         master.title("UI Creator")
+        master.state('zoomed') # NEW: Maximize the window on startup
         self.selected_component_tag = None
         
         # --- NEW: Painting Feature State ---
