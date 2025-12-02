@@ -449,22 +449,6 @@ class ImageEditorApp:
         # Place the frame on the canvas without it being a canvas item
         self.canvas.create_window(10, 10, window=status_box_frame, anchor="nw")
 
-
-        # --- DEFINITIVE REWRITE V10: Create a single, solid "cover" for the entire dock area ---
-        # This acts as a higher "strata" that tiles will render underneath.
-        self.dock_cover_rect = self.canvas.create_rectangle(
-            0, self.COMP_AREA_Y2, CANVAS_WIDTH, CANVAS_HEIGHT,
-            fill="#374151",  # Same color as the dock background
-            outline="#4b5563",
-            width=3,
-            tags="dock_cover"
-        )
-
-        # Add text labels on top of the cover
-        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12), tags="dock_cover_text")
-        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12), tags="dock_cover_text")
-
-
         # --- 2. Initialize Draggable Components (Layers) ---
         self.components = {}
         base_color = "#1e40af" # A more modern, vibrant blue
@@ -769,20 +753,18 @@ class ImageEditorApp:
                   command=self.load_layout).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
         tk.Button(layer_tab, text="Default Layout", bg='#6b7280', fg='white', relief='flat', font=button_font,
                   command=self.apply_preview_layout).pack(fill='x', padx=10, pady=5)
-
-
-        # --- Populate the "Image" Tab ---
-        tk.Label(image_tab, text="IMAGE SET", **label_style).pack(fill='x')
+        
+        # Add a separator before the image set section
+        tk.Frame(layer_tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        
+        # --- NEW: Image Set controls moved to Tiles tab ---
+        tk.Label(layer_tab, text="IMAGE SET", **label_style).pack(fill='x')
         # Create the dropdown menu for image sets
         if self.image_sets:
-            image_set_menu = ttk.OptionMenu(image_tab, self.selected_image_set, self.image_sets[0], *self.image_sets)
+            image_set_menu = ttk.OptionMenu(layer_tab, self.selected_image_set, self.image_sets[0], *self.image_sets)
             image_set_menu.pack(fill='x', padx=10, pady=5)
         else:
-            tk.Label(image_tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
-
-        # Add a stretch to push subsequent content to the bottom
-        tk.Frame(image_tab, bg="#374151").pack(fill='both', expand=True)
-
+            tk.Label(layer_tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
 
 
         # --- Populate the "Paint" Tab ---
@@ -812,9 +794,21 @@ class ImageEditorApp:
                                     command=self.clear_paintings)
         clear_paint_btn.pack(fill='x', expand=True, pady=(5,0))
 
+        # --- Populate the "Image" Tab ---
         tk.Label(image_tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(image_tab, text="Load Asset to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_asset_to_dock).pack(fill='x', padx=10, pady=(5,10))
+
+        # --- NEW: Image Dock Area inside the tab ---
+        image_dock_frame = tk.Frame(image_tab, bg="#2d3748", bd=2, relief="sunken")
+        image_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        image_dock_frame.grid_rowconfigure(0, weight=1)
+        image_dock_frame.grid_columnconfigure(0, weight=1)
+        self.image_dock_canvas = tk.Canvas(image_dock_frame, bg="#2d3748", highlightthickness=0)
+        self.image_dock_canvas.grid(row=0, column=0, sticky='nsew')
+        image_scrollbar = ttk.Scrollbar(image_dock_frame, orient="vertical", command=self.image_dock_canvas.yview)
+        image_scrollbar.grid(row=0, column=1, sticky='ns')
+        self.image_dock_canvas.configure(yscrollcommand=image_scrollbar.set)
 
         # --- NEW: Decal Transform Controls (Resize & Rotate) ---
         transform_frame = tk.Frame(image_tab, bg="#374151")
@@ -867,8 +861,17 @@ class ImageEditorApp:
         tk.Label(border_tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
         tk.Button(border_tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_border_to_dock).pack(fill='x', padx=10, pady=5)
-        # Add a stretch to push subsequent content to the bottom
-        tk.Frame(border_tab, bg="#374151").pack(fill='both', expand=True)
+
+        # --- NEW: Border Dock Area inside the tab ---
+        border_dock_frame = tk.Frame(border_tab, bg="#2d3748", bd=2, relief="sunken")
+        border_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        border_dock_frame.grid_rowconfigure(0, weight=1)
+        border_dock_frame.grid_columnconfigure(0, weight=1)
+        self.border_dock_canvas = tk.Canvas(border_dock_frame, bg="#2d3748", highlightthickness=0)
+        self.border_dock_canvas.grid(row=0, column=0, sticky='nsew')
+        border_scrollbar = ttk.Scrollbar(border_dock_frame, orient="vertical", command=self.border_dock_canvas.yview)
+        border_scrollbar.grid(row=0, column=1, sticky='ns')
+        self.border_dock_canvas.configure(yscrollcommand=border_scrollbar.set)
 
         # --- NEW: Border Transform Controls (Resize & Rotate) ---
         border_transform_frame = tk.Frame(border_tab, bg="#374151")
@@ -1773,20 +1776,26 @@ class ImageEditorApp:
             asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
             self.next_dynamic_id += 1
 
-            # --- MODIFIED: Define position in the correct dock ---
+            # --- MODIFIED: Define position in the correct dock CANVAS ---
             if is_border:
-                x = self.next_border_dock_x
-                y = self.BORDER_DOCK_Y + 20
-                self.next_border_dock_x += self.DOCK_ASSET_SIZE[0] + 20
+                target_canvas = self.border_dock_canvas
+                x = self.next_border_dock_x # Use the class-level tracker
+                y = 20 # Start near the top of the dock canvas
+                self.next_border_dock_x += self.DOCK_ASSET_SIZE[0] + 10
             else:
-                x = self.next_image_dock_x
-                y = self.IMAGE_DOCK_Y + 20
-                self.next_image_dock_x += self.DOCK_ASSET_SIZE[0] + 20
+                target_canvas = self.image_dock_canvas
+                x = self.next_image_dock_x # Use the class-level tracker
+                y = 20 # Start near the top of the dock canvas
+                self.next_image_dock_x += self.DOCK_ASSET_SIZE[0] + 10
 
-            # Create a new DraggableComponent for the asset
-            asset_comp = DraggableComponent(self.canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
+            # Create a new DraggableComponent for the asset, now on the specific dock's canvas
+            asset_comp = DraggableComponent(target_canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
             asset_comp.is_dock_asset = True # Mark it as a dock asset
             asset_comp.is_border_asset = is_border # NEW: Mark if it's a border
+
+            # --- NEW: Override the on_press for dock assets to use main canvas coordinates ---
+            target_canvas.tag_bind(asset_tag, '<Button-1>', 
+                lambda event, comp=asset_comp: self.handle_dock_asset_press(event, comp))
 
             # Store both the original and a preview version
             asset_comp.original_pil_image = full_res_image
@@ -1800,13 +1809,34 @@ class ImageEditorApp:
             self.components[asset_tag] = asset_comp # Add to main components list
             self.dock_assets.append(asset_comp) # Also add to the specific dock asset list
             
-            # Ensure the new dock asset is on top
-            self._keep_docks_on_top()
+            # --- NEW: Update the scroll region of the dock canvas ---
+            target_canvas.config(scrollregion=target_canvas.bbox("all"))
 
             print(f"{asset_type} '{os.path.basename(image_path)}' loaded into dock.")
 
         except Exception as e:
             messagebox.showerror(f"{asset_type} Load Error", f"Could not load {asset_type.lower()} image: {e}")
+
+    def handle_dock_asset_press(self, event, asset_comp):
+        """
+        A new handler for when a dock asset is clicked. It translates the click
+        event to the main canvas's coordinate system before creating a clone.
+        """
+        # Get the dock canvas that was clicked
+        dock_canvas = event.widget
+        
+        # Get the absolute screen coordinates of the click
+        abs_x = dock_canvas.winfo_rootx() + event.x
+        abs_y = dock_canvas.winfo_rooty() + event.y
+
+        # Convert the absolute screen coordinates to be relative to the main canvas
+        main_canvas_x = abs_x - self.canvas.winfo_rootx()
+        main_canvas_y = abs_y - self.canvas.winfo_rooty()
+
+        # Create a new synthetic event object with the corrected coordinates
+        corrected_event = tk.Event()
+        corrected_event.x, corrected_event.y = main_canvas_x, main_canvas_y
+        self.create_clone_from_asset(asset_comp, corrected_event)
 
 
     def apply_decal_to_underlying_layer(self):
