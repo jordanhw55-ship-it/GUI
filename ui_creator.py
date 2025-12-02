@@ -269,12 +269,18 @@ class ImageEditorApp:
         self.resize_width.trace_add("write", self.on_resize_entry_change)
         self.resize_height.trace_add("write", self.on_resize_entry_change)
 
+        # --- NEW: Undo Stack ---
+        self.undo_stack = []
+        self.MAX_UNDO_STATES = 20 # Limit memory usage
+        master.bind("<Control-z>", self.undo_last_action)
+
         self.paint_mode_active = False
+        self.eraser_mode_active = False # NEW: Eraser state
         self.paint_color = "red"
         self.brush_size = tk.IntVar(value=4)
         self.last_paint_x, self.last_paint_y = None, None
         # --- NEW: Dedicated Paint Layer ---
-        self.paint_layer_image = None # The PIL Image for painting
+        self.paint_layer_image = None # The PIL Image for painting.
         self.paint_layer_tk = None    # The PhotoImage for displaying on the canvas
         self.paint_layer_id = None    # The canvas item ID for the paint layer
         
@@ -306,6 +312,14 @@ class ImageEditorApp:
         self.main_frame = tk.Frame(master, padx=10, pady=10, bg="#1f2937")
         self.main_frame.pack(fill="both", expand=True)
 
+        # --- NEW: Top Toolbar for global actions like Undo ---
+        top_toolbar = tk.Frame(self.main_frame, bg="#1f2937")
+        top_toolbar.grid(row=0, column=0, sticky="nw", pady=(0, 5))
+        self.undo_button = tk.Button(top_toolbar, text="Undo (Ctrl+Z)", bg='#4b5563', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                                     command=self.undo_last_action, state='disabled')
+        self.undo_button.pack(side=tk.LEFT)
+
+
         # --- NEW: Scan for available image sets (subdirectories) ---
         self.image_sets = []
         if os.path.isdir(self.image_base_dir):
@@ -319,7 +333,7 @@ class ImageEditorApp:
                                  height=CANVAS_HEIGHT, 
                                  bg="#2d3748", # Darker canvas background
                                  highlightthickness=0)
-        # Use grid to place the canvas in the first column
+        # Use grid to place the canvas, leaving space for the toolbar above
         self.canvas.grid(row=0, column=0, padx=(0, 10), sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1) 
         self.main_frame.grid_rowconfigure(0, weight=1)
@@ -444,7 +458,7 @@ class ImageEditorApp:
         
         # --- 3. Sidebar (Right Column) ---
         self.sidebar_frame = tk.Frame(self.main_frame, width=SIDEBAR_WIDTH, bg="#1f2937")
-        self.sidebar_frame.grid(row=0, column=1, sticky="nswe")
+        self.sidebar_frame.grid(row=0, column=1, sticky="nswe", rowspan=2) # Span across toolbar row
         self.sidebar_frame.grid_columnconfigure(0, weight=1)
 
         # Define the list of tab/component names 
@@ -695,10 +709,19 @@ class ImageEditorApp:
         paint_frame = tk.Frame(paint_tab, bg="#374151")
         paint_frame.pack(fill='x', padx=10, pady=5)
         self.paint_toggle_btn = tk.Button(paint_frame, text="Enable Paint Mode", bg='#d97706', fg='white', relief='flat', font=button_font,
-                                          command=self.toggle_paint_mode)
+                                          command=lambda: self.toggle_paint_mode(tool='paint'))
         self.paint_toggle_btn.pack(fill='x', expand=True)
+
+        # --- NEW: Eraser Button ---
+        self.eraser_toggle_btn = tk.Button(paint_frame, text="Enable Eraser", bg='#6b7280', fg='white', relief='flat', font=button_font,
+                                           command=lambda: self.toggle_paint_mode(tool='eraser'))
+        self.eraser_toggle_btn.pack(fill='x', expand=True, pady=(5,0))
+
+        # Add a separator
+        tk.Frame(paint_frame, height=2, bg="#6b7280").pack(fill='x', pady=10)
+
         color_btn = tk.Button(paint_frame, text="Choose Color", bg='#6b7280', fg='white', relief='flat', font=('Inter', 10),
-                              command=self.choose_paint_color)
+                              command=self.choose_paint_color, state='disabled')
         color_btn.pack(fill='x', expand=True, pady=(5,0))
         brush_size_frame = tk.Frame(paint_frame, bg="#374151")
         brush_size_frame.pack(fill='x', pady=5)
@@ -807,33 +830,57 @@ class ImageEditorApp:
                   command=lambda: self._export_modified_images('dds')).pack(fill='x', padx=10, pady=(5, 10))
         tk.Label(export_tab, text="Note: DDS export requires the image\ndimensions to be a power of two\n(e.g., 256x256, 512x512) and may not\nsupport all internal DDS formats.",
                  bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x')
+        
+        # Keep a reference to the color button to enable/disable it
+        self.paint_color_button = color_btn
 
 
-    def toggle_paint_mode(self):
-        """Toggles the painting mode on or off."""
-        self.paint_mode_active = not self.paint_mode_active
-        if self.paint_mode_active:
+    def toggle_paint_mode(self, tool: str):
+        """Toggles the painting or erasing mode on or off."""
+        # Determine which tool is being activated and which is being deactivated
+        is_activating_paint = tool == 'paint' and not self.paint_mode_active
+        is_activating_eraser = tool == 'eraser' and not self.eraser_mode_active
+
+        # Deactivate all tools first
+        self.paint_mode_active = False
+        self.eraser_mode_active = False
+        self.paint_toggle_btn.config(text="Enable Paint Mode", bg='#d97706', relief='flat')
+        self.eraser_toggle_btn.config(text="Enable Eraser", bg='#6b7280', relief='flat')
+        self.paint_color_button.config(state='disabled')
+
+        # Activate the selected tool if it wasn't already active
+        if is_activating_paint:
+            self.paint_mode_active = True
+            self.paint_toggle_btn.config(text="Disable Paint Mode", bg='#ef4444', relief='sunken')
+            self.paint_color_button.config(state='normal')
+            print("Paint mode ENABLED.")
+        elif is_activating_eraser:
+            self.eraser_mode_active = True
+            self.eraser_toggle_btn.config(text="Disable Eraser", bg='#ef4444', relief='sunken')
+            print("Eraser mode ENABLED.")
+        else:
+            print("Paint and Eraser modes DISABLED.")
+
+        # Common logic for when any tool is active vs. when all are inactive
+        is_any_tool_active = self.paint_mode_active or self.eraser_mode_active
+        if is_any_tool_active:
             # --- NEW: Create the transparent paint layer ---
             if not self.paint_layer_image:
                 canvas_w = self.canvas.winfo_width()
                 canvas_h = self.canvas.winfo_height()
                 self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                 self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
-                # Create the image on the canvas, initially invisible
-                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags="paint_layer", state='normal')
+                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags="paint_layer", state='normal') # Save initial blank state for undo
+                self._save_undo_state(self.paint_layer_image.copy())
 
-            self.paint_toggle_btn.config(text="Disable Paint Mode", bg='#ef4444', relief='sunken')
             # Disable dragging for all components
             for comp in self.components.values():
                 comp.is_draggable = False
-            
+
             # Ensure the paint layer is on top of components but below the UI docks
             self.canvas.tag_raise(self.paint_layer_id)
             self._keep_docks_on_top()
-
-            print("Paint mode ENABLED. Component dragging is disabled.")
         else:
-            self.paint_toggle_btn.config(text="Enable Paint Mode", bg='#d97706', relief='flat')
             # Re-enable dragging for all components
             for comp in self.components.values():
                 comp.is_draggable = True
@@ -850,6 +897,9 @@ class ImageEditorApp:
     def clear_paintings(self):
         """Removes all lines drawn on the canvas."""
         if self.paint_layer_image:
+            # Save current paint state before clearing
+            self._save_undo_state(self.paint_layer_image.copy())
+
             # Create a new, blank transparent image
             canvas_w = self.canvas.winfo_width()
             canvas_h = self.canvas.winfo_height()
@@ -857,6 +907,42 @@ class ImageEditorApp:
             # Update the canvas to show the cleared image
             self._update_paint_layer_display()
             print("All paintings have been cleared.")
+
+    def _save_undo_state(self, undo_data):
+        """
+        Saves an action to the undo stack.
+        - For paint actions, `undo_data` is the PIL image of the paint layer *before* the change.
+        - For component changes, `undo_data` is a dictionary mapping component tags to their PIL images *before* the change.
+        """
+        self.undo_stack.append(undo_data)
+        # Limit the stack size to save memory
+        if len(self.undo_stack) > self.MAX_UNDO_STATES:
+            self.undo_stack.pop(0) # Remove the oldest state
+        # Enable the undo button
+        self.undo_button.config(state='normal')
+
+
+    def undo_last_action(self, event=None):
+        """Reverts the last action from the undo stack."""
+        if not self.undo_stack:
+            print("Undo stack is empty.")
+            return
+
+        last_state = self.undo_stack.pop()
+
+        if isinstance(last_state, Image.Image): # It's a paint layer state
+            self.paint_layer_image = last_state
+            self._update_paint_layer_display()
+        elif isinstance(last_state, dict): # It's a component image state
+            for tag, image in last_state.items():
+                if tag in self.components:
+                    self.components[tag]._set_pil_image(image)
+                    print(f"Reverted image for component '{tag}'.")
+
+        print("Undo successful.")
+        # Disable button if stack is now empty
+        if not self.undo_stack:
+            self.undo_button.config(state='disabled')
 
 
     def handle_tab_click(self, name):
@@ -1148,15 +1234,23 @@ class ImageEditorApp:
 
     def paint_on_canvas(self, event):
         """Draws on the dedicated paint layer image."""
-        if not self.paint_mode_active or not self.paint_layer_image:
+        is_painting = self.paint_mode_active or self.eraser_mode_active
+        if not is_painting or not self.paint_layer_image:
             return
     
+        # --- NEW: Save state before drawing the first point of a new line ---
+        if self.last_paint_x is None and self.last_paint_y is None:
+            self._save_undo_state(self.paint_layer_image.copy())
+
         if self.last_paint_x and self.last_paint_y:
+            # --- NEW: Determine color based on tool ---
+            paint_color = (0, 0, 0, 0) if self.eraser_mode_active else self.paint_color
+
             # Get the ImageDraw object for our paint layer
             draw = ImageDraw.Draw(self.paint_layer_image)
             draw.line(
                 (self.last_paint_x, self.last_paint_y, event.x, event.y),
-                fill=self.paint_color,
+                fill=paint_color,
                 width=self.brush_size.get(),
                 joint='curve' # Creates smoother connections between line segments
             )
@@ -1179,6 +1273,14 @@ class ImageEditorApp:
         if not self.selected_component_tag:
             messagebox.showwarning("Selection Required", "Please select a component layer to reset.")
             return
+        
+        # --- NEW: Save state for Undo ---
+        comp_to_reset = self.components.get(self.selected_component_tag)
+        if comp_to_reset and comp_to_reset.pil_image:
+            undo_data = {
+                comp_to_reset.tag: comp_to_reset.pil_image.copy()
+            }
+            self._save_undo_state(undo_data)
 
         comp = self.components.get(self.selected_component_tag)
         if not comp:
@@ -1339,6 +1441,8 @@ class ImageEditorApp:
         # 2. Rotate the scaled image to create the final stamp.
         decal_stamp_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
 
+        # --- NEW: Prepare for Undo ---
+        undo_data = {}
 
         applied_count = 0
         for item_id in overlapping_ids:
@@ -1353,6 +1457,11 @@ class ImageEditorApp:
 
                 comp_bbox = self.canvas.bbox(target_comp.rect_id)
                 if not comp_bbox: continue
+
+                # --- NEW: Save the component's current state before modifying it ---
+                if target_comp.tag not in undo_data:
+                    undo_data[target_comp.tag] = target_comp.pil_image.copy()
+
 
                 # 1. Create a new composite image based on the component's current state
                 # IMPORTANT: Start with a copy of the CURRENT pil_image, not the original one.
@@ -1415,6 +1524,10 @@ class ImageEditorApp:
         if applied_count == 0:
             messagebox.showwarning("No Target", "Decal must be positioned over a valid layer to be applied.")
             return
+
+        # --- NEW: Save the collected undo states ---
+        if undo_data:
+            self._save_undo_state(undo_data)
 
         self._remove_stamp_source_component(stamp_source_comp)
 
