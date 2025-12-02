@@ -229,6 +229,12 @@ class ImageEditorApp:
         self.selected_component_tag = None
         
         # --- NEW: Painting Feature State ---
+        self.resize_width = tk.StringVar()
+        self.resize_height = tk.StringVar()
+        self.maintain_aspect = tk.BooleanVar(value=True)
+        self.resize_width.trace_add("write", self.on_resize_entry_change)
+        self.resize_height.trace_add("write", self.on_resize_entry_change)
+
         self.paint_mode_active = False
         self.paint_color = "red"
         self.brush_size = tk.IntVar(value=4)
@@ -574,12 +580,14 @@ class ImageEditorApp:
         paint_tab = tk.Frame(notebook, bg="#374151")
         image_tab = tk.Frame(notebook, bg="#374151")
         filters_tab = tk.Frame(notebook, bg="#374151") # NEW
+        resize_tab = tk.Frame(notebook, bg="#374151") # NEW
         text_tab = tk.Frame(notebook, bg="#374151") # NEW
         export_tab = tk.Frame(notebook, bg="#374151")
 
         notebook.add(layer_tab, text='Tiles')
         notebook.add(paint_tab, text='Paint')
         notebook.add(image_tab, text='Image')
+        notebook.add(resize_tab, text='Resize') # NEW
         notebook.add(filters_tab, text='Filters') # NEW
         notebook.add(text_tab, text='Text') # NEW
         notebook.add(export_tab, text='Export')
@@ -661,6 +669,25 @@ class ImageEditorApp:
         tk.Button(image_tab, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=self.apply_decal_to_underlying_layer).pack(fill='x', padx=10, pady=(10,2))
         
+        # --- Populate the "Resize" Tab ---
+        tk.Label(resize_tab, text="RESIZE SELECTED TILE", **label_style).pack(fill='x')
+        resize_frame = tk.Frame(resize_tab, bg="#374151", padx=10, pady=5)
+        resize_frame.pack(fill='x')
+
+        tk.Label(resize_frame, text="Width:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
+        tk.Entry(resize_frame, textvariable=self.resize_width, width=10).grid(row=0, column=1, sticky='ew')
+
+        tk.Label(resize_frame, text="Height:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
+        tk.Entry(resize_frame, textvariable=self.resize_height, width=10).grid(row=1, column=1, sticky='ew')
+        
+        resize_frame.grid_columnconfigure(1, weight=1)
+
+        tk.Checkbutton(resize_tab, text="Maintain Aspect Ratio", variable=self.maintain_aspect,
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white",
+                        command=self.update_resize_entries).pack(pady=5)
+        tk.Button(resize_tab, text="Apply Size", bg='#3b82f6', fg='white', relief='flat', font=button_font,
+                  command=self.resize_selected_component).pack(fill='x', padx=10, pady=5)
+
         # --- Populate the "Filters" Tab (Placeholder) ---
         tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
         tk.Label(filters_tab, text="Controls for brightness, contrast, etc.\nwill go here.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
@@ -735,6 +762,11 @@ class ImageEditorApp:
             
             # Select the component (which also handles highlighting)
             self.components[name].select(self)
+
+            # NEW: Update resize entries when a component is selected
+            self.update_resize_entries()
+
+
         
         else:
             # Fallback for any component names that might be added to the list later
@@ -742,6 +774,84 @@ class ImageEditorApp:
             messagebox.showinfo("Layer Control", f"Layer '{name}' selected. Use 'Load Image' to assign a visual component. Note: This tile is not currently initialized on the canvas.")
             print(f"Action: Selecting layer '{name}' for potential image loading (Placeholder).")
         # --- MODIFICATION END ---
+
+    def update_resize_entries(self):
+        """Updates the width and height entry boxes with the selected component's dimensions."""
+        if not self.selected_component_tag:
+            self.resize_width.set("")
+            self.resize_height.set("")
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp: return
+
+        bbox = self.canvas.bbox(comp.rect_id)
+        if bbox:
+            width = int(bbox[2] - bbox[0])
+            height = int(bbox[3] - bbox[1])
+            self.resize_width.set(str(width))
+            self.resize_height.set(str(height))
+
+    def on_resize_entry_change(self, *args):
+        """Dynamically calculates one dimension if aspect ratio is locked."""
+        if not self.maintain_aspect.get() or not self.selected_component_tag:
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp or not comp.original_pil_image:
+            return
+
+        # Determine which entry was changed by checking which one is currently being focused
+        try:
+            focused_widget = self.master.focus_get()
+            if not isinstance(focused_widget, tk.Entry): return
+            
+            original_w, original_h = comp.original_pil_image.size
+            if original_w == 0 or original_h == 0: return
+            aspect_ratio = original_w / original_h
+
+            # Check if the focused widget is one of our resize entries
+            if self.resize_width.get() and focused_widget.cget('textvariable') == str(self.resize_width):
+                new_width = int(self.resize_width.get())
+                new_height = int(new_width / aspect_ratio)
+                self.resize_height.set(str(new_height))
+            elif self.resize_height.get() and focused_widget.cget('textvariable') == str(self.resize_height):
+                new_height = int(self.resize_height.get())
+                new_width = int(new_height * aspect_ratio)
+                self.resize_width.set(str(new_width))
+        except (ValueError, TclError):
+            # Ignore errors from invalid (non-integer) text in entry
+            pass
+
+    def resize_selected_component(self):
+        """Applies the new width and height to the selected component."""
+        if not self.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a tile to resize.")
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp: return
+
+        try:
+            new_w = int(self.resize_width.get())
+            new_h = int(self.resize_height.get())
+            if new_w <= 0 or new_h <= 0:
+                raise ValueError("Dimensions must be positive.")
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", f"Please enter valid positive numbers for width and height.\n\nError: {e}")
+            return
+
+        # Update the component's internal size definition
+        comp.x2 = comp.x1 + new_w
+        comp.y2 = comp.y1 + new_h
+
+        # If the component has an image, re-apply it to trigger the resize.
+        # Otherwise, redraw the placeholder rectangle.
+        if comp.pil_image:
+            comp._set_pil_image(comp.pil_image, resize_to_fit=True)
+        else:
+            comp._draw_placeholder(comp.x1, comp.y1, comp.x2, comp.y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
+        print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
 
 
     def _keep_docks_on_top(self):
