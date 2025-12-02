@@ -285,14 +285,14 @@ class ImageEditorApp:
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
-            "humanuitile01": {"coords": [259, 57, 511, 359]},
-            "humanuitile02": {"coords": [511, 57, 763, 359]},
-            "humanuitile03": {"coords": [763, 57, 1015, 359]},
-            "humanuitile04": {"coords": [887, 57, 1139, 359]},
-            "humanuitile05": {"coords": [7, 57, 259, 359]},
-            "humanuitile06": {"coords": [1139, 57, 1391, 359]},
-            "humanuitile-inventorycover": {"coords": [728, 57, 850, 359]},
-            "humanuitile-timeindicatorframe": {"coords": [585, 57, 722, 134]}
+            "humanuitile01": {"coords": [261, 57, 511, 357]},
+            "humanuitile02": {"coords": [511, 57, 761, 357]},
+            "humanuitile03": {"coords": [761, 57, 1011, 357]},
+            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
+            "humanuitile05": {"coords": [11, 57, 261, 357]},
+            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
+            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
+            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
         }
         
         # --- BACKGROUND TEMPLATE ---
@@ -357,7 +357,7 @@ class ImageEditorApp:
         # TILE 04 (Row 1, Col 4)
         self.components['humanuitile04'] = DraggableComponent(
             self.canvas, self, "humanuitile04", 
-            950, 50, 1200, 350, 
+            950, 50, 980, 350, 
             base_color, "UI TILE 04"
         )
         
