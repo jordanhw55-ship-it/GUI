@@ -390,7 +390,7 @@ class ImageEditorApp:
 
         # Define the list of tab/component names 
         self.component_list = [
-            "Preview All", 
+            "Show All", 
             "humanuitile01", 
             "humanuitile02", 
             "humanuitile03", 
@@ -577,7 +577,7 @@ class ImageEditorApp:
         text_tab = tk.Frame(notebook, bg="#374151") # NEW
         export_tab = tk.Frame(notebook, bg="#374151")
 
-        notebook.add(layer_tab, text='Layer')
+        notebook.add(layer_tab, text='Tiles')
         notebook.add(paint_tab, text='Paint')
         notebook.add(image_tab, text='Image')
         notebook.add(filters_tab, text='Filters') # NEW
@@ -589,13 +589,13 @@ class ImageEditorApp:
         button_font = ('Inter', 11, 'bold')
 
         # --- Populate the "Layer" Tab ---
-        tk.Label(layer_tab, text="LAYER CONTROLS", **label_style).pack(fill='x')
+        tk.Label(layer_tab, text="TILE SELECT", **label_style).pack(fill='x')
         
         # Layer Selection Buttons
         for i, name in enumerate(self.component_list):
             button_style = {
                 'text': name,
-                'bg': '#4b5563' if name == "Preview All" else '#6b7280',
+                'bg': '#4b5563' if name == "Show All" else '#6b7280',
                 'fg': 'white', 'relief': 'flat', 'pady': 8, 'font': ('Inter', 11),
                 'command': lambda n=name: self.handle_tab_click(n)
             }
@@ -606,7 +606,7 @@ class ImageEditorApp:
         tk.Frame(layer_tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
 
         # --- Save/Load Layout Buttons ---
-        tk.Label(layer_tab, text="LAYOUT PRESETS", **label_style).pack(fill='x')
+        tk.Label(layer_tab, text="TILE LOCATION PRESET", **label_style).pack(fill='x')
         layout_frame = tk.Frame(layer_tab, bg="#374151")
         layout_frame.pack(fill='x', padx=10, pady=5)
         tk.Button(layout_frame, text="Save Layout", bg='#3b82f6', fg='white', relief='flat', font=button_font,
@@ -714,7 +714,7 @@ class ImageEditorApp:
         print("-" * 30)
 
         # --- MODIFICATION START: Implement isolation mode ---
-        if name == "Preview All":
+        if name == "Show All":
             self.set_selected_component(None)
             self.apply_preview_layout()
         
@@ -749,7 +749,7 @@ class ImageEditorApp:
 
 
     def apply_preview_layout(self):
-        """Makes all components visible and moves them to the 'Preview All' layout positions."""
+        """Makes all components visible and moves them to the 'Show All' layout positions."""
         print("Action: Applying 'Preview All' layout.")
         
         for tag, comp in self.components.items():
