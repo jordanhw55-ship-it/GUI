@@ -349,14 +349,12 @@ class ImageEditorApp:
         # DEFINITIVE REWRITE: The top half of the canvas is the composition area.
         self.COMP_AREA_X1 = 0
         self.COMP_AREA_Y1 = 0
-        self.COMP_AREA_X2 = CANVAS_WIDTH
+        self.COMP_AREA_X2 = CANVAS_WIDTH 
         self.COMP_AREA_Y2 = CANVAS_HEIGHT # Use the full canvas height
 
         # --- NEW: Asset Dock State ---
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
-
-        # Create a main frame to hold everything
         # --- NEW: Define base paths for UI Creator resources ---
         self.base_path = get_base_path() 
         self.ui_creator_contents_path = os.path.join(self.base_path, "Contents", "ui creator")
@@ -1771,8 +1769,8 @@ class ImageEditorApp:
             # --- NEW: Wrapping Grid Layout Logic ---
             items_per_row = 4
             padding = 10
-            asset_width = self.DOCK_ASSET_SIZE[0]
-            asset_height = self.DOCK_ASSET_SIZE[1]
+            asset_width = 128 # Use a fixed size for dock assets
+            asset_height = 128 # Use a fixed size for dock assets
 
             col = item_index % items_per_row
             row = item_index // items_per_row
@@ -1780,8 +1778,7 @@ class ImageEditorApp:
             x = padding + col * (asset_width + padding)
             y = padding + row * (asset_height + padding)
 
-            # Create a new DraggableComponent for the asset, now on the specific dock's canvas
-            asset_comp = DraggableComponent(target_canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
+            asset_comp = DraggableComponent(target_canvas, self, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET")
             asset_comp.is_dock_asset = True # Mark it as a dock asset
             asset_comp.is_border_asset = is_border # NEW: Mark if it's a border
 
@@ -1792,7 +1789,7 @@ class ImageEditorApp:
             # Store both the original and a preview version
             asset_comp.original_pil_image = full_res_image
             asset_comp.preview_pil_image = full_res_image.copy()
-            asset_comp.preview_pil_image.thumbnail(self.DOCK_ASSET_SIZE, Image.Resampling.LANCZOS)
+            asset_comp.preview_pil_image.thumbnail((asset_width, asset_height), Image.Resampling.LANCZOS)
             
             # Set the image, which will use the preview because `is_dock_asset` is true
             asset_comp._set_pil_image(asset_comp.preview_pil_image, resize_to_fit=True)
