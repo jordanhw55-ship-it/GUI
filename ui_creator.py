@@ -1252,14 +1252,15 @@ class ImageEditorApp:
         items_to_process = list(self.components.values())
         if self.paint_layer_id and self.paint_layer_image:
             # Create a temporary object to represent the paint layer for uniform processing
+            # FIX: Ensure the tk_image is correctly passed for reference.
             paint_comp_like = type('PaintLayer', (object,), {
                 'rect_id': self.paint_layer_id,
                 'pil_image': self.paint_layer_image,
-                'tk_image': self.paint_layer_tk,
+                'tk_image': self.paint_layer_tk, # This needs to be the instance attribute
                 'world_x1': 0, 'world_y1': 0, # Paint layer covers the whole world space from origin
                 'world_x2': self.paint_layer_image.width, 'world_y2': self.paint_layer_image.height,
                 'text_id': None
-            })()
+            })
             items_to_process.append(paint_comp_like)
 
         for item in items_to_process:
@@ -1298,7 +1299,8 @@ class ImageEditorApp:
                 item_world_h = item.world_y2 - item.world_y1
                 
                 if item_world_w <= 0 or item_world_h <= 0:
-                    self.canvas.itemconfig(comp.rect_id, state='hidden')
+                    # BUG FIX: Was referencing 'comp' instead of 'item'
+                    self.canvas.itemconfig(item.rect_id, state='hidden')
                     if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
                     continue
 
