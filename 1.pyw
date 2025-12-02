@@ -1452,19 +1452,30 @@ class SimpleWindow(QMainWindow):
 
 if __name__ == "__main__":
 
-    # For Windows, set an explicit AppUserModelID to ensure the taskbar icon is correct.
-    if os.name == 'nt':
-        myappid = 'cherrybandit.hellfirehelper.1.0' # arbitrary string
-        shell32 = ctypes.windll.shell32
-        shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-        # Notify the shell that the file association for our icon may have changed.
-        # This can help refresh the icon cache if the .exe is moved.
-        SHCNE_ASSOCCHANGED = 0x08000000
-        shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
-
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    window = SimpleWindow()
-    window.show()
-    sys.exit(app.exec())
+    # Check for the special flag to run the UI creator.
+    # This allows the compiled .exe to launch the second GUI correctly.
+    if len(sys.argv) > 1 and sys.argv[1] == '--run-ui-creator':
+        # We need to find the path to the bundled ui_creator.py script.
+        if getattr(sys, 'frozen', False):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.dirname(__file__)
+        
+        ui_creator_path = os.path.join(base_path, 'ui_creator.py')
+        
+        # Execute the ui_creator.py script's content in this process.
+        with open(ui_creator_path, 'r') as f:
+            exec(f.read())
+    else:
+        # --- Run the main application ---
+        if os.name == 'nt':
+            myappid = 'cherrybandit.hellfirehelper.1.0'
+            shell32 = ctypes.windll.shell32
+            shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            SHCNE_ASSOCCHANGED = 0x08000000
+            shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
+        app = QApplication(sys.argv)
+        app.setStyle("Fusion")
+        window = SimpleWindow()
+        window.show()
+        sys.exit(app.exec())
