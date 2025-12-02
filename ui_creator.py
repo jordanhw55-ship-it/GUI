@@ -110,14 +110,14 @@ class DraggableComponent:
         if not current_bbox: # Fallback if bbox is not available
             x_start, y_start, w, h = self.x1, self.y1, self.x2 - self.x1, self.y2 - self.y1
         else:
-            x_start, y_start, x_end, y_end = current_bbox
-            w, h = int(x_end - x_start), int(y_end - y_start)
+            x_start, y_start, _, _ = current_bbox
 
         if resize_to_fit:
             # Resize the PIL image to fit the current component size
             # For dock assets, use the specific preview image
             image_to_render = self.preview_pil_image if self.is_dock_asset else self.pil_image
-            image_to_render = image_to_render.resize((w, h), Image.Resampling.LANCZOS)
+            w, h = int(self.x2 - self.x1), int(self.y2 - self.y1)
+            image_to_render = image_to_render.resize((w, h), Image.Resampling.LANCZOS) if w > 0 and h > 0 else image_to_render
         else:
             # Use the image at its original size
             image_to_render = self.pil_image
