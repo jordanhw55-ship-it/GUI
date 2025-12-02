@@ -283,8 +283,13 @@ class ImageEditorApp:
         # --- NEW: Asset Dock State ---
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
-        self.next_dock_x = 20
-        self.DOCK_Y_POSITION = 650
+
+        # --- NEW: Separate dock positions ---
+        self.IMAGE_DOCK_Y = 650
+        self.BORDER_DOCK_Y = 780 # Positioned below the image dock
+        self.next_image_dock_x = 20
+        self.next_border_dock_x = 20
+
         self.DOCK_ASSET_SIZE = (128, 128)
         # Create a main frame to hold everything
         # --- NEW: Define base paths for UI Creator resources ---
@@ -350,12 +355,20 @@ class ImageEditorApp:
                                      outline="#4b5563",
                                      width=3)
 
-        # --- NEW: Draw the Asset Dock Area ---
-        self.canvas.create_text(CANVAS_WIDTH/2, self.DOCK_Y_POSITION - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12))
-        self.canvas.create_rectangle(0, self.DOCK_Y_POSITION, CANVAS_WIDTH, CANVAS_HEIGHT,
+        # --- NEW: Draw the Image Asset Dock Area ---
+        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12))
+        self.canvas.create_rectangle(0, self.IMAGE_DOCK_Y, CANVAS_WIDTH, self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40,
                                      fill="#374151", # Match composition area
                                      outline="#4b5563",
                                      width=3)
+
+        # --- NEW: Draw the Border Asset Dock Area ---
+        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12))
+        self.canvas.create_rectangle(0, self.BORDER_DOCK_Y, CANVAS_WIDTH, self.BORDER_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40,
+                                     fill="#374151", # Match composition area
+                                     outline="#4b5563",
+                                     width=3)
+
 
         # --- 2. Initialize Draggable Components (Layers) ---
         self.components = {}
@@ -1174,6 +1187,9 @@ class ImageEditorApp:
         # Create the new component instance
         clone_comp = DraggableComponent(self.canvas, self, clone_tag, x, y, x + w, y + h, "green", clone_tag)
         
+        # --- FIX: Carry over the border flag to the clone ---
+        clone_comp.is_border_asset = asset_comp.is_border_asset
+
         # --- FIX: Apply semi-transparency to the clone for visual feedback ---
         # 1. Set the clone's original image to the full-resolution one for stamping.
         clone_comp.original_pil_image = asset_comp.original_pil_image
@@ -1223,10 +1239,16 @@ class ImageEditorApp:
             asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
             self.next_dynamic_id += 1
 
-            # Define position in the dock
-            x = self.next_dock_x
-            y = self.DOCK_Y_POSITION + 20
-            
+            # --- MODIFIED: Define position in the correct dock ---
+            if is_border:
+                x = self.next_border_dock_x
+                y = self.BORDER_DOCK_Y + 20
+                self.next_border_dock_x += self.DOCK_ASSET_SIZE[0] + 20
+            else:
+                x = self.next_image_dock_x
+                y = self.IMAGE_DOCK_Y + 20
+                self.next_image_dock_x += self.DOCK_ASSET_SIZE[0] + 20
+
             # Create a new DraggableComponent for the asset
             asset_comp = DraggableComponent(self.canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
             asset_comp.is_dock_asset = True # Mark it as a dock asset
@@ -1243,7 +1265,6 @@ class ImageEditorApp:
             # Add to our list of assets and update the next position
             self.components[asset_tag] = asset_comp # Add to main components list
             self.dock_assets.append(asset_comp) # Also add to the specific dock asset list
-            self.next_dock_x += self.DOCK_ASSET_SIZE[0] + 20 # Add padding
             
             # Ensure the new dock asset is on top
             self._keep_docks_on_top()
