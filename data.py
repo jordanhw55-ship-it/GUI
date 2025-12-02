@@ -70,7 +70,7 @@ class ItemDatabase:
     def load_recipes(self):
         if self.recipes_data:
             return
-        file_path = os.path.join(self.contents_base_path, "Recipes.txt")
+        file_path = os.path.join(self.items_base_path, "Recipes.txt")
         if not os.path.exists(file_path):
             return
         self.recipes_data = []

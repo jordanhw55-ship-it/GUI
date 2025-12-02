@@ -889,7 +889,7 @@ class SimpleWindow(QMainWindow):
                     image_path = image_name
             else:
                 # It's a relative name, look in the contents folder
-                path = os.path.join(get_base_path(), "contents", image_name)
+                path = os.path.join(get_base_path(), "contents", "Title", image_name)
                 if os.path.exists(path):
                     image_path = path
 
