@@ -176,7 +176,7 @@ class WC3UITab(QWidget):
 
         # HP Bar Tab
         hp_bar_layout = self.hp_bar_tab.layout()
-        loading_widget = self.hp_bar_tab.findChild(QLabel, "loading_label_1")
+        loading_widget = self.hp_bar_tab.findChild(QLabel, "loading_label_2")
         if loading_widget:
             loading_widget.deleteLater()
 
@@ -214,7 +214,7 @@ class WC3UITab(QWidget):
 
         # Unit Select Tab
         unit_select_layout = self.unit_select_tab.layout()
-        loading_widget = self.unit_select_tab.findChild(QLabel, "loading_label_2")
+        loading_widget = self.unit_select_tab.findChild(QLabel, "loading_label_1")
         if loading_widget:
             loading_widget.deleteLater()
 
@@ -318,14 +318,14 @@ class WC3UITab(QWidget):
 
     def show_guide_prompt(self):
         """Displays a message box with a step-by-step guide."""
-        guide_text = """
+        guide_text = r"""
 1. Click "Create Folders" after finding your _retail_ folder (if it isnt already selected)
 
 2. Click "Reg on" to enable customization of WC3, alternatively you can do the CMD command by pressing Windows key + R > type cmd > reg add "HKCU\SOFTWARE\Blizzard Entertainment\Warcraft III" /v "Allow Local Files" /t REG_DWORD /d 1 /f
 
 3. Select 1 of each option and click Apply. Restart WC3 to see changes. 
 
-4. Reg off will hide any customizations, if you want to delete the folder find the UI folder in "C:\Program Files (x86)\Warcraft III\\_retail_"
+4. Reg off will hide any customizations, if you want to delete the folder find the UI folder in "C:\Program Files (x86)\Warcraft III\_retail_"
         """.strip()
 
         QMessageBox.information(self, "Guide", guide_text)
