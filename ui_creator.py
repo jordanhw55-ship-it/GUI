@@ -274,6 +274,14 @@ class ImageEditorApp:
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
 
+        # --- NEW: Zoom and Pan State ---
+        self.zoom_scale = 1.0
+        self.pan_start_x = 0
+        self.pan_start_y = 0
+        master.bind("<Control-MouseWheel>", self.on_zoom)
+        master.bind("<Control-plus>", self.zoom_in)
+        master.bind("<Control-equal>", self.zoom_in) # For keyboards where '+' is shift+'='
+        master.bind("<Control-minus>", self.zoom_out)
         self.paint_mode_active = False
         self.eraser_mode_active = False # NEW: Eraser state
         self.paint_color = "red"
@@ -341,6 +349,10 @@ class ImageEditorApp:
         # Bind painting events directly to the canvas
         self.canvas.bind("<B1-Motion>", self.paint_on_canvas)
         self.canvas.bind("<ButtonRelease-1>", self.reset_paint_line)
+        # --- NEW: Pan bindings ---
+        self.canvas.bind("<Control-Button-1>", self.on_pan_press)
+        self.canvas.bind("<Control-B1-Motion>", self.on_pan_drag)
+        self.canvas.bind("<Control-ButtonRelease-1>", self.on_pan_release)
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
@@ -654,9 +666,9 @@ class ImageEditorApp:
 
         notebook.add(layer_tab, text='Tiles')
         notebook.add(paint_tab, text='Paint')
-        notebook.add(border_tab, text='Border') # NEW
+        notebook.add(border_tab, text='Border')
         notebook.add(image_tab, text='Image')
-        notebook.add(resize_tab, text='Transform') # MODIFIED
+        notebook.add(resize_tab, text='Resize Tile')
         notebook.add(filters_tab, text='Filters') # NEW
         notebook.add(text_tab, text='Text') # NEW
         notebook.add(export_tab, text='Export')
@@ -764,7 +776,7 @@ class ImageEditorApp:
 
         
         # --- Populate the "Resize" Tab ---
-        tk.Label(resize_tab, text="TRANSFORM TILE", **label_style).pack(fill='x')
+        tk.Label(resize_tab, text="RESIZE TILE", **label_style).pack(fill='x')
         resize_frame = tk.Frame(resize_tab, bg="#374151", padx=10, pady=5)
         resize_frame.pack(fill='x')
 
@@ -944,6 +956,58 @@ class ImageEditorApp:
         if not self.undo_stack:
             self.undo_button.config(state='disabled')
 
+    def on_zoom(self, event):
+        """Handles zooming the canvas with Ctrl+MouseWheel."""
+        # Stop painting if active
+        if self.paint_mode_active or self.eraser_mode_active:
+            self.toggle_paint_mode(tool='off')
+
+        factor = 1.1 if event.delta > 0 else 0.9
+        self.zoom_scale *= factor
+        self.canvas.scale("all", event.x, event.y, factor, factor)
+        print(f"Zoom: {self.zoom_scale:.2f}x")
+
+    def zoom_in(self, event=None):
+        """Zooms in on the center of the canvas."""
+        factor = 1.1
+        self.zoom_scale *= factor
+        x = self.canvas.winfo_width() / 2
+        y = self.canvas.winfo_height() / 2
+        self.canvas.scale("all", x, y, factor, factor)
+        print(f"Zoom: {self.zoom_scale:.2f}x")
+        return "break" # Prevents the event from propagating
+
+    def zoom_out(self, event=None):
+        """Zooms out from the center of the canvas."""
+        factor = 0.9
+        self.zoom_scale *= factor
+        x = self.canvas.winfo_width() / 2
+        y = self.canvas.winfo_height() / 2
+        self.canvas.scale("all", x, y, factor, factor)
+        print(f"Zoom: {self.zoom_scale:.2f}x")
+        return "break" # Prevents the event from propagating
+
+    def on_pan_press(self, event):
+        """Records the starting position for panning."""
+        # Stop painting if active
+        if self.paint_mode_active or self.eraser_mode_active:
+            self.toggle_paint_mode(tool='off')
+
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+        self.canvas.config(cursor="fleur")
+
+    def on_pan_drag(self, event):
+        """Moves all items on the canvas to pan the view."""
+        dx = event.x - self.pan_start_x
+        dy = event.y - self.pan_start_y
+        self.canvas.move("all", dx, dy)
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+
+    def on_pan_release(self, event):
+        """Resets the cursor when panning is finished."""
+        self.canvas.config(cursor="")
 
     def handle_tab_click(self, name):
         """Handles the logic when a sidebar button is clicked."""
