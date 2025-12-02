@@ -1879,11 +1879,12 @@ class ImageEditorApp:
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # Conditionally respect transparency of the underlying tile
-                if not stamp_source_comp.is_border_asset:
-                    comp_alpha_mask = final_image.getchannel('A')
-                    combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
-                    decal_layer.putalpha(combined_alpha)
+                # --- DEFINITIVE FIX for Transparency ---
+                # Always respect the transparency of the underlying tile by multiplying alpha channels.
+                # This ensures that decals/borders do not draw on transparent parts of the tile.
+                comp_alpha_mask = final_image.getchannel('A')
+                combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
+                decal_layer.putalpha(combined_alpha)
 
                 # Composite the decal layer onto the final image.
                 final_image = Image.alpha_composite(final_image, decal_layer)
