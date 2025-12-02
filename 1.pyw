@@ -1417,10 +1417,13 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
+            # Lazy import: Only import ui_creator when this function is called.
+            from ui_creator import ImageEditorApp, tk
+
             command = [sys.executable]
             # If running from source (not compiled), we must tell python.exe to run our main script again.
             # sys.argv[0] is the path to the currently running script (1.pyw).
-            if not getattr(sys, 'frozen', False):
+            if not getattr(sys, 'frozen', False) and '.py' in sys.argv[0]:
                 command.append(sys.argv[0])
             
             # Add the special flag that the __main__ block will check for.
@@ -1453,7 +1456,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == '--run-ui-creator':
         # This block will now be executed by the new process.
         # We import the necessary parts from ui_creator and run its main logic.
-        from ui_creator import ImageEditorApp, tk
+        from ui_creator import ImageEditorApp, tk # This import is fine here as it's in a separate process
         root = tk.Tk()
         app = ImageEditorApp(root)
         # This is a blocking call that runs the Tkinter event loop.
