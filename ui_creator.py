@@ -613,6 +613,9 @@ class ImageEditorApp:
                   command=self.save_layout).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         tk.Button(layout_frame, text="Load Layout", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_layout).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+        tk.Button(layer_tab, text="Default Layout", bg='#6b7280', fg='white', relief='flat', font=button_font,
+                  command=self.apply_preview_layout).pack(fill='x', padx=10, pady=5)
+
 
         # --- Populate the "Image" Tab ---
         tk.Label(image_tab, text="IMAGE SET", **label_style).pack(fill='x')
