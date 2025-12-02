@@ -1343,12 +1343,14 @@ class ImageEditorApp:
                 # Paste the resized decal onto this new transparent layer.
                 decal_layer.paste(resized_cropped_decal, (paste_x, paste_y), resized_cropped_decal)
 
-                # --- FIX 2.0: Combine alpha channels instead of replacing them ---
-                # This prevents black cutouts by ensuring the decal is only visible where BOTH
-                # the decal itself has alpha AND the original component has alpha.
-                comp_alpha_mask = target_comp.original_pil_image.getchannel('A')
-                combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
-                decal_layer.putalpha(combined_alpha)
+                # --- NEW: Conditionally respect transparency ---
+                # If the stamp source is a border, it should NOT respect the underlying alpha.
+                # If it's a regular image/decal, it SHOULD respect the alpha.
+                if not stamp_source_comp.is_border_asset:
+                    # Combine alpha channels to respect transparency of the target.
+                    comp_alpha_mask = target_comp.original_pil_image.getchannel('A')
+                    combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
+                    decal_layer.putalpha(combined_alpha)
 
                 # 6. Composite the decal layer onto the component's image.
                 final_image = Image.alpha_composite(new_comp_image, decal_layer)
