@@ -55,6 +55,11 @@ class DraggableComponent:
         self.is_decal = False # NEW: To identify temporary decals
         self.is_border_asset = False # NEW: To identify border assets
         
+        # --- NEW: World Coordinates for Camera System ---
+        # These store the "true" position and size at 100% zoom.
+        self.world_x1, self.world_y1 = x1, y1
+        self.world_x2, self.world_y2 = x2, y2
+
         self.is_dock_asset = False # NEW: To identify dock assets
         # Initialize with the colored box
         self._draw_placeholder(x1, y1, x2, y2, color, text)
@@ -91,7 +96,10 @@ class DraggableComponent:
         for t in tags_to_add[1:]:
             self.canvas.addtag_withtag(t, self.rect_id)
         # Update bounding box of the component
-        self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
+        # self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
+        # With the camera system, the component's own coordinates are the world coordinates.
+        self.world_x1, self.world_y1, self.world_x2, self.world_y2 = x1, y1, x2, y2
+
 
     def set_image_from_path(self, image_path):
         """Loads an image from a file path and applies it to the component."""
@@ -117,15 +125,12 @@ class DraggableComponent:
         if self.border_pil_image:
             pil_image = self._composite_border(pil_image)
 
-        # Get the current size and position of the component for resizing
-        current_bbox = self.canvas.bbox(self.rect_id)
-        if not current_bbox: # Fallback if bbox is not available
-            x_start, y_start, w, h = self.x1, self.y1, self.x2 - self.x1, self.y2 - self.y1
-        else:
-            x_start, y_start, _, _ = current_bbox
+        # With the camera system, we use the world coordinates to determine size and position.
+        x_start, y_start = self.app.world_to_screen(self.world_x1, self.world_y1)
+        x_end, y_end = self.app.world_to_screen(self.world_x2, self.world_y2)
 
         if resize_to_fit:
-            # Resize the PIL image to fit the current component size
+            # Resize the PIL image to fit the current component's world size
             # For dock assets, use the specific preview image
             image_to_render = self.preview_pil_image if self.is_dock_asset else self.pil_image
             w, h = int(self.x2 - self.x1), int(self.y2 - self.y1)
@@ -133,7 +138,6 @@ class DraggableComponent:
         else:
             # Use the image at its original size
             image_to_render = self.pil_image
-
 
         # Convert PIL image to Tkinter PhotoImage
         new_tk_image = ImageTk.PhotoImage(image_to_render)
@@ -230,15 +234,18 @@ class DraggableComponent:
         if self.is_dock_asset:
             return # Do not drag if painting is active
 
-        dx = event.x - self.last_x
-        dy = event.y - self.last_y
+        # --- REFACTORED for Camera System ---
+        # Calculate movement in world space, not screen space.
+        dx_screen = event.x - self.last_x
+        dy_screen = event.y - self.last_y
+        dx_world = dx_screen / self.app.zoom_scale
+        dy_world = dy_screen / self.app.zoom_scale
+
+        # Update the component's world coordinates
+        self.world_x1 += dx_world; self.world_y1 += dy_world
+        self.world_x2 += dx_world; self.world_y2 += dy_world
         
-        # Move the item by the calculated distance
-        self.canvas.move(self.rect_id, dx, dy)
-        if self.text_id:
-            self.canvas.move(self.text_id, dx, dy)
-        
-        # Update the last mouse position for the next movement calculation
+        # Update the last screen position for the next drag event
         self.last_x = event.x
         self.last_y = event.y
 
@@ -977,56 +984,91 @@ class ImageEditorApp:
         if not self.undo_stack:
             self.undo_button.config(state='disabled')
 
-    def _apply_view_transform(self):
-        """
-        Applies the current pan and zoom to all 'zoom_target' items by recalculating
-        their screen coordinates from their original world coordinates. This is the
-        core of the new, correct camera system.
-        """
-        # This is a placeholder for a more robust implementation.
-        # For now, we will use scale and move, which has issues, but avoids the crash.
-        # A full fix requires storing original coordinates for all items and recalculating them.
-        # This is a temporary measure to make the app runnable again.
-        pass # This function will be properly implemented in a future step.
+    # --- NEW: Camera Transformation Functions ---
+    def world_to_screen(self, world_x, world_y):
+        """Converts world coordinates to screen coordinates."""
+        screen_x = (world_x * self.zoom_scale) + self.pan_offset_x
+        screen_y = (world_y * self.zoom_scale) + self.pan_offset_y
+        return screen_x, screen_y
 
-    def _reapply_all_transforms(self):
-        # This is a conceptual placeholder. A real implementation would iterate
-        # all zoomable objects and use canvas.coords() to set their new positions.
-        print("Applying view transform...")
+    def screen_to_world(self, screen_x, screen_y):
+        """Converts screen coordinates to world coordinates."""
+        world_x = (screen_x - self.pan_offset_x) / self.zoom_scale
+        world_y = (screen_y - self.pan_offset_y) / self.zoom_scale
+        return world_x, world_y
+
+    def redraw_all_zoomable(self):
+        """Redraws all zoomable items based on the current camera view."""
+        for comp in self.components.values():
+            if "zoom_target" in self.canvas.gettags(comp.rect_id):
+                # Calculate new screen coordinates from world coordinates
+                sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
+                
+                # Update the item's coordinates on the canvas
+                self.canvas.coords(comp.rect_id, sx1, sy1) # For images, only need top-left
+                
+                # If it's a placeholder, we need to update the full rectangle
+                if comp.text_id:
+                    self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
+                    self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
+        
+        # Also redraw the paint layer if it exists
+        if self.paint_layer_id:
+            self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
+            self.canvas.scale(self.paint_layer_id, 0, 0, self.zoom_scale, self.zoom_scale)
 
     def on_zoom(self, event):
         """Handles zooming the canvas with Ctrl+MouseWheel."""
         if self.paint_mode_active or self.eraser_mode_active:
             self.toggle_paint_mode(tool='off')
 
+        # --- REWRITTEN for Camera System ---
+        mouse_world_x_before, mouse_world_y_before = self.screen_to_world(event.x, event.y)
+
         old_scale = self.zoom_scale
         factor = 1.1 if event.delta > 0 else 0.9
         self.zoom_scale *= factor
         
+        # Adjust pan offset to keep the point under the mouse stationary
+        self.pan_offset_x = event.x - (mouse_world_x_before * self.zoom_scale)
+        self.pan_offset_y = event.y - (mouse_world_y_before * self.zoom_scale)
+
         self._update_zoom_display()
-        # Use canvas.scale which exists, but causes items to spread.
-        self.canvas.scale("zoom_target", event.x, event.y, factor, factor)
+        self.redraw_all_zoomable()
 
     def zoom_in(self, event=None):
         """Zooms in on the center of the canvas."""
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
+        center_world_x, center_world_y = self.screen_to_world(x, y)
+
         old_scale = self.zoom_scale
         factor = 1.1
         self.zoom_scale *= factor
+
+        self.pan_offset_x = x - (center_world_x * self.zoom_scale)
+        self.pan_offset_y = y - (center_world_y * self.zoom_scale)
+
         self._update_zoom_display()
-        self.canvas.scale("zoom_target", x, y, factor, factor)
+        self.redraw_all_zoomable()
         return "break" # Prevents the event from propagating
 
     def zoom_out(self, event=None):
         """Zooms out from the center of the canvas."""
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
+        center_world_x, center_world_y = self.screen_to_world(x, y)
+
         old_scale = self.zoom_scale
         factor = 0.9
         self.zoom_scale *= factor
+
+        self.pan_offset_x = x - (center_world_x * self.zoom_scale)
+        self.pan_offset_y = y - (center_world_y * self.zoom_scale)
+
         self._update_zoom_display()
-        self.canvas.scale("zoom_target", x, y, factor, factor)
+        self.redraw_all_zoomable()
         return "break" # Prevents the event from propagating
 
     def _update_zoom_display(self):
@@ -1050,9 +1092,11 @@ class ImageEditorApp:
         """Moves all items on the canvas to pan the view."""
         dx = event.x - self.pan_start_x
         dy = event.y - self.pan_start_y
-        self.canvas.move("zoom_target", dx, dy)
+        self.pan_offset_x += dx
+        self.pan_offset_y += dy
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+        self.redraw_all_zoomable()
 
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""
@@ -1162,15 +1206,15 @@ class ImageEditorApp:
             return
 
         # Update the component's internal size definition
-        comp.x2 = comp.x1 + new_w
-        comp.y2 = comp.y1 + new_h
+        comp.world_x2 = comp.world_x1 + new_w
+        comp.world_y2 = comp.world_y1 + new_h
 
         # If the component has an image, re-apply it to trigger the resize.
         # Otherwise, redraw the placeholder rectangle.
         if comp.pil_image:
             comp._set_pil_image(comp.pil_image, resize_to_fit=True)
         else:
-            comp._draw_placeholder(comp.x1, comp.y1, comp.x2, comp.y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
+            comp._draw_placeholder(comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
 
     def apply_border_to_selection(self):
@@ -1211,16 +1255,13 @@ class ImageEditorApp:
                 current_bbox = self.canvas.bbox(comp.rect_id)
                 if not current_bbox:
                     continue # Skip if component isn't drawn
-
-                current_x1, current_y1, _, _ = current_bbox
                 
-                dx = target_x1 - current_x1
-                dy = target_y1 - current_y1
+                # Update the world coordinates directly, then redraw
+                width = comp.world_x2 - comp.world_x1
+                height = comp.world_y2 - comp.world_y1
+                comp.world_x1, comp.world_y1 = target_x1, target_y1
+                comp.world_x2, comp.world_y2 = target_x1 + width, target_y1 + height
                 
-                self.canvas.move(comp.rect_id, dx, dy)
-                if comp.text_id:
-                    self.canvas.move(comp.text_id, dx, dy)
-            
             # 3. Reset placeholder borders
             if comp.tk_image is None:
                 self.canvas.itemconfig(comp.rect_id, outline='white', width=2)
@@ -1228,6 +1269,9 @@ class ImageEditorApp:
         # Finally, ensure the dock assets are not obscured
         self._keep_docks_on_top()
     
+        # Redraw everything with the new positions
+        self.redraw_all_zoomable()
+
     def _export_modified_images(self, export_format):
         """
         Generic export function to save modified layers as either PNG or DDS.
