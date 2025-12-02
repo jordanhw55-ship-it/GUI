@@ -277,6 +277,7 @@ class ImageEditorApp:
         # --- NEW: Decal Feature State ---
         self.active_decal = None
         self.decal_scale = tk.DoubleVar(value=100) # For the resize slider
+        self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
 
         # --- NEW: Asset Dock State ---
         self.dock_assets = []
@@ -689,18 +690,28 @@ class ImageEditorApp:
                                     command=self.clear_paintings)
         clear_paint_btn.pack(fill='x', expand=True, pady=(5,0))
 
-        tk.Label(image_tab, text="ASSET CONTROLS", **label_style).pack(fill='x', pady=(10,0))
+        tk.Label(image_tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(image_tab, text="Load Asset to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_asset_to_dock).pack(fill='x', padx=10, pady=(5,10))
-        # --- NEW: Decal Resizing Controls ---
-        resize_frame = tk.Frame(image_tab, bg="#374151")
-        resize_frame.pack(fill='x', padx=10, pady=5)
-        tk.Label(resize_frame, text="Resize:", bg="#374151", fg="white").pack(side=tk.LEFT)
-        tk.Scale(resize_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self.resize_active_decal).pack(side=tk.LEFT, expand=True)
-        tk.Button(resize_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_scale.set(100) or self.resize_active_decal()).pack(side=tk.LEFT, padx=(5,0))
 
+        # --- NEW: Decal Transform Controls (Resize & Rotate) ---
+        transform_frame = tk.Frame(image_tab, bg="#374151")
+        transform_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Resize Slider
+        tk.Label(transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
+        tk.Scale(transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=0, column=1, sticky='ew')
+        tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
+                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+
+        # Rotation Slider
+        tk.Label(transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
+        tk.Scale(transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=1, column=1, sticky='ew')
+        tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
+                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+        transform_frame.grid_columnconfigure(1, weight=1)
 
         tk.Button(image_tab, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=self.apply_decal_to_underlying_layer).pack(fill='x', padx=10, pady=(10,2))
@@ -899,40 +910,10 @@ class ImageEditorApp:
 
     def apply_border_to_selection(self):
         """Applies a loaded border image to the currently selected component."""
-        # 1. Find the active border image on the canvas
-        active_border_comp = self._find_topmost_stamp_source(clone_type='border')
-        if not active_border_comp:
-            messagebox.showwarning("No Border Image", "Please load a border to the dock and click it to create an active border on the canvas first.")
-            return
+        # This function now behaves identically to applying a regular decal.
+        # It finds the topmost active image (of any type) and stamps it onto what's below.
+        self.apply_decal_to_underlying_layer()
 
-        # 2. Ensure a target tile is selected
-        if not self.selected_component_tag:
-            messagebox.showwarning("Selection Required", "Please select a target tile from the 'Tiles' tab before applying a border.")
-            return
-
-        target_comp = self.components.get(self.selected_component_tag)
-        if not target_comp or not target_comp.pil_image:
-            messagebox.showwarning("Invalid Target", "The selected tile does not have an image to apply a border to.")
-            return
-
-        # 3. Composite the border onto the target
-        try:
-            # Resize the full-resolution border image to the size of the target component's image
-            border_resized = active_border_comp.original_pil_image.resize(target_comp.pil_image.size, Image.Resampling.LANCZOS)
-            
-            # Composite it on top
-            final_image = Image.alpha_composite(target_comp.pil_image.copy(), border_resized)
-            
-            # Update the target component with the new combined image
-            target_comp._set_pil_image(final_image)
-            
-            # 4. Remove the active border from the canvas
-            self._remove_stamp_source_component(active_border_comp)
-            
-            messagebox.showinfo("Success", f"Border applied to '{target_comp.tag}'.")
-            print(f"Applied border '{active_border_comp.tag}' to '{target_comp.tag}'.")
-        except Exception as e:
-            messagebox.showerror("Border Error", f"Failed to apply border: {e}")
 
     def remove_border_from_selection(self):
         """Removes the border from the currently selected component."""
@@ -1249,8 +1230,8 @@ class ImageEditorApp:
         """
         Finds the top-most draggable image (decal or clone) and stamps it onto all layers underneath.
         """
-        # --- REFACTOR: Use the helper function to find a regular clone source image ---
-        stamp_source_comp = self._find_topmost_stamp_source(clone_type='clone')
+        # --- REFACTOR: Use the helper function to find any active clone source image ---
+        stamp_source_comp = self._find_topmost_stamp_source(clone_type='any')
         
         if not stamp_source_comp:
             # The helper function now shows its own warning.
@@ -1346,30 +1327,36 @@ class ImageEditorApp:
 
         self._remove_stamp_source_component(stamp_source_comp)
 
-    def resize_active_decal(self, event=None):
-        """Resizes the active image (clone) based on the slider value."""
-        # --- FIX: Find the currently active image instead of relying on self.active_decal ---
+    def _update_active_decal_transform(self, event=None):
+        """Applies both resize and rotation transformations to the active decal."""
         decal = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
-
         if not decal or not decal.original_pil_image:
-            # Silently return if there's no active image to resize.
             return
 
+        # Get scale and rotation values
         scale_factor = self.decal_scale.get() / 100.0
+        rotation_angle = self.decal_rotation.get()
+
+        # 1. Scale the original image
         original_w, original_h = decal.original_pil_image.size
         new_w = int(original_w * scale_factor)
         new_h = int(original_h * scale_factor)
-        
+
         if new_w > 0 and new_h > 0:
-            # Always resize from the original image to maintain quality
             resized_image = decal.original_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-            # Create the semi-transparent version for display
+            # 2. Rotate the scaled image
+            # Use expand=True to prevent corners from being clipped.
+            # The background is transparent, so this is safe.
+            rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
+
+            # 3. Create the semi-transparent version for display
             alpha = resized_image.getchannel('A')
             semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
-            display_image = resized_image.copy()
+            display_image = rotated_image.copy()
             display_image.putalpha(semi_transparent_alpha)
-            
+
+            # 4. Update the component on the canvas
             decal._set_pil_image(display_image, resize_to_fit=False)
 
     def discard_active_image(self):
