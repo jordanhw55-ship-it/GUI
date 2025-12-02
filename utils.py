@@ -232,8 +232,10 @@ OCEAN_STYLE = """
 def get_base_path():
     """ Get absolute path to resource, works for dev and for PyInstaller/Nuitka """
     if getattr(sys, 'frozen', False):
-        # The application is frozen
-        return os.path.dirname(sys.executable)
+        # The application is frozen (packaged by PyInstaller).
+        # The base path is the temporary folder _MEIPASS created by the bootloader.
+        # sys._MEIPASS is the attribute PyInstaller sets for this.
+        return sys._MEIPASS
     else:
         # The application is not frozen
         # Change this to the directory of your main script
