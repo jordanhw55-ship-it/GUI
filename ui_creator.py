@@ -285,8 +285,8 @@ class ImageEditorApp:
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
 
         # --- NEW: Separate dock positions ---
-        self.IMAGE_DOCK_Y = 580
-        self.BORDER_DOCK_Y = 730 # Positioned below the image dock
+        self.IMAGE_DOCK_Y = 550
+        self.BORDER_DOCK_Y = 700 # Positioned below the image dock
         self.next_image_dock_x = 20
         self.next_border_dock_x = 20
 
