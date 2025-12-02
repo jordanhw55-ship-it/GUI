@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
+import sys
 import subprocess
 from tkinter import ttk # Import for the Notebook widget
 # Import Pillow components
