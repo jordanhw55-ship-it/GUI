@@ -321,7 +321,7 @@ class ImageEditorApp:
         master.bind("<Control-z>", self.undo_last_action)
         
         # --- REFACTORED: Camera-based Zoom and Pan State ---
-        self.zoom_scale = 1.0
+        self.zoom_scale = 0.82
         self.pan_offset_x = 0.0
         self.pan_offset_y = 0.0
         self.pan_start_x = 0 # For tracking drag start
@@ -401,14 +401,14 @@ class ImageEditorApp:
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
-            "humanuitile01": {"coords": [261, 57, 511, 357]},
-            "humanuitile02": {"coords": [511, 57, 761, 357]},
-            "humanuitile03": {"coords": [761, 57, 1011, 357]},
-            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
-            "humanuitile05": {"coords": [11, 57, 261, 357]},
-            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
-            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
-            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
+            "humanuitile01": {"coords": [322, 263, 527, 509]},
+            "humanuitile02": {"coords": [527, 263, 732, 509]},
+            "humanuitile03": {"coords": [733, 263, 938, 509]},
+            "humanuitile04": {"coords": [939, 263, 963, 509]},
+            "humanuitile05": {"coords": [116, 263, 321, 509]},
+            "humanuitile06": {"coords": [963, 263, 1168, 509]},
+            "humanuitile-inventorycover": {"coords": [703, 263, 801, 509]},
+            "humanuitile-timeindicatorframe": {"coords": [588, 263, 698, 324]}
         }
         
         # --- BACKGROUND TEMPLATE ---
