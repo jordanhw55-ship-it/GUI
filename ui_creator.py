@@ -1673,7 +1673,11 @@ class ImageEditorApp:
 
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
-        self._update_active_decal_transform()
+        # --- UNIFIED FIX: Always call the generic transform, not the border-specific one ---
+        if clone_comp.is_border_asset:
+            self._update_active_border_transform()
+        else:
+            self._update_active_decal_transform()
 
         # --- CRITICAL FIX: Initiate a "press" on the new clone to make it immediately draggable ---
         clone_comp.on_press(event)
