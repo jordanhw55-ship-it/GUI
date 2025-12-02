@@ -283,12 +283,15 @@ class ImageEditorApp:
         self.undo_stack = []
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
-
-        # --- NEW: Zoom and Pan State ---
+        
+        # --- REFACTORED: Camera-based Zoom and Pan State ---
         self.zoom_scale = 1.0
-        self.pan_start_x = 0
-        self.pan_start_y = 0
+        self.pan_offset_x = 0.0
+        self.pan_offset_y = 0.0
+        self.pan_start_x = 0 # For tracking drag start
+        self.pan_start_y = 0 # For tracking drag start
         self.zoom_label_var = tk.StringVar(value="100%") # NEW: For zoom display
+
         master.bind("<Control-MouseWheel>", self.on_zoom)
         master.bind("<Control-plus>", self.zoom_in)
         master.bind("<Control-equal>", self.zoom_in) # For keyboards where '+' is shift+'='
@@ -973,35 +976,60 @@ class ImageEditorApp:
         if not self.undo_stack:
             self.undo_button.config(state='disabled')
 
+    def _apply_view_transform(self):
+        """
+        Applies the current pan and zoom transformation to all 'zoom_target' items.
+        This function is the core of the new camera system.
+        """
+        # Create an affine transformation matrix: [a, b, c, d, e, f]
+        # a, d = scaling
+        # c, f = translation
+        transform_matrix = [self.zoom_scale, 0, 0, self.zoom_scale, self.pan_offset_x, self.pan_offset_y]
+        
+        # Apply this transformation to the canvas items.
+        # This is much more efficient than manually calling .scale() and .move()
+        self.canvas.transform("zoom_target", transform_matrix)
+
     def on_zoom(self, event):
         """Handles zooming the canvas with Ctrl+MouseWheel."""
-        # Stop painting if active
         if self.paint_mode_active or self.eraser_mode_active:
             self.toggle_paint_mode(tool='off')
 
+        old_scale = self.zoom_scale
         factor = 1.1 if event.delta > 0 else 0.9
         self.zoom_scale *= factor
+        
+        # Adjust pan offset to keep the mouse pointer location fixed ("zoom to mouse")
+        self.pan_offset_x = event.x - (event.x - self.pan_offset_x) * (self.zoom_scale / old_scale)
+        self.pan_offset_y = event.y - (event.y - self.pan_offset_y) * (self.zoom_scale / old_scale)
+
         self._update_zoom_display()
-        self.canvas.scale("zoom_target", event.x, event.y, factor, factor)
+        self._apply_view_transform()
 
     def zoom_in(self, event=None):
         """Zooms in on the center of the canvas."""
-        factor = 1.1
-        self.zoom_scale *= factor
-        self._update_zoom_display()
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
-        self.canvas.scale("zoom_target", x, y, factor, factor)
+        old_scale = self.zoom_scale
+        factor = 1.1
+        self.zoom_scale *= factor
+        self.pan_offset_x = x - (x - self.pan_offset_x) * (self.zoom_scale / old_scale)
+        self.pan_offset_y = y - (y - self.pan_offset_y) * (self.zoom_scale / old_scale)
+        self._update_zoom_display()
+        self._apply_view_transform()
         return "break" # Prevents the event from propagating
 
     def zoom_out(self, event=None):
         """Zooms out from the center of the canvas."""
-        factor = 0.9
-        self.zoom_scale *= factor
-        self._update_zoom_display()
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
-        self.canvas.scale("zoom_target", x, y, factor, factor)
+        old_scale = self.zoom_scale
+        factor = 0.9
+        self.zoom_scale *= factor
+        self.pan_offset_x = x - (x - self.pan_offset_x) * (self.zoom_scale / old_scale)
+        self.pan_offset_y = y - (y - self.pan_offset_y) * (self.zoom_scale / old_scale)
+        self._update_zoom_display()
+        self._apply_view_transform()
         return "break" # Prevents the event from propagating
 
     def _update_zoom_display(self):
@@ -1010,7 +1038,6 @@ class ImageEditorApp:
         zoom_percentage = f"{self.zoom_scale * 100:.0f}%"
         self.zoom_label_var.set(zoom_percentage)
         print(f"Zoom: {self.zoom_scale:.2f}x")
-
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
@@ -1026,9 +1053,11 @@ class ImageEditorApp:
         """Moves all items on the canvas to pan the view."""
         dx = event.x - self.pan_start_x
         dy = event.y - self.pan_start_y
-        self.canvas.move("zoom_target", dx, dy)
+        self.pan_offset_x += dx
+        self.pan_offset_y += dy
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+        self._apply_view_transform()
 
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""
