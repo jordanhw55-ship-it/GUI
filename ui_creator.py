@@ -1186,8 +1186,9 @@ class ImageEditorApp:
             if tag in self.components:
                 comp = self.components[tag]
                 # Check if it's a draggable image but NOT a dock asset
-                if comp.is_draggable and comp.pil_image and not comp.is_dock_asset:
-                    return comp # Return the component object
+                # --- FIX: Only consider 'clones' as stamp sources ---
+                if comp.is_draggable and comp.pil_image and not comp.is_dock_asset and tag.startswith("clone_"):
+                    return comp
         
         # If the loop finishes without finding anything
         if show_warning:
