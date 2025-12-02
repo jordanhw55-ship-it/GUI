@@ -133,7 +133,7 @@ class DraggableComponent:
             # Resize the PIL image to fit the current component's world size
             # For dock assets, use the specific preview image
             image_to_render = self.preview_pil_image if self.is_dock_asset else self.pil_image
-            w, h = int(self.x2 - self.x1), int(self.y2 - self.y1)
+            w, h = int(self.world_x2 - self.world_x1), int(self.world_y2 - self.world_y1)
             image_to_render = image_to_render.resize((w, h), Image.Resampling.LANCZOS) if w > 0 and h > 0 else image_to_render
         else:
             # Use the image at its original size
