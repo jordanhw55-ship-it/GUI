@@ -150,8 +150,8 @@ class NavigationSidebar(QWidget):
         self.title_label.setContentsMargins(2, 0, 0, 15) # 2px left margin to push right, 15px bottom for spacing
         main_layout.addWidget(self.title_label)
         
-        # Icons using unicode characters
-        icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, Automation, Quickcast, Lobbies
+        # Icons using unicode characters - Added paintbrush for UI Creator
+        icons = ["\U0001F4C2", "\U0001F4E6", "\u2699", "\U0001F58C", "\u26A1", "\u2328", "\U0001F4E1", # Load, Items, WC3UI, UI Creator, Automation, Quickcast, Lobbies
                  "\U0001F3A8", "\u2699", "\u2753", "\U0001F504"] # Theme, Settings, Help, Reset GUI
         
         # Main navigation buttons
@@ -353,7 +353,7 @@ class SimpleWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget)
 
         # Sidebar Navigation
-        self.tab_names = ["Load", "Items", "WC3 UI", "Automation", "Quickcast", "Lobbies", "Theme", "Settings", "Help", "Reset GUI"]
+        self.tab_names = ["Load", "Items", "WC3 UI", "UI Creator", "Automation", "Quickcast", "Lobbies", "Theme", "Settings", "Help", "Reset GUI"]
         self.navigation_sidebar = NavigationSidebar(self.tab_names)
         self.navigation_sidebar.setAttribute(Qt.WA_StyledBackground, True)
         self.navigation_sidebar.setAutoFillBackground(True)
@@ -378,6 +378,13 @@ class SimpleWindow(QMainWindow):
         self.wc3_ui_tab = WC3UITab(self)
         self.stacked_widget.addWidget(self.wc3_ui_tab)
 
+        # UI Creator Tab
+        self.ui_creator_tab = QWidget()
+        ui_creator_layout = QVBoxLayout(self.ui_creator_tab)
+        ui_creator_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ui_creator_label = QLabel("UI Creator will be here!")
+        ui_creator_layout.addWidget(ui_creator_label)
+        self.stacked_widget.addWidget(self.ui_creator_tab)
         # Recipes tab
         self.in_progress_recipes = {}
 
