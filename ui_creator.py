@@ -1779,14 +1779,24 @@ class ImageEditorApp:
             # --- MODIFIED: Define position in the correct dock CANVAS ---
             if is_border:
                 target_canvas = self.border_dock_canvas
-                x = self.next_border_dock_x # Use the class-level tracker
-                y = 20 # Start near the top of the dock canvas
-                self.next_border_dock_x += self.DOCK_ASSET_SIZE[0] + 10
+                # Count existing border assets to determine position
+                item_index = sum(1 for asset in self.dock_assets if asset.is_border_asset)
             else:
                 target_canvas = self.image_dock_canvas
-                x = self.next_image_dock_x # Use the class-level tracker
-                y = 20 # Start near the top of the dock canvas
-                self.next_image_dock_x += self.DOCK_ASSET_SIZE[0] + 10
+                # Count existing non-border assets to determine position
+                item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
+
+            # --- NEW: Wrapping Grid Layout Logic ---
+            items_per_row = 4
+            padding = 10
+            asset_width = self.DOCK_ASSET_SIZE[0]
+            asset_height = self.DOCK_ASSET_SIZE[1]
+
+            col = item_index % items_per_row
+            row = item_index // items_per_row
+
+            x = padding + col * (asset_width + padding)
+            y = padding + row * (asset_height + padding)
 
             # Create a new DraggableComponent for the asset, now on the specific dock's canvas
             asset_comp = DraggableComponent(target_canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
