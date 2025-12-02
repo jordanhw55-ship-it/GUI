@@ -60,6 +60,10 @@ class DraggableComponent:
         self.world_x1, self.world_y1 = x1, y1
         self.world_x2, self.world_y2 = x2, y2
 
+        # --- NEW: Caching for Performance ---
+        self._cached_screen_w = -1
+        self._cached_screen_h = -1
+
         self.is_dock_asset = False # NEW: To identify dock assets
         # Initialize with the colored box
         self._draw_placeholder(x1, y1, x2, y2, color, text)
@@ -1016,17 +1020,23 @@ class ImageEditorApp:
                     screen_w = (comp.world_x2 - comp.world_x1) * self.zoom_scale
                     screen_h = (comp.world_y2 - comp.world_y1) * self.zoom_scale
 
-                    # Only proceed if the size is valid
-                    if screen_w > 0 and screen_h > 0:
-                        # Use the appropriate source image (preview for dock, main for others)
-                        source_img = comp.preview_pil_image if comp.is_dock_asset else comp.pil_image
-                        resized_img = source_img.resize((int(screen_w), int(screen_h)), Image.Resampling.LANCZOS)
+                    # --- PERFORMANCE FIX: Only regenerate image if size has changed ---
+                    if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h):
+                        comp._cached_screen_w = int(screen_w)
+                        comp._cached_screen_h = int(screen_h)
+
+                        # --- QUALITY FIX: Always resize from the highest quality original image ---
+                        source_img = comp.original_pil_image
+                        if not source_img: continue # Should not happen if pil_image exists, but safe
+
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
-                        
-                        # Calculate the top-left screen coordinate and update the canvas item
-                        sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
-                        self.canvas.coords(comp.rect_id, sx1, sy1)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
+
+                    # Always update coordinates, even if the image wasn't regenerated
+                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                    self.canvas.coords(comp.rect_id, sx1, sy1)
+
                 # For placeholder components (rectangles with text)
                 elif comp.text_id:
                     sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
@@ -1689,8 +1699,8 @@ class ImageEditorApp:
                 # Start with a copy of the target's current image.
                 final_image = target_comp.pil_image.copy()
                 
-                # Create a transparent layer the size of the target image.
-                decal_layer = Image.new("RGBA", new_comp_image.size, (0, 0, 0, 0))
+                # --- BUG FIX: Use the correct size for the decal layer ---
+                decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
