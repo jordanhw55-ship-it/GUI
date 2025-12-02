@@ -277,6 +277,7 @@ class ImageEditorApp:
         # --- NEW: Decal Feature State ---
         self.active_decal = None
         self.decal_scale = tk.DoubleVar(value=100) # For the resize slider
+        self.transform_job = None # NEW: For debouncing slider updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
 
         # --- NEW: Asset Dock State ---
@@ -701,16 +702,16 @@ class ImageEditorApp:
         # Resize Slider
         tk.Label(transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
         tk.Scale(transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=0, column=1, sticky='ew')
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self.schedule_transform_update).grid(row=0, column=1, sticky='ew')
         tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+                  command=lambda: self.decal_scale.set(100) or self.schedule_transform_update()).grid(row=0, column=2, padx=(5,0))
 
         # Rotation Slider
         tk.Label(transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
         tk.Scale(transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=1, column=1, sticky='ew')
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self.schedule_transform_update).grid(row=1, column=1, sticky='ew')
         tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+                  command=lambda: self.decal_rotation.set(0) or self.schedule_transform_update()).grid(row=1, column=2, padx=(5,0))
         transform_frame.grid_columnconfigure(1, weight=1)
 
         # --- Apply/Discard buttons for Images ---
@@ -751,14 +752,14 @@ class ImageEditorApp:
         border_transform_frame.pack(fill='x', padx=10, pady=5)
         tk.Label(border_transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
         tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=0, column=1, sticky='ew')
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self.schedule_transform_update).grid(row=0, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+                  command=lambda: self.decal_scale.set(100) or self.schedule_transform_update()).grid(row=0, column=2, padx=(5,0))
         tk.Label(border_transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
         tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=1, column=1, sticky='ew')
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self.schedule_transform_update).grid(row=1, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+                  command=lambda: self.decal_rotation.set(0) or self.schedule_transform_update()).grid(row=1, column=2, padx=(5,0))
         border_transform_frame.grid_columnconfigure(1, weight=1)
 
         # --- Apply/Discard buttons for Borders ---
@@ -1361,6 +1362,15 @@ class ImageEditorApp:
             return
 
         self._remove_stamp_source_component(stamp_source_comp)
+
+    def schedule_transform_update(self, event=None):
+        """Schedules a decal transformation update, debouncing slider events."""
+        # Cancel any previously scheduled update
+        if self.transform_job:
+            self.master.after_cancel(self.transform_job)
+        
+        # Schedule the actual update to run after 150ms of inactivity
+        self.transform_job = self.master.after(150, self._update_active_decal_transform)
 
     def _update_active_decal_transform(self, event=None):
         """Applies both resize and rotation transformations to the active decal."""
