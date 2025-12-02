@@ -1881,12 +1881,13 @@ class ImageEditorApp:
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # Conditionally respect transparency of the underlying tile
-                if not stamp_source_comp.is_border_asset:
+                # --- FIX: Conditionally respect transparency of the underlying tile ---
+                # This should only happen for BORDERS, not for regular decals/images.
+                if stamp_source_comp.is_border_asset:
                     comp_alpha_mask = final_image.getchannel('A')
                     combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
                     decal_layer.putalpha(combined_alpha)
-
+                    
                 # Composite the decal layer onto the final image.
                 final_image = Image.alpha_composite(final_image, decal_layer)
 
@@ -1894,7 +1895,7 @@ class ImageEditorApp:
                 target_comp._set_pil_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
-
+        
         if applied_count == 0:
             messagebox.showwarning("No Target", "Decal must be positioned over a valid layer to be applied.")
             return
