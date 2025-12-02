@@ -1419,21 +1419,10 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # When running as a compiled --onefile app, bundled files are in a temporary folder.
-            # We must check this special location (_MEIPASS) for the script.
-            if getattr(sys, 'frozen', False):
-                base_path = sys._MEIPASS
-            else:
-                base_path = get_base_path()
-            ui_creator_script_path = os.path.join(base_path, "ui_creator.py")
-            
-            if not os.path.exists(ui_creator_script_path):
-                QMessageBox.critical(self, "Error", f"UI Creator script not found at:\n{ui_creator_script_path}")
-                return
-
-            # Launch the script using the python interpreter that's running this app
-            # This is more reliable than just calling the script directly.
-            subprocess.Popen([sys.executable, ui_creator_script_path])
+            # When compiled, sys.executable is the path to our .exe.
+            # We re-launch the .exe with a special argument that tells it to run the UI creator.
+            # This ensures the bundled Python environment is used correctly.
+            subprocess.Popen([sys.executable, "--run-ui-creator"])
         except Exception as e:
             QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}")
 
@@ -1455,17 +1444,13 @@ if __name__ == "__main__":
     # Check for the special flag to run the UI creator.
     # This allows the compiled .exe to launch the second GUI correctly.
     if len(sys.argv) > 1 and sys.argv[1] == '--run-ui-creator':
-        # We need to find the path to the bundled ui_creator.py script.
-        if getattr(sys, 'frozen', False):
-            base_path = sys._MEIPASS
-        else:
-            base_path = os.path.dirname(__file__)
-        
-        ui_creator_path = os.path.join(base_path, 'ui_creator.py')
-        
-        # Execute the ui_creator.py script's content in this process.
-        with open(ui_creator_path, 'r') as f:
-            exec(f.read())
+        # This block will now be executed by the new process.
+        # We import the necessary parts from ui_creator and run its main logic.
+        from ui_creator import ImageEditorApp, tk
+        root = tk.Tk()
+        app = ImageEditorApp(root)
+        # This is a blocking call that runs the Tkinter event loop.
+        root.mainloop()
     else:
         # --- Run the main application ---
         if os.name == 'nt':
