@@ -416,13 +416,6 @@ class ImageEditorApp:
         # )
         # self.canvas.create_text(CANVAS_WIDTH/2, 25, text="COMPOSITION AREA (Drag components here)", fill="#9ca3af", font=("Inter", 12))
 
-        # Draw a placeholder for the main template background and tag it for zooming
-        self.canvas.create_rectangle(self.COMP_AREA_X1, self.COMP_AREA_Y1, self.COMP_AREA_X2, self.COMP_AREA_Y2,
-                                     fill="#374151", # Slightly lighter than canvas bg
-                                     outline="#4b5563",
-                                     width=3,
-                                     tags="zoom_target")
-
         # --- NEW: Create the floating status box in the top-left ---
         status_box_frame = tk.Frame(self.canvas, bg="#1f2937", bd=1, relief="solid", highlightbackground="#4b5563", highlightthickness=1)
         
