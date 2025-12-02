@@ -344,10 +344,6 @@ class ImageEditorApp:
         self.transform_job = None # NEW: For debouncing slider updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
 
-        # --- NEW: Clipping Boundary for Composition Area ---
-        # This rectangle will act as a mask to prevent tiles from drawing outside the composition area.
-        self._clipping_rect = None
-
         # --- NEW: Composition Area Bounds ---
         # These define the draggable area for tiles.
         self.COMP_AREA_X1 = 0
@@ -1160,58 +1156,211 @@ class ImageEditorApp:
 
     def _clamp_camera_pan(self):
         """
-        DEFINITIVE REWRITE V5 (MS PAINT CLAMPING): Prevents panning the composition area entirely off-screen.
-        When zoomed in, you can't pan past the edges. When zoomed out, you can't push the
-        composition area completely out of view. This ensures some part of it is always visible.
+        DEFINITIVE REWRITE V6 (MS PAINT CLAMPING):
+        Ensures the composition area is always visible and correctly positioned on the canvas.
+        - If the scaled composition area is smaller than the canvas, it is centered.
+        - If the scaled composition area is larger than or equal to the canvas,
+          its edges are clamped to the canvas boundaries, preventing it from being
+          panned entirely off-screen.
         """
         canvas_w = self.canvas.winfo_width()
         canvas_h = self.canvas.winfo_height()
 
-        # Get the screen coordinates of the composition area's corners
-        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
+        # Calculate the composition area's world dimensions
+        comp_world_w = self.COMP_AREA_X2 - self.COMP_AREA_X1
+        comp_world_h = self.COMP_AREA_Y2 - self.COMP_AREA_Y1
 
-        # --- X-axis clamping ---
-        # Prevent the right edge of the comp area from going past the left edge of the canvas
-        if comp_sx2 < 0:
-            self.pan_offset_x -= comp_sx2
-        # Prevent the left edge of the comp area from going past the right edge of the canvas
-        if comp_sx1 > canvas_w:
-            self.pan_offset_x -= (comp_sx1 - canvas_w)
+        # Calculate the composition area's scaled screen dimensions
+        scaled_comp_w = comp_world_w * self.zoom_scale
+        scaled_comp_h = comp_world_h * self.zoom_scale
 
-        # --- Y-axis clamping ---
-        # Prevent the bottom edge of the comp area from going past the top edge of the canvas
-        if comp_sy2 < 0:
-            self.pan_offset_y -= comp_sy2
-        # Prevent the top edge of the comp area from going past the bottom edge of the canvas
-        if comp_sy1 > canvas_h:
-            self.pan_offset_y -= (comp_sy1 - canvas_h)
+        # --- Clamp X-axis ---
+        if scaled_comp_w < canvas_w:
+            # If scaled composition area is smaller than canvas width, center it.
+            # The pan_offset_x should be such that the left edge of the scaled comp area is centered.
+            self.pan_offset_x = (canvas_w - scaled_comp_w) / 2 - (self.COMP_AREA_X1 * self.zoom_scale)
+        else:
+            # If scaled composition area is larger than or equal to canvas width,
+            # ensure its edges don't go past the canvas edges.
+            # Max pan_offset_x: Left edge of comp area (world_x1) cannot go right of canvas left edge (0).
+            max_pan_x = -(self.COMP_AREA_X1 * self.zoom_scale)
+            # Min pan_offset_x: Right edge of comp area (world_x2) cannot go left of canvas right edge (canvas_w).
+            min_pan_x = canvas_w - (self.COMP_AREA_X2 * self.zoom_scale)
+            
+            self.pan_offset_x = max(min_pan_x, min(self.pan_offset_x, max_pan_x))
 
+        # --- Clamp Y-axis ---
+        if scaled_comp_h < canvas_h:
+            # If scaled composition area is smaller than canvas height, center it.
+            # The pan_offset_y should be such that the top edge of the scaled comp area is centered.
+            self.pan_offset_y = (canvas_h - scaled_comp_h) / 2 - (self.COMP_AREA_Y1 * self.zoom_scale)
+        else:
+            # If scaled composition area is larger than or equal to canvas height,
+            # ensure its edges don't go past the canvas edges.
+            # Max pan_offset_y: Top edge of comp area (world_y1) cannot go below canvas top edge (0).
+            max_pan_y = -(self.COMP_AREA_Y1 * self.zoom_scale)
+            # Min pan_offset_y: Bottom edge of comp area (world_y2) cannot go above canvas bottom edge (canvas_h).
+            min_pan_y = canvas_h - (self.COMP_AREA_Y2 * self.zoom_scale)
+
+            self.pan_offset_y = max(min_pan_y, min(self.pan_offset_y, max_pan_y))
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
         # Stop painting if active
         if self.paint_mode_active or self.eraser_mode_active:
             self.toggle_paint_mode(tool='off')
-
+        
+        # Store the current mouse position for calculating drag delta
         self.pan_start_x = event.x
         self.pan_start_y = event.y
         self.canvas.config(cursor="fleur")
 
     def on_pan_drag(self, event):
         """Moves all items on the canvas to pan the view."""
+        # Calculate the change in screen coordinates
         dx = event.x - self.pan_start_x
         dy = event.y - self.pan_start_y
+        
+        # Apply the change to the pan offsets
         self.pan_offset_x += dx
         self.pan_offset_y += dy
+        
+        # Update the starting position for the next drag event
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+        
         self._clamp_camera_pan() # Clamp the view after panning
         self.redraw_all_zoomable()
 
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""
         self.canvas.config(cursor="")
+
+    def redraw_all_zoomable(self):
+        """Redraws all zoomable items based on the current camera view, applying clipping."""
+        # Calculate the composition area's screen coordinates once
+        comp_screen_x1, comp_screen_y1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
+        comp_screen_x2, comp_screen_y2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
+
+        # Iterate through all components
+        for comp in self.components.values():
+            # Only process zoom_target items for clipping and redrawing
+            if "zoom_target" in self.canvas.gettags(comp.rect_id):
+                # Calculate component's current screen coordinates
+                comp_sx1, comp_sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                comp_sx2, comp_sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
+
+                # Find intersection with the composition area in screen coordinates
+                intersect_sx1 = max(comp_sx1, comp_screen_x1)
+                intersect_sy1 = max(comp_sy1, comp_screen_y1)
+                intersect_sx2 = min(comp_sx2, comp_screen_x2)
+                intersect_sy2 = min(comp_sy2, comp_screen_y2)
+
+                # Check if there's a valid intersection
+                if intersect_sx1 < intersect_sx2 and intersect_sy1 < intersect_sy2:
+                    # Calculate dimensions of the intersection in screen pixels
+                    clipped_screen_w = int(intersect_sx2 - intersect_sx1)
+                    clipped_screen_h = int(intersect_sy2 - intersect_sy1)
+
+                    if clipped_screen_w <= 0 or clipped_screen_h <= 0:
+                        self.canvas.itemconfig(comp.rect_id, state='hidden')
+                        if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
+                        continue
+
+                    # Map the intersection back to the component's original PIL image pixels
+                    comp_world_w = comp.world_x2 - comp.world_x1
+                    comp_world_h = comp.world_y2 - comp.world_y1
+
+                    if comp.pil_image and comp_world_w > 0 and comp_world_h > 0:
+                        original_img_w, original_img_h = comp.pil_image.size
+                        pixel_scale_x = original_img_w / comp_world_w
+                        pixel_scale_y = original_img_h / comp_world_h
+
+                        crop_pixel_x1 = int((intersect_sx1 - comp_sx1) / self.zoom_scale * pixel_scale_x)
+                        crop_pixel_y1 = int((intersect_sy1 - comp_sy1) / self.zoom_scale * pixel_scale_y)
+                        crop_pixel_x2 = int((intersect_sx2 - comp_sx1) / self.zoom_scale * pixel_scale_x)
+                        crop_pixel_y2 = int((intersect_sy2 - comp_sy1) / self.zoom_scale * pixel_scale_y)
+
+                        crop_pixel_x1 = max(0, crop_pixel_x1)
+                        crop_pixel_y1 = max(0, crop_pixel_y1)
+                        crop_pixel_x2 = min(original_img_w, crop_pixel_x2)
+                        crop_pixel_y2 = min(original_img_h, crop_pixel_y2)
+
+                        if crop_pixel_x1 >= crop_pixel_x2 or crop_pixel_y1 >= crop_pixel_y2:
+                            self.canvas.itemconfig(comp.rect_id, state='hidden')
+                            if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
+                            continue
+
+                        cropped_pil_image = comp.pil_image.crop((crop_pixel_x1, crop_pixel_y1, crop_pixel_x2, crop_pixel_y2))
+                        final_display_image = cropped_pil_image.resize((clipped_screen_w, clipped_screen_h), Image.Resampling.LANCZOS)
+
+                        comp.tk_image = ImageTk.PhotoImage(final_display_image)
+                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image, state='normal')
+                        self.canvas.coords(comp.rect_id, intersect_sx1, intersect_sy1)
+                        
+                        if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
+                    elif comp.text_id: # Placeholder rectangle with text
+                        self.canvas.coords(comp.rect_id, intersect_sx1, intersect_sy1, intersect_sx2, intersect_sy2)
+                        self.canvas.coords(comp.text_id, (intersect_sx1 + intersect_sx2) / 2, (intersect_sy1 + intersect_sy2) / 2)
+                        self.canvas.itemconfig(comp.rect_id, state='normal')
+                        self.canvas.itemconfig(comp.text_id, state='normal')
+                else:
+                    self.canvas.itemconfig(comp.rect_id, state='hidden')
+                    if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
+            else:
+                # For non-zoom_target items (like dock assets), just ensure they are visible
+                # and their coordinates are correct (they are not affected by zoom/pan in this context).
+                # Their positions are fixed relative to the canvas.
+                self.canvas.itemconfig(comp.rect_id, state='normal')
+                if comp.text_id: self.canvas.itemconfig(comp.text_id, state='normal')
+
+        # --- Clipping for the Paint Layer ---
+        if self.paint_layer_id and self.paint_layer_image:
+            # Calculate the paint layer's current screen coordinates
+            paint_sx1 = self.pan_offset_x
+            paint_sy1 = self.pan_offset_y
+            paint_sx2 = self.pan_offset_x + self.paint_layer_image.width * self.zoom_scale
+            paint_sy2 = self.pan_offset_y + self.paint_layer_image.height * self.zoom_scale
+
+            # Find intersection with the composition area in screen coordinates
+            intersect_paint_sx1 = max(paint_sx1, comp_screen_x1)
+            intersect_paint_sy1 = max(paint_sy1, comp_screen_y1)
+            intersect_paint_sx2 = min(paint_sx2, comp_screen_x2)
+            intersect_paint_sy2 = min(paint_sy2, comp_screen_y2)
+
+            if intersect_paint_sx1 < intersect_paint_sx2 and intersect_paint_sy1 < intersect_paint_sy2:
+                clipped_paint_screen_w = int(intersect_paint_sx2 - intersect_paint_sx1)
+                clipped_paint_screen_h = int(intersect_paint_sy2 - intersect_paint_sy1)
+
+                if clipped_paint_screen_w <= 0 or clipped_paint_screen_h <= 0:
+                    self.canvas.itemconfig(self.paint_layer_id, state='hidden')
+                else:
+                    paint_img_w, paint_img_h = self.paint_layer_image.size
+                    
+                    crop_paint_pixel_x1 = int((intersect_paint_sx1 - paint_sx1) / self.zoom_scale)
+                    crop_paint_pixel_y1 = int((intersect_paint_sy1 - paint_sy1) / self.zoom_scale)
+                    crop_paint_pixel_x2 = int((intersect_paint_sx2 - paint_sx1) / self.zoom_scale)
+                    crop_paint_pixel_y2 = int((intersect_paint_sy2 - paint_sy1) / self.zoom_scale)
+
+                    crop_paint_pixel_x1 = max(0, crop_paint_pixel_x1)
+                    crop_paint_pixel_y1 = max(0, crop_paint_pixel_y1)
+                    crop_paint_pixel_x2 = min(paint_img_w, crop_paint_pixel_x2)
+                    crop_paint_pixel_y2 = min(paint_img_h, crop_paint_pixel_y2)
+
+                    if crop_paint_pixel_x1 >= crop_paint_pixel_x2 or crop_paint_pixel_y1 >= crop_paint_pixel_y2:
+                        self.canvas.itemconfig(self.paint_layer_id, state='hidden')
+                    else:
+                        cropped_paint_pil_image = self.paint_layer_image.crop((crop_paint_pixel_x1, crop_paint_pixel_y1, crop_paint_pixel_x2, crop_paint_pixel_y2))
+                        final_display_paint_image = cropped_paint_pil_image.resize((clipped_paint_screen_w, clipped_paint_screen_h), Image.Resampling.LANCZOS)
+
+                        self.paint_layer_tk = ImageTk.PhotoImage(final_display_paint_image)
+                        self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk, state='normal')
+                        self.canvas.coords(self.paint_layer_id, intersect_paint_sx1, intersect_paint_sy1)
+            else:
+                self.canvas.itemconfig(self.paint_layer_id, state='hidden')
+
+        # Ensure non-zoomable items (like docks and status box) are always on top and visible
+        self._keep_docks_on_top()
 
     def handle_tab_click(self, name):
         """Handles the logic when a sidebar button is clicked."""
@@ -1385,15 +1534,6 @@ class ImageEditorApp:
     
         # Redraw everything with the new positions
         self.redraw_all_zoomable()
-
-        # --- NEW: Update the clipping rectangle ---
-        # This ensures the clipping mask is always perfectly aligned with the composition area's visual boundaries.
-        sx1, sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        sx2, sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
-        if self._clipping_rect:
-            self.canvas.coords(self._clipping_rect, sx1, sy1, sx2, sy2)
-        else:
-            self._clipping_rect = self.canvas.create_rectangle(sx1, sy1, sx2, sy2, outline="", fill="")
 
     def _export_modified_images(self, export_format):
         """
