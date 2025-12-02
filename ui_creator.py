@@ -347,6 +347,7 @@ class ImageEditorApp:
         self.active_decal = None
         self.decal_scale = tk.DoubleVar(value=100) # For the resize slider
         self.transform_job = None # NEW: For debouncing slider updates
+        self.zoom_job = None # NEW: For debouncing zoom updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
 
         # --- NEW: Composition Area Bounds ---
@@ -1072,7 +1073,8 @@ class ImageEditorApp:
                         source_img = comp.pil_image
                         if not source_img: continue # Should not happen if pil_image exists, but safe
 
-                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
+                        resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
@@ -1102,6 +1104,13 @@ class ImageEditorApp:
         if self.paint_mode_active or self.eraser_mode_active:
             self.toggle_paint_mode(tool='off')
 
+        # --- NEW: Debounce the high-quality redraw ---
+        # Cancel any pending high-quality redraw job
+        if self.zoom_job:
+            self.master.after_cancel(self.zoom_job)
+        # Schedule a new high-quality redraw to happen after we stop zooming
+        self.zoom_job = self.master.after(300, lambda: self.redraw_all_zoomable(use_fast_preview=False))
+
         # --- REWRITTEN for Camera System ---
         mouse_world_x_before, mouse_world_y_before = self.screen_to_world(event.x, event.y)
 
@@ -1115,7 +1124,7 @@ class ImageEditorApp:
 
         self._update_zoom_display()
         self._clamp_camera_pan() # Clamp the view after zooming
-        self.redraw_all_zoomable()
+        self.redraw_all_zoomable(use_fast_preview=True) # Use fast preview during zoom
 
     def zoom_in(self, event=None):
         """Zooms in on the center of the canvas."""
@@ -1304,8 +1313,8 @@ class ImageEditorApp:
             orig_w, orig_h = self.paint_layer_image.size
             new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
             if new_w > 0 and new_h > 0:
-                # This part is still a bit slow, but only happens on zoom, not drag.
-                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST) # Use NEAREST for speed
+                resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), resample_quality)
                 self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
                 self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
                 # The paint layer is always anchored at the pan offset.
