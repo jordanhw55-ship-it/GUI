@@ -1156,37 +1156,30 @@ class ImageEditorApp:
 
     def _clamp_camera_pan(self):
         """
-        MS PAINT STYLE CAMERA CLAMPING: Prevents the user from panning the composition area off-screen.
-        It ensures that some part of the composition area is always visible.
+        DEFINITIVE REWRITE V4: Prevents the user from panning the composition area off-screen.
+        It ensures the edges of the composition area cannot go past the edges of the canvas,
+        creating a true MS-Paint-style bounded view when zoomed.
         """
         canvas_w = self.canvas.winfo_width()
         canvas_h = self.canvas.winfo_height()
 
-        # Get the screen coordinates of the composition area's corners
-        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
+        # Calculate the size of the composition area in screen pixels (after zoom)
+        comp_screen_w = (self.COMP_AREA_X2 - self.COMP_AREA_X1) * self.zoom_scale
+        comp_screen_h = (self.COMP_AREA_Y2 - self.COMP_AREA_Y1) * self.zoom_scale
 
-        # --- X-axis clamping ---
-        # If the right edge of the comp area is panned past the left edge of the canvas
-        if comp_sx2 < 0:
-            # Correct the pan offset to bring the comp area's right edge back to 0
-            self.pan_offset_x += -comp_sx2
-        # If the left edge of the comp area is panned past the right edge of the canvas
-        if comp_sx1 > canvas_w:
-            # Correct the pan offset to bring the comp area's left edge back to the canvas width
-            self.pan_offset_x += canvas_w - comp_sx1
+        # Determine the valid range for the pan_offset.
+        # The pan offset's maximum value is 0 (can't pan left/up past the origin).
+        # The minimum value is the canvas dimension minus the scaled composition area dimension.
+        # This ensures the right/bottom edge of the comp area doesn't go past the right/bottom edge of the canvas.
+        min_pan_x = min(0, canvas_w - comp_screen_w)
+        max_pan_x = max(0, canvas_w - comp_screen_w)
+        min_pan_y = min(0, canvas_h - comp_screen_h)
+        max_pan_y = max(0, canvas_h - comp_screen_h)
 
-        # --- Y-axis clamping ---
-        # If the bottom edge of the comp area is panned past the top edge of the canvas
-        if comp_sy2 < 0:
-            # Correct the pan offset to bring the comp area's bottom edge back to 0
-            self.pan_offset_y += -comp_sy2
-        # If the top edge of the comp area is panned past the bottom edge of the canvas
-        # We use a buffer (e.g., 200px) to prevent panning too far down, which can feel disorienting.
-        # This ensures the top part of the composition area remains accessible.
-        y_clamp_buffer = 200 
-        if comp_sy1 > canvas_h - y_clamp_buffer:
-            self.pan_offset_y += (canvas_h - y_clamp_buffer) - comp_sy1
+        # Clamp the pan offset to these calculated boundaries.
+        # We use max() for the lower bound and min() for the upper bound.
+        self.pan_offset_x = max(min_pan_x, min(self.pan_offset_x, max_pan_x))
+        self.pan_offset_y = max(min_pan_y, min(self.pan_offset_y, max_pan_y))
 
 
     def on_pan_press(self, event):
