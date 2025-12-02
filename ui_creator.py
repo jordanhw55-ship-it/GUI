@@ -780,6 +780,10 @@ class ImageEditorApp:
         else:
             tk.Label(image_tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
 
+        # Add a stretch to push subsequent content to the bottom
+        tk.Frame(image_tab, bg="#374151").pack(fill='both', expand=True)
+
+
 
         # --- Populate the "Paint" Tab ---
         tk.Label(paint_tab, text="PAINTING TOOLS", **label_style).pack(fill='x')
@@ -863,6 +867,8 @@ class ImageEditorApp:
         tk.Label(border_tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
         tk.Button(border_tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_border_to_dock).pack(fill='x', padx=10, pady=5)
+        # Add a stretch to push subsequent content to the bottom
+        tk.Frame(border_tab, bg="#374151").pack(fill='both', expand=True)
 
         # --- NEW: Border Transform Controls (Resize & Rotate) ---
         border_transform_frame = tk.Frame(border_tab, bg="#374151")
