@@ -412,6 +412,10 @@ class ImageEditorApp:
         zoom_label = tk.Label(status_box_frame, textvariable=self.zoom_label_var, bg="#1f2937", fg="#d1d5db", font=('Inter', 10, 'bold'))
         zoom_label.pack(side=tk.LEFT, padx=(0, 5), pady=5)
 
+        self.reset_view_button = tk.Button(status_box_frame, text="Reset View", bg='#6b7280', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                                           command=self.reset_view, padx=5, pady=2)
+        self.reset_view_button.pack(side=tk.LEFT, padx=(0, 5), pady=5)
+
         # Place the frame on the canvas without it being a canvas item
         self.canvas.create_window(10, 10, window=status_box_frame, anchor="nw")
 
@@ -1099,6 +1103,15 @@ class ImageEditorApp:
         zoom_percentage = f"{self.zoom_scale * 100:.0f}%"
         self.zoom_label_var.set(zoom_percentage)
         print(f"Zoom: {self.zoom_scale:.2f}x")
+
+    def reset_view(self, event=None):
+        """Resets the zoom to 100% and centers the pan."""
+        self.zoom_scale = 1.0
+        self.pan_offset_x = 0.0
+        self.pan_offset_y = 0.0
+        self._update_zoom_display()
+        self.redraw_all_zoomable()
+        print("View has been reset.")
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
