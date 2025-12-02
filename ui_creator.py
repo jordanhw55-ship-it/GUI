@@ -30,7 +30,7 @@ def get_base_path():
 
 # --- CONFIGURATION (SCALED UP FOR LARGER GUI) ---
 CANVAS_WIDTH = 1440  # Increased by 20% for a wider GUI
-CANVAS_HEIGHT = 900  # Increased from 700
+CANVAS_HEIGHT = 850  # Adjusted to fit screen real estate
 SIDEBAR_WIDTH = 300  # Increased by 20%
 
 class DraggableComponent:
@@ -1712,10 +1712,6 @@ class ImageEditorApp:
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
         self._update_active_decal_transform()
-
-        # --- Crucially, initiate a "drag" on the new clone immediately ---
-        clone_comp.on_press(event) # This sets up the drag state for the clone
-        clone_comp.on_drag(event)  # This starts the drag immediately
 
         # --- FIX: Ensure the dock itself remains on top after creating a clone ---
         self._keep_docks_on_top()
