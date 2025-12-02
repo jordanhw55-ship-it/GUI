@@ -1372,7 +1372,6 @@ class ImageEditorApp:
         # Schedule the actual update to run after 150ms of inactivity
         self.transform_job = self.master.after(150, self._update_active_decal_transform)
 
-    def _update_active_decal_transform(self, event=None):
     def _update_active_decal_transform(self, event=None, use_fast_preview=False):
         """Applies both resize and rotation transformations to the active decal."""
         # Debounce the high-quality update
