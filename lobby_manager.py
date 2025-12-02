@@ -102,7 +102,13 @@ class LobbyManager:
         lobbies_table = self.lobbies_tab.lobbies_table
         lobbies_table.setRowCount(1)
         lobbies_table.setSpan(0, 0, 1, lobbies_table.columnCount())
-        error_item = QTableWidgetItem(f"Error: {error_message}")
+
+        # Create a more user-friendly error message for common network issues
+        display_message = f"Error: {error_message}"
+        if "network error" in error_message.lower():
+            display_message = "Could not connect to the lobby server. It may be temporarily down."
+
+        error_item = QTableWidgetItem(display_message)
         error_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         lobbies_table.setItem(0, 0, error_item)
 
