@@ -47,6 +47,7 @@ class DraggableComponent:
         self.tk_image = None # Reference to the PhotoImage object
         self.preview_pil_image = None # NEW: For dock previews
         self.pil_image = None # Reference to the PIL Image object
+        self.border_pil_image = None # NEW: For storing the border image
         self.original_pil_image = None # NEW: For storing the pristine decal image
         self.rect_id = None
         self.text_id = None
@@ -105,6 +106,10 @@ class DraggableComponent:
         if not self.original_pil_image:
             self.original_pil_image = pil_image
 
+        # --- NEW: Composite border if it exists ---
+        if self.border_pil_image:
+            pil_image = self._composite_border(pil_image)
+
         # Get the current size and position of the component for resizing
         current_bbox = self.canvas.bbox(self.rect_id)
         if not current_bbox: # Fallback if bbox is not available
@@ -141,6 +146,34 @@ class DraggableComponent:
         # Must store a reference to avoid garbage collection
         self.tk_image = new_tk_image
 
+    def set_border_image(self, border_image_path):
+        """Loads and applies a border image from a file path."""
+        if not self.pil_image:
+            messagebox.showwarning("No Content", "Please apply a main image to the tile before adding a border.")
+            return
+
+        try:
+            self.border_pil_image = Image.open(border_image_path).convert("RGBA")
+            # Re-apply the main image to trigger the border composition
+            self._set_pil_image(self.pil_image)
+            print(f"Border '{os.path.basename(border_image_path)}' applied to {self.tag}")
+        except Exception as e:
+            messagebox.showerror("Border Error", f"Could not load border image: {e}")
+
+    def remove_border(self):
+        """Removes the border and redraws the component."""
+        if self.border_pil_image:
+            self.border_pil_image = None
+            # Re-apply the main image to redraw without the border
+            self._set_pil_image(self.pil_image)
+            print(f"Border removed from {self.tag}")
+
+    def _composite_border(self, base_image):
+        """Composites the border image on top of the base image."""
+        if not self.border_pil_image:
+            return base_image
+        border_resized = self.border_pil_image.resize(base_image.size, Image.Resampling.LANCZOS)
+        return Image.alpha_composite(base_image.copy(), border_resized)
 
     def on_press(self, event):
         """Records the starting position and brings the element to the front."""
@@ -580,12 +613,14 @@ class ImageEditorApp:
         paint_tab = tk.Frame(notebook, bg="#374151")
         image_tab = tk.Frame(notebook, bg="#374151")
         filters_tab = tk.Frame(notebook, bg="#374151") # NEW
+        border_tab = tk.Frame(notebook, bg="#374151") # NEW
         resize_tab = tk.Frame(notebook, bg="#374151") # NEW
         text_tab = tk.Frame(notebook, bg="#374151") # NEW
         export_tab = tk.Frame(notebook, bg="#374151")
 
         notebook.add(layer_tab, text='Tiles')
         notebook.add(paint_tab, text='Paint')
+        notebook.add(border_tab, text='Border') # NEW
         notebook.add(image_tab, text='Image')
         notebook.add(resize_tab, text='Resize') # NEW
         notebook.add(filters_tab, text='Filters') # NEW
@@ -687,6 +722,14 @@ class ImageEditorApp:
                         command=self.update_resize_entries).pack(pady=5)
         tk.Button(resize_tab, text="Apply Size", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.resize_selected_component).pack(fill='x', padx=10, pady=5)
+
+        # --- Populate the "Border" Tab ---
+        tk.Label(border_tab, text="CUSTOM BORDER", **label_style).pack(fill='x')
+        tk.Button(border_tab, text="Load Border Image", bg='#3b82f6', fg='white', relief='flat', font=button_font,
+                  command=self.apply_border_to_selection).pack(fill='x', padx=10, pady=5)
+        tk.Button(border_tab, text="Remove Border", bg='#ef4444', fg='white', relief='flat', font=button_font,
+                  command=self.remove_border_from_selection).pack(fill='x', padx=10, pady=5)
+        tk.Label(border_tab, text="Select a tile, then load an image to use as its border. The border image will be stretched to fit.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10, wraplength=SIDEBAR_WIDTH-20).pack(fill='x', pady=10)
 
         # --- Populate the "Filters" Tab (Placeholder) ---
         tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
@@ -852,6 +895,34 @@ class ImageEditorApp:
         else:
             comp._draw_placeholder(comp.x1, comp.y1, comp.x2, comp.y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
+
+    def apply_border_to_selection(self):
+        """Applies a loaded border image to the currently selected component."""
+        if not self.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a tile to apply the border to.")
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp: return
+
+        image_path = filedialog.askopenfilename(
+            title="Select Border Image",
+            filetypes=[("PNG files", "*.png")],
+            initialdir=self.image_base_dir
+        )
+        if image_path:
+            comp.set_border_image(image_path)
+
+    def remove_border_from_selection(self):
+        """Removes the border from the currently selected component."""
+        if not self.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a tile to remove the border from.")
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp: return
+
+        comp.remove_border()
 
 
     def _keep_docks_on_top(self):
