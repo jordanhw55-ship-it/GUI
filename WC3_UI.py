@@ -108,6 +108,12 @@ class WC3UITab(QWidget):
         self.reg_off_button.clicked.connect(self.run_reg_off)
         self.reset_default_button.clicked.connect(self.reset_to_default)
 
+    def showEvent(self, event):
+        """Override the show event to trigger the initial population."""
+        super().showEvent(event)
+        # This ensures the content is loaded the first time the tab becomes visible.
+        self.populate_if_needed()
+
     def populate_if_needed(self):
         """Populates the tabs with their content if they haven't been already."""
         if not self._is_populated:
