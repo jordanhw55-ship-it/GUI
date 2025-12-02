@@ -255,6 +255,13 @@ class ImageEditorApp:
         self.main_frame = tk.Frame(master, padx=10, pady=10, bg="#1f2937")
         self.main_frame.pack(fill="both", expand=True)
 
+        # --- NEW: Scan for available image sets (subdirectories) ---
+        self.image_sets = []
+        if os.path.isdir(self.image_base_dir):
+            self.image_sets = [d for d in os.listdir(self.image_base_dir) if os.path.isdir(os.path.join(self.image_base_dir, d))]
+        self.selected_image_set = tk.StringVar()
+        self.selected_image_set.trace_add("write", self.on_image_set_changed)
+
         # --- 1. Main Canvas (Left/Center) ---
         self.canvas = tk.Canvas(self.main_frame, 
                                  width=CANVAS_WIDTH, 
@@ -397,10 +404,15 @@ class ImageEditorApp:
         self.create_sidebar_tabs() # Replaced old method with new tabbed one
         # Set a default selected component
         self.set_selected_component('humanuitile01')
-
-        # --- 4. Auto-Load Images from the new Contents folder ---
-        self._attempt_auto_load_images(self.image_base_dir)
-
+        
+        # --- 4. Auto-Load Images ---
+        # If there are image sets, select the first one by default.
+        # Otherwise, fall back to loading from the base images directory.
+        if self.image_sets:
+            self.selected_image_set.set(self.image_sets[0])
+        else:
+            self._attempt_auto_load_images(self.image_base_dir)
+            
         # --- 5. Apply Initial Layout ---
         self.apply_preview_layout()
 
@@ -430,6 +442,17 @@ class ImageEditorApp:
         print(f"Auto-load complete. {loaded_count} images loaded.")
         print("-" * 30)
 
+    def on_image_set_changed(self, *args):
+        """Called when a new image set is selected from the dropdown."""
+        set_name = self.selected_image_set.get()
+        if not set_name:
+            return
+        
+        new_image_dir = os.path.join(self.image_base_dir, set_name)
+        print(f"\n--- Changing image set to: {set_name} ---")
+        self._attempt_auto_load_images(new_image_dir)
+        # Re-apply the layout to show the newly loaded images in their correct positions.
+        self.apply_preview_layout()
 
     def set_selected_component(self, tag):
         """Updates the tracking variable for the currently selected component."""
@@ -605,6 +628,16 @@ class ImageEditorApp:
         tk.Button(layout_frame, text="Load Layout", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_layout).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
+        # --- Populate the "Image" Tab ---
+        tk.Label(image_tab, text="IMAGE SET", **label_style).pack(fill='x')
+        # Create the dropdown menu for image sets
+        if self.image_sets:
+            image_set_menu = ttk.OptionMenu(image_tab, self.selected_image_set, self.image_sets[0], *self.image_sets)
+            image_set_menu.pack(fill='x', padx=10, pady=5)
+        else:
+            tk.Label(image_tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
+
+
         # --- Populate the "Paint" Tab ---
         tk.Label(paint_tab, text="PAINTING TOOLS", **label_style).pack(fill='x')
         paint_frame = tk.Frame(paint_tab, bg="#374151")
@@ -623,8 +656,7 @@ class ImageEditorApp:
                                     command=self.clear_paintings)
         clear_paint_btn.pack(fill='x', expand=True, pady=(5,0))
 
-        # --- Populate the "Image" Tab ---
-        tk.Label(image_tab, text="ASSET CONTROLS", **label_style).pack(fill='x')
+        tk.Label(image_tab, text="ASSET CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(image_tab, text="Load Asset to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_asset_to_dock).pack(fill='x', padx=10, pady=(5,10))
         # --- NEW: Decal Resizing Controls ---
