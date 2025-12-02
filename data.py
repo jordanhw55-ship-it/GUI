@@ -6,7 +6,8 @@ from utils import get_base_path
 class ItemDatabase:
     """Handles loading and searching item data from text files."""
     def __init__(self):
-        self.base_path = os.path.join(get_base_path(), "contents")
+        self.contents_base_path = os.path.join(get_base_path(), "contents")
+        self.items_base_path = os.path.join(self.contents_base_path, "Items")
         self.all_items_data = []
         self.drops_data = []
         self.raid_data = []
@@ -32,7 +33,7 @@ class ItemDatabase:
 
     def _load_item_data_from_folder(self, folder: str) -> list:
         data = []
-        folder_path = os.path.join(self.base_path, folder)
+        folder_path = os.path.join(self.items_base_path, folder)
         if not os.path.isdir(folder_path):
             return []
         for filename in os.listdir(folder_path):
@@ -69,7 +70,7 @@ class ItemDatabase:
     def load_recipes(self):
         if self.recipes_data:
             return
-        file_path = os.path.join(self.base_path, "Recipes.txt")
+        file_path = os.path.join(self.contents_base_path, "Recipes.txt")
         if not os.path.exists(file_path):
             return
         self.recipes_data = []

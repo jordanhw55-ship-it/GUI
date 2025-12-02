@@ -69,7 +69,7 @@ class ItemsManager:
             if index == 0 and not self.item_database.all_items_data: self.item_database.all_items_data = self.item_database._load_item_data_from_folder("All Items")
             elif index == 1 and not self.item_database.drops_data: self.item_database.drops_data = self.item_database._load_item_data_from_folder("Drops")
             elif index == 2 and not self.item_database.raid_data: self.item_database.raid_data = self.item_database._load_item_data_from_folder("Raid Items")
-            elif index == 3 and not self.item_database.vendor_data: self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor Items")
+            elif index == 3 and not self.item_database.vendor_data: self.item_database.vendor_data = self.item_database._load_item_data_from_folder("Vendor")
             self.filter_current_item_view()
 
     def filter_recipes_list(self):
