@@ -823,7 +823,10 @@ class ImageEditorApp:
 
         exported_count = 0
         for tag, comp in self.components.items():
-            if not comp.pil_image: continue
+            # --- FIX: Skip dock assets and their clones during export ---
+            if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_"):
+                continue
+
 
             # Start with the component's current image (which may have decals)
             final_image = comp.pil_image.copy()
