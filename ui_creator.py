@@ -1226,20 +1226,29 @@ class ImageEditorApp:
         self.canvas.config(cursor="fleur")
 
     def on_pan_drag(self, event):
-        """Moves all items on the canvas to pan the view."""
-        # Calculate the change in screen coordinates
-        dx = event.x - self.pan_start_x
-        dy = event.y - self.pan_start_y
+        """
+        MODIFIED: Drags all non-dock, non-clone components at once while preserving their layout.
+        This replaces the old camera panning functionality.
+        """
+        # Calculate movement in world space
+        dx_screen = event.x - self.pan_start_x
+        dy_screen = event.y - self.pan_start_y
+        dx_world = dx_screen / self.zoom_scale
+        dy_world = dy_screen / self.zoom_scale
         
-        # Apply the change to the pan offsets
-        self.pan_offset_x += dx
-        self.pan_offset_y += dy
+        # Move all primary components
+        for comp in self.components.values():
+            # We only want to move the main tiles, not temporary clones or dock assets
+            if not comp.is_dock_asset and not comp.tag.startswith(('clone_', 'border_')):
+                comp.world_x1 += dx_world
+                comp.world_y1 += dy_world
+                comp.world_x2 += dx_world
+                comp.world_y2 += dy_world
         
         # Update the starting position for the next drag event
         self.pan_start_x = event.x
         self.pan_start_y = event.y
         
-        self._clamp_camera_pan() # Clamp the view after panning
         self.redraw_all_zoomable()
 
     def on_pan_release(self, event):
