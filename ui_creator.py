@@ -255,16 +255,16 @@ class DraggableComponent:
         tile_h_world = self.world_y2 - self.world_y1
 
         # Clamp X coordinates
-        if new_world_x1 < bounds.COMP_AREA_X1 / self.app.zoom_scale:
-            new_world_x1 = bounds.COMP_AREA_X1 / self.app.zoom_scale
-        if new_world_x1 + tile_w_world > bounds.COMP_AREA_X2 / self.app.zoom_scale:
-            new_world_x1 = bounds.COMP_AREA_X2 / self.app.zoom_scale - tile_w_world
+        if new_world_x1 < bounds.COMP_AREA_X1:
+            new_world_x1 = bounds.COMP_AREA_X1
+        if new_world_x1 + tile_w_world > bounds.COMP_AREA_X2:
+            new_world_x1 = bounds.COMP_AREA_X2 - tile_w_world
 
         # Clamp Y coordinates
-        if new_world_y1 < bounds.COMP_AREA_Y1 / self.app.zoom_scale:
-            new_world_y1 = bounds.COMP_AREA_Y1 / self.app.zoom_scale
-        if new_world_y1 + tile_h_world > bounds.COMP_AREA_Y2 / self.app.zoom_scale:
-            new_world_y1 = bounds.COMP_AREA_Y2 / self.app.zoom_scale - tile_h_world
+        if new_world_y1 < bounds.COMP_AREA_Y1:
+            new_world_y1 = bounds.COMP_AREA_Y1
+        if new_world_y1 + tile_h_world > bounds.COMP_AREA_Y2:
+            new_world_y1 = bounds.COMP_AREA_Y2 - tile_h_world
 
         # Update the component's world coordinates with the final clamped values
         self.world_x1, self.world_y1 = new_world_x1, new_world_y1
@@ -321,7 +321,7 @@ class ImageEditorApp:
         master.bind("<Control-z>", self.undo_last_action)
         
         # --- REFACTORED: Camera-based Zoom and Pan State ---
-        self.zoom_scale = 0.82
+        self.zoom_scale = 1.0
         self.pan_offset_x = 0.0
         self.pan_offset_y = 0.0
         self.pan_start_x = 0 # For tracking drag start
@@ -349,10 +349,6 @@ class ImageEditorApp:
         self.transform_job = None # NEW: For debouncing slider updates
         self.zoom_job = None # NEW: For debouncing zoom updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
-        
-        # --- NEW: Independent Border Transform State ---
-        self.border_scale = tk.DoubleVar(value=100)
-        self.border_rotation = tk.DoubleVar(value=0)
 
         # --- NEW: Composition Area Bounds ---
         # These define the draggable area for tiles.
@@ -405,14 +401,14 @@ class ImageEditorApp:
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
-            "humanuitile01": {"coords": [322, 263, 527, 509]},
-            "humanuitile02": {"coords": [527, 263, 732, 509]},
-            "humanuitile03": {"coords": [733, 263, 938, 509]},
-            "humanuitile04": {"coords": [939, 263, 963, 509]},
-            "humanuitile05": {"coords": [116, 263, 321, 509]},
-            "humanuitile06": {"coords": [963, 263, 1168, 509]},
-            "humanuitile-inventorycover": {"coords": [703, 263, 801, 509]},
-            "humanuitile-timeindicatorframe": {"coords": [588, 263, 698, 324]}
+            "humanuitile01": {"coords": [261, 57, 511, 357]},
+            "humanuitile02": {"coords": [511, 57, 761, 357]},
+            "humanuitile03": {"coords": [761, 57, 1011, 357]},
+            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
+            "humanuitile05": {"coords": [11, 57, 261, 357]},
+            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
+            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
+            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
         }
         
         # --- BACKGROUND TEMPLATE ---
@@ -873,15 +869,15 @@ class ImageEditorApp:
         border_transform_frame = tk.Frame(border_tab, bg="#374151")
         border_transform_frame.pack(fill='x', padx=10, pady=5)
         tk.Label(border_transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
-        tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.border_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_border_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
+        tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_decal_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.border_scale.set(100) or self._update_active_border_transform()).grid(row=0, column=2, padx=(5,0))
+                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
         tk.Label(border_transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
-        tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.border_rotation,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_border_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
+        tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_decal_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.border_rotation.set(0) or self._update_active_border_transform()).grid(row=1, column=2, padx=(5,0))
+                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
         border_transform_frame.grid_columnconfigure(1, weight=1)
 
         # --- Apply/Discard buttons for Borders ---
@@ -1667,16 +1663,13 @@ class ImageEditorApp:
         # 2. Set the clone's display image to the original for now.
         # The transform function will create and apply the transparent, scaled version.
         clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
+        
+        # Add the new clone to the main components dictionary
+        self.components[clone_tag] = clone_comp
 
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
         self._update_active_decal_transform()
-
-        # Add the new clone to the main components dictionary
-        self.components[clone_tag] = clone_comp
-
-        # --- DEFINITIVE FIX for Dragging: Initiate a "press" on the new clone AFTER it's in the component list ---
-        clone_comp.on_press(event)
 
         # --- FIX: Ensure the dock itself remains on top after creating a clone ---
         self._keep_docks_on_top()
@@ -1879,9 +1872,13 @@ class ImageEditorApp:
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # --- DEFINITIVE FIX V3 for Transparency ---
-                # The paste/mask method was incorrect. alpha_composite is the correct way
-                # to layer RGBA images while respecting the alpha of both layers.
+                # Conditionally respect transparency of the underlying tile
+                if not stamp_source_comp.is_border_asset:
+                    comp_alpha_mask = final_image.getchannel('A')
+                    combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
+                    decal_layer.putalpha(combined_alpha)
+
+                # Composite the decal layer onto the final image.
                 final_image = Image.alpha_composite(final_image, decal_layer)
 
                 # 8. Apply the newly composited image back to the target component.
@@ -1943,15 +1940,10 @@ class ImageEditorApp:
             # The background is transparent, so this is safe.
             rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=rotate_quality)
 
-            # 3. --- FIX: Restore semi-transparency for the live decal preview ---
-            # The decal itself should be displayed at 50% alpha to distinguish it from stamped content.
-            # We also need to composite it over a transparent background to handle rotation correctly.
-            display_image = Image.new('RGBA', rotated_image.size, (0,0,0,0))
-            display_image.paste(rotated_image, (0,0), rotated_image)
-
-            # Now, apply the semi-transparency effect to the composited image.
-            alpha = display_image.getchannel('A')
-            semi_transparent_alpha = Image.eval(alpha, lambda a: int(a * 0.5)) # Use 50% opacity
+            # 3. Create the semi-transparent version for display
+            alpha = rotated_image.getchannel('A')
+            semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
+            display_image = rotated_image.copy()
             display_image.putalpha(semi_transparent_alpha)
 
             # 4. Update the component on the canvas
