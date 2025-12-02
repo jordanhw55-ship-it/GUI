@@ -1237,127 +1237,108 @@ class ImageEditorApp:
         self.canvas.config(cursor="")
 
     def redraw_all_zoomable(self):
-        """Redraws all zoomable items based on the current camera view, applying clipping."""
+        """
+        DEFINITIVE REWRITE V7: Redraws all zoomable items with pixel-perfect clipping.
+        This function calculates the exact intersection of each component with the
+        composition area in screen space, then crops the original PIL image to match
+        that intersection before displaying it. This guarantees that no part of a
+        tile is ever drawn outside the composition area.
+        """
         # Calculate the composition area's screen coordinates once
         comp_screen_x1, comp_screen_y1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
         comp_screen_x2, comp_screen_y2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
 
-        # Iterate through all components
-        for comp in self.components.values():
-            # Only process zoom_target items for clipping and redrawing
-            if "zoom_target" in self.canvas.gettags(comp.rect_id):
-                # Calculate component's current screen coordinates
-                comp_sx1, comp_sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
-                comp_sx2, comp_sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
-
-                # Find intersection with the composition area in screen coordinates
-                intersect_sx1 = max(comp_sx1, comp_screen_x1)
-                intersect_sy1 = max(comp_sy1, comp_screen_y1)
-                intersect_sx2 = min(comp_sx2, comp_screen_x2)
-                intersect_sy2 = min(comp_sy2, comp_screen_y2)
-
-                # Check if there's a valid intersection
-                if intersect_sx1 < intersect_sx2 and intersect_sy1 < intersect_sy2:
-                    # Calculate dimensions of the intersection in screen pixels
-                    clipped_screen_w = int(intersect_sx2 - intersect_sx1)
-                    clipped_screen_h = int(intersect_sy2 - intersect_sy1)
-
-                    if clipped_screen_w <= 0 or clipped_screen_h <= 0:
-                        self.canvas.itemconfig(comp.rect_id, state='hidden')
-                        if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
-                        continue
-
-                    # Map the intersection back to the component's original PIL image pixels
-                    comp_world_w = comp.world_x2 - comp.world_x1
-                    comp_world_h = comp.world_y2 - comp.world_y1
-
-                    if comp.pil_image and comp_world_w > 0 and comp_world_h > 0:
-                        original_img_w, original_img_h = comp.pil_image.size
-                        pixel_scale_x = original_img_w / comp_world_w
-                        pixel_scale_y = original_img_h / comp_world_h
-
-                        crop_pixel_x1 = int((intersect_sx1 - comp_sx1) / self.zoom_scale * pixel_scale_x)
-                        crop_pixel_y1 = int((intersect_sy1 - comp_sy1) / self.zoom_scale * pixel_scale_y)
-                        crop_pixel_x2 = int((intersect_sx2 - comp_sx1) / self.zoom_scale * pixel_scale_x)
-                        crop_pixel_y2 = int((intersect_sy2 - comp_sy1) / self.zoom_scale * pixel_scale_y)
-
-                        crop_pixel_x1 = max(0, crop_pixel_x1)
-                        crop_pixel_y1 = max(0, crop_pixel_y1)
-                        crop_pixel_x2 = min(original_img_w, crop_pixel_x2)
-                        crop_pixel_y2 = min(original_img_h, crop_pixel_y2)
-
-                        if crop_pixel_x1 >= crop_pixel_x2 or crop_pixel_y1 >= crop_pixel_y2:
-                            self.canvas.itemconfig(comp.rect_id, state='hidden')
-                            if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
-                            continue
-
-                        cropped_pil_image = comp.pil_image.crop((crop_pixel_x1, crop_pixel_y1, crop_pixel_x2, crop_pixel_y2))
-                        final_display_image = cropped_pil_image.resize((clipped_screen_w, clipped_screen_h), Image.Resampling.LANCZOS)
-
-                        comp.tk_image = ImageTk.PhotoImage(final_display_image)
-                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image, state='normal')
-                        self.canvas.coords(comp.rect_id, intersect_sx1, intersect_sy1)
-                        
-                        if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
-                    elif comp.text_id: # Placeholder rectangle with text
-                        self.canvas.coords(comp.rect_id, intersect_sx1, intersect_sy1, intersect_sx2, intersect_sy2)
-                        self.canvas.coords(comp.text_id, (intersect_sx1 + intersect_sx2) / 2, (intersect_sy1 + intersect_sy2) / 2)
-                        self.canvas.itemconfig(comp.rect_id, state='normal')
-                        self.canvas.itemconfig(comp.text_id, state='normal')
-                else:
-                    self.canvas.itemconfig(comp.rect_id, state='hidden')
-                    if comp.text_id: self.canvas.itemconfig(comp.text_id, state='hidden')
-            else:
-                # For non-zoom_target items (like dock assets), just ensure they are visible
-                # and their coordinates are correct (they are not affected by zoom/pan in this context).
-                # Their positions are fixed relative to the canvas.
-                self.canvas.itemconfig(comp.rect_id, state='normal')
-                if comp.text_id: self.canvas.itemconfig(comp.text_id, state='normal')
-
-        # --- Clipping for the Paint Layer ---
+        # Process all components including tiles, clones, and the paint layer
+        items_to_process = list(self.components.values())
         if self.paint_layer_id and self.paint_layer_image:
-            # Calculate the paint layer's current screen coordinates
-            paint_sx1 = self.pan_offset_x
-            paint_sy1 = self.pan_offset_y
-            paint_sx2 = self.pan_offset_x + self.paint_layer_image.width * self.zoom_scale
-            paint_sy2 = self.pan_offset_y + self.paint_layer_image.height * self.zoom_scale
+            # Create a temporary object to represent the paint layer for uniform processing
+            paint_comp_like = type('PaintLayer', (object,), {
+                'rect_id': self.paint_layer_id,
+                'pil_image': self.paint_layer_image,
+                'tk_image': self.paint_layer_tk,
+                'world_x1': 0, 'world_y1': 0, # Paint layer covers the whole world space from origin
+                'world_x2': self.paint_layer_image.width, 'world_y2': self.paint_layer_image.height,
+                'text_id': None
+            })()
+            items_to_process.append(paint_comp_like)
 
-            # Find intersection with the composition area in screen coordinates
-            intersect_paint_sx1 = max(paint_sx1, comp_screen_x1)
-            intersect_paint_sy1 = max(paint_sy1, comp_screen_y1)
-            intersect_paint_sx2 = min(paint_sx2, comp_screen_x2)
-            intersect_paint_sy2 = min(paint_sy2, comp_screen_y2)
+        for item in items_to_process:
+            # Skip non-zoomable items like dock assets
+            if "zoom_target" not in self.canvas.gettags(item.rect_id):
+                # Ensure non-zoomable items are visible (unless they are clones that have been applied)
+                if item.rect_id in self.canvas.find_all():
+                    self.canvas.itemconfig(item.rect_id, state='normal')
+                continue
 
-            if intersect_paint_sx1 < intersect_paint_sx2 and intersect_paint_sy1 < intersect_paint_sy2:
-                clipped_paint_screen_w = int(intersect_paint_sx2 - intersect_paint_sx1)
-                clipped_paint_screen_h = int(intersect_paint_sy2 - intersect_paint_sy1)
+            # Calculate item's full screen coordinates
+            item_sx1, item_sy1 = self.world_to_screen(item.world_x1, item.world_y1)
+            item_sx2, item_sy2 = self.world_to_screen(item.world_x2, item.world_y2)
 
-                if clipped_paint_screen_w <= 0 or clipped_paint_screen_h <= 0:
-                    self.canvas.itemconfig(self.paint_layer_id, state='hidden')
-                else:
-                    paint_img_w, paint_img_h = self.paint_layer_image.size
+            # Find the visual intersection with the composition area in screen coordinates
+            intersect_sx1 = max(item_sx1, comp_screen_x1)
+            intersect_sy1 = max(item_sy1, comp_screen_y1)
+            intersect_sx2 = min(item_sx2, comp_screen_x2)
+            intersect_sy2 = min(item_sy2, comp_screen_y2)
+
+            # Check if there's a valid, visible intersection
+            if intersect_sx1 >= intersect_sx2 or intersect_sy1 >= intersect_sy2:
+                self.canvas.itemconfig(item.rect_id, state='hidden')
+                if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
+                continue
+
+            # --- Handle Image-based Components ---
+            if item.pil_image:
+                # Calculate the dimensions of the visible part on screen
+                visible_screen_w = int(intersect_sx2 - intersect_sx1)
+                visible_screen_h = int(intersect_sy2 - intersect_sy1)
+
+                # Map the screen intersection back to the original PIL image's pixel coordinates
+                # This determines which part of the source image to crop
+                item_world_w = item.world_x2 - item.world_x1
+                item_world_h = item.world_y2 - item.world_y1
+                
+                if item_world_w <= 0 or item_world_h <= 0:
+                    self.canvas.itemconfig(comp.rect_id, state='hidden')
+                    if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
+                    continue
+
+                original_img_w, original_img_h = item.pil_image.size
+                pixel_per_world_x = original_img_w / item_world_w
+                pixel_per_world_y = original_img_h / item_world_h
+
+                # Calculate crop box in original image's pixel coordinates
+                crop_px1 = (intersect_sx1 - item_sx1) / self.zoom_scale * pixel_per_world_x
+                crop_py1 = (intersect_sy1 - item_sy1) / self.zoom_scale * pixel_per_world_y
+                crop_px2 = (intersect_sx2 - item_sx1) / self.zoom_scale * pixel_per_world_x
+                crop_py2 = (intersect_sy2 - item_sy1) / self.zoom_scale * pixel_per_world_y
+
+                # Crop the original PIL image
+                cropped_pil = item.pil_image.crop((
+                    max(0, int(crop_px1)),
+                    max(0, int(crop_py1)),
+                    min(original_img_w, int(crop_px2)),
+                    min(original_img_h, int(crop_py2))
+                ))
+
+                # Resize the *cropped* image to fit the *visible* screen area
+                if visible_screen_w > 0 and visible_screen_h > 0:
+                    display_img = cropped_pil.resize((visible_screen_w, visible_screen_h), Image.Resampling.LANCZOS)
                     
-                    crop_paint_pixel_x1 = int((intersect_paint_sx1 - paint_sx1) / self.zoom_scale)
-                    crop_paint_pixel_y1 = int((intersect_paint_sy1 - paint_sy1) / self.zoom_scale)
-                    crop_paint_pixel_x2 = int((intersect_paint_sx2 - paint_sx1) / self.zoom_scale)
-                    crop_paint_pixel_y2 = int((intersect_paint_sy2 - paint_sy1) / self.zoom_scale)
+                    # Update the PhotoImage and display it
+                    item.tk_image = ImageTk.PhotoImage(display_img)
+                    self.canvas.itemconfig(item.rect_id, image=item.tk_image, state='normal')
+                    self.canvas.coords(item.rect_id, int(intersect_sx1), int(intersect_sy1))
+                    if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
+                else:
+                    self.canvas.itemconfig(item.rect_id, state='hidden')
+                    if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
 
-                    crop_paint_pixel_x1 = max(0, crop_paint_pixel_x1)
-                    crop_paint_pixel_y1 = max(0, crop_paint_pixel_y1)
-                    crop_paint_pixel_x2 = min(paint_img_w, crop_paint_pixel_x2)
-                    crop_paint_pixel_y2 = min(paint_img_h, crop_paint_pixel_y2)
-
-                    if crop_paint_pixel_x1 >= crop_paint_pixel_x2 or crop_paint_pixel_y1 >= crop_paint_pixel_y2:
-                        self.canvas.itemconfig(self.paint_layer_id, state='hidden')
-                    else:
-                        cropped_paint_pil_image = self.paint_layer_image.crop((crop_paint_pixel_x1, crop_paint_pixel_y1, crop_paint_pixel_x2, crop_paint_pixel_y2))
-                        final_display_paint_image = cropped_paint_pil_image.resize((clipped_paint_screen_w, clipped_paint_screen_h), Image.Resampling.LANCZOS)
-
-                        self.paint_layer_tk = ImageTk.PhotoImage(final_display_paint_image)
-                        self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk, state='normal')
-                        self.canvas.coords(self.paint_layer_id, intersect_paint_sx1, intersect_paint_sy1)
-            else:
-                self.canvas.itemconfig(self.paint_layer_id, state='hidden')
+            # --- Handle Placeholder Components (colored boxes with text) ---
+            elif item.text_id:
+                self.canvas.coords(item.rect_id, intersect_sx1, intersect_sy1, intersect_sx2, intersect_sy2)
+                self.canvas.coords(item.text_id, (intersect_sx1 + intersect_sx2) / 2, (intersect_sy1 + intersect_sy2) / 2)
+                self.canvas.itemconfig(item.rect_id, state='normal')
+                self.canvas.itemconfig(item.text_id, state='normal')
 
         # Ensure non-zoomable items (like docks and status box) are always on top and visible
         self._keep_docks_on_top()
