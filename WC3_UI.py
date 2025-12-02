@@ -136,8 +136,9 @@ class WC3UITab(QWidget):
         """Adds content to the sub-tabs."""
         # --- FIX: Get existing layouts instead of creating new ones ---
         # UI Tab
-        self._clear_layout(self.ui_tab.layout())
-        ui_layout = self.ui_tab.layout()
+        self._clear_layout(self.ui_tab.layout()) # Clear the old QVBoxLayout
+        ui_layout = QGridLayout() # Create a new QGridLayout
+        self.ui_tab.setLayout(ui_layout) # Set the new grid layout on the tab
         ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
         self.theme_buttons = []
 
