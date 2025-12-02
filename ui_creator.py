@@ -286,7 +286,7 @@ class ImageEditorApp:
 
         # --- NEW: Separate dock positions ---
         self.IMAGE_DOCK_Y = 650
-        self.BORDER_DOCK_Y = 780 # Positioned below the image dock
+        self.BORDER_DOCK_Y = 820 # Positioned below the image dock
         self.next_image_dock_x = 20
         self.next_border_dock_x = 20
 
@@ -357,14 +357,14 @@ class ImageEditorApp:
 
         # --- NEW: Draw the Image Asset Dock Area ---
         self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12))
-        self.canvas.create_rectangle(0, self.IMAGE_DOCK_Y, CANVAS_WIDTH, self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40,
+        self.canvas.create_rectangle(0, self.IMAGE_DOCK_Y, CANVAS_WIDTH, self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
                                      fill="#374151", # Match composition area
                                      outline="#4b5563",
                                      width=3)
 
         # --- NEW: Draw the Border Asset Dock Area ---
         self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12))
-        self.canvas.create_rectangle(0, self.BORDER_DOCK_Y, CANVAS_WIDTH, self.BORDER_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40,
+        self.canvas.create_rectangle(0, self.BORDER_DOCK_Y, CANVAS_WIDTH, self.BORDER_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
                                      fill="#374151", # Match composition area
                                      outline="#4b5563",
                                      width=3)
