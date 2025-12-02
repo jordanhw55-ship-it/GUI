@@ -736,12 +736,26 @@ class ImageEditorApp:
                   command=self.resize_selected_component).pack(fill='x', padx=10, pady=5)
 
         # --- Populate the "Border" Tab ---
-        tk.Label(border_tab, text="BORDER ASSETS", **label_style).pack(fill='x')
+        tk.Label(border_tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
         tk.Button(border_tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.load_border_to_dock).pack(fill='x', padx=10, pady=5)
+
+        # --- NEW: Border Transform Controls (Resize & Rotate) ---
+        border_transform_frame = tk.Frame(border_tab, bg="#374151")
+        border_transform_frame.pack(fill='x', padx=10, pady=5)
+        tk.Label(border_transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
+        tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=0, column=1, sticky='ew')
+        tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
+                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+        tk.Label(border_transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
+        tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=self._update_active_decal_transform).grid(row=1, column=1, sticky='ew')
+        tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
+                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+        border_transform_frame.grid_columnconfigure(1, weight=1)
         tk.Button(border_tab, text="Apply Border to Tile", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=self.apply_border_to_selection).pack(fill='x', padx=10, pady=5)
-        tk.Label(border_tab, text="1. Load a border image to the dock.\n2. Click it to create an active border.\n3. Select a tile from the 'Tiles' tab.\n4. Click 'Apply Border to Tile'.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10, wraplength=SIDEBAR_WIDTH-20).pack(fill='x', pady=10)
 
         # --- Populate the "Filters" Tab (Placeholder) ---
         tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
@@ -1351,7 +1365,7 @@ class ImageEditorApp:
             rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
 
             # 3. Create the semi-transparent version for display
-            alpha = resized_image.getchannel('A')
+            alpha = rotated_image.getchannel('A')
             semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
             display_image = rotated_image.copy()
             display_image.putalpha(semi_transparent_alpha)
