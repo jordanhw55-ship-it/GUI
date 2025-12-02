@@ -349,6 +349,10 @@ class ImageEditorApp:
         self.transform_job = None # NEW: For debouncing slider updates
         self.zoom_job = None # NEW: For debouncing zoom updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
+        
+        # --- NEW: Independent Border Transform State ---
+        self.border_scale = tk.DoubleVar(value=100)
+        self.border_rotation = tk.DoubleVar(value=0)
 
         # --- NEW: Composition Area Bounds ---
         # These define the draggable area for tiles.
@@ -869,15 +873,15 @@ class ImageEditorApp:
         border_transform_frame = tk.Frame(border_tab, bg="#374151")
         border_transform_frame.pack(fill='x', padx=10, pady=5)
         tk.Label(border_transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
-        tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.decal_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_decal_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
+        tk.Scale(border_transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.border_scale,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_border_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_scale.set(100) or self._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+                  command=lambda: self.border_scale.set(100) or self._update_active_border_transform()).grid(row=0, column=2, padx=(5,0))
         tk.Label(border_transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
-        tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.decal_rotation,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_decal_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
+        tk.Scale(border_transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.border_rotation,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self._update_active_border_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+                  command=lambda: self.border_rotation.set(0) or self._update_active_border_transform()).grid(row=1, column=2, padx=(5,0))
         border_transform_frame.grid_columnconfigure(1, weight=1)
 
         # --- Apply/Discard buttons for Borders ---
@@ -1671,6 +1675,9 @@ class ImageEditorApp:
         # This will correctly find the new clone and apply the initial semi-transparent transform.
         self._update_active_decal_transform()
 
+        # --- CRITICAL FIX: Initiate a "press" on the new clone to make it immediately draggable ---
+        clone_comp.on_press(event)
+
         # --- FIX: Ensure the dock itself remains on top after creating a clone ---
         self._keep_docks_on_top()
 
@@ -1948,6 +1955,41 @@ class ImageEditorApp:
 
             # 4. Update the component on the canvas
             decal._set_pil_image(display_image, resize_to_fit=False)
+
+    def _update_active_border_transform(self, event=None, use_fast_preview=False):
+        """Applies transformations specifically for the active border asset."""
+        # This is largely a copy of _update_active_decal_transform but uses the border variables.
+        if self.transform_job:
+            self.master.after_cancel(self.transform_job)
+        if use_fast_preview:
+            self.transform_job = self.master.after(250, self._update_active_border_transform)
+
+        border_asset = self._find_topmost_stamp_source(show_warning=False, clone_type='border')
+        if not border_asset or not border_asset.original_pil_image:
+            return
+
+        scale_factor = self.border_scale.get() / 100.0
+        rotation_angle = self.border_rotation.get()
+
+        original_w, original_h = border_asset.original_pil_image.size
+        new_w = int(original_w * scale_factor)
+        new_h = int(original_h * scale_factor)
+
+        if new_w > 0 and new_h > 0:
+            resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+            rotate_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.BICUBIC
+
+            resized_image = border_asset.original_pil_image.resize((new_w, new_h), resample_quality)
+            rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=rotate_quality)
+
+            # Create the semi-transparent version for display
+            alpha = rotated_image.getchannel('A')
+            semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
+            display_image = rotated_image.copy()
+            display_image.putalpha(semi_transparent_alpha)
+
+            # Update the component on the canvas
+            border_asset._set_pil_image(display_image, resize_to_fit=False)
 
     def discard_active_image(self):
         """Finds and removes the top-most draggable image (decal or clone) without applying it."""
