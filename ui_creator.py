@@ -1667,15 +1667,15 @@ class ImageEditorApp:
         # 2. Set the clone's display image to the original for now.
         # The transform function will create and apply the transparent, scaled version.
         clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
-        
-        # Add the new clone to the main components dictionary
-        self.components[clone_tag] = clone_comp
 
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
         self._update_active_decal_transform()
 
-        # --- CRITICAL FIX: Initiate a "press" on the new clone to make it immediately draggable ---
+        # Add the new clone to the main components dictionary
+        self.components[clone_tag] = clone_comp
+
+        # --- DEFINITIVE FIX for Dragging: Initiate a "press" on the new clone AFTER it's in the component list ---
         clone_comp.on_press(event)
 
         # --- FIX: Ensure the dock itself remains on top after creating a clone ---
@@ -1879,13 +1879,10 @@ class ImageEditorApp:
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # --- DEFINITIVE FIX V2 for Transparency ---
-                # Create a mask by multiplying the alpha channels of the target tile and the decal layer.
-                # This mask will be used to correctly composite the decal, ensuring it only appears
-                # where the underlying tile is not transparent.
-                comp_alpha_mask = final_image.getchannel('A')
-                mask = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
-                final_image.paste(decal_layer, (0, 0), mask)
+                # --- DEFINITIVE FIX V3 for Transparency ---
+                # The paste/mask method was incorrect. alpha_composite is the correct way
+                # to layer RGBA images while respecting the alpha of both layers.
+                final_image = Image.alpha_composite(final_image, decal_layer)
 
                 # 8. Apply the newly composited image back to the target component.
                 target_comp._set_pil_image(final_image)
