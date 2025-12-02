@@ -53,6 +53,7 @@ class DraggableComponent:
         self.text_id = None
         self.is_draggable = True # Control whether the component can be dragged
         self.is_decal = False # NEW: To identify temporary decals
+        self.is_border_asset = False # NEW: To identify border assets
         
         self.is_dock_asset = False # NEW: To identify dock assets
         # Initialize with the colored box
@@ -193,7 +194,7 @@ class DraggableComponent:
 
             try:
                 # Get the alpha value of the pixel that was clicked
-                alpha = self.preview_pil_image.getpixel((rel_x, rel_y))[3]
+                alpha = (self.preview_pil_image or self.original_pil_image).getpixel((rel_x, rel_y))[3]
                 if alpha > 10:  # Threshold to ignore near-transparent pixels
                     self.app.create_clone_from_asset(self, event)
             except (IndexError, TypeError):
@@ -622,7 +623,7 @@ class ImageEditorApp:
         notebook.add(paint_tab, text='Paint')
         notebook.add(border_tab, text='Border') # NEW
         notebook.add(image_tab, text='Image')
-        notebook.add(resize_tab, text='Resize') # NEW
+        notebook.add(resize_tab, text='Transform') # MODIFIED
         notebook.add(filters_tab, text='Filters') # NEW
         notebook.add(text_tab, text='Text') # NEW
         notebook.add(export_tab, text='Export')
@@ -705,7 +706,7 @@ class ImageEditorApp:
                   command=self.apply_decal_to_underlying_layer).pack(fill='x', padx=10, pady=(10,2))
         
         # --- Populate the "Resize" Tab ---
-        tk.Label(resize_tab, text="RESIZE SELECTED TILE", **label_style).pack(fill='x')
+        tk.Label(resize_tab, text="TRANSFORM TILE", **label_style).pack(fill='x')
         resize_frame = tk.Frame(resize_tab, bg="#374151", padx=10, pady=5)
         resize_frame.pack(fill='x')
 
@@ -724,12 +725,12 @@ class ImageEditorApp:
                   command=self.resize_selected_component).pack(fill='x', padx=10, pady=5)
 
         # --- Populate the "Border" Tab ---
-        tk.Label(border_tab, text="CUSTOM BORDER", **label_style).pack(fill='x')
-        tk.Button(border_tab, text="Load Border Image", bg='#3b82f6', fg='white', relief='flat', font=button_font,
+        tk.Label(border_tab, text="BORDER ASSETS", **label_style).pack(fill='x')
+        tk.Button(border_tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
+                  command=self.load_border_to_dock).pack(fill='x', padx=10, pady=5)
+        tk.Button(border_tab, text="Apply Border to Tile", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=self.apply_border_to_selection).pack(fill='x', padx=10, pady=5)
-        tk.Button(border_tab, text="Remove Border", bg='#ef4444', fg='white', relief='flat', font=button_font,
-                  command=self.remove_border_from_selection).pack(fill='x', padx=10, pady=5)
-        tk.Label(border_tab, text="Select a tile, then load an image to use as its border. The border image will be stretched to fit.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10, wraplength=SIDEBAR_WIDTH-20).pack(fill='x', pady=10)
+        tk.Label(border_tab, text="1. Load a border image to the dock.\n2. Click it to create an active border.\n3. Select a tile from the 'Tiles' tab.\n4. Click 'Apply Border to Tile'.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10, wraplength=SIDEBAR_WIDTH-20).pack(fill='x', pady=10)
 
         # --- Populate the "Filters" Tab (Placeholder) ---
         tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
@@ -898,31 +899,45 @@ class ImageEditorApp:
 
     def apply_border_to_selection(self):
         """Applies a loaded border image to the currently selected component."""
-        if not self.selected_component_tag:
-            messagebox.showwarning("Selection Required", "Please select a tile to apply the border to.")
+        # 1. Find the active border image on the canvas
+        active_border_comp = self._find_topmost_stamp_source(clone_type='border')
+        if not active_border_comp:
+            messagebox.showwarning("No Border Image", "Please load a border to the dock and click it to create an active border on the canvas first.")
             return
 
-        comp = self.components.get(self.selected_component_tag)
-        if not comp: return
+        # 2. Ensure a target tile is selected
+        if not self.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a target tile from the 'Tiles' tab before applying a border.")
+            return
 
-        image_path = filedialog.askopenfilename(
-            title="Select Border Image",
-            filetypes=[("PNG files", "*.png")],
-            initialdir=self.image_base_dir
-        )
-        if image_path:
-            comp.set_border_image(image_path)
+        target_comp = self.components.get(self.selected_component_tag)
+        if not target_comp or not target_comp.pil_image:
+            messagebox.showwarning("Invalid Target", "The selected tile does not have an image to apply a border to.")
+            return
+
+        # 3. Composite the border onto the target
+        try:
+            # Resize the full-resolution border image to the size of the target component's image
+            border_resized = active_border_comp.original_pil_image.resize(target_comp.pil_image.size, Image.Resampling.LANCZOS)
+            
+            # Composite it on top
+            final_image = Image.alpha_composite(target_comp.pil_image.copy(), border_resized)
+            
+            # Update the target component with the new combined image
+            target_comp._set_pil_image(final_image)
+            
+            # 4. Remove the active border from the canvas
+            self._remove_stamp_source_component(active_border_comp)
+            
+            messagebox.showinfo("Success", f"Border applied to '{target_comp.tag}'.")
+            print(f"Applied border '{active_border_comp.tag}' to '{target_comp.tag}'.")
+        except Exception as e:
+            messagebox.showerror("Border Error", f"Failed to apply border: {e}")
 
     def remove_border_from_selection(self):
         """Removes the border from the currently selected component."""
-        if not self.selected_component_tag:
-            messagebox.showwarning("Selection Required", "Please select a tile to remove the border from.")
-            return
-
-        comp = self.components.get(self.selected_component_tag)
-        if not comp: return
-
-        comp.remove_border()
+        # This function is no longer needed with the new workflow, but we keep the stub.
+        messagebox.showinfo("Info", "To remove a border, simply re-apply the original image from the 'Image' tab or reset the layer.")
 
 
     def _keep_docks_on_top(self):
@@ -1128,13 +1143,16 @@ class ImageEditorApp:
         if not asset_comp.original_pil_image:
             return
 
+        # Determine if we are cloning a regular asset or a border asset
+        clone_prefix = "border_" if asset_comp.is_border_asset else "clone_"
+
         # --- NEW: Ensure only one active image exists at a time ---
-        existing_active_image = self._find_topmost_stamp_source(show_warning=False)
+        existing_active_image = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
         if existing_active_image:
             self._remove_stamp_source_component(existing_active_image)
 
-        # Create a unique tag for the new component
-        clone_tag = f"clone_{self.next_dynamic_id}"
+        # Create a unique tag for the new component based on its type
+        clone_tag = f"{clone_prefix}{self.next_dynamic_id}"
         self.next_dynamic_id += 1
         
         # Get the original image size to create the new component's bounds
@@ -1169,10 +1187,19 @@ class ImageEditorApp:
 
         print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
 
+    def load_border_to_dock(self):
+        """Loads a border image to the asset dock, marking it specifically as a border."""
+        self._load_asset_to_dock_generic(is_border=True)
+
     def load_asset_to_dock(self):
+        """Loads a regular image to the asset dock."""
+        self._load_asset_to_dock_generic(is_border=False)
+
+    def _load_asset_to_dock_generic(self, is_border: bool):
         """Loads an image, scales it, and places it in the asset dock as a new draggable component."""
+        asset_type = "Border" if is_border else "Asset"
         image_path = filedialog.askopenfilename(
-            title="Select Asset Image",
+            title=f"Select {asset_type} Image",
             filetypes=[("Image Files", "*.png *.jpg *.jpeg *.gif")],
             initialdir=self.image_base_dir # Start in the new images directory
         )
@@ -1184,7 +1211,7 @@ class ImageEditorApp:
             full_res_image = Image.open(image_path).convert("RGBA")
 
             # Create a unique tag for the new asset
-            asset_tag = f"dock_asset_{self.next_dynamic_id}"
+            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
             self.next_dynamic_id += 1
 
             # Define position in the dock
@@ -1194,6 +1221,7 @@ class ImageEditorApp:
             # Create a new DraggableComponent for the asset
             asset_comp = DraggableComponent(self.canvas, self, asset_tag, x, y, x + self.DOCK_ASSET_SIZE[0], y + self.DOCK_ASSET_SIZE[1], "blue", "ASSET")
             asset_comp.is_dock_asset = True # Mark it as a dock asset
+            asset_comp.is_border_asset = is_border # NEW: Mark if it's a border
 
             # Store both the original and a preview version
             asset_comp.original_pil_image = full_res_image
@@ -1211,18 +1239,18 @@ class ImageEditorApp:
             # Ensure the new dock asset is on top
             self._keep_docks_on_top()
 
-            print(f"Asset '{os.path.basename(image_path)}' loaded into dock.")
+            print(f"{asset_type} '{os.path.basename(image_path)}' loaded into dock.")
 
         except Exception as e:
-            messagebox.showerror("Asset Load Error", f"Could not load asset image: {e}")
+            messagebox.showerror(f"{asset_type} Load Error", f"Could not load {asset_type.lower()} image: {e}")
 
 
     def apply_decal_to_underlying_layer(self):
         """
         Finds the top-most draggable image (decal or clone) and stamps it onto all layers underneath.
         """
-        # --- REFACTOR: Use the helper function to find the source image ---
-        stamp_source_comp = self._find_topmost_stamp_source()
+        # --- REFACTOR: Use the helper function to find a regular clone source image ---
+        stamp_source_comp = self._find_topmost_stamp_source(clone_type='clone')
         
         if not stamp_source_comp:
             # The helper function now shows its own warning.
@@ -1321,7 +1349,7 @@ class ImageEditorApp:
     def resize_active_decal(self, event=None):
         """Resizes the active image (clone) based on the slider value."""
         # --- FIX: Find the currently active image instead of relying on self.active_decal ---
-        decal = self._find_topmost_stamp_source(show_warning=False)
+        decal = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
 
         if not decal or not decal.original_pil_image:
             # Silently return if there's no active image to resize.
@@ -1346,7 +1374,7 @@ class ImageEditorApp:
 
     def discard_active_image(self):
         """Finds and removes the top-most draggable image (decal or clone) without applying it."""
-        image_to_discard = self._find_topmost_stamp_source()
+        image_to_discard = self._find_topmost_stamp_source(clone_type='any')
         if not image_to_discard:
             # The helper function already shows a warning if nothing is found.
             return
@@ -1354,11 +1382,12 @@ class ImageEditorApp:
         self._remove_stamp_source_component(image_to_discard)
         print(f"Discarded image '{image_to_discard.tag}'.")
 
-    def _find_topmost_stamp_source(self, show_warning=True):
+    def _find_topmost_stamp_source(self, show_warning=True, clone_type: str = 'clone'):
         """
         Finds the top-most draggable image (decal or clone) that can be used for stamping.
-        This is a helper function to avoid code duplication.
+        clone_type can be 'clone', 'border', or 'any'.
         """
+        prefix = f"{clone_type}_"
         all_items = self.canvas.find_all()
         # Iterate from the top of the stack downwards
         for item_id in reversed(all_items):
@@ -1370,13 +1399,15 @@ class ImageEditorApp:
             if tag in self.components:
                 comp = self.components[tag]
                 # Check if it's a draggable image but NOT a dock asset
-                # --- FIX: Only consider 'clones' as stamp sources ---
-                if comp.is_draggable and comp.pil_image and not comp.is_dock_asset and tag.startswith("clone_"):
-                    return comp
+                if comp.is_draggable and comp.pil_image and not comp.is_dock_asset:
+                    if clone_type == 'any' and (tag.startswith('clone_') or tag.startswith('border_')):
+                        return comp
+                    if tag.startswith(prefix):
+                        return comp
         
         # If the loop finishes without finding anything
         if show_warning:
-            messagebox.showwarning("No Image Found", "Could not find a draggable image (decal or clone) to apply or discard.")
+            messagebox.showwarning("No Image Found", f"Could not find an active '{clone_type}' image to apply or discard.")
         return None
     
     def _remove_stamp_source_component(self, comp_to_remove):
