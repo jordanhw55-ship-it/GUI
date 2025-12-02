@@ -75,15 +75,21 @@ class DraggableComponent:
         self.rect_id = self.canvas.create_rectangle(x1, y1, x2, y2, 
                                                      fill=color, 
                                                      outline='white',
-                                                     width=2,
-                                                     tags=(self.tag, "draggable"))
+                                                     width=2)
         
         self.text_id = self.canvas.create_text((x1 + x2) / 2, (y1 + y2) / 2, 
                                               text=text, 
                                               fill="white", 
                                               font=("Inter", 16, "bold"), # Increased font size
-                                              tags=(self.tag, "draggable"))
+                                              tags=(self.tag, "draggable")) # Text needs draggable for selection
         
+        # Add tags to the rectangle. Only non-dock assets are zoomable.
+        tags_to_add = [self.tag, "draggable"]
+        if not self.is_dock_asset:
+            tags_to_add.append("zoom_target")
+        self.canvas.addtag_withtag(tags_to_add[0], self.rect_id)
+        for t in tags_to_add[1:]:
+            self.canvas.addtag_withtag(t, self.rect_id)
         # Update bounding box of the component
         self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 
@@ -143,6 +149,10 @@ class DraggableComponent:
                                                  image=new_tk_image,
                                                  anchor=tk.NW,
                                                  tags=(self.tag, "draggable"))
+        # --- NEW: Conditionally add the zoom_target tag ---
+        # Clones and main tiles should be zoomable, but dock assets should not.
+        if not self.is_dock_asset:
+            self.canvas.addtag_withtag("zoom_target", self.rect_id)
 
         # Must store a reference to avoid garbage collection
         self.tk_image = new_tk_image
@@ -379,7 +389,7 @@ class ImageEditorApp:
         # )
         # self.canvas.create_text(CANVAS_WIDTH/2, 25, text="COMPOSITION AREA (Drag components here)", fill="#9ca3af", font=("Inter", 12))
 
-        # Draw a placeholder for the main template background
+        # Draw a placeholder for the main template background and tag it for zooming
         self.canvas.create_rectangle(0, 50, 1407, 400, # Final position adjustment
                                      fill="#374151", # Slightly lighter than canvas bg
                                      outline="#4b5563",
@@ -882,7 +892,7 @@ class ImageEditorApp:
                 canvas_h = self.canvas.winfo_height()
                 self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                 self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
-                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags="paint_layer", state='normal') # Save initial blank state for undo
+                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags=("paint_layer", "zoom_target"), state='normal') # Save initial blank state for undo
                 self._save_undo_state(self.paint_layer_image.copy())
 
             # Disable dragging for all components
@@ -964,7 +974,7 @@ class ImageEditorApp:
 
         factor = 1.1 if event.delta > 0 else 0.9
         self.zoom_scale *= factor
-        self.canvas.scale("all", event.x, event.y, factor, factor)
+        self.canvas.scale("zoom_target", event.x, event.y, factor, factor)
         print(f"Zoom: {self.zoom_scale:.2f}x")
 
     def zoom_in(self, event=None):
@@ -973,7 +983,7 @@ class ImageEditorApp:
         self.zoom_scale *= factor
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
-        self.canvas.scale("all", x, y, factor, factor)
+        self.canvas.scale("zoom_target", x, y, factor, factor)
         print(f"Zoom: {self.zoom_scale:.2f}x")
         return "break" # Prevents the event from propagating
 
@@ -983,7 +993,7 @@ class ImageEditorApp:
         self.zoom_scale *= factor
         x = self.canvas.winfo_width() / 2
         y = self.canvas.winfo_height() / 2
-        self.canvas.scale("all", x, y, factor, factor)
+        self.canvas.scale("zoom_target", x, y, factor, factor)
         print(f"Zoom: {self.zoom_scale:.2f}x")
         return "break" # Prevents the event from propagating
 
@@ -1001,7 +1011,7 @@ class ImageEditorApp:
         """Moves all items on the canvas to pan the view."""
         dx = event.x - self.pan_start_x
         dy = event.y - self.pan_start_y
-        self.canvas.move("all", dx, dy)
+        self.canvas.move("zoom_target", dx, dy)
         self.pan_start_x = event.x
         self.pan_start_y = event.y
 
@@ -1023,7 +1033,7 @@ class ImageEditorApp:
             for tag, comp in self.components.items():
                 # Also ensure the paint layer is visible
                 if self.paint_layer_id:
-                    self.canvas.itemconfig(self.paint_layer_id, state='normal')
+                    self.canvas.itemconfig("paint_layer", state='normal')
 
                 state_to_set = 'normal' if tag == name else 'hidden'
                 if comp.rect_id:
