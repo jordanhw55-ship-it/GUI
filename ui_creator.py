@@ -1673,11 +1673,7 @@ class ImageEditorApp:
 
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
-        # --- UNIFIED FIX: Always call the generic transform, not the border-specific one ---
-        if clone_comp.is_border_asset:
-            self._update_active_border_transform()
-        else:
-            self._update_active_decal_transform()
+        self._update_active_decal_transform()
 
         # --- CRITICAL FIX: Initiate a "press" on the new clone to make it immediately draggable ---
         clone_comp.on_press(event)
@@ -1959,41 +1955,6 @@ class ImageEditorApp:
 
             # 4. Update the component on the canvas
             decal._set_pil_image(display_image, resize_to_fit=False)
-
-    def _update_active_border_transform(self, event=None, use_fast_preview=False):
-        """Applies transformations specifically for the active border asset."""
-        # This is largely a copy of _update_active_decal_transform but uses the border variables.
-        if self.transform_job:
-            self.master.after_cancel(self.transform_job)
-        if use_fast_preview:
-            self.transform_job = self.master.after(250, self._update_active_border_transform)
-
-        border_asset = self._find_topmost_stamp_source(show_warning=False, clone_type='border')
-        if not border_asset or not border_asset.original_pil_image:
-            return
-
-        scale_factor = self.border_scale.get() / 100.0
-        rotation_angle = self.border_rotation.get()
-
-        original_w, original_h = border_asset.original_pil_image.size
-        new_w = int(original_w * scale_factor)
-        new_h = int(original_h * scale_factor)
-
-        if new_w > 0 and new_h > 0:
-            resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-            rotate_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.BICUBIC
-
-            resized_image = border_asset.original_pil_image.resize((new_w, new_h), resample_quality)
-            rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=rotate_quality)
-
-            # Create the semi-transparent version for display
-            alpha = rotated_image.getchannel('A')
-            semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
-            display_image = rotated_image.copy()
-            display_image.putalpha(semi_transparent_alpha)
-
-            # Update the component on the canvas
-            border_asset._set_pil_image(display_image, resize_to_fit=False)
 
     def discard_active_image(self):
         """Finds and removes the top-most draggable image (decal or clone) without applying it."""
