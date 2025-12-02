@@ -344,6 +344,10 @@ class ImageEditorApp:
         self.transform_job = None # NEW: For debouncing slider updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
 
+        # --- NEW: Clipping Boundary for Composition Area ---
+        # This rectangle will act as a mask to prevent tiles from drawing outside the composition area.
+        self._clipping_rect = None
+
         # --- NEW: Composition Area Bounds ---
         # These define the draggable area for tiles.
         self.COMP_AREA_X1 = 0
@@ -1156,30 +1160,32 @@ class ImageEditorApp:
 
     def _clamp_camera_pan(self):
         """
-        DEFINITIVE REWRITE V4: Prevents the user from panning the composition area off-screen.
-        It ensures the edges of the composition area cannot go past the edges of the canvas,
-        creating a true MS-Paint-style bounded view when zoomed.
+        DEFINITIVE REWRITE V5 (MS PAINT CLAMPING): Prevents panning the composition area entirely off-screen.
+        When zoomed in, you can't pan past the edges. When zoomed out, you can't push the
+        composition area completely out of view. This ensures some part of it is always visible.
         """
         canvas_w = self.canvas.winfo_width()
         canvas_h = self.canvas.winfo_height()
 
-        # Calculate the size of the composition area in screen pixels (after zoom)
-        comp_screen_w = (self.COMP_AREA_X2 - self.COMP_AREA_X1) * self.zoom_scale
-        comp_screen_h = (self.COMP_AREA_Y2 - self.COMP_AREA_Y1) * self.zoom_scale
+        # Get the screen coordinates of the composition area's corners
+        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
+        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
 
-        # Determine the valid range for the pan_offset.
-        # The pan offset's maximum value is 0 (can't pan left/up past the origin).
-        # The minimum value is the canvas dimension minus the scaled composition area dimension.
-        # This ensures the right/bottom edge of the comp area doesn't go past the right/bottom edge of the canvas.
-        min_pan_x = min(0, canvas_w - comp_screen_w)
-        max_pan_x = max(0, canvas_w - comp_screen_w)
-        min_pan_y = min(0, canvas_h - comp_screen_h)
-        max_pan_y = max(0, canvas_h - comp_screen_h)
+        # --- X-axis clamping ---
+        # Prevent the right edge of the comp area from going past the left edge of the canvas
+        if comp_sx2 < 0:
+            self.pan_offset_x -= comp_sx2
+        # Prevent the left edge of the comp area from going past the right edge of the canvas
+        if comp_sx1 > canvas_w:
+            self.pan_offset_x -= (comp_sx1 - canvas_w)
 
-        # Clamp the pan offset to these calculated boundaries.
-        # We use max() for the lower bound and min() for the upper bound.
-        self.pan_offset_x = max(min_pan_x, min(self.pan_offset_x, max_pan_x))
-        self.pan_offset_y = max(min_pan_y, min(self.pan_offset_y, max_pan_y))
+        # --- Y-axis clamping ---
+        # Prevent the bottom edge of the comp area from going past the top edge of the canvas
+        if comp_sy2 < 0:
+            self.pan_offset_y -= comp_sy2
+        # Prevent the top edge of the comp area from going past the bottom edge of the canvas
+        if comp_sy1 > canvas_h:
+            self.pan_offset_y -= (comp_sy1 - canvas_h)
 
 
     def on_pan_press(self, event):
@@ -1379,6 +1385,15 @@ class ImageEditorApp:
     
         # Redraw everything with the new positions
         self.redraw_all_zoomable()
+
+        # --- NEW: Update the clipping rectangle ---
+        # This ensures the clipping mask is always perfectly aligned with the composition area's visual boundaries.
+        sx1, sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
+        sx2, sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
+        if self._clipping_rect:
+            self.canvas.coords(self._clipping_rect, sx1, sy1, sx2, sy2)
+        else:
+            self._clipping_rect = self.canvas.create_rectangle(sx1, sy1, sx2, sy2, outline="", fill="")
 
     def _export_modified_images(self, export_format):
         """
