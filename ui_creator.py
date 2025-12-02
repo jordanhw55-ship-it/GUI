@@ -1257,8 +1257,8 @@ class ImageEditorApp:
         
         # Move all primary components
         for comp in self.components.values():
-            # We only want to move the main tiles, not temporary clones or dock assets
-            if not comp.is_dock_asset and not comp.tag.startswith(('clone_', 'border_')):
+            # We only want to move the main tiles, not temporary clones, borders, or dock assets
+            if not comp.is_dock_asset and not comp.is_decal:
                 comp.world_x1 += dx_world
                 comp.world_y1 += dy_world
                 comp.world_x2 += dx_world
@@ -1656,6 +1656,7 @@ class ImageEditorApp:
         
         # --- FIX: Carry over the border flag to the clone ---
         clone_comp.is_border_asset = asset_comp.is_border_asset
+        clone_comp.is_decal = True # Mark it as a decal so it can be dragged individually
 
         # 1. Set the clone's original image to the full-resolution one for stamping.
         clone_comp.original_pil_image = asset_comp.original_pil_image
