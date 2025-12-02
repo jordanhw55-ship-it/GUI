@@ -356,13 +356,13 @@ class ImageEditorApp:
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
 
+        self.DOCK_ASSET_SIZE = (128, 128)
         # DEFINITIVE REWRITE: Docks are in the bottom half.
         self.IMAGE_DOCK_Y = (CANVAS_HEIGHT / 2) + 30
         self.BORDER_DOCK_Y = self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40
         self.next_image_dock_x = 20
         self.next_border_dock_x = 20
 
-        self.DOCK_ASSET_SIZE = (128, 128)
         # Create a main frame to hold everything
         # --- NEW: Define base paths for UI Creator resources ---
         self.base_path = get_base_path() 
