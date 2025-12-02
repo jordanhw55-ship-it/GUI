@@ -1156,26 +1156,30 @@ class ImageEditorApp:
 
     def _clamp_camera_pan(self):
         """
-        FINAL REWRITE: Prevents the user from panning the composition area off-screen.
+        DEFINITIVE REWRITE V3: Prevents the user from panning the composition area off-screen.
         It ensures the edges of the composition area cannot go past the edges of the canvas.
         """
         canvas_w = self.canvas.winfo_width()
         canvas_h = self.canvas.winfo_height()
 
-        # Get the current on-screen coordinates of the composition area's corners
+        # Calculate the size of the composition area in screen pixels
+        comp_screen_w = (self.COMP_AREA_X2 - self.COMP_AREA_X1) * self.zoom_scale
+        comp_screen_h = (self.COMP_AREA_Y2 - self.COMP_AREA_Y1) * self.zoom_scale
+
+        # Get the current screen coordinates of the top-left of the composition area
         comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
 
-        # Calculate how much the view is over-panned
-        dx, dy = 0, 0
-        if comp_sx1 > self.COMP_AREA_X1: dx = self.COMP_AREA_X1 - comp_sx1
-        if comp_sx2 < canvas_w: dx = canvas_w - comp_sx2
-        if comp_sy1 > self.COMP_AREA_Y1: dy = self.COMP_AREA_Y1 - comp_sy1
-        if comp_sy2 < canvas_h: dy = canvas_h - comp_sy2
+        # Determine the valid range for the top-left corner's screen position.
+        # The view's left edge cannot go past the canvas's left edge.
+        # The view's right edge cannot go past the canvas's right edge.
+        min_sx = min(0, canvas_w - comp_screen_w)
+        max_sx = max(0, canvas_w - comp_screen_w)
+        min_sy = min(0, canvas_h - comp_screen_h)
+        max_sy = max(0, canvas_h - comp_screen_h)
 
-        # Apply the correction directly to the pan offset
-        self.pan_offset_x += dx
-        self.pan_offset_y += dy
+        # Calculate the correction needed and apply it to the pan offset.
+        self.pan_offset_x += max(min_sx, min(comp_sx1, max_sx)) - comp_sx1
+        self.pan_offset_y += max(min_sy, min(comp_sy1, max_sy)) - comp_sy1
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
