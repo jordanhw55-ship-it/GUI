@@ -55,16 +55,6 @@ class DraggableComponent:
         self.is_decal = False # NEW: To identify temporary decals
         self.is_border_asset = False # NEW: To identify border assets
         
-        # --- NEW: World Coordinates for Camera System ---
-        # Define composition area bounds
-        self.COMP_AREA_X1 = 0
-        self.COMP_AREA_Y1 = 50
-        self.COMP_AREA_X2 = 1407
-        self.COMP_AREA_Y2 = 400
-        # These store the "true" position and size at 100% zoom.
-        self.world_x1, self.world_y1 = x1, y1
-        self.world_x2, self.world_y2 = x2, y2
-
         # --- NEW: Caching for Performance ---
         self._cached_screen_w = -1
         self._cached_screen_h = -1
@@ -355,6 +345,13 @@ class ImageEditorApp:
         self.decal_scale = tk.DoubleVar(value=100) # For the resize slider
         self.transform_job = None # NEW: For debouncing slider updates
         self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
+
+        # --- NEW: Composition Area Bounds ---
+        # These define the draggable area for tiles.
+        self.COMP_AREA_X1 = 0
+        self.COMP_AREA_Y1 = 50
+        self.COMP_AREA_X2 = 1407
+        self.COMP_AREA_Y2 = 400
 
         # --- NEW: Asset Dock State ---
         self.dock_assets = []
