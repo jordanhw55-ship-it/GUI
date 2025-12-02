@@ -372,14 +372,14 @@ class ImageEditorApp:
         # TILE 07 (Row 2, Col 3) - Inventory Cover (Tag matches filename)
         self.components['humanuitile-inventorycover'] = DraggableComponent(
             self.canvas, self, "humanuitile-inventorycover", 
-            650, 400, 900, 700, 
+            650, 400, 770, 700, 
             base_color, "INVENTORY COVER"
         )
         
         # TILE 08 (Row 2, Col 4) - Time Indicator Frame (Tag matches filename)
         self.components['humanuitile-timeindicatorframe'] = DraggableComponent(
             self.canvas, self, "humanuitile-timeindicatorframe", 
-            950, 400, 1200, 475, 
+            950, 400, 1085, 475, 
             base_color, "TIME FRAME"
         )
         
