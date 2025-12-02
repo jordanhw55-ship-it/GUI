@@ -1059,30 +1059,26 @@ class ImageEditorApp:
                 # For components with an image, we need to resize the image itself
                 # and then place it at the new screen coordinates.
                 if comp.pil_image:
-                    # Calculate the new screen dimensions based on world size and zoom
                     screen_w = (comp.world_x2 - comp.world_x1) * self.zoom_scale
                     screen_h = (comp.world_y2 - comp.world_y1) * self.zoom_scale
 
-                    # --- PERFORMANCE FIX: Only regenerate image if size has changed ---
+                    # Only regenerate the Tkinter image if the size has actually changed.
                     if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h):
                         comp._cached_screen_w = int(screen_w)
                         comp._cached_screen_h = int(screen_h)
 
-                        # --- CRITICAL BUG FIX: Always resize from the CURRENT pil_image ---
-                        # The pil_image holds the modified state (decals, etc.). The original_pil_image is only for resets.
                         source_img = comp.pil_image
-                        if not source_img: continue # Should not happen if pil_image exists, but safe
+                        if not source_img: continue
 
                         resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
-                    # Always update coordinates, even if the image wasn't regenerated
+                    # Always update the item's screen coordinates.
                     sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
                     self.canvas.coords(comp.rect_id, sx1, sy1)
 
-                # For placeholder components (rectangles with text)
                 elif comp.text_id:
                     sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
                     sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
@@ -1090,14 +1086,21 @@ class ImageEditorApp:
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
         # Also redraw the paint layer if it exists
-        if self.paint_layer_id:
+        if self.paint_layer_id and self.paint_layer_image:
             orig_w, orig_h = self.paint_layer_image.size
             new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
             if new_w > 0 and new_h > 0:
-                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                # This part is still a bit slow, but only happens on zoom, not drag.
+                resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), resample_quality)
                 self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
                 self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
+                # The paint layer is always anchored at the pan offset.
                 self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
+
+        # Finally, ensure the status box is not obscured.
+        self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
+        self._keep_docks_on_top()
 
     def on_zoom(self, event):
         """Handles zooming the canvas with Ctrl+MouseWheel."""
