@@ -240,31 +240,31 @@ class DraggableComponent:
         dx_world = dx_screen / self.app.zoom_scale
         dy_world = dy_screen / self.app.zoom_scale
 
-        # --- FINAL REWRITE: Clamp movement to composition area ---
+        # --- MS PAINT STYLE CLAMPING ---
         # Calculate the potential new world coordinates
         new_world_x1 = self.world_x1 + dx_world
         new_world_y1 = self.world_y1 + dy_world
 
         # Get composition area bounds from the app instance
         bounds = self.app
-        tile_w = self.world_x2 - self.world_x1
-        tile_h = self.world_y2 - self.world_y1
+        tile_w_world = self.world_x2 - self.world_x1
+        tile_h_world = self.world_y2 - self.world_y1
 
         # Clamp X coordinates
         if new_world_x1 < bounds.COMP_AREA_X1:
             new_world_x1 = bounds.COMP_AREA_X1
-        if new_world_x1 + tile_w > bounds.COMP_AREA_X2:
-            new_world_x1 = bounds.COMP_AREA_X2 - tile_w
+        if new_world_x1 + tile_w_world > bounds.COMP_AREA_X2:
+            new_world_x1 = bounds.COMP_AREA_X2 - tile_w_world
 
         # Clamp Y coordinates
         if new_world_y1 < bounds.COMP_AREA_Y1:
             new_world_y1 = bounds.COMP_AREA_Y1
-        if new_world_y1 + tile_h > bounds.COMP_AREA_Y2:
-            new_world_y1 = bounds.COMP_AREA_Y2 - tile_h
+        if new_world_y1 + tile_h_world > bounds.COMP_AREA_Y2:
+            new_world_y1 = bounds.COMP_AREA_Y2 - tile_h_world
 
         # Update the component's world coordinates with the final clamped values
         self.world_x1, self.world_y1 = new_world_x1, new_world_y1
-        self.world_x2, self.world_y2 = new_world_x1 + tile_w, new_world_y1 + tile_h
+        self.world_x2, self.world_y2 = new_world_x1 + tile_w_world, new_world_y1 + tile_h_world
         
         # Update the last screen position for the next drag event
         self.last_x = event.x
