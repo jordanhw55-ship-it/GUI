@@ -426,11 +426,12 @@ class ImageEditorApp:
         # )
         # self.canvas.create_text(CANVAS_WIDTH/2, 25, text="COMPOSITION AREA (Drag components here)", fill="#9ca3af", font=("Inter", 12))
 
-        # Draw a placeholder for the main template background using the defined bounds
+        # Draw a placeholder for the main template background and tag it for zooming
         self.canvas.create_rectangle(self.COMP_AREA_X1, self.COMP_AREA_Y1, self.COMP_AREA_X2, self.COMP_AREA_Y2,
                                      fill="#374151", # Slightly lighter than canvas bg
                                      outline="#4b5563",
-                                     width=3)
+                                     width=3,
+                                     tags="zoom_target")
 
         # --- NEW: Create the floating status box in the top-left ---
         status_box_frame = tk.Frame(self.canvas, bg="#1f2937", bd=1, relief="solid", highlightbackground="#4b5563", highlightthickness=1)
@@ -451,18 +452,20 @@ class ImageEditorApp:
 
 
         # --- NEW: Draw the Image Asset Dock Area ---
-        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12))
+        self.canvas.create_text(CANVAS_WIDTH/2, self.IMAGE_DOCK_Y - 20, text="Image Dock (Click image and drag)", fill="#9ca3af", font=("Inter", 12), tags="no_zoom")
         self.canvas.create_rectangle(0, self.IMAGE_DOCK_Y, CANVAS_WIDTH, self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
                                      fill="#374151", # Match composition area
                                      outline="#4b5563",
-                                     width=3)
+                                     width=3,
+                                     tags="no_zoom")
 
         # --- NEW: Draw the Border Asset Dock Area ---
-        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12))
+        self.canvas.create_text(CANVAS_WIDTH/2, self.BORDER_DOCK_Y - 20, text="Border Dock (Click border and drag)", fill="#9ca3af", font=("Inter", 12), tags="no_zoom")
         self.canvas.create_rectangle(0, self.BORDER_DOCK_Y, CANVAS_WIDTH, self.BORDER_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 20,
                                      fill="#374151", # Match composition area
                                      outline="#4b5563",
-                                     width=3)
+                                     width=3,
+                                     tags="no_zoom")
 
 
         # --- 2. Initialize Draggable Components (Layers) ---
@@ -1098,6 +1101,7 @@ class ImageEditorApp:
         self.pan_offset_y = event.y - (mouse_world_y_before * self.zoom_scale)
 
         self._update_zoom_display()
+        self._clamp_camera_pan() # Clamp the view after zooming
         self.redraw_all_zoomable()
 
     def zoom_in(self, event=None):
@@ -1114,6 +1118,7 @@ class ImageEditorApp:
         self.pan_offset_y = y - (center_world_y * self.zoom_scale)
 
         self._update_zoom_display()
+        self._clamp_camera_pan() # Clamp the view after zooming
         self.redraw_all_zoomable()
         return "break" # Prevents the event from propagating
 
@@ -1131,6 +1136,7 @@ class ImageEditorApp:
         self.pan_offset_y = y - (center_world_y * self.zoom_scale)
 
         self._update_zoom_display()
+        self._clamp_camera_pan() # Clamp the view after zooming
         self.redraw_all_zoomable()
         return "break" # Prevents the event from propagating
 
