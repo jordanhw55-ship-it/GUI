@@ -1623,102 +1623,87 @@ class ImageEditorApp:
             # messagebox.showwarning("No Stamp Source", "Could not find a draggable image (decal or cloned asset) at the top of the layer stack to apply.")
             return
 
-        stamp_bbox = self.canvas.bbox(stamp_source_comp.rect_id)
-        if not stamp_bbox: return
+        # --- REWRITTEN FOR WORLD COORDINATES ---
 
-        # Find all canvas items that overlap with the decal's bounding box
-        overlapping_ids = self.canvas.find_overlapping(*stamp_bbox)
-        
-        # --- FIX: Recreate the transformed image (resized AND rotated) for stamping ---
+        # 1. Get the transformed decal/stamp image and its world dimensions
         # Get the current scale and rotation from the sliders.
         scale_factor = self.decal_scale.get() / 100.0
         rotation_angle = self.decal_rotation.get()
 
-        # 1. Scale the original, full-resolution image.
+        # Scale the original, full-resolution image.
         original_w, original_h = stamp_source_comp.original_pil_image.size
         new_w = int(original_w * scale_factor)
         new_h = int(original_h * scale_factor)
         resized_image = stamp_source_comp.original_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-        # 2. Rotate the scaled image to create the final stamp.
+        # Rotate the scaled image to create the final stamp.
         decal_stamp_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
+        stamp_w, stamp_h = decal_stamp_image.size
+
+        # 2. Get the stamp's world bounding box. Its center is the component's center.
+        stamp_cx = (stamp_source_comp.world_x1 + stamp_source_comp.world_x2) / 2
+        stamp_cy = (stamp_source_comp.world_y1 + stamp_source_comp.world_y2) / 2
+        stamp_world_x1 = stamp_cx - stamp_w / 2
+        stamp_world_y1 = stamp_cy - stamp_h / 2
+        stamp_world_x2 = stamp_world_x1 + stamp_w
+        stamp_world_y2 = stamp_world_y1 + stamp_h
 
         # --- NEW: Prepare for Undo ---
         undo_data = {}
-
         applied_count = 0
-        for item_id in overlapping_ids:
-            tags = self.canvas.gettags(item_id)
-            if not tags or tags[0] == stamp_source_comp.tag:
-                continue # Skip if no tags or if it's the stamp source itself
 
-            comp_tag = tags[0]
-            if comp_tag in self.components:
-                target_comp = self.components[comp_tag]
-                if not target_comp.original_pil_image: continue
+        # 3. Iterate through all components to find targets for stamping.
+        for target_comp in self.components.values():
+            # Skip if it's the stamp itself, a dock asset, or has no image to stamp onto.
+            if target_comp.tag == stamp_source_comp.tag or target_comp.is_dock_asset or not target_comp.pil_image:
+                continue
 
-                comp_bbox = self.canvas.bbox(target_comp.rect_id)
-                if not comp_bbox: continue
+            # 4. Calculate the intersection in WORLD coordinates
+            intersect_x1 = max(stamp_world_x1, target_comp.world_x1)
+            intersect_y1 = max(stamp_world_y1, target_comp.world_y1)
+            intersect_x2 = min(stamp_world_x2, target_comp.world_x2)
+            intersect_y2 = min(stamp_world_y2, target_comp.world_y2)
 
-                # --- NEW: Save the component's current state before modifying it ---
+            # If they overlap...
+            if intersect_x1 < intersect_x2 and intersect_y1 < intersect_y2:
+                # Save state for undo
                 if target_comp.tag not in undo_data:
                     undo_data[target_comp.tag] = target_comp.pil_image.copy()
 
+                # 5. Determine where to paste onto the target's PIL image.
+                # This is the intersection's top-left corner relative to the target's top-left corner.
+                paste_x = int(intersect_x1 - target_comp.world_x1)
+                paste_y = int(intersect_y1 - target_comp.world_y1)
 
-                # 1. Create a new composite image based on the component's current state
-                # IMPORTANT: Start with a copy of the CURRENT pil_image, not the original one.
-                new_comp_image = target_comp.pil_image.copy()
-
-                # 2. Calculate the intersection area on the canvas
-                intersect_x1 = max(stamp_bbox[0], comp_bbox[0])
-                intersect_y1 = max(stamp_bbox[1], comp_bbox[1])
-                intersect_x2 = min(stamp_bbox[2], comp_bbox[2])
-                intersect_y2 = min(stamp_bbox[3], comp_bbox[3])
-
-                # 3. Crop the part of the decal that's in the intersection
-                decal_crop_x1 = intersect_x1 - stamp_bbox[0]
-                decal_crop_y1 = intersect_y1 - stamp_bbox[1]
-                decal_crop_x2 = intersect_x2 - stamp_bbox[0]
-                decal_crop_y2 = intersect_y2 - stamp_bbox[1]
-                cropped_decal = decal_stamp_image.crop((decal_crop_x1, decal_crop_y1, decal_crop_x2, decal_crop_y2))
-
-                # 4. Correctly calculate where to paste the cropped decal onto the component's image
-                # This involves scaling from canvas coordinates to the original image's pixel coordinates.
-                comp_canvas_w = comp_bbox[2] - comp_bbox[0]
-                comp_canvas_h = comp_bbox[3] - comp_bbox[1]
+                # 6. Determine which part of the stamp image to use.
+                # This is the intersection's top-left corner relative to the stamp's top-left corner.
+                crop_x1 = int(intersect_x1 - stamp_world_x1)
+                crop_y1 = int(intersect_y1 - stamp_world_y1)
+                crop_x2 = int(intersect_x2 - stamp_world_x1)
+                crop_y2 = int(intersect_y2 - stamp_world_y1)
                 
-                # Avoid division by zero if a component has no size
-                if comp_canvas_w == 0 or comp_canvas_h == 0: continue
+                # Crop the stamp to get the exact piece that overlaps.
+                cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
 
-                scale_x = new_comp_image.width / comp_canvas_w
-                scale_y = new_comp_image.height / comp_canvas_h
-
-                paste_x = int((intersect_x1 - comp_bbox[0]) * scale_x)
-                paste_y = int((intersect_y1 - comp_bbox[1]) * scale_y)
+                # 7. Composite the images.
+                # Start with a copy of the target's current image.
+                final_image = target_comp.pil_image.copy()
                 
-                final_decal_w, final_decal_h = int(cropped_decal.width * scale_x), int(cropped_decal.height * scale_y)
-                resized_cropped_decal = cropped_decal.resize((final_decal_w, final_decal_h), Image.Resampling.LANCZOS)
-
-                # 5. --- MODIFIED: Use alpha_composite for correct layering ---
-                # Create a new transparent image the same size as the component image.
-                # This will serve as the layer for our decal.
+                # Create a transparent layer the size of the target image.
                 decal_layer = Image.new("RGBA", new_comp_image.size, (0, 0, 0, 0))
-                
-                # Paste the resized decal onto this new transparent layer.
-                decal_layer.paste(resized_cropped_decal, (paste_x, paste_y), resized_cropped_decal)
+                # Paste the cropped stamp onto this layer at the correct position.
+                decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # --- NEW: Conditionally respect transparency ---
-                # If the stamp source is a border, it should NOT respect the underlying alpha.
-                # If it's a regular image/decal, it SHOULD respect the alpha.
+                # Conditionally respect transparency of the underlying tile
                 if not stamp_source_comp.is_border_asset:
-                    # Combine alpha channels to respect transparency of the target.
-                    comp_alpha_mask = target_comp.original_pil_image.getchannel('A')
+                    comp_alpha_mask = final_image.getchannel('A')
                     combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
                     decal_layer.putalpha(combined_alpha)
 
-                # 6. Composite the decal layer onto the component's image.
-                final_image = Image.alpha_composite(new_comp_image, decal_layer)
+                # Composite the decal layer onto the final image.
+                final_image = Image.alpha_composite(final_image, decal_layer)
 
+                # 8. Apply the newly composited image back to the target component.
                 target_comp._set_pil_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
@@ -1731,7 +1716,9 @@ class ImageEditorApp:
         if undo_data:
             self._save_undo_state(undo_data)
 
+        # Clean up the temporary decal/clone and redraw everything.
         self._remove_stamp_source_component(stamp_source_comp)
+        self.redraw_all_zoomable()
 
     def schedule_transform_update(self, event=None):
         """Schedules a decal transformation update, debouncing slider events."""
