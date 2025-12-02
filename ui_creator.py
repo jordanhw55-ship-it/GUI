@@ -602,23 +602,9 @@ class ImageEditorApp:
             btn = tk.Button(layer_tab, **button_style)
             btn.pack(fill='x', padx=10, pady=(2 if i > 0 else 5))
         
-        # --- Layer Reordering Controls ---
-        tk.Frame(layer_tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10) # Separator
-        tk.Label(layer_tab, text="Z-ORDER CONTROL", **label_style).pack(fill='x')
-        reorder_frame = tk.Frame(layer_tab, bg="#374151")
-        reorder_frame.pack(fill='x', padx=10, pady=5)
-        tk.Button(reorder_frame, text="Move Up", bg='#6b7280', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.move_layer('up')).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
-        tk.Button(reorder_frame, text="Move Down", bg='#6b7280', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.move_layer('down')).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+        # Add a separator before the next section
+        tk.Frame(layer_tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
 
-        # --- Layer Actions (Load/Reset) ---
-        tk.Label(layer_tab, text="LAYER ACTIONS", **label_style).pack(fill='x', pady=(10,0))
-        actions_frame = tk.Frame(layer_tab, bg="#374151")
-        actions_frame.pack(fill='x', padx=10, pady=5)
-        tk.Button(actions_frame, text="Reset Layer", bg='#ef4444', fg='white', relief='flat', font=button_font,
-                  command=self.reset_selected_layer).pack(fill='x', expand=True)
-        
         # --- Save/Load Layout Buttons ---
         tk.Label(layer_tab, text="LAYOUT PRESETS", **label_style).pack(fill='x')
         layout_frame = tk.Frame(layer_tab, bg="#374151")
