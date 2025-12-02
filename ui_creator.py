@@ -240,33 +240,31 @@ class DraggableComponent:
         dx_world = dx_screen / self.app.zoom_scale
         dy_world = dy_screen / self.app.zoom_scale
 
-        # --- NEW: Clamp movement to composition area ---
-        # Calculate potential new position
+        # --- REWRITTEN: Clamp movement to composition area ---
+        # Calculate the potential new world coordinates
         new_world_x1 = self.world_x1 + dx_world
         new_world_y1 = self.world_y1 + dy_world
-        new_world_x2 = self.world_x2 + dx_world
-        new_world_y2 = self.world_y2 + dy_world
 
         # Get composition area bounds from the app instance
         bounds = self.app
+        tile_width = self.world_x2 - self.world_x1
+        tile_height = self.world_y2 - self.world_y1
 
         # Clamp X coordinates
         if new_world_x1 < bounds.COMP_AREA_X1:
-            dx_world = bounds.COMP_AREA_X1 - self.world_x1
-        if new_world_x2 > bounds.COMP_AREA_X2:
-            dx_world = bounds.COMP_AREA_X2 - self.world_x2
+            new_world_x1 = bounds.COMP_AREA_X1
+        if new_world_x1 + tile_width > bounds.COMP_AREA_X2:
+            new_world_x1 = bounds.COMP_AREA_X2 - tile_width
 
         # Clamp Y coordinates
         if new_world_y1 < bounds.COMP_AREA_Y1:
-            dy_world = bounds.COMP_AREA_Y1 - self.world_y1
-        if new_world_y2 > bounds.COMP_AREA_Y2:
-            dy_world = bounds.COMP_AREA_Y2 - self.world_y2
+            new_world_y1 = bounds.COMP_AREA_Y1
+        if new_world_y1 + tile_height > bounds.COMP_AREA_Y2:
+            new_world_y1 = bounds.COMP_AREA_Y2 - tile_height
 
-        # Update the component's world coordinates with the (potentially clamped) delta
-        self.world_x1 += dx_world
-        self.world_y1 += dy_world
-        self.world_x2 += dx_world
-        self.world_y2 += dy_world
+        # Update the component's world coordinates with the final clamped values
+        self.world_x1, self.world_y1 = new_world_x1, new_world_y1
+        self.world_x2, self.world_y2 = new_world_x1 + tile_width, new_world_y1 + tile_height
         
         # Update the last screen position for the next drag event
         self.last_x = event.x
@@ -1162,21 +1160,25 @@ class ImageEditorApp:
         It ensures the edges of the composition area cannot go past the edges of the canvas.
         """
         # Calculate the on-screen width and height of the entire composition area at the current zoom
-        comp_screen_w = (self.COMP_AREA_X2 - self.COMP_AREA_X1) * self.zoom_scale
-        comp_screen_h = (self.COMP_AREA_Y2 - self.COMP_AREA_Y1) * self.zoom_scale
+        canvas_w = self.canvas.winfo_width()
+        canvas_h = self.canvas.winfo_height()
 
-        # Calculate the maximum and minimum allowed pan offsets
-        # Max pan: Don't let the left edge of the comp area go past the left edge of the canvas.
-        max_pan_x = -self.COMP_AREA_X1 * self.zoom_scale
-        max_pan_y = -self.COMP_AREA_Y1 * self.zoom_scale
+        # Calculate the screen coordinates of the composition area's boundaries
+        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
+        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
 
-        # Min pan: Don't let the right edge of the comp area go past the right edge of the canvas.
-        min_pan_x = self.canvas.winfo_width() - comp_screen_w - (self.COMP_AREA_X1 * self.zoom_scale)
-        min_pan_y = self.canvas.winfo_height() - comp_screen_h - (self.COMP_AREA_Y1 * self.zoom_scale)
+        # Calculate how much the composition area is over-panned
+        dx = 0
+        if comp_sx1 > 0: dx = -comp_sx1
+        elif comp_sx2 < canvas_w: dx = canvas_w - comp_sx2
 
-        # Apply the clamps to the current pan offset
-        self.pan_offset_x = max(min_pan_x, min(self.pan_offset_x, max_pan_x))
-        self.pan_offset_y = max(min_pan_y, min(self.pan_offset_y, max_pan_y))
+        dy = 0
+        if comp_sy1 > 0: dy = -comp_sy1
+        elif comp_sy2 < canvas_h: dy = canvas_h - comp_sy2
+
+        # Apply the correction to the pan offset
+        self.pan_offset_x += dx
+        self.pan_offset_y += dy
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
