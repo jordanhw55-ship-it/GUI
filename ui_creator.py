@@ -1150,6 +1150,28 @@ class ImageEditorApp:
         self.redraw_all_zoomable()
         print("View has been reset.")
 
+    def _clamp_camera_pan(self):
+        """
+        NEW: Prevents the user from panning the composition area completely off-screen.
+        It ensures the edges of the composition area cannot go past the edges of the canvas.
+        """
+        # Calculate the on-screen width and height of the entire composition area at the current zoom
+        comp_screen_w = (self.COMP_AREA_X2 - self.COMP_AREA_X1) * self.zoom_scale
+        comp_screen_h = (self.COMP_AREA_Y2 - self.COMP_AREA_Y1) * self.zoom_scale
+
+        # Calculate the maximum and minimum allowed pan offsets
+        # Max pan: Don't let the left edge of the comp area go past the left edge of the canvas.
+        max_pan_x = -self.COMP_AREA_X1 * self.zoom_scale
+        max_pan_y = -self.COMP_AREA_Y1 * self.zoom_scale
+
+        # Min pan: Don't let the right edge of the comp area go past the right edge of the canvas.
+        min_pan_x = self.canvas.winfo_width() - comp_screen_w - (self.COMP_AREA_X1 * self.zoom_scale)
+        min_pan_y = self.canvas.winfo_height() - comp_screen_h - (self.COMP_AREA_Y1 * self.zoom_scale)
+
+        # Apply the clamps to the current pan offset
+        self.pan_offset_x = max(min_pan_x, min(self.pan_offset_x, max_pan_x))
+        self.pan_offset_y = max(min_pan_y, min(self.pan_offset_y, max_pan_y))
+
     def on_pan_press(self, event):
         """Records the starting position for panning."""
         # Stop painting if active
@@ -1168,6 +1190,7 @@ class ImageEditorApp:
         self.pan_offset_y += dy
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+        self._clamp_camera_pan() # Clamp the view after panning
         self.redraw_all_zoomable()
 
     def on_pan_release(self, event):
