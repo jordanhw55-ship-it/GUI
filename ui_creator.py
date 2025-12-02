@@ -381,7 +381,7 @@ class ImageEditorApp:
         # Use grid to place the canvas, leaving space for the toolbar above
         self.canvas.grid(row=0, column=0, padx=(0, 10), sticky="nsew", rowspan=2)
         self.main_frame.grid_columnconfigure(0, weight=1) 
-        self.main_frame.grid_rowconfigure(0, weight=1)
+        self.main_frame.grid_rowconfigure(0, weight=1) # Allow the canvas row to expand
         
         # Bind painting events directly to the canvas
         self.canvas.bind("<B1-Motion>", self.paint_on_canvas)
@@ -390,6 +390,8 @@ class ImageEditorApp:
         self.canvas.bind("<Control-Button-1>", self.on_pan_press)
         self.canvas.bind("<Control-B1-Motion>", self.on_pan_drag)
         self.canvas.bind("<Control-ButtonRelease-1>", self.on_pan_release)
+        # --- NEW: Bind canvas resize event ---
+        self.canvas.bind("<Configure>", self.on_canvas_resize)
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
@@ -1013,6 +1015,22 @@ class ImageEditorApp:
         # Disable button if stack is now empty
         if not self.undo_stack:
             self.undo_button.config(state='disabled')
+
+    def on_canvas_resize(self, event):
+        """Handles the canvas being resized, updating composition area and paint layer."""
+        new_width = event.width
+        new_height = event.height
+
+        # Update the logical composition area to match the new canvas size
+        self.COMP_AREA_X2 = new_width
+        self.COMP_AREA_Y2 = new_height
+
+        # If the paint layer exists, it needs to be recreated to match the new size
+        if self.paint_layer_image:
+            # We can't just resize, as drawing is based on world coords.
+            # It's safer to clear it, but for now, we'll just recreate it blank.
+            self.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
+            self.redraw_all_zoomable() # Redraw to update the paint layer display
 
     # --- NEW: Camera Transformation Functions ---
     def world_to_screen(self, world_x, world_y):
