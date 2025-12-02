@@ -1051,7 +1051,7 @@ class ImageEditorApp:
         world_y = (screen_y - self.pan_offset_y) / self.zoom_scale
         return world_x, world_y
 
-    def redraw_all_zoomable(self):
+    def redraw_all_zoomable(self, use_fast_preview=False):
         """Redraws all zoomable items based on the current camera view."""
         # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
@@ -1071,7 +1071,7 @@ class ImageEditorApp:
                         if not source_img: continue
 
                         resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
@@ -1274,58 +1274,6 @@ class ImageEditorApp:
         """Resets the cursor when panning is finished."""
         self.is_group_dragging = False # NEW: Clear the group drag flag
         self.canvas.config(cursor="")
-
-    def redraw_all_zoomable(self):
-        """
-        PERFORMANCE REWRITE: Redraws all zoomable items based on the current camera view.
-        This version avoids expensive, real-time cropping and focuses on fast resizing and moving.
-        """
-        # Redraw all components that are meant to be zoomed/panned
-        for comp in self.components.values():
-            if "zoom_target" in self.canvas.gettags(comp.rect_id):
-                # For components with an image, we resize the image and then place it.
-                if comp.pil_image:
-                    screen_w = (comp.world_x2 - comp.world_x1) * self.zoom_scale
-                    screen_h = (comp.world_y2 - comp.world_y1) * self.zoom_scale
-
-                    # Only regenerate the Tkinter image if the size has actually changed.
-                    if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h):
-                        comp._cached_screen_w = int(screen_w)
-                        comp._cached_screen_h = int(screen_h)
-
-                        source_img = comp.pil_image
-                        if not source_img: continue
-
-                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
-                        comp.tk_image = ImageTk.PhotoImage(resized_img)
-                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
-
-                    # Always update the item's screen coordinates.
-                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
-                    self.canvas.coords(comp.rect_id, sx1, sy1)
-
-                # For placeholder components (rectangles with text).
-                elif comp.text_id:
-                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
-                    sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
-                    self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
-                    self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
-        
-        # Also redraw the paint layer if it exists.
-        if self.paint_layer_id and self.paint_layer_image:
-            orig_w, orig_h = self.paint_layer_image.size
-            new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
-            if new_w > 0 and new_h > 0:
-                resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), resample_quality)
-                self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
-                self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
-                # The paint layer is always anchored at the pan offset.
-                self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
-
-        # Finally, ensure the status box is not obscured.
-        self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
-        self._keep_docks_on_top()
 
     def handle_tab_click(self, name):
         """Handles the logic when a sidebar button is clicked."""
