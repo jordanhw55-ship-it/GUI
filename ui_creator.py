@@ -1537,6 +1537,10 @@ class ImageEditorApp:
         clone_comp.is_border_asset = asset_comp.is_border_asset
 
         # --- FIX: Apply semi-transparency to the clone for visual feedback ---
+        # This was the root cause of the missing transparency on active decals.
+        # The _update_active_decal_transform function will handle the initial transform.
+        self._update_active_decal_transform()
+
         # 1. Set the clone's original image to the full-resolution one for stamping.
         clone_comp.original_pil_image = asset_comp.original_pil_image
         
@@ -1680,10 +1684,18 @@ class ImageEditorApp:
                 if target_comp.tag not in undo_data:
                     undo_data[target_comp.tag] = target_comp.pil_image.copy()
 
-                # 5. Determine where to paste onto the target's PIL image.
-                # This is the intersection's top-left corner relative to the target's top-left corner.
-                paste_x = int(intersect_x1 - target_comp.world_x1)
-                paste_y = int(intersect_y1 - target_comp.world_y1)
+                # 5. --- CRITICAL FIX: Calculate paste position relative to the target's PIL image size ---
+                # The target's pil_image may have different dimensions than its world coordinates.
+                # We must scale the paste position accordingly.
+                target_world_w = target_comp.world_x2 - target_comp.world_x1
+                target_world_h = target_comp.world_y2 - target_comp.world_y1
+                if target_world_w == 0 or target_world_h == 0: continue
+
+                scale_x = target_comp.pil_image.width / target_world_w
+                scale_y = target_comp.pil_image.height / target_world_h
+
+                paste_x = int((intersect_x1 - target_comp.world_x1) * scale_x)
+                paste_y = int((intersect_y1 - target_comp.world_y1) * scale_y)
 
                 # 6. Determine which part of the stamp image to use.
                 # This is the intersection's top-left corner relative to the stamp's top-left corner.
@@ -1694,6 +1706,12 @@ class ImageEditorApp:
                 
                 # Crop the stamp to get the exact piece that overlaps.
                 cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+
+                # --- CRITICAL FIX: Resize the cropped stamp to match the target's image scale ---
+                final_stamp_w = int(cropped_stamp.width * scale_x)
+                final_stamp_h = int(cropped_stamp.height * scale_y)
+                if final_stamp_w > 0 and final_stamp_h > 0:
+                    cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
 
                 # 7. Composite the images.
                 # Start with a copy of the target's current image.
