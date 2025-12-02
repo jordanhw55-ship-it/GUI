@@ -273,6 +273,10 @@ class ImageEditorApp:
         self.paint_color = "red"
         self.brush_size = tk.IntVar(value=4)
         self.last_paint_x, self.last_paint_y = None, None
+        # --- NEW: Dedicated Paint Layer ---
+        self.paint_layer_image = None # The PIL Image for painting
+        self.paint_layer_tk = None    # The PhotoImage for displaying on the canvas
+        self.paint_layer_id = None    # The canvas item ID for the paint layer
         
         # --- NEW: Decal Feature State ---
         self.active_decal = None
@@ -809,10 +813,24 @@ class ImageEditorApp:
         """Toggles the painting mode on or off."""
         self.paint_mode_active = not self.paint_mode_active
         if self.paint_mode_active:
+            # --- NEW: Create the transparent paint layer ---
+            if not self.paint_layer_image:
+                canvas_w = self.canvas.winfo_width()
+                canvas_h = self.canvas.winfo_height()
+                self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+                self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
+                # Create the image on the canvas, initially invisible
+                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags="paint_layer", state='normal')
+
             self.paint_toggle_btn.config(text="Disable Paint Mode", bg='#ef4444', relief='sunken')
             # Disable dragging for all components
             for comp in self.components.values():
                 comp.is_draggable = False
+            
+            # Ensure the paint layer is on top of components but below the UI docks
+            self.canvas.tag_raise(self.paint_layer_id)
+            self._keep_docks_on_top()
+
             print("Paint mode ENABLED. Component dragging is disabled.")
         else:
             self.paint_toggle_btn.config(text="Enable Paint Mode", bg='#d97706', relief='flat')
@@ -831,8 +849,14 @@ class ImageEditorApp:
 
     def clear_paintings(self):
         """Removes all lines drawn on the canvas."""
-        self.canvas.delete("paint_line")
-        print("All paintings have been cleared.")
+        if self.paint_layer_image:
+            # Create a new, blank transparent image
+            canvas_w = self.canvas.winfo_width()
+            canvas_h = self.canvas.winfo_height()
+            self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+            # Update the canvas to show the cleared image
+            self._update_paint_layer_display()
+            print("All paintings have been cleared.")
 
 
     def handle_tab_click(self, name):
@@ -847,8 +871,9 @@ class ImageEditorApp:
         elif name in self.components:
             # Hide all other components to isolate the selected one
             for tag, comp in self.components.items():
-                # Also ensure any drawn paint lines are visible
-                self.canvas.itemconfig("paint_line", state='normal')
+                # Also ensure the paint layer is visible
+                if self.paint_layer_id:
+                    self.canvas.itemconfig(self.paint_layer_id, state='normal')
 
                 state_to_set = 'normal' if tag == name else 'hidden'
                 if comp.rect_id:
@@ -1122,25 +1147,32 @@ class ImageEditorApp:
             messagebox.showinfo("Export Info", "No modified layers (from decals or painting) found to export.")
 
     def paint_on_canvas(self, event):
-        """Draws a line on the canvas if paint mode is active."""
-        if not self.paint_mode_active:
-            return # Do nothing if we are not in paint mode
-
+        """Draws on the dedicated paint layer image."""
+        if not self.paint_mode_active or not self.paint_layer_image:
+            return
+    
         if self.last_paint_x and self.last_paint_y:
-            self.canvas.create_line(
-                self.last_paint_x, self.last_paint_y, 
-                event.x, event.y,
-                width=self.brush_size.get(),
+            # Get the ImageDraw object for our paint layer
+            draw = ImageDraw.Draw(self.paint_layer_image)
+            draw.line(
+                (self.last_paint_x, self.last_paint_y, event.x, event.y),
                 fill=self.paint_color,
-                capstyle=tk.ROUND, 
-                smooth=tk.TRUE,
-                tags="paint_line" # Tag for easy clearing
+                width=self.brush_size.get(),
+                joint='curve' # Creates smoother connections between line segments
             )
+            # --- IMPORTANT: Update the canvas to show the change ---
+            self._update_paint_layer_display()
+    
         self.last_paint_x, self.last_paint_y = event.x, event.y
 
     def reset_paint_line(self, event):
         """Resets the start of the line when the mouse is released."""
         self.last_paint_x, self.last_paint_y = None, None
+
+    def _update_paint_layer_display(self):
+        """Updates the PhotoImage on the canvas to reflect changes to the PIL image."""
+        self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
+        self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
 
     def reset_selected_layer(self):
         """Resets the currently selected layer to its original, unmodified image."""
