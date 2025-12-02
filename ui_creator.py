@@ -1238,19 +1238,19 @@ class ImageEditorApp:
         self.canvas.config(cursor="")
 
     def redraw_all_zoomable(self):
-        """DEFINITIVE REWRITE V8: Redraws all zoomable items with correct clipping."""
+        """DEFINITIVE REWRITE V9: Redraws all zoomable items with pixel-perfect clipping."""
         # Calculate the composition area's screen coordinates once
-        comp_screen_x1, comp_screen_y1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        comp_screen_x2, comp_screen_y2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
+        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
+        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
 
-        # Create a list of all items that need to be drawn and clipped
-        all_drawable_items = []
+        # Create a list of all items that need to be drawn (tiles, clones, paint layer)
+        items_to_draw = []
         for comp in self.components.values():
             if "zoom_target" in self.canvas.gettags(comp.rect_id):
-                all_drawable_items.append(comp)
+                items_to_draw.append(comp)
 
         if self.paint_layer_id and self.paint_layer_image:
-            # Create a temporary object for the paint layer to process it uniformly
+            # Create a temporary object to represent the paint layer for uniform processing
             paint_layer_obj = type('PaintLayer', (object,), {
                 'rect_id': self.paint_layer_id,
                 'pil_image': self.paint_layer_image,
@@ -1259,73 +1259,71 @@ class ImageEditorApp:
                 'world_x2': self.paint_layer_image.width, 'world_y2': self.paint_layer_image.height,
                 'text_id': None
             })()
-            all_drawable_items.append(paint_layer_obj)
+            items_to_draw.append(paint_layer_obj)
 
-        for item in all_drawable_items:
+        for item in items_to_draw:
             # Calculate the item's full bounding box in screen coordinates
             item_sx1, item_sy1 = self.world_to_screen(item.world_x1, item.world_y1)
             item_sx2, item_sy2 = self.world_to_screen(item.world_x2, item.world_y2)
 
             # Calculate the visual intersection between the item and the composition area
-            intersect_sx1 = max(item_sx1, comp_screen_x1)
-            intersect_sy1 = max(item_sy1, comp_screen_y1)
-            intersect_sx2 = min(item_sx2, comp_screen_x2)
-            intersect_sy2 = min(item_sy2, comp_screen_y2)
+            intersect_x1 = max(item_sx1, comp_sx1)
+            intersect_y1 = max(item_sy1, comp_sy1)
+            intersect_x2 = min(item_sx2, comp_sx2)
+            intersect_y2 = min(item_sy2, comp_sy2)
 
-            # If there is no visible overlap, hide the item and continue
-            if intersect_sx1 >= intersect_sx2 or intersect_sy1 >= intersect_sy2:
+            # Use integers for all screen coordinates to prevent floating point errors
+            intersect_x1, intersect_y1 = int(intersect_x1), int(intersect_y1)
+            intersect_x2, intersect_y2 = int(intersect_x2), int(intersect_y2)
+
+            # If there is no visible overlap, hide the item
+            if intersect_x1 >= intersect_x2 or intersect_y1 >= intersect_y2:
                 self.canvas.itemconfig(item.rect_id, state='hidden')
                 if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
                 continue
 
-            # Handle items with images (tiles, clones, paint layer)
+            # Handle items with images (tiles, paint layer, etc.)
             if item.pil_image:
-                # Calculate the dimensions of the visible part on screen (the intersection)
-                intersect_w = int(intersect_sx2 - intersect_sx1)
-                intersect_h = int(intersect_sy2 - intersect_sy1)
+                # Dimensions of the visible part on screen
+                visible_w = intersect_x2 - intersect_x1
+                visible_h = intersect_y2 - intersect_y1
 
-                # Determine the full size of the item's image if it were all on screen
-                full_screen_w = item_sx2 - item_sx1
-                full_screen_h = item_sy2 - item_sy1
+                # Full dimensions of the item if it were completely on screen
+                full_w = int(item_sx2 - item_sx1)
+                full_h = int(item_sy2 - item_sy1)
 
-                if full_screen_w <= 0 or full_screen_h <= 0: continue
+                if full_w > 0 and full_h > 0:
+                    # Map the screen intersection back to the original image's pixel coordinates
+                    src_w, src_h = item.pil_image.size
+                    crop_x1 = (intersect_x1 - int(item_sx1)) * (src_w / full_w)
+                    crop_y1 = (intersect_y1 - int(item_sy1)) * (src_h / full_h)
+                    crop_x2 = (intersect_x2 - int(item_sx1)) * (src_w / full_w)
+                    crop_y2 = (intersect_y2 - int(item_sy1)) * (src_h / full_h)
 
-                # Calculate the crop box in the source image's pixel coordinates
-                # This maps the screen intersection back to the original image's pixels
-                src_img_w, src_img_h = item.pil_image.size
-                crop_x1 = (intersect_sx1 - item_sx1) * (src_img_w / full_screen_w)
-                crop_y1 = (intersect_sy1 - item_sy1) * (src_img_h / full_screen_h)
-                crop_x2 = (intersect_sx2 - item_sx1) * (src_img_w / full_screen_w)
-                crop_y2 = (intersect_sy2 - item_sy1) * (src_img_h / full_screen_h)
+                    # Crop the original PIL image
+                    cropped_pil = item.pil_image.crop((int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)))
 
-                # Perform the crop on the source PIL image
-                cropped_pil = item.pil_image.crop((
-                    int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)
-                ))
+                    # Resize the cropped piece to fit the visible screen area
+                    display_img = cropped_pil.resize((visible_w, visible_h), Image.Resampling.LANCZOS)
 
-                # Resize the cropped piece to fit the intersection's screen dimensions
-                if intersect_w > 0 and intersect_h > 0:
-                    display_img = cropped_pil.resize((intersect_w, intersect_h), Image.Resampling.LANCZOS)
-
-                    # Update the item's PhotoImage and place it at the intersection's top-left corner
+                    # Update the PhotoImage and display it at the intersection's top-left
                     item.tk_image = ImageTk.PhotoImage(display_img)
                     self.canvas.itemconfig(item.rect_id, image=item.tk_image, state='normal')
-                    self.canvas.coords(item.rect_id, int(intersect_sx1), int(intersect_sy1))
+                    self.canvas.coords(item.rect_id, intersect_x1, intersect_y1)
                     if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
                 else:
-                    # Hide if the intersection has no area
                     self.canvas.itemconfig(item.rect_id, state='hidden')
                     if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
 
-            # Handle placeholder items (colored boxes with text)
+            # Handle placeholder items (the initial colored boxes)
             elif item.text_id:
-                # Just resize the rectangle to the intersection and center the text
-                self.canvas.coords(item.rect_id, intersect_sx1, intersect_sy1, intersect_sx2, intersect_sy2)
-                self.canvas.coords(item.text_id, (intersect_sx1 + intersect_sx2) / 2, (intersect_sy1 + intersect_sy2) / 2)
+                # Just resize the placeholder rectangle to the intersection and center its text
+                self.canvas.coords(item.rect_id, intersect_x1, intersect_y1, intersect_x2, intersect_y2)
+                self.canvas.coords(item.text_id, (intersect_x1 + intersect_x2) / 2, (intersect_y1 + intersect_y2) / 2)
                 self.canvas.itemconfig(item.rect_id, state='normal')
                 self.canvas.itemconfig(item.text_id, state='normal')
 
-        # Finally, ensure the non-zoomable UI elements are on top
+        # Finally, ensure the docks and status box are not obscured
         self._keep_docks_on_top()
 
     def handle_tab_click(self, name):
