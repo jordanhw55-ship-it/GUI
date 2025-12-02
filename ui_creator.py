@@ -713,8 +713,14 @@ class ImageEditorApp:
                   command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
         transform_frame.grid_columnconfigure(1, weight=1)
 
-        tk.Button(image_tab, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.apply_decal_to_underlying_layer).pack(fill='x', padx=10, pady=(10,2))
+        # --- Apply/Discard buttons for Images ---
+        image_action_frame = tk.Frame(image_tab, bg="#374151")
+        image_action_frame.pack(fill='x', padx=10, pady=(10, 5))
+        tk.Button(image_action_frame, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
+                  command=self.apply_decal_to_underlying_layer).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(image_action_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=button_font,
+                  command=self.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
         
         # --- Populate the "Resize" Tab ---
         tk.Label(resize_tab, text="TRANSFORM TILE", **label_style).pack(fill='x')
@@ -754,8 +760,15 @@ class ImageEditorApp:
         tk.Button(border_transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
                   command=lambda: self.decal_rotation.set(0) or self._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
         border_transform_frame.grid_columnconfigure(1, weight=1)
-        tk.Button(border_tab, text="Apply Border to Tile", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.apply_border_to_selection).pack(fill='x', padx=10, pady=5)
+
+        # --- Apply/Discard buttons for Borders ---
+        border_action_frame = tk.Frame(border_tab, bg="#374151")
+        border_action_frame.pack(fill='x', padx=10, pady=5)
+        tk.Button(border_action_frame, text="Apply Border", bg='#10b981', fg='white', relief='flat', font=button_font,
+                  command=self.apply_border_to_selection).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(border_action_frame, text="Discard Border", bg='#ef4444', fg='white', relief='flat', font=button_font,
+                  command=self.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
 
         # --- Populate the "Filters" Tab (Placeholder) ---
         tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
@@ -1258,11 +1271,19 @@ class ImageEditorApp:
         # Find all canvas items that overlap with the decal's bounding box
         overlapping_ids = self.canvas.find_overlapping(*stamp_bbox)
         
-        # --- FIX: Use the original, full-resolution image for stamping ---
-        # Resize it to match the current on-screen size of the stamp source.
-        stamp_w = int(stamp_bbox[2] - stamp_bbox[0])
-        stamp_h = int(stamp_bbox[3] - stamp_bbox[1])
-        decal_stamp_image = stamp_source_comp.original_pil_image.resize((stamp_w, stamp_h), Image.Resampling.LANCZOS)
+        # --- FIX: Recreate the transformed image (resized AND rotated) for stamping ---
+        # Get the current scale and rotation from the sliders.
+        scale_factor = self.decal_scale.get() / 100.0
+        rotation_angle = self.decal_rotation.get()
+
+        # 1. Scale the original, full-resolution image.
+        original_w, original_h = stamp_source_comp.original_pil_image.size
+        new_w = int(original_w * scale_factor)
+        new_h = int(original_h * scale_factor)
+        resized_image = stamp_source_comp.original_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # 2. Rotate the scaled image to create the final stamp.
+        decal_stamp_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
 
 
         applied_count = 0
@@ -1426,20 +1447,9 @@ class ImageEditorApp:
 
 # --- EXECUTION ---
 if __name__ == "__main__":
+    root = tk.Tk()
+    app = ImageEditorApp(root)
     try:
-        root = tk.Tk()
-        app = ImageEditorApp(root)
-
-        # --- FIX: Move button creation here to ensure `app` exists ---
-        # Find the 'Image' tab in the notebook
-        image_tab = app.sidebar_frame.winfo_children()[0].tabs()[2]
-        image_tab_frame = app.sidebar_frame.winfo_children()[0].nametowidget(image_tab)
-
-        tk.Button(image_tab_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=('Inter', 11, 'bold'),
-                  command=app.discard_active_image).pack(fill='x', padx=10, pady=(2,10))
-        tk.Label(image_tab_frame, text="1. Load an asset to the dock.\n2. Click it to create an active image.\n3. Drag, resize, and 'Apply' or 'Discard'.",
-                 bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=(10,0))
-
         root.mainloop()
     except Exception as e:
         messagebox.showerror("Application Error", f"An error occurred: {e}")
