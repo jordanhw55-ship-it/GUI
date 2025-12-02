@@ -255,16 +255,16 @@ class DraggableComponent:
         tile_h_world = self.world_y2 - self.world_y1
 
         # Clamp X coordinates
-        if new_world_x1 < bounds.COMP_AREA_X1:
-            new_world_x1 = bounds.COMP_AREA_X1
-        if new_world_x1 + tile_w_world > bounds.COMP_AREA_X2:
-            new_world_x1 = bounds.COMP_AREA_X2 - tile_w_world
+        if new_world_x1 < bounds.COMP_AREA_X1 / self.app.zoom_scale:
+            new_world_x1 = bounds.COMP_AREA_X1 / self.app.zoom_scale
+        if new_world_x1 + tile_w_world > bounds.COMP_AREA_X2 / self.app.zoom_scale:
+            new_world_x1 = bounds.COMP_AREA_X2 / self.app.zoom_scale - tile_w_world
 
         # Clamp Y coordinates
-        if new_world_y1 < bounds.COMP_AREA_Y1:
-            new_world_y1 = bounds.COMP_AREA_Y1
-        if new_world_y1 + tile_h_world > bounds.COMP_AREA_Y2:
-            new_world_y1 = bounds.COMP_AREA_Y2 - tile_h_world
+        if new_world_y1 < bounds.COMP_AREA_Y1 / self.app.zoom_scale:
+            new_world_y1 = bounds.COMP_AREA_Y1 / self.app.zoom_scale
+        if new_world_y1 + tile_h_world > bounds.COMP_AREA_Y2 / self.app.zoom_scale:
+            new_world_y1 = bounds.COMP_AREA_Y2 / self.app.zoom_scale - tile_h_world
 
         # Update the component's world coordinates with the final clamped values
         self.world_x1, self.world_y1 = new_world_x1, new_world_y1
@@ -1943,10 +1943,15 @@ class ImageEditorApp:
             # The background is transparent, so this is safe.
             rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=rotate_quality)
 
-            # 3. Create the semi-transparent version for display
-            alpha = rotated_image.getchannel('A')
-            semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
-            display_image = rotated_image.copy()
+            # 3. --- FIX: Restore semi-transparency for the live decal preview ---
+            # The decal itself should be displayed at 50% alpha to distinguish it from stamped content.
+            # We also need to composite it over a transparent background to handle rotation correctly.
+            display_image = Image.new('RGBA', rotated_image.size, (0,0,0,0))
+            display_image.paste(rotated_image, (0,0), rotated_image)
+
+            # Now, apply the semi-transparency effect to the composited image.
+            alpha = display_image.getchannel('A')
+            semi_transparent_alpha = Image.eval(alpha, lambda a: int(a * 0.5)) # Use 50% opacity
             display_image.putalpha(semi_transparent_alpha)
 
             # 4. Update the component on the canvas
