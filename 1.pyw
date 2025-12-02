@@ -1419,10 +1419,19 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # When compiled, sys.executable is the path to our .exe.
-            # We re-launch the .exe with a special argument that tells it to run the UI creator.
-            # This ensures the bundled Python environment is used correctly.
-            subprocess.Popen([sys.executable, "--run-ui-creator"])
+            command = [sys.executable]
+            # If running from source (not compiled), we must tell python.exe to run our main script again.
+            # sys.argv[0] is the path to the currently running script (1.pyw).
+            if not getattr(sys, 'frozen', False):
+                command.append(sys.argv[0])
+            
+            # Add the special flag that the __main__ block will check for.
+            command.append("--run-ui-creator")
+            
+            # Launch the new process.
+            # In dev: python.exe 1.pyw --run-ui-creator
+            # In prod: HellfireHelper.exe --run-ui-creator
+            subprocess.Popen(command)
         except Exception as e:
             QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}")
 
