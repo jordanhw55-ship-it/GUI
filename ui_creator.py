@@ -248,6 +248,9 @@ class DraggableComponent:
         # Update the last screen position for the next drag event
         self.last_x = event.x
         self.last_y = event.y
+        
+        # Redraw all zoomable items to reflect the change in world coordinates
+        self.app.redraw_all_zoomable()
 
     def on_release(self, event):
         """Action after drag finishes (optional)."""
@@ -1015,8 +1018,15 @@ class ImageEditorApp:
         
         # Also redraw the paint layer if it exists
         if self.paint_layer_id:
-            self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
-            self.canvas.scale(self.paint_layer_id, 0, 0, self.zoom_scale, self.zoom_scale)
+            # To correctly scale the paint layer, we must resize the PIL image
+            # and create a new PhotoImage. This is more intensive but correct.
+            orig_w, orig_h = self.paint_layer_image.size
+            new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
+            if new_w > 0 and new_h > 0:
+                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST)
+                self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
+                self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
+                self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
 
     def on_zoom(self, event):
         """Handles zooming the canvas with Ctrl+MouseWheel."""
@@ -1150,11 +1160,11 @@ class ImageEditorApp:
         if not comp: return
 
         bbox = self.canvas.bbox(comp.rect_id)
-        if bbox:
-            width = int(bbox[2] - bbox[0])
-            height = int(bbox[3] - bbox[1])
-            self.resize_width.set(str(width))
-            self.resize_height.set(str(height))
+        # Use world coordinates for the true size, not screen-projected size
+        width = int(comp.world_x2 - comp.world_x1)
+        height = int(comp.world_y2 - comp.world_y1)
+        self.resize_width.set(str(width))
+        self.resize_height.set(str(height))
 
     def on_resize_entry_change(self, *args):
         """Dynamically calculates one dimension if aspect ratio is locked."""
@@ -1215,6 +1225,9 @@ class ImageEditorApp:
             comp._set_pil_image(comp.pil_image, resize_to_fit=True)
         else:
             comp._draw_placeholder(comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
+        
+        # Redraw to apply the new size within the camera view
+        self.redraw_all_zoomable()
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
 
     def apply_border_to_selection(self):
@@ -1395,18 +1408,22 @@ class ImageEditorApp:
         if not is_painting or not self.paint_layer_image:
             return
     
+        # Convert screen event coordinates to world coordinates for drawing
+        world_x, world_y = self.screen_to_world(event.x, event.y)
+
         # --- NEW: Save state before drawing the first point of a new line ---
         if self.last_paint_x is None and self.last_paint_y is None:
             self._save_undo_state(self.paint_layer_image.copy())
 
         if self.last_paint_x and self.last_paint_y:
+            last_world_x, last_world_y = self.screen_to_world(self.last_paint_x, self.last_paint_y)
             # --- NEW: Determine color based on tool ---
             paint_color = (0, 0, 0, 0) if self.eraser_mode_active else self.paint_color
 
             # Get the ImageDraw object for our paint layer
             draw = ImageDraw.Draw(self.paint_layer_image)
             draw.line(
-                (self.last_paint_x, self.last_paint_y, event.x, event.y),
+                (last_world_x, last_world_y, world_x, world_y),
                 fill=paint_color,
                 width=self.brush_size.get(),
                 joint='curve' # Creates smoother connections between line segments
@@ -1414,6 +1431,7 @@ class ImageEditorApp:
             # --- IMPORTANT: Update the canvas to show the change ---
             self._update_paint_layer_display()
     
+        # Store the raw screen coordinates for the next event
         self.last_paint_x, self.last_paint_y = event.x, event.y
 
     def reset_paint_line(self, event):
@@ -1422,8 +1440,15 @@ class ImageEditorApp:
 
     def _update_paint_layer_display(self):
         """Updates the PhotoImage on the canvas to reflect changes to the PIL image."""
-        self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
-        self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
+        # This is now part of the main redraw loop to handle scaling correctly.
+        # We just need to trigger a redraw.
+        self.redraw_all_zoomable()
+
+    def _create_and_place_clone(self, asset_comp, event, clone_tag):
+        """Helper to create, configure, and place a clone component."""
+        w, h = asset_comp.original_pil_image.size
+        world_x, world_y = self.screen_to_world(event.x, event.y)
+        return DraggableComponent(self.canvas, self, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
 
     def reset_selected_layer(self):
         """Resets the currently selected layer to its original, unmodified image."""
@@ -1468,15 +1493,10 @@ class ImageEditorApp:
         clone_tag = f"{clone_prefix}{self.next_dynamic_id}"
         self.next_dynamic_id += 1
         
-        # Get the original image size to create the new component's bounds
+        # --- REFACTORED: Create the clone at the mouse's world position ---
+        world_x, world_y = self.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
-        
-        # --- NEW: Position the new clone in the center of the canvas ---
-        x = (self.canvas.winfo_width() / 2) - (w / 2)
-        y = (self.canvas.winfo_height() / 2) - (h / 2)
-
-        # Create the new component instance
-        clone_comp = DraggableComponent(self.canvas, self, clone_tag, x, y, x + w, y + h, "green", clone_tag)
+        clone_comp = DraggableComponent(self.canvas, self, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
         
         # --- FIX: Carry over the border flag to the clone ---
         clone_comp.is_border_asset = asset_comp.is_border_asset
