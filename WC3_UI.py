@@ -257,13 +257,13 @@ class WC3UITab(QWidget):
             button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.unit_select_buttons, 'unit_select'))
 
         # Populate other tabs with placeholders
-        reticle_tab = self.reticle_tab
-        layout = reticle_tab.layout()
-        loading_widget = reticle_tab.findChild(QLabel, "loading_label_3")
-        if loading_widget:
-            loading_widget.deleteLater()
-        tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
-        layout.addWidget(QLabel(f"Content for {tab_name} tab."))
+        # --- FIX: Only add placeholder content to the 'Reticle' tab ---
+        reticle_layout = self.reticle_tab.layout()
+        reticle_loading_widget = self.reticle_tab.findChild(QLabel, "loading_label_3")
+        if reticle_loading_widget:
+            reticle_loading_widget.deleteLater()
+        reticle_tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(self.reticle_tab))
+        reticle_layout.addWidget(QLabel(f"Content for {reticle_tab_name} tab."))
 
     def on_option_selected(self, clicked_button: QPushButton, button_group: list, category: str):
         """Handles the logic when an option button is clicked, ensuring only one is selected."""
