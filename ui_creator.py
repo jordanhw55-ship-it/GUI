@@ -177,9 +177,6 @@ class DraggableComponent:
         if self.text_id:
             self.canvas.tag_raise(self.text_id)
 
-        # --- NEW: Isolate on click ---
-        self.app.isolate_component(self.tag)
-
     def on_drag(self, event):
         """Calculates the distance moved and updates the element's position."""
         if not self.is_draggable:
@@ -457,21 +454,6 @@ class ImageEditorApp:
         # Re-apply the layout to show the newly loaded images in their correct positions.
         self.apply_preview_layout()
 
-    def isolate_component(self, tag_to_isolate):
-        """Hides all components except the one specified, entering an 'isolation mode'."""
-        if tag_to_isolate not in self.components:
-            return
-
-        print(f"Isolating component: {tag_to_isolate}")
-        for tag, comp in self.components.items():
-            state_to_set = 'normal' if tag == tag_to_isolate else 'hidden'
-            if comp.rect_id:
-                self.canvas.itemconfig(comp.rect_id, state=state_to_set)
-            if comp.text_id:
-                self.canvas.itemconfig(comp.text_id, state=state_to_set)
-
-        self.components[tag_to_isolate].select(self)
-
     def set_selected_component(self, tag):
         """Updates the tracking variable for the currently selected component."""
         self.selected_component_tag = tag
@@ -585,6 +567,7 @@ class ImageEditorApp:
         style.map("TNotebook.Tab", background=[("selected", "#4b5563")], foreground=[("selected", "white")])
 
         notebook = ttk.Notebook(self.sidebar_frame, style='TNotebook')
+        notebook.pack(expand=True, fill='both')
 
         # --- Create Frames for each Tab ---
         layer_tab = tk.Frame(notebook, bg="#374151")
@@ -594,6 +577,7 @@ class ImageEditorApp:
         text_tab = tk.Frame(notebook, bg="#374151") # NEW
         export_tab = tk.Frame(notebook, bg="#374151")
 
+        notebook.add(layer_tab, text='Layer')
         notebook.add(paint_tab, text='Paint')
         notebook.add(image_tab, text='Image')
         notebook.add(filters_tab, text='Filters') # NEW
@@ -604,6 +588,37 @@ class ImageEditorApp:
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
 
+        # --- Populate the "Layer" Tab ---
+        tk.Label(layer_tab, text="LAYER CONTROLS", **label_style).pack(fill='x')
+        
+        # Layer Selection Buttons
+        for i, name in enumerate(self.component_list):
+            button_style = {
+                'text': name,
+                'bg': '#4b5563' if name == "Preview All" else '#6b7280',
+                'fg': 'white', 'relief': 'flat', 'pady': 8, 'font': ('Inter', 11),
+                'command': lambda n=name: self.handle_tab_click(n)
+            }
+            btn = tk.Button(layer_tab, **button_style)
+            btn.pack(fill='x', padx=10, pady=(2 if i > 0 else 5))
+        
+        # --- Layer Reordering Controls ---
+        tk.Frame(layer_tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10) # Separator
+        tk.Label(layer_tab, text="Z-ORDER CONTROL", **label_style).pack(fill='x')
+        reorder_frame = tk.Frame(layer_tab, bg="#374151")
+        reorder_frame.pack(fill='x', padx=10, pady=5)
+        tk.Button(reorder_frame, text="Move Up", bg='#6b7280', fg='white', relief='flat', font=button_font,
+                  command=lambda: self.move_layer('up')).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(reorder_frame, text="Move Down", bg='#6b7280', fg='white', relief='flat', font=button_font,
+                  command=lambda: self.move_layer('down')).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
+        # --- Layer Actions (Load/Reset) ---
+        tk.Label(layer_tab, text="LAYER ACTIONS", **label_style).pack(fill='x', pady=(10,0))
+        actions_frame = tk.Frame(layer_tab, bg="#374151")
+        actions_frame.pack(fill='x', padx=10, pady=5)
+        tk.Button(actions_frame, text="Reset Layer", bg='#ef4444', fg='white', relief='flat', font=button_font,
+                  command=self.reset_selected_layer).pack(fill='x', expand=True)
+        
         # --- Save/Load Layout Buttons ---
         tk.Label(layer_tab, text="LAYOUT PRESETS", **label_style).pack(fill='x')
         layout_frame = tk.Frame(layer_tab, bg="#374151")
@@ -621,11 +636,6 @@ class ImageEditorApp:
             image_set_menu.pack(fill='x', padx=10, pady=5)
         else:
             tk.Label(image_tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
-
-        # --- NEW: Show All Layers button ---
-        tk.Button(image_tab, text="Show All Layers", bg='#6b7280', fg='white', relief='flat', font=button_font,
-                  command=self.apply_preview_layout).pack(fill='x', padx=10, pady=(10, 5))
-
 
 
         # --- Populate the "Paint" Tab ---
@@ -682,8 +692,6 @@ class ImageEditorApp:
         tk.Label(export_tab, text="Note: DDS export requires the image\ndimensions to be a power of two\n(e.g., 256x256, 512x512) and may not\nsupport all internal DDS formats.",
                  bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x')
 
-        # Pack the notebook last after all tabs are populated
-        notebook.pack(expand=True, fill='both')
 
     def toggle_paint_mode(self):
         """Toggles the painting mode on or off."""
@@ -714,6 +722,37 @@ class ImageEditorApp:
         self.canvas.delete("paint_line")
         print("All paintings have been cleared.")
 
+
+    def handle_tab_click(self, name):
+        """Handles the logic when a sidebar button is clicked."""
+        print("-" * 30)
+
+        # --- MODIFICATION START: Implement isolation mode ---
+        if name == "Preview All":
+            self.set_selected_component(None)
+            self.apply_preview_layout()
+        
+        elif name in self.components:
+            # Hide all other components to isolate the selected one
+            for tag, comp in self.components.items():
+                # Also ensure any drawn paint lines are visible
+                self.canvas.itemconfig("paint_line", state='normal')
+
+                state_to_set = 'normal' if tag == name else 'hidden'
+                if comp.rect_id:
+                    self.canvas.itemconfig(comp.rect_id, state=state_to_set)
+                if comp.text_id:
+                    self.canvas.itemconfig(comp.text_id, state=state_to_set)
+            
+            # Select the component (which also handles highlighting)
+            self.components[name].select(self)
+        
+        else:
+            # Fallback for any component names that might be added to the list later
+            self.set_selected_component(name)
+            messagebox.showinfo("Layer Control", f"Layer '{name}' selected. Use 'Load Image' to assign a visual component. Note: This tile is not currently initialized on the canvas.")
+            print(f"Action: Selecting layer '{name}' for potential image loading (Placeholder).")
+        # --- MODIFICATION END ---
 
 
     def _keep_docks_on_top(self):
