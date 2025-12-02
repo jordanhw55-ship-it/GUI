@@ -56,6 +56,11 @@ class DraggableComponent:
         self.is_border_asset = False # NEW: To identify border assets
         
         # --- NEW: World Coordinates for Camera System ---
+        # Define composition area bounds
+        self.COMP_AREA_X1 = 0
+        self.COMP_AREA_Y1 = 50
+        self.COMP_AREA_X2 = 1407
+        self.COMP_AREA_Y2 = 400
         # These store the "true" position and size at 100% zoom.
         self.world_x1, self.world_y1 = x1, y1
         self.world_x2, self.world_y2 = x2, y2
@@ -245,9 +250,33 @@ class DraggableComponent:
         dx_world = dx_screen / self.app.zoom_scale
         dy_world = dy_screen / self.app.zoom_scale
 
-        # Update the component's world coordinates
-        self.world_x1 += dx_world; self.world_y1 += dy_world
-        self.world_x2 += dx_world; self.world_y2 += dy_world
+        # --- NEW: Clamp movement to composition area ---
+        # Calculate potential new position
+        new_world_x1 = self.world_x1 + dx_world
+        new_world_y1 = self.world_y1 + dy_world
+        new_world_x2 = self.world_x2 + dx_world
+        new_world_y2 = self.world_y2 + dy_world
+
+        # Get composition area bounds from the app instance
+        bounds = self.app
+
+        # Clamp X coordinates
+        if new_world_x1 < bounds.COMP_AREA_X1:
+            dx_world = bounds.COMP_AREA_X1 - self.world_x1
+        if new_world_x2 > bounds.COMP_AREA_X2:
+            dx_world = bounds.COMP_AREA_X2 - self.world_x2
+
+        # Clamp Y coordinates
+        if new_world_y1 < bounds.COMP_AREA_Y1:
+            dy_world = bounds.COMP_AREA_Y1 - self.world_y1
+        if new_world_y2 > bounds.COMP_AREA_Y2:
+            dy_world = bounds.COMP_AREA_Y2 - self.world_y2
+
+        # Update the component's world coordinates with the (potentially clamped) delta
+        self.world_x1 += dx_world
+        self.world_y1 += dy_world
+        self.world_x2 += dx_world
+        self.world_y2 += dy_world
         
         # Update the last screen position for the next drag event
         self.last_x = event.x
@@ -400,8 +429,8 @@ class ImageEditorApp:
         # )
         # self.canvas.create_text(CANVAS_WIDTH/2, 25, text="COMPOSITION AREA (Drag components here)", fill="#9ca3af", font=("Inter", 12))
 
-        # Draw a placeholder for the main template background and tag it for zooming
-        self.canvas.create_rectangle(0, 50, 1407, 400, # Final position adjustment
+        # Draw a placeholder for the main template background using the defined bounds
+        self.canvas.create_rectangle(self.COMP_AREA_X1, self.COMP_AREA_Y1, self.COMP_AREA_X2, self.COMP_AREA_Y2,
                                      fill="#374151", # Slightly lighter than canvas bg
                                      outline="#4b5563",
                                      width=3)
