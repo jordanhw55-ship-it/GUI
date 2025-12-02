@@ -17,6 +17,16 @@ from PIL import ImageDraw # NEW: For drawing on PIL images
 import json # Required for saving and loading structured data
 from PIL import ImageEnhance, ImageChops
 
+# --- NEW: Centralized Path Management ---
+def get_base_path():
+    """ Get absolute path to resource, works for dev and for PyInstaller/Nuitka """
+    if getattr(sys, 'frozen', False):
+        # The application is frozen
+        return os.path.dirname(sys.executable)
+    else:
+        # The application is not frozen, return the script's directory
+        return os.path.dirname(os.path.abspath(__file__))
+
 # --- CONFIGURATION (SCALED UP FOR LARGER GUI) ---
 CANVAS_WIDTH = 1440  # Increased by 20% for a wider GUI
 CANVAS_HEIGHT = 900  # Increased from 700
@@ -234,6 +244,13 @@ class ImageEditorApp:
         self.DOCK_Y_POSITION = 650
         self.DOCK_ASSET_SIZE = (128, 128)
         # Create a main frame to hold everything
+        # --- NEW: Define base paths for UI Creator resources ---
+        self.base_path = get_base_path()
+        self.ui_creator_contents_path = os.path.join(self.base_path, "Contents", "ui_creator")
+        self.image_base_dir = os.path.join(self.ui_creator_contents_path, "images")
+        self.tools_dir = os.path.join(self.ui_creator_contents_path, "tools")
+        self.output_dir = os.path.join(self.ui_creator_contents_path, "output")
+        self.layouts_dir = os.path.join(self.ui_creator_contents_path, "layouts")
         self.main_frame = tk.Frame(master, padx=10, pady=10, bg="#1f2937")
         self.main_frame.pack(fill="both", expand=True)
 
@@ -380,12 +397,8 @@ class ImageEditorApp:
         # Set a default selected component
         self.set_selected_component('humanuitile01')
 
-        # --- 4. Auto-Load Images ---
-        # Construct the absolute path relative to the user's home directory for reliability
-        home_dir = os.path.expanduser('~')
-        image_base_dir = os.path.join(home_dir, "Desktop", "canvas", "png")
-        
-        self._attempt_auto_load_images(image_base_dir)
+        # --- 4. Auto-Load Images from the new Contents folder ---
+        self._attempt_auto_load_images(self.image_base_dir)
 
         # --- 5. Apply Initial Layout ---
         self.apply_preview_layout()
@@ -459,10 +472,12 @@ class ImageEditorApp:
                     # but coordinates are fully saved.
                 }
 
+        os.makedirs(self.layouts_dir, exist_ok=True)
         filepath = filedialog.asksaveasfilename(
             defaultextension=".json",
             filetypes=[("JSON files", "*.json")],
-            title="Save Component Layout"
+            title="Save Component Layout",
+            initialdir=self.layouts_dir # Start in the new layouts directory
         )
         
         if filepath:
@@ -477,9 +492,9 @@ class ImageEditorApp:
     def load_layout(self):
         """Loads coordinates for all components from a JSON file and moves them."""
         filepath = filedialog.askopenfilename(
-            defaultextension=".json",
             filetypes=[("JSON files", "*.json")],
-            title="Load Component Layout"
+            title="Load Component Layout",
+            initialdir=self.layouts_dir # Start in the new layouts directory
         )
         
         if filepath:
@@ -749,11 +764,10 @@ class ImageEditorApp:
             messagebox.showerror("Export Error", f"Unsupported export format: {export_format}")
             return
 
-        home_dir = os.path.expanduser('~')
         # Determine save directory based on format
-        folder_name = "save-dds" if export_format == 'dds' else "saves"
-        save_dir = os.path.join(home_dir, "Desktop", "canvas", folder_name)
+        save_dir = os.path.join(self.output_dir, f"export_{export_format}")
         try:
+            # Create the output directory if it doesn't exist
             os.makedirs(save_dir, exist_ok=True)
         except OSError as e:
             messagebox.showerror("Export Error", f"Could not create save directory: {e}")
@@ -801,8 +815,7 @@ class ImageEditorApp:
                 if export_format == 'dds':
                     # --- DEFINITIVE METHOD: Use texconv.exe ---
                     # This is the most reliable way to create game-ready DDS files.
-                    home_dir = os.path.expanduser('~')
-                    texconv_path = os.path.join(home_dir, "Desktop", "canvas", "tools", "texconv.exe")
+                    texconv_path = os.path.join(self.tools_dir, "texconv.exe")
 
                     if not os.path.exists(texconv_path):
                         messagebox.showerror("DDS Export Error", f"texconv.exe not found at:\n{texconv_path}\nPlease download it from the DirectXTex GitHub and place it there.")
@@ -849,7 +862,7 @@ class ImageEditorApp:
                 messagebox.showerror("DDS Export Error", f"Could not save '{os.path.basename(save_path)}'.\n\nDetails:\n{e}")
 
         if exported_count > 0:
-            messagebox.showinfo("Export Complete", f"Successfully exported {exported_count} modified {export_format.upper()} files to the '{folder_name}' folder.")
+            messagebox.showinfo("Export Complete", f"Successfully exported {exported_count} modified {export_format.upper()} files to:\n{os.path.basename(save_dir)}")
         else:
             messagebox.showinfo("Export Info", "No modified layers (from decals or painting) found to export.")
 
@@ -942,7 +955,8 @@ class ImageEditorApp:
         """Loads an image, scales it, and places it in the asset dock as a new draggable component."""
         image_path = filedialog.askopenfilename(
             title="Select Asset Image",
-            filetypes=[("Image Files", "*.png *.jpg *.jpeg *.gif")]
+            filetypes=[("Image Files", "*.png *.jpg *.jpeg *.gif")],
+            initialdir=self.image_base_dir # Start in the new images directory
         )
         if not image_path:
             return
