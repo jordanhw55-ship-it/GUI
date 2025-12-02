@@ -229,6 +229,10 @@ class DraggableComponent:
         if not self.is_draggable:
             return # Do not drag if painting is active
 
+        # --- NEW: Prevent single-drag if a group-drag is active ---
+        if self.app.is_group_dragging:
+            return
+
         # --- FIX: Prevent dock assets from being dragged directly ---
         if self.is_dock_asset:
             return # Do not drag if painting is active
@@ -322,6 +326,7 @@ class ImageEditorApp:
         self.pan_offset_y = 0.0
         self.pan_start_x = 0 # For tracking drag start
         self.pan_start_y = 0 # For tracking drag start
+        self.is_group_dragging = False # NEW: Flag to prevent single-drag during group-drag
         self.zoom_label_var = tk.StringVar(value="100%") # NEW: For zoom display
 
         master.bind("<Control-MouseWheel>", self.on_zoom)
@@ -1223,6 +1228,7 @@ class ImageEditorApp:
         # Store the current mouse position for calculating drag delta
         self.pan_start_x = event.x
         self.pan_start_y = event.y
+        self.is_group_dragging = True # NEW: Set the group drag flag
         self.canvas.config(cursor="fleur")
 
     def on_pan_drag(self, event):
@@ -1230,6 +1236,7 @@ class ImageEditorApp:
         MODIFIED: Drags all non-dock, non-clone components at once while preserving their layout.
         This replaces the old camera panning functionality.
         """
+        if not self.is_group_dragging: return # Should not happen, but a good safeguard
         # Calculate movement in world space
         dx_screen = event.x - self.pan_start_x
         dy_screen = event.y - self.pan_start_y
@@ -1253,6 +1260,7 @@ class ImageEditorApp:
 
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""
+        self.is_group_dragging = False # NEW: Clear the group drag flag
         self.canvas.config(cursor="")
 
     def redraw_all_zoomable(self):
