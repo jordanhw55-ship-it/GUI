@@ -1419,8 +1419,13 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # Construct the path to the script relative to the main script's location
-            ui_creator_script_path = os.path.join(get_base_path(), "ui_creator.py")
+            # When running as a compiled --onefile app, bundled files are in a temporary folder.
+            # We must check this special location (_MEIPASS) for the script.
+            if getattr(sys, 'frozen', False):
+                base_path = sys._MEIPASS
+            else:
+                base_path = get_base_path()
+            ui_creator_script_path = os.path.join(base_path, "ui_creator.py")
             
             if not os.path.exists(ui_creator_script_path):
                 QMessageBox.critical(self, "Error", f"UI Creator script not found at:\n{ui_creator_script_path}")
