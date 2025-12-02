@@ -1879,15 +1879,13 @@ class ImageEditorApp:
                 # Paste the cropped stamp onto this layer at the correct position.
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
-                # --- DEFINITIVE FIX for Transparency ---
-                # Always respect the transparency of the underlying tile by multiplying alpha channels.
-                # This ensures that decals/borders do not draw on transparent parts of the tile.
+                # --- DEFINITIVE FIX V2 for Transparency ---
+                # Create a mask by multiplying the alpha channels of the target tile and the decal layer.
+                # This mask will be used to correctly composite the decal, ensuring it only appears
+                # where the underlying tile is not transparent.
                 comp_alpha_mask = final_image.getchannel('A')
-                combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
-                decal_layer.putalpha(combined_alpha)
-
-                # Composite the decal layer onto the final image.
-                final_image = Image.alpha_composite(final_image, decal_layer)
+                mask = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
+                final_image.paste(decal_layer, (0, 0), mask)
 
                 # 8. Apply the newly composited image back to the target component.
                 target_comp._set_pil_image(final_image)
