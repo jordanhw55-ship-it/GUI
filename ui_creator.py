@@ -1264,92 +1264,55 @@ class ImageEditorApp:
         self.canvas.config(cursor="")
 
     def redraw_all_zoomable(self):
-        """DEFINITIVE REWRITE V9: Redraws all zoomable items with pixel-perfect clipping."""
-        # Calculate the composition area's screen coordinates once
-        comp_sx1, comp_sy1 = self.world_to_screen(self.COMP_AREA_X1, self.COMP_AREA_Y1)
-        comp_sx2, comp_sy2 = self.world_to_screen(self.COMP_AREA_X2, self.COMP_AREA_Y2)
-
-        # Create a list of all items that need to be drawn (tiles, clones, paint layer)
-        items_to_draw = []
+        """
+        PERFORMANCE REWRITE: Redraws all zoomable items based on the current camera view.
+        This version avoids expensive, real-time cropping and focuses on fast resizing and moving.
+        """
+        # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
             if "zoom_target" in self.canvas.gettags(comp.rect_id):
-                items_to_draw.append(comp)
+                # For components with an image, we resize the image and then place it.
+                if comp.pil_image:
+                    screen_w = (comp.world_x2 - comp.world_x1) * self.zoom_scale
+                    screen_h = (comp.world_y2 - comp.world_y1) * self.zoom_scale
 
+                    # Only regenerate the Tkinter image if the size has actually changed.
+                    if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h):
+                        comp._cached_screen_w = int(screen_w)
+                        comp._cached_screen_h = int(screen_h)
+
+                        source_img = comp.pil_image
+                        if not source_img: continue
+
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
+                        comp.tk_image = ImageTk.PhotoImage(resized_img)
+                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
+
+                    # Always update the item's screen coordinates.
+                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                    self.canvas.coords(comp.rect_id, sx1, sy1)
+
+                # For placeholder components (rectangles with text).
+                elif comp.text_id:
+                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                    sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
+                    self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
+                    self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
+        
+        # Also redraw the paint layer if it exists.
         if self.paint_layer_id and self.paint_layer_image:
-            # Create a temporary object to represent the paint layer for uniform processing
-            paint_layer_obj = type('PaintLayer', (object,), {
-                'rect_id': self.paint_layer_id,
-                'pil_image': self.paint_layer_image,
-                'tk_image': self.paint_layer_tk,
-                'world_x1': 0, 'world_y1': 0,
-                'world_x2': self.paint_layer_image.width, 'world_y2': self.paint_layer_image.height,
-                'text_id': None
-            })()
-            items_to_draw.append(paint_layer_obj)
+            orig_w, orig_h = self.paint_layer_image.size
+            new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
+            if new_w > 0 and new_h > 0:
+                # This part is still a bit slow, but only happens on zoom, not drag.
+                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST) # Use NEAREST for speed
+                self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
+                self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
+                # The paint layer is always anchored at the pan offset.
+                self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
 
-        for item in items_to_draw:
-            # Calculate the item's full bounding box in screen coordinates
-            item_sx1, item_sy1 = self.world_to_screen(item.world_x1, item.world_y1)
-            item_sx2, item_sy2 = self.world_to_screen(item.world_x2, item.world_y2)
-
-            # Calculate the visual intersection between the item and the composition area
-            intersect_x1 = max(item_sx1, comp_sx1)
-            intersect_y1 = max(item_sy1, comp_sy1)
-            intersect_x2 = min(item_sx2, comp_sx2)
-            intersect_y2 = min(item_sy2, comp_sy2)
-
-            # Use integers for all screen coordinates to prevent floating point errors
-            intersect_x1, intersect_y1 = int(intersect_x1), int(intersect_y1)
-            intersect_x2, intersect_y2 = int(intersect_x2), int(intersect_y2)
-
-            # If there is no visible overlap, hide the item
-            if intersect_x1 >= intersect_x2 or intersect_y1 >= intersect_y2:
-                self.canvas.itemconfig(item.rect_id, state='hidden')
-                if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
-                continue
-
-            # Handle items with images (tiles, paint layer, etc.)
-            if item.pil_image:
-                # Dimensions of the visible part on screen
-                visible_w = intersect_x2 - intersect_x1
-                visible_h = intersect_y2 - intersect_y1
-
-                # Full dimensions of the item if it were completely on screen
-                full_w = int(item_sx2 - item_sx1)
-                full_h = int(item_sy2 - item_sy1)
-
-                if full_w > 0 and full_h > 0:
-                    # Map the screen intersection back to the original image's pixel coordinates
-                    src_w, src_h = item.pil_image.size
-                    crop_x1 = (intersect_x1 - int(item_sx1)) * (src_w / full_w)
-                    crop_y1 = (intersect_y1 - int(item_sy1)) * (src_h / full_h)
-                    crop_x2 = (intersect_x2 - int(item_sx1)) * (src_w / full_w)
-                    crop_y2 = (intersect_y2 - int(item_sy1)) * (src_h / full_h)
-
-                    # Crop the original PIL image
-                    cropped_pil = item.pil_image.crop((int(crop_x1), int(crop_y1), int(crop_x2), int(crop_y2)))
-
-                    # Resize the cropped piece to fit the visible screen area
-                    display_img = cropped_pil.resize((visible_w, visible_h), Image.Resampling.LANCZOS)
-
-                    # Update the PhotoImage and display it at the intersection's top-left
-                    item.tk_image = ImageTk.PhotoImage(display_img)
-                    self.canvas.itemconfig(item.rect_id, image=item.tk_image, state='normal')
-                    self.canvas.coords(item.rect_id, intersect_x1, intersect_y1)
-                    if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
-                else:
-                    self.canvas.itemconfig(item.rect_id, state='hidden')
-                    if item.text_id: self.canvas.itemconfig(item.text_id, state='hidden')
-
-            # Handle placeholder items (the initial colored boxes)
-            elif item.text_id:
-                # Just resize the placeholder rectangle to the intersection and center its text
-                self.canvas.coords(item.rect_id, intersect_x1, intersect_y1, intersect_x2, intersect_y2)
-                self.canvas.coords(item.text_id, (intersect_x1 + intersect_x2) / 2, (intersect_y1 + intersect_y2) / 2)
-                self.canvas.itemconfig(item.rect_id, state='normal')
-                self.canvas.itemconfig(item.text_id, state='normal')
-
-        # Finally, ensure the docks and status box are not obscured
+        # Finally, ensure the status box is not obscured.
+        self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()
 
     def handle_tab_click(self, name):
