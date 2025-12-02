@@ -138,8 +138,9 @@ class WC3UITab(QWidget):
         # UI Tab
         self._clear_layout(self.ui_tab.layout()) # Clear the old QVBoxLayout
         ui_layout = QGridLayout() # Create a new QGridLayout
-        self.ui_tab.setLayout(ui_layout) # Set the new grid layout on the tab
+        self.ui_tab.setLayout(ui_layout) # <-- FIX: Set the new layout on the tab
         ui_layout.setVerticalSpacing(10)  # Add vertical space between rows
+
         self.theme_buttons = []
 
         for i in range(1, 7):
@@ -167,7 +168,7 @@ class WC3UITab(QWidget):
         # HP Bar Tab
         self._clear_layout(self.hp_bar_tab.layout())
         hp_bar_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
-        self.hp_bar_tab.setLayout(hp_bar_layout)
+        self.hp_bar_tab.setLayout(hp_bar_layout) # <-- FIX: Set the new layout on the tab
         hp_bar_layout.setVerticalSpacing(10)
         self.hp_bar_buttons = []
         hp_bar_options = ["4Bar", "8Bar", "30Bar"]
@@ -204,7 +205,7 @@ class WC3UITab(QWidget):
         # Unit Select Tab
         self._clear_layout(self.unit_select_tab.layout())
         unit_select_layout = QGridLayout() # Create a new grid to replace the old QVBoxLayout
-        self.unit_select_tab.setLayout(unit_select_layout)
+        self.unit_select_tab.setLayout(unit_select_layout) # <-- FIX: Set the new layout on the tab
         unit_select_layout.setVerticalSpacing(10)
         self.unit_select_buttons = []
         unit_select_options = ["Chain", "Dragon", "Eye", "Skeleton", "Square", "Sun", "Target"]
@@ -247,7 +248,7 @@ class WC3UITab(QWidget):
         # Populate other tabs with placeholders
         reticle_tab = self.reticle_tab
         self._clear_layout(reticle_tab.layout())
-        layout = reticle_tab.layout()
+        layout = reticle_tab.layout() # This is a QVBoxLayout, which is fine for a placeholder
         tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(reticle_tab))
         layout.addWidget(QLabel(f"Content for {tab_name} tab."))
         layout.addStretch()
