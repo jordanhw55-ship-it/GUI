@@ -349,19 +349,12 @@ class ImageEditorApp:
         # DEFINITIVE REWRITE: The top half of the canvas is the composition area.
         self.COMP_AREA_X1 = 0
         self.COMP_AREA_Y1 = 0
-        self.COMP_AREA_X2 = CANVAS_WIDTH 
-        self.COMP_AREA_Y2 = CANVAS_HEIGHT / 2 # Top half of the canvas
+        self.COMP_AREA_X2 = CANVAS_WIDTH
+        self.COMP_AREA_Y2 = CANVAS_HEIGHT # Use the full canvas height
 
         # --- NEW: Asset Dock State ---
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
-
-        self.DOCK_ASSET_SIZE = (128, 128)
-        # DEFINITIVE REWRITE: Docks are in the bottom half.
-        self.IMAGE_DOCK_Y = (CANVAS_HEIGHT / 2) + 30
-        self.BORDER_DOCK_Y = self.IMAGE_DOCK_Y + self.DOCK_ASSET_SIZE[1] + 40
-        self.next_image_dock_x = 20
-        self.next_border_dock_x = 20
 
         # Create a main frame to hold everything
         # --- NEW: Define base paths for UI Creator resources ---
@@ -858,9 +851,9 @@ class ImageEditorApp:
                   command=self.resize_selected_component).pack(fill='x', padx=10, pady=5)
 
         # --- Populate the "Border" Tab ---
-        tk.Label(border_tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
+        tk.Label(border_tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(border_tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=self.load_border_to_dock).pack(fill='x', padx=10, pady=5)
+                  command=self.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
 
         # --- NEW: Border Dock Area inside the tab ---
         border_dock_frame = tk.Frame(border_tab, bg="#2d3748", bd=2, relief="sunken")
@@ -1466,14 +1459,6 @@ class ImageEditorApp:
 
     def _keep_docks_on_top(self):
         """Iterates through all components and raises any dock assets to the top of the Z-order."""
-        # First, raise the solid cover that hides the tiles.
-        self.canvas.tag_raise("dock_cover")
-        self.canvas.tag_raise("dock_cover_text")
-
-        # Then, raise the individual clickable assets on top of the cover.
-        for comp in self.components.values():
-            if comp.is_dock_asset:
-                self.canvas.tag_raise(comp.tag)
 
     def apply_preview_layout(self):
         """Makes all components visible and moves them to the 'Show All' layout positions."""
@@ -1503,9 +1488,6 @@ class ImageEditorApp:
             # 3. Reset placeholder borders
             if comp.tk_image is None:
                 self.canvas.itemconfig(comp.rect_id, outline='white', width=2)
-        
-        # Finally, ensure the dock assets are not obscured
-        self._keep_docks_on_top()
     
         # Redraw everything with the new positions
         self.redraw_all_zoomable()
