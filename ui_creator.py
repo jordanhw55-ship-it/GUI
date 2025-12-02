@@ -1002,28 +1002,40 @@ class ImageEditorApp:
 
     def redraw_all_zoomable(self):
         """Redraws all zoomable items based on the current camera view."""
+        # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
             if "zoom_target" in self.canvas.gettags(comp.rect_id):
-                # Calculate new screen coordinates from world coordinates
-                sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
-                sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
-                
-                # Update the item's coordinates on the canvas
-                self.canvas.coords(comp.rect_id, sx1, sy1) # For images, only need top-left
-                
-                # If it's a placeholder, we need to update the full rectangle
-                if comp.text_id:
+                # For components with an image, we need to resize the image itself
+                # and then place it at the new screen coordinates.
+                if comp.pil_image:
+                    # Calculate the new screen dimensions based on world size and zoom
+                    screen_w = (comp.world_x2 - comp.world_x1) * self.zoom_scale
+                    screen_h = (comp.world_y2 - comp.world_y1) * self.zoom_scale
+
+                    # Only proceed if the size is valid
+                    if screen_w > 0 and screen_h > 0:
+                        # Use the appropriate source image (preview for dock, main for others)
+                        source_img = comp.preview_pil_image if comp.is_dock_asset else comp.pil_image
+                        resized_img = source_img.resize((int(screen_w), int(screen_h)), Image.Resampling.LANCZOS)
+                        comp.tk_image = ImageTk.PhotoImage(resized_img)
+                        
+                        # Calculate the top-left screen coordinate and update the canvas item
+                        sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                        self.canvas.coords(comp.rect_id, sx1, sy1)
+                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
+                # For placeholder components (rectangles with text)
+                elif comp.text_id:
+                    sx1, sy1 = self.world_to_screen(comp.world_x1, comp.world_y1)
+                    sx2, sy2 = self.world_to_screen(comp.world_x2, comp.world_y2)
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
         # Also redraw the paint layer if it exists
         if self.paint_layer_id:
-            # To correctly scale the paint layer, we must resize the PIL image
-            # and create a new PhotoImage. This is more intensive but correct.
             orig_w, orig_h = self.paint_layer_image.size
             new_w, new_h = int(orig_w * self.zoom_scale), int(orig_h * self.zoom_scale)
             if new_w > 0 and new_h > 0:
-                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST)
+                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
                 self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
                 self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
                 self.canvas.coords(self.paint_layer_id, self.pan_offset_x, self.pan_offset_y)
