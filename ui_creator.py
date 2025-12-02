@@ -550,11 +550,15 @@ class ImageEditorApp:
         layer_tab = tk.Frame(notebook, bg="#374151")
         paint_tab = tk.Frame(notebook, bg="#374151")
         image_tab = tk.Frame(notebook, bg="#374151")
+        filters_tab = tk.Frame(notebook, bg="#374151") # NEW
+        text_tab = tk.Frame(notebook, bg="#374151") # NEW
         export_tab = tk.Frame(notebook, bg="#374151")
 
         notebook.add(layer_tab, text='Layer')
         notebook.add(paint_tab, text='Paint')
         notebook.add(image_tab, text='Image')
+        notebook.add(filters_tab, text='Filters') # NEW
+        notebook.add(text_tab, text='Text') # NEW
         notebook.add(export_tab, text='Export')
 
         # --- Common Styles ---
@@ -619,7 +623,6 @@ class ImageEditorApp:
                                     command=self.clear_paintings)
         clear_paint_btn.pack(fill='x', expand=True, pady=(5,0))
 
-        # --- Populate Placeholder Tabs ---
         # --- Populate the "Image" Tab ---
         tk.Label(image_tab, text="ASSET CONTROLS", **label_style).pack(fill='x')
         tk.Button(image_tab, text="Load Asset to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
@@ -637,7 +640,16 @@ class ImageEditorApp:
         tk.Button(image_tab, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=self.apply_decal_to_underlying_layer).pack(fill='x', padx=10, pady=(10,2))
         
-        # --- NEW: Discard Image Button ---
+        # --- Populate the "Filters" Tab (Placeholder) ---
+        tk.Label(filters_tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
+        tk.Label(filters_tab, text="Controls for brightness, contrast, etc.\nwill go here.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
+
+        # --- Populate the "Text" Tab (Placeholder) ---
+        tk.Label(text_tab, text="TEXT TOOLS", **label_style).pack(fill='x')
+        tk.Label(text_tab, text="Controls for adding and styling text\nwill go here.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
+
+
+        # --- Populate the "Export" Tab ---
         tk.Label(export_tab, text="EXPORT CONTROLS", **label_style).pack(fill='x')
         tk.Button(export_tab, text="Save Modified PNGs", bg='#10b981', fg='white', relief='flat', font=button_font,
                   command=lambda: self._export_modified_images('png')).pack(fill='x', padx=10, pady=5)

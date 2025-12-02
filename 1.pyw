@@ -16,8 +16,8 @@ from PySide6.QtGui import (QMouseEvent, QColor, QIntValidator, QFont, QPalette, 
 )
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 
-import keyboard   # type: ignore
-import pyautogui  # type: ignore
+import keyboard
+import pyautogui
 
 from utils import get_base_path, DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
@@ -1456,7 +1456,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == '--run-ui-creator':
         # This block will now be executed by the new process.
         # We import the necessary parts from ui_creator and run its main logic.
-        from ui_creator import ImageEditorApp, tk # This import is fine here as it's in a separate process
+        from ui_creator import ImageEditorApp, tk
         root = tk.Tk()
         app = ImageEditorApp(root)
         # This is a blocking call that runs the Tkinter event loop.
