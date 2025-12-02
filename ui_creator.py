@@ -229,8 +229,9 @@ class DraggableComponent:
         if not self.is_draggable:
             return # Do not drag if painting is active
 
-        # --- NEW: Prevent single-drag if a group-drag is active ---
-        if self.app.is_group_dragging:
+        # --- FIX: Only block single-drag if it's a group drag AND this item is NOT a decal ---
+        # This allows decals (clones) to be dragged even if a group drag was just initiated.
+        if self.app.is_group_dragging and not self.is_decal:
             return
 
         # --- FIX: Prevent dock assets from being dragged directly ---
