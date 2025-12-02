@@ -1883,8 +1883,9 @@ class ImageEditorApp:
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
                 # --- FIX: Conditionally respect transparency of the underlying tile ---
-                # This should only happen for BORDERS, not for regular decals/images.
-                if stamp_source_comp.is_border_asset:
+                # Regular images should respect the tile's transparency (e.g., for rounded corners),
+                # but borders should be stamped on opaquely, ignoring the tile's alpha.
+                if not stamp_source_comp.is_border_asset:
                     comp_alpha_mask = final_image.getchannel('A')
                     combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
                     decal_layer.putalpha(combined_alpha)
