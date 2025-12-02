@@ -1025,8 +1025,9 @@ class ImageEditorApp:
                         comp._cached_screen_w = int(screen_w)
                         comp._cached_screen_h = int(screen_h)
 
-                        # --- QUALITY FIX: Always resize from the highest quality original image ---
-                        source_img = comp.original_pil_image
+                        # --- CRITICAL BUG FIX: Always resize from the CURRENT pil_image ---
+                        # The pil_image holds the modified state (decals, etc.). The original_pil_image is only for resets.
+                        source_img = comp.pil_image
                         if not source_img: continue # Should not happen if pil_image exists, but safe
 
                         resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
@@ -1536,22 +1537,19 @@ class ImageEditorApp:
         # --- FIX: Carry over the border flag to the clone ---
         clone_comp.is_border_asset = asset_comp.is_border_asset
 
-        # --- FIX: Apply semi-transparency to the clone for visual feedback ---
-        # This was the root cause of the missing transparency on active decals.
-        # The _update_active_decal_transform function will handle the initial transform.
-        self._update_active_decal_transform()
-
         # 1. Set the clone's original image to the full-resolution one for stamping.
         clone_comp.original_pil_image = asset_comp.original_pil_image
         
-        # 2. Create a semi-transparent version for display while dragging.
-        display_image = asset_comp.original_pil_image.copy()
-        display_image.putalpha(Image.eval(display_image.getchannel('A'), lambda a: a // 2))
-
-        # 3. Set the clone's display image.
-        clone_comp._set_pil_image(display_image, resize_to_fit=False)
+        # 2. Set the clone's display image to the original for now.
+        # The transform function will create and apply the transparent, scaled version.
+        clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
+        
         # Add the new clone to the main components dictionary
         self.components[clone_tag] = clone_comp
+
+        # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
+        # This will correctly find the new clone and apply the initial semi-transparent transform.
+        self._update_active_decal_transform()
 
         # --- Crucially, initiate a "drag" on the new clone immediately ---
         clone_comp.on_press(event) # This sets up the drag state for the clone
