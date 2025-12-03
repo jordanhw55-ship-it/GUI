@@ -46,6 +46,10 @@ class ImageEditorApp:
         self.CANVAS_HEIGHT = CANVAS_HEIGHT
         self.SIDEBAR_WIDTH = SIDEBAR_WIDTH
 
+        # --- REFACTOR: Event Handling State ---
+        self.dragged_item_tag = None
+        self.last_drag_x = 0
+        self.last_drag_y = 0
         self.selected_component_tag = None
         
         # --- NEW: Painting Feature State ---
@@ -114,7 +118,7 @@ class ImageEditorApp:
         self._initialize_components()
 
         # Bind canvas events now that all managers are initialized
-        self.ui_manager.bind_canvas_events()
+        self.ui_manager.bind_canvas_events() # Binds paint events
 
         self.ui_manager.create_ui()
 
@@ -136,6 +140,29 @@ class ImageEditorApp:
         # --- 5. Apply Initial Layout ---
         self.apply_preview_layout()
 
+    def _bind_component_events(self, comp_tag):
+        """Binds press, drag, and release events for a given component tag."""
+        self.canvas.tag_bind(comp_tag, '<Button-1>', self.on_component_press)
+        self.canvas.tag_bind(comp_tag, '<B1-Motion>', self.on_component_drag)
+        self.canvas.tag_bind(comp_tag, '<ButtonRelease-1>', self.on_component_release)
+
+    def _draw_placeholder(self, comp):
+        """Draws the initial placeholder for a component and stores canvas IDs."""
+        # Create the rectangle
+        comp.rect_id = self.canvas.create_rectangle(
+            comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2,
+            fill=comp.placeholder_color,
+            outline='white',
+            width=2,
+            tags=(comp.tag, "draggable", "zoom_target")
+        )
+        # Create the text
+        comp.text_id = self.canvas.create_text(
+            (comp.world_x1 + comp.world_x2) / 2, (comp.world_y1 + comp.world_y2) / 2,
+            text=comp.placeholder_text,
+            fill="white", font=("Inter", 16, "bold"), tags=(comp.tag, "draggable", "zoom_target")
+        )
+
     def _initialize_components(self):
         """Creates the initial set of draggable components on the canvas."""
         self.components = {}
@@ -150,60 +177,84 @@ class ImageEditorApp:
         # R1_Y=50, R2_Y=400 (50 + 300 + 50)
 
         # TILE 01 (Row 1, Col 1)
-        self.components['humanuitile01'] = DraggableComponent(
-            self.canvas, self, "humanuitile01",
+        comp = DraggableComponent(
+            "humanuitile01",
             50, 50, 300, 350,  # W:250, H:300
             base_color, "UI TILE 01"
         )
+        self.components['humanuitile01'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 02 (Row 1, Col 2)
-        self.components['humanuitile02'] = DraggableComponent(
-            self.canvas, self, "humanuitile02",
+        comp = DraggableComponent(
+            "humanuitile02",
             350, 50, 600, 350,
             base_color, "UI TILE 02"
         )
+        self.components['humanuitile02'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 03 (Row 1, Col 3)
-        self.components['humanuitile03'] = DraggableComponent(
-            self.canvas, self, "humanuitile03",
+        comp = DraggableComponent(
+            "humanuitile03",
             650, 50, 900, 350,
             base_color, "UI TILE 03"
         )
+        self.components['humanuitile03'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 04 (Row 1, Col 4)
-        self.components['humanuitile04'] = DraggableComponent(
-            self.canvas, self, "humanuitile04",
+        comp = DraggableComponent(
+            "humanuitile04",
             950, 50, 980, 350,
             base_color, "UI TILE 04"
         )
+        self.components['humanuitile04'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 05 (Row 2, Col 1)
-        self.components['humanuitile05'] = DraggableComponent(
-            self.canvas, self, "humanuitile05",
+        comp = DraggableComponent(
+            "humanuitile05",
             50, 400, 300, 700,
             base_color, "UI TILE 05"
         )
+        self.components['humanuitile05'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 06 (Row 2, Col 2)
-        self.components['humanuitile06'] = DraggableComponent(
-            self.canvas, self, "humanuitile06",
+        comp = DraggableComponent(
+            "humanuitile06",
             350, 400, 600, 700,
             base_color, "UI TILE 06"
         )
+        self.components['humanuitile06'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 07 (Row 2, Col 3) - Inventory Cover (Tag matches filename)
-        self.components['humanuitile-inventorycover'] = DraggableComponent(
-            self.canvas, self, "humanuitile-inventorycover",
+        comp = DraggableComponent(
+            "humanuitile-inventorycover",
             650, 400, 770, 700,
             base_color, "INVENTORY COVER"
         )
+        self.components['humanuitile-inventorycover'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         # TILE 08 (Row 2, Col 4) - Time Indicator Frame (Tag matches filename)
-        self.components['humanuitile-timeindicatorframe'] = DraggableComponent(
-            self.canvas, self, "humanuitile-timeindicatorframe",
+        comp = DraggableComponent(
+            "humanuitile-timeindicatorframe",
             950, 400, 1085, 475,
             base_color, "TIME FRAME"
         )
+        self.components['humanuitile-timeindicatorframe'] = comp
+        self._draw_placeholder(comp)
+        self._bind_component_events(comp.tag)
 
         self.preview_layout = {
             "humanuitile01": {"coords": [261, 57, 511, 357]},
@@ -218,6 +269,73 @@ class ImageEditorApp:
 
         # Set a default selected component
         self.set_selected_component('humanuitile01')
+
+    def on_component_press(self, event):
+        """Handles press events on any component."""
+        # Find the component tag from the canvas item clicked
+        item_id = self.canvas.find_closest(event.x, event.y)[0]
+        tags = self.canvas.gettags(item_id)
+        if not tags: return
+        
+        comp_tag = tags[0]
+        comp = self.components.get(comp_tag)
+        if not comp: return
+
+        if comp.is_dock_asset:
+            # Dock asset logic is handled by the dock canvas, not here.
+            return
+
+        self.dragged_item_tag = comp_tag
+        self.last_drag_x = event.x
+        self.last_drag_y = event.y
+        
+        world_x, world_y = self.camera.screen_to_world(event.x, event.y)
+        print(f"[DEBUG] Pressed '{comp.tag}' | Screen: ({event.x}, {event.y}) | World: ({int(world_x)}, {int(world_y)})")
+
+        self.canvas.tag_raise(comp.tag)
+
+    def on_component_drag(self, event):
+        """Handles drag events for the currently pressed component."""
+        if not self.dragged_item_tag: return
+
+        comp = self.components.get(self.dragged_item_tag)
+        if not comp or not comp.is_draggable or (self.is_group_dragging and not comp.is_decal) or comp.is_dock_asset:
+            return
+
+        dx_world = (event.x - self.last_drag_x) / self.camera.zoom_scale
+        dy_world = (event.y - self.last_drag_y) / self.camera.zoom_scale
+
+        if not comp.is_decal:
+            new_world_x1 = comp.world_x1 + dx_world
+            new_world_y1 = comp.world_y1 + dy_world
+
+            tile_w_world = comp.world_x2 - comp.world_x1
+            tile_h_world = comp.world_y2 - comp.world_y1
+
+            if new_world_x1 < self.COMP_AREA_X1: new_world_x1 = self.COMP_AREA_X1
+            if new_world_x1 + tile_w_world > self.COMP_AREA_X2: new_world_x1 = self.COMP_AREA_X2 - tile_w_world
+            if new_world_y1 < self.COMP_AREA_Y1: new_world_y1 = self.COMP_AREA_Y1
+            if new_world_y1 + tile_h_world > self.COMP_AREA_Y2: new_world_y1 = self.COMP_AREA_Y2 - tile_h_world
+
+            comp.world_x1, comp.world_y1 = new_world_x1, new_world_y1
+            comp.world_x2, comp.world_y2 = new_world_x1 + tile_w_world, new_world_y1 + tile_h_world
+        else: # It's a decal, allow free movement
+            comp.world_x1 += dx_world; comp.world_y1 += dy_world
+            comp.world_x2 += dx_world; comp.world_y2 += dy_world
+        
+        self.last_drag_x = event.x
+        self.last_drag_y = event.y
+        
+        self.redraw_all_zoomable()
+
+    def on_component_release(self, event):
+        """Handles release events, finalizing the drag."""
+        if self.dragged_item_tag:
+            comp = self.components.get(self.dragged_item_tag)
+            if comp:
+                print(f"[DEBUG] Released '{comp.tag}' | Screen: ({event.x}, {event.y}) | New World TL: ({int(comp.world_x1)}, {int(comp.world_y1)})")
+        self.dragged_item_tag = None
+        self._keep_docks_on_top()
 
     def move_all_main_tiles(self, dx_world, dy_world):
         """Moves all primary component tiles by a delta in world coordinates."""
@@ -241,7 +359,12 @@ class ImageEditorApp:
             if os.path.exists(full_path):
                 # If the file exists, attempt to load it into the component
                 try:
-                    component.set_image_from_path(full_path)
+                    # REFACTOR: Logic moved from component to app/manager
+                    pil_image = Image.open(full_path).convert("RGBA")
+                    if not component.original_pil_image:
+                        component.original_pil_image = pil_image.copy()
+                    component.set_image(pil_image)
+                    print(f"Image loaded for {tag}: {os.path.basename(full_path)}")
                     loaded_count += 1
                 except Exception as e:
                     print(f"Error loading {full_path}: {e}")
@@ -264,14 +387,28 @@ class ImageEditorApp:
         # Re-apply the layout to show the newly loaded images in their correct positions.
         self.apply_preview_layout()
 
+    def select_component(self, tag):
+        """Selects a component and highlights it."""
+        self.set_selected_component(tag)
+        
+        # Reset all borders first
+        for comp in self.components.values():
+            if comp.rect_id and comp.pil_image is None: # It's a placeholder
+                 self.canvas.itemconfig(comp.rect_id, outline='white', width=2)
+        
+        # Highlight the selected one
+        selected_comp = self.components.get(tag)
+        if selected_comp and selected_comp.pil_image is None:
+            self.canvas.itemconfig(selected_comp.rect_id, outline='yellow', width=3)
+        
+        print(f"[ACTION] Component '{tag}' selected via sidebar.")
+
     def set_selected_component(self, tag):
         """Updates the tracking variable for the currently selected component."""
         self.selected_component_tag = tag
         comp = self.components.get(tag)
-        if comp:
-            print(f"[DEBUG] Selected component: '{tag}' | World Coords: ({int(comp.world_x1)}, {int(comp.world_y1)})")
-        else:
-            print(f"[DEBUG] Selected component: {tag}")
+        if comp: print(f"[DEBUG] Selected component: '{tag}' | World Coords: ({int(comp.world_x1)}, {int(comp.world_y1)})")
+        else: print(f"[DEBUG] Selected component: {tag}")
     
     def move_layer(self, direction):
         """Raises or lowers the currently selected layer's Z-order."""
@@ -399,7 +536,7 @@ class ImageEditorApp:
         elif isinstance(last_state, dict): # It's a component image state
             for tag, image in last_state.items():
                 if tag in self.components:
-                    self.components[tag]._set_pil_image(image)
+                    self.components[tag].set_image(image)
                     print(f"Reverted image for component '{tag}'.")
 
         print("Undo successful.")
@@ -430,12 +567,13 @@ class ImageEditorApp:
 
         # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
-            if "zoom_target" in self.canvas.gettags(comp.rect_id):
+            # REFACTOR: Check if the component has a canvas ID
+            if comp.rect_id and "zoom_target" in self.canvas.gettags(comp.rect_id):
                 # For components with an image, we need to resize the image itself
                 # and then place it at the new screen coordinates.
                 if comp.pil_image:
                     # --- FIX: Handle transition from placeholder to image ---
-                    # If we have a PIL image but no TK image, it means we just loaded one.
+                    # If we have a PIL image but no TK image, it means we just loaded one. (tk_image is a canvas-specific attribute)
                     # We must delete the old rectangle and create a new image item.
                     if comp.tk_image is None:
                         self.canvas.delete(comp.rect_id) # Delete the placeholder rectangle
@@ -446,6 +584,9 @@ class ImageEditorApp:
                             anchor=tk.NW,
                             tags=(comp.tag, "draggable", "zoom_target")
                         )
+                        # Also delete the old text placeholder
+                        if comp.text_id:
+                            self.canvas.delete(comp.text_id); comp.text_id = None
                         comp._cached_screen_w, comp._cached_screen_h = -1, -1 # Reset cache
 
                     screen_w = (comp.world_x2 - comp.world_x1) * zoom_scale
@@ -468,7 +609,7 @@ class ImageEditorApp:
                     sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
                     self.canvas.coords(comp.rect_id, sx1, sy1)
 
-                elif comp.text_id:
+                elif comp.text_id: # It's a placeholder
                     sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
                     sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
@@ -508,13 +649,11 @@ class ImageEditorApp:
                 state_to_set = 'normal' if tag == name else 'hidden'
                 if comp.rect_id:
                     self.canvas.itemconfig(comp.rect_id, state=state_to_set)
-                if comp.text_id:
-                    self.canvas.itemconfig(comp.text_id, state=state_to_set)
             
             # Select the component (which also handles highlighting)
-            self.components[name].select(self)
+            self.select_component(name)
 
-            # NEW: Update resize entries when a component is selected
+            # Update resize entries when a component is selected
             self.update_resize_entries()
 
 
@@ -599,9 +738,9 @@ class ImageEditorApp:
         # If the component has an image, re-apply it to trigger the resize.
         # Otherwise, redraw the placeholder rectangle.
         if comp.pil_image:
-            comp._set_pil_image(comp.pil_image, resize_to_fit=True)
+            comp.set_image(comp.pil_image) # This will trigger a redraw
         else:
-            comp._draw_placeholder(comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2, comp.canvas.itemcget(comp.rect_id, "fill"), comp.canvas.itemcget(comp.text_id, "text"))
+            self.redraw_all_zoomable() # Just redraw the placeholder with new world coords
         
         # Redraw to apply the new size within the camera view
         self.redraw_all_zoomable()
@@ -628,8 +767,6 @@ class ImageEditorApp:
             # 1. Make the component visible
             if comp.rect_id:
                 self.canvas.itemconfig(comp.rect_id, state='normal')
-            if comp.text_id:
-                self.canvas.itemconfig(comp.text_id, state='normal')
 
             # 2. Move the component to its saved layout position
             if tag in self.preview_layout and "coords" in self.preview_layout[tag]:
@@ -777,12 +914,6 @@ class ImageEditorApp:
         except Exception as e:
             messagebox.showerror("Error", f"Could not open folder: {e}")
 
-    def _create_and_place_clone(self, asset_comp, event, clone_tag):
-        """Helper to create, configure, and place a clone component."""
-        w, h = asset_comp.original_pil_image.size
-        world_x, world_y = self.camera.screen_to_world(event.x, event.y)
-        return DraggableComponent(self.canvas, self, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
-
     def reset_selected_layer(self):
         """Resets the currently selected layer to its original, unmodified image."""
         if not self.selected_component_tag:
@@ -804,7 +935,7 @@ class ImageEditorApp:
 
         if comp.original_pil_image:
             # Revert the current image back to the original one
-            comp._set_pil_image(comp.original_pil_image)
+            comp.set_image(comp.original_pil_image)
             print(f"Layer '{comp.tag}' has been reset to its original image.")
         else:
             messagebox.showinfo("No Image", f"Layer '{comp.tag}' does not have an original image to reset to.")
@@ -829,7 +960,7 @@ class ImageEditorApp:
         # --- REFACTORED: Create the clone at the mouse's world position ---
         world_x, world_y = self.camera.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
-        clone_comp = DraggableComponent(self.canvas, self, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
+        clone_comp = DraggableComponent(clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
         
         # --- FIX: Carry over the border flag to the clone ---
         clone_comp.is_border_asset = asset_comp.is_border_asset
@@ -840,10 +971,12 @@ class ImageEditorApp:
         
         # 2. Set the clone's display image to the original for now.
         # The transform function will create and apply the transparent, scaled version.
-        clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
+        clone_comp.set_image(asset_comp.original_pil_image)
         
         # Add the new clone to the main components dictionary
         self.components[clone_tag] = clone_comp
+        # REFACTOR: Bind events for the new clone
+        self._bind_component_events(clone_tag)
 
         # 3. --- CRITICAL FIX: Now that the clone exists, call the transform function ---
         # This will correctly find the new clone and apply the initial semi-transparent transform.
@@ -903,7 +1036,12 @@ class ImageEditorApp:
             x = padding + col * (asset_width + padding)
             y = padding + row * (asset_height + padding)
 
-            asset_comp = DraggableComponent(target_canvas, self, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET")
+            # REFACTOR: Create data component, then draw on DOCK canvas
+            asset_comp = DraggableComponent(asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET")
+            asset_comp.rect_id = target_canvas.create_rectangle(
+                x, y, x + asset_width, y + asset_height,
+                fill="blue", outline="white", width=2, tags=(asset_tag,)
+            )
             asset_comp.is_dock_asset = True # Mark it as a dock asset
             asset_comp.is_border_asset = is_border # NEW: Mark if it's a border
 
@@ -917,7 +1055,14 @@ class ImageEditorApp:
             asset_comp.preview_pil_image.thumbnail((asset_width, asset_height), Image.Resampling.LANCZOS)
             
             # Set the image, which will use the preview because `is_dock_asset` is true
-            asset_comp._set_pil_image(asset_comp.preview_pil_image, resize_to_fit=True)
+            # REFACTOR: Manually draw the image on the dock canvas
+            asset_comp.tk_image = ImageTk.PhotoImage(asset_comp.preview_pil_image)
+            target_canvas.delete(asset_comp.rect_id)
+            asset_comp.rect_id = target_canvas.create_image(
+                x, y, anchor=tk.NW, image=asset_comp.tk_image, tags=(asset_tag,)
+            )
+            asset_comp.pil_image = asset_comp.preview_pil_image # Set internal image
+
 
             # Add to our list of assets and update the next position
             self.components[asset_tag] = asset_comp # Add to main components list
@@ -1064,7 +1209,7 @@ class ImageEditorApp:
                 final_image = Image.alpha_composite(final_image, decal_layer)
 
                 # 8. Apply the newly composited image back to the target component.
-                target_comp._set_pil_image(final_image)
+                target_comp.set_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
         

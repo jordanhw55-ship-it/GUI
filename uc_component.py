@@ -16,6 +16,7 @@ class DraggableComponent:
         self.border_pil_image = None # For storing the border image
         self.original_pil_image = None # For storing the pristine decal image
         self.rect_id = None
+        self.text_id = None
         self.is_draggable = True # Control whether the component can be dragged
         self.is_decal = False # To identify temporary decals
         self.is_border_asset = False # To identify border assets
