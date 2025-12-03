@@ -203,28 +203,9 @@ class UIManager:
 
     def _populate_border_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
-        button_font = ('Inter', 11, 'bold')
-        tk.Label(tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
-        tk.Button(tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=self.app.border_manager.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
-
-        border_dock_frame = tk.Frame(tab, bg="#2d3748", bd=2, relief="sunken")
-        border_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
-        border_dock_frame.grid_rowconfigure(0, weight=1)
-        border_dock_frame.grid_columnconfigure(0, weight=1)
-        self.border_dock_canvas = tk.Canvas(border_dock_frame, bg="#2d3748", highlightthickness=0)
-        self.border_dock_canvas.grid(row=0, column=0, sticky='nsew')
-        border_scrollbar = ttk.Scrollbar(border_dock_frame, orient="vertical", command=self.border_dock_canvas.yview)
-        border_scrollbar.grid(row=0, column=1, sticky='ns')
-        self.border_dock_canvas.configure(yscrollcommand=border_scrollbar.set)
-
-        self._create_transform_controls(tab)
-
-        border_action_frame = tk.Frame(tab, bg="#374151")
-        border_action_frame.pack(fill='x', padx=10, pady=5)
-        tk.Button(border_action_frame, text="Apply Border", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.app.image_manager.apply_decal_to_underlying_layer).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
-        tk.Button(border_action_frame, text="Discard Border", bg='#ef4444', fg='white', relief='flat', font=button_font,
-                  command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+        tk.Label(tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
+        # This provides a blank slate as requested.
+        tk.Label(tab, text="This section is under construction.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
