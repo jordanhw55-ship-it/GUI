@@ -59,6 +59,7 @@ class ImageEditorApp:
         self.tile_eraser_mode_active = False # NEW: For the tile eraser tool
         self.pre_move_state = {} # NEW: To store component positions before a move
         
+        self.resize_selector_buttons = {} # NEW: To hold references to the resize tab buttons
         # --- NEW: Painting Feature State ---
         self.resize_width = tk.StringVar()
         self.resize_height = tk.StringVar()
@@ -883,6 +884,22 @@ class ImageEditorApp:
             print(f"Action: Selecting layer '{name}' for potential image loading (Placeholder).")
         # --- MODIFICATION END ---
 
+    def handle_resize_selector_click(self, name):
+        """Handles clicks on the new tile selector buttons in the resize tab."""
+        if name in self.components:
+            # Set the selected component
+            self.set_selected_component(name)
+            # Update the resize entry boxes with the new component's dimensions
+            self.update_resize_entries()
+            # Update the button visuals to show the current selection
+            self._update_resize_selector_visuals()
+
+    def _update_resize_selector_visuals(self):
+        """Updates the background color of the resize selector buttons."""
+        for name, button in self.resize_selector_buttons.items():
+            bg_color = '#3b82f6' if name == self.selected_component_tag else '#6b7280'
+            button.config(bg=bg_color)
+
     def is_border_tab_active(self, event=None):
         """Checks if the 'Border' tab is the currently selected tab in the sidebar."""
         try:
@@ -899,6 +916,9 @@ class ImageEditorApp:
             self.resize_width.set("")
             self.resize_height.set("")
             return
+
+        # --- NEW: Update the resize selector visuals when the selection changes ---
+        self._update_resize_selector_visuals()
 
         comp = self.components.get(self.selected_component_tag)
         if not comp: return

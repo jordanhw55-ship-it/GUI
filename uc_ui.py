@@ -214,6 +214,26 @@ class UIManager:
         tk.Button(tab, text="Apply Size", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.app.resize_selected_component).pack(fill='x', padx=10, pady=5)
 
+        # --- NEW: Add a tile selector directly in the resize tab ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="SELECT TILE TO RESIZE", **label_style).pack(fill='x')
+
+        selector_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        selector_frame.pack(fill='x')
+
+        # Create a grid of buttons for tile selection
+        self.app.resize_selector_buttons = {}
+        row, col = 0, 0
+        for name in self.app.component_list:
+            if name == "Show All": continue
+            btn = tk.Button(selector_frame, text=name, bg='#6b7280', fg='white', relief='flat', font=('Inter', 9),
+                            command=lambda n=name: self.app.handle_resize_selector_click(n))
+            btn.grid(row=row, column=col, padx=2, pady=2, sticky='ew')
+            self.app.resize_selector_buttons[name] = btn
+            col += 1
+            if col >= 2: # 2 buttons per row
+                col = 0; row += 1
+
     def _populate_border_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
