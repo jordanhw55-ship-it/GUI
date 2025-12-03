@@ -186,8 +186,13 @@ class BorderManager:
             tags=("border_preview", "fill")
         )
 
+        # --- DEFINITIVE FIX for Inaccurate Outline Thickness ---
+        # Inset the outline's coordinates by half its width. This ensures the outline
+        # draws fully *inside* the green area, not centered on its edge, which
+        # correctly simulates both inward and outward growing borders.
+        inset = thickness_screen / 2
         self.canvas.create_rectangle(
-            sx1, sy1, sx2, sy2,
+            sx1 + inset, sy1 + inset, sx2 - inset, sy2 - inset,
             outline="white",
             width=thickness_screen,
             tags=("border_preview", "outline")
