@@ -788,8 +788,11 @@ class ImageEditorApp:
                             self.canvas.delete(comp.text_id); comp.text_id = None
                         comp._cached_screen_w, comp._cached_screen_h = -1, -1 # Reset cache
 
-                    screen_w = (comp.world_x2 - comp.world_x1) * zoom_scale
-                    screen_h = (comp.world_y2 - comp.world_y1) * zoom_scale
+                    # --- DEFINITIVE FIX for GAPS ---
+                    # Calculate screen coordinates first, then derive width/height from them.
+                    sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+                    sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
+                    screen_w, screen_h = sx2 - sx1, sy2 - sy1
 
                     # Only regenerate the Tkinter image if the size has actually changed.
                     if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h or comp.tk_image is None):
@@ -807,7 +810,6 @@ class ImageEditorApp:
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
                     # Always update the item's screen coordinates.
-                    sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
                     self.canvas.coords(comp.rect_id, sx1, sy1)
 
                 elif comp.text_id: # It's a placeholder

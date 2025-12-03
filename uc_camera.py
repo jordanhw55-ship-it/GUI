@@ -26,7 +26,7 @@ class Camera:
         """Converts world coordinates to screen coordinates."""
         screen_x = (world_x * self.zoom_scale) + self.pan_offset_x
         screen_y = (world_y * self.zoom_scale) + self.pan_offset_y
-        return screen_x, screen_y
+        return round(screen_x), round(screen_y)
 
     def screen_to_world(self, screen_x, screen_y):
         """Converts screen coordinates to world coordinates."""
