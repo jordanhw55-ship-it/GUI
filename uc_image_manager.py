@@ -165,11 +165,21 @@ class ImageManager:
             paste_x = int((intersect_x1 - target_comp.world_x1) * scale_x)
             paste_y = int((intersect_y1 - target_comp.world_y1) * scale_y)
 
-            # Determine which part of the stamp image to use
-            crop_x1 = int(intersect_x1 - stamp_world_x1)
-            crop_y1 = int(intersect_y1 - stamp_world_y1)
-            crop_x2 = int(intersect_x2 - stamp_world_x1)
-            crop_y2 = int(intersect_y2 - stamp_world_y1)
+            # --- DEFINITIVE FIX: Correctly calculate the crop box from the stamp image ---
+            # The intersection is in world coordinates. We need to find out what part of the
+            # decal_stamp_image corresponds to this intersection.
+            stamp_w, stamp_h = decal_stamp_image.size
+            stamp_world_w = stamp_world_x2 - stamp_world_x1
+            stamp_world_h = stamp_world_y2 - stamp_world_y1
+
+            # Calculate the scale of the stamp image relative to its world dimensions
+            stamp_scale_x = stamp_w / stamp_world_w if stamp_world_w > 0 else 1
+            stamp_scale_y = stamp_h / stamp_world_h if stamp_world_h > 0 else 1
+
+            crop_x1 = int((intersect_x1 - stamp_world_x1) * stamp_scale_x)
+            crop_y1 = int((intersect_y1 - stamp_world_y1) * stamp_scale_y)
+            crop_x2 = int((intersect_x2 - stamp_world_x1) * stamp_scale_x)
+            crop_y2 = int((intersect_y2 - stamp_world_y1) * stamp_scale_y)
             
             cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
 
