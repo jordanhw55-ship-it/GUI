@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk, ImageChops
+from PIL import Image, ImageTk, ImageChops, ImageEnhance
 import os
 
 from uc_component import DraggableComponent
@@ -10,6 +10,11 @@ class ImageManager:
     def __init__(self, app):
         self.app = app
         self.canvas = app.canvas
+        self.next_dynamic_id = 0
+
+        # REFACTOR: Manager now owns the list of dock assets
+        self.dock_assets = []
+
 
         # Decal/Asset State
         self.decal_scale = tk.DoubleVar(value=100)
@@ -17,11 +22,6 @@ class ImageManager:
         self.transform_job = None
         self.dock_assets = []
         self.next_clone_id = 0
-        self.next_asset_id = 0
-
-    def load_asset_to_dock(self):
-        """Loads a regular image to the asset dock."""
-        self._load_asset_to_dock_generic(is_border=False)
 
     def _load_asset_to_dock_generic(self, is_border: bool):
         """Loads an image, scales it, and places it in the asset dock as a new draggable component."""
@@ -36,42 +36,39 @@ class ImageManager:
 
         try:
             full_res_image = Image.open(image_path).convert("RGBA")
-            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_asset_id}"
-            self.next_asset_id += 1
+            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
+            self.next_dynamic_id += 1
 
             if is_border:
                 target_canvas = self.app.ui_manager.border_dock_canvas
-                item_index = sum(1 for asset in self.dock_assets if asset.is_border_asset)
+                item_index = sum(1 for asset in self.dock_assets if asset.is_border_asset) # Use manager's list
             else:
                 target_canvas = self.app.ui_manager.image_dock_canvas
-                item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
+                item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset) # Use manager's list
 
-            items_per_row = 4
+            items_per_row = 2
             padding = 10
-            asset_width = 128
-            asset_height = 128
+            asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
+            asset_height = asset_width
 
             col = item_index % items_per_row
             row = item_index // items_per_row
-            # --- FIX: Use relative coordinates for the dock canvas, not absolute ---
             x, y = padding + col * (asset_width + padding), padding + row * (asset_height + padding)
 
-            # Create the component on the target dock canvas
-            asset_comp = DraggableComponent(target_canvas, self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
+            asset_comp = DraggableComponent(asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
             asset_comp.is_border_asset = is_border
 
             target_canvas.tag_bind(asset_tag, '<Button-1>', 
                 lambda event, comp=asset_comp: self.handle_dock_asset_press(event, comp))
 
-            # --- CRITICAL FIX: Give the dock asset its own copy of the original image ---
-            # This prevents the asset's image from being garbage-collected when a clone is deleted.
-            asset_comp.original_pil_image = full_res_image.copy()
+            asset_comp.original_pil_image = full_res_image
             asset_comp.preview_pil_image = full_res_image.copy()
-            asset_comp.preview_pil_image.thumbnail((asset_width, asset_height), Image.Resampling.LANCZOS)
+            asset_comp.preview_pil_image.thumbnail((int(asset_width), int(asset_height)), Image.Resampling.LANCZOS)
             
-            asset_comp._set_pil_image(asset_comp.preview_pil_image, resize_to_fit=True)
+            asset_comp.tk_image = ImageTk.PhotoImage(asset_comp.preview_pil_image)
+            asset_comp.rect_id = target_canvas.create_image(x, y, anchor=tk.NW, image=asset_comp.tk_image, tags=(asset_tag,))
+            asset_comp.pil_image = asset_comp.preview_pil_image
 
-            self.app.components[asset_tag] = asset_comp
             self.dock_assets.append(asset_comp)
             
             target_canvas.config(scrollregion=target_canvas.bbox("all"))
@@ -79,54 +76,6 @@ class ImageManager:
 
         except Exception as e:
             messagebox.showerror(f"{asset_type} Load Error", f"Could not load {asset_type.lower()} image: {e}")
-
-    def handle_dock_asset_press(self, event, asset_comp):
-        """Translates a click on a dock asset to the main canvas to create a clone."""
-        dock_canvas = event.widget
-        abs_x = dock_canvas.winfo_rootx() + event.x
-        abs_y = dock_canvas.winfo_rooty() + event.y
-        main_canvas_x = abs_x - self.canvas.winfo_rootx()
-        main_canvas_y = abs_y - self.canvas.winfo_rooty()
-
-        corrected_event = tk.Event()
-        corrected_event.x, corrected_event.y = main_canvas_x, main_canvas_y
-        self.create_clone_from_asset(asset_comp, corrected_event)
-
-    def create_clone_from_asset(self, asset_comp, event):
-        """Creates a new draggable component (decal/clone) from a dock asset."""
-        if not asset_comp.original_pil_image:
-            return
-
-        clone_prefix = "border_" if asset_comp.is_border_asset else "clone_"
-        existing_active_image = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
-        if existing_active_image:
-            self._remove_stamp_source_component(existing_active_image)
-
-        clone_tag = f"{clone_prefix}{self.next_clone_id}"
-        self.next_clone_id += 1
-        
-        # --- MODIFICATION: Center the new clone in the composition area ---
-        # Instead of creating the clone at the mouse position, we now place it
-        # in the center of the main canvas for a predictable starting point.
-        world_x = self.app.CANVAS_WIDTH / 2
-        world_y = self.app.CANVAS_HEIGHT / 2
-        w, h = asset_comp.original_pil_image.size
-        clone_comp = DraggableComponent(self.canvas, self.app, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
-        
-        clone_comp.is_border_asset = asset_comp.is_border_asset
-        clone_comp.is_decal = True
-
-        # --- CRITICAL FIX: Give the clone its own copy of the image ---
-        # This prevents the clone's image from being a direct reference to the dock asset's image.
-        clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        # --- FIX: Use the clone's own copied image for display, not the asset's, to prevent
-        # the component from accidentally re-linking its original_pil_image to the asset.
-        clone_comp._set_pil_image(clone_comp.original_pil_image, resize_to_fit=False)
-        
-        self.app.components[clone_tag] = clone_comp
-        self._update_active_decal_transform()
-        self.app._keep_docks_on_top()
-        print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
 
     def apply_decal_to_underlying_layer(self):
         """Finds the active decal and stamps it onto any underlying components."""
@@ -164,7 +113,7 @@ class ImageManager:
             if applied:
                 if target_comp.tag not in undo_data:
                     undo_data[target_comp.tag] = target_comp.pil_image.copy()
-                target_comp._set_pil_image(final_image)
+                target_comp.set_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
 
@@ -282,7 +231,7 @@ class ImageManager:
             decal.world_y1 = cy - final_h / 2
             decal.world_x2 = cx + final_w / 2
             decal.world_y2 = cy + final_h / 2
-            decal._set_pil_image(display_image, resize_to_fit=False)
+            decal.set_image(display_image)
 
     def discard_active_image(self):
         """Finds and removes the active decal without applying it."""
@@ -319,3 +268,57 @@ class ImageManager:
         self.canvas.delete(comp_to_remove.tag)
         if comp_to_remove.tag in self.app.components:
             del self.app.components[comp_to_remove.tag]
+
+    def load_asset_to_dock(self):
+        """Loads a regular image to the asset dock."""
+        self._load_asset_to_dock_generic(is_border=False)
+
+    def handle_dock_asset_press(self, event, asset_comp):
+        """Translates a click on a dock asset to the main canvas and creates a clone."""
+        dock_canvas = event.widget
+        abs_x = dock_canvas.winfo_rootx() + event.x
+        abs_y = dock_canvas.winfo_rooty() + event.y
+
+        main_canvas_x = abs_x - self.app.canvas.winfo_rootx()
+        main_canvas_y = abs_y - self.app.canvas.winfo_rooty()
+
+        corrected_event = tk.Event()
+        corrected_event.x, corrected_event.y = main_canvas_x, main_canvas_y
+        self.create_clone_from_asset(asset_comp, corrected_event)
+
+    def create_clone_from_asset(self, asset_comp, event):
+        """Creates a new draggable component by cloning an asset from the dock."""
+        if not asset_comp.original_pil_image:
+            return
+
+        clone_prefix = "border_" if asset_comp.is_border_asset else "clone_"
+        existing_active_image = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
+        if existing_active_image:
+            self._remove_stamp_source_component(existing_active_image)
+
+        clone_tag = f"{clone_prefix}{self.next_dynamic_id}"
+        self.next_dynamic_id += 1
+
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        w, h = asset_comp.original_pil_image.size
+        clone_comp = DraggableComponent(clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
+
+        clone_comp.is_border_asset = asset_comp.is_border_asset
+        clone_comp.is_decal = True
+        clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
+
+        # Set the initial image; the transform function will apply the visual effects
+        clone_comp.set_image(asset_comp.original_pil_image)
+
+        # Add to the main components dictionary so it gets drawn on the main canvas
+        self.app.components[clone_tag] = clone_comp
+        # Bind events for the new clone
+        self.app._bind_component_events(clone_tag)
+
+        # Apply the initial semi-transparent transform
+        self._update_active_decal_transform()
+
+        # Ensure the dock itself remains on top after creating a clone
+        self.app._keep_docks_on_top()
+
+        print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
