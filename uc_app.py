@@ -915,6 +915,7 @@ class ImageEditorApp:
         """
         # REFACTOR: This logic is now correctly handled entirely by the ImageManager.
         self.image_manager.apply_decal_to_underlying_layer()
+        self._keep_docks_on_top()
 
 # --- EXECUTION ---
 if __name__ == "__main__":

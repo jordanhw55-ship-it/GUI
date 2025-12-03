@@ -87,16 +87,11 @@ class ImageManager:
 
     def apply_decal_to_underlying_layer(self):
         """Finds the active decal and stamps it onto any underlying components."""
-        # --- DEFINITIVE FIX: The active decal is the one being transformed, not just any clone. ---
-        # The `_find_topmost_stamp_source` is the correct way to identify the active decal
-        # that the user is manipulating via the transform sliders.
         stamp_source_comp = self._find_topmost_stamp_source(show_warning=True, clone_type='any')
-
         if not stamp_source_comp:
             return
-
-        # --- DEFINITIVE FIX: Recreate the stamp from the original image and current transforms ---
-        # This ensures the stamp is full-resolution and matches the on-screen preview's transforms.
+        
+        # Recreate the stamp from the original image and current transforms
         scale_factor = self.decal_scale.get() / 100.0
         rotation_angle = self.decal_rotation.get()
 
@@ -104,7 +99,6 @@ class ImageManager:
         new_w = int(original_w * scale_factor)
         new_h = int(original_h * scale_factor)
         resized_image = stamp_source_comp.original_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-
         decal_stamp_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
         stamp_w, stamp_h = decal_stamp_image.size
 
@@ -118,19 +112,23 @@ class ImageManager:
         undo_data = {}
         applied_count = 0
 
+        # --- DEFINITIVE FIX: Iterate through all components to find targets ---
+        # The previous logic was flawed. We must check every component to see if it's a valid target.
         for target_comp in self.app.components.values():
+            # Skip if it's the stamp itself, a dock asset, or has no image to stamp onto.
             if target_comp.tag == stamp_source_comp.tag or target_comp.is_dock_asset or not target_comp.pil_image:
                 continue
 
+            # Attempt to composite the decal onto this specific target component.
             final_image, applied = self._composite_decal_onto_image(target_comp, decal_stamp_image, stamp_world_x1, stamp_world_y1, stamp_world_x2, stamp_world_y2, stamp_source_comp.is_border_asset)
             
             if applied:
+                # If the composite was successful, save an undo state and apply the new image.
                 if target_comp.tag not in undo_data:
                     undo_data[target_comp.tag] = target_comp.pil_image.copy()
                 target_comp.set_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
-
 
         if applied_count == 0:
             messagebox.showwarning("No Target", "Decal must be positioned over a valid layer to be applied.")
@@ -141,7 +139,6 @@ class ImageManager:
 
         self._remove_stamp_source_component(stamp_source_comp)
         self.app.redraw_all_zoomable()
-        self.app._keep_docks_on_top()
 
     def _composite_decal_onto_image(self, target_comp, decal_stamp_image, stamp_world_x1, stamp_world_y1, stamp_world_x2, stamp_world_y2, is_border):
         """
