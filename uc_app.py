@@ -984,7 +984,8 @@ class ImageEditorApp:
             # --- NEW: Composite any borders onto the final image ---
             if tag in borders_by_parent:
                 for border_comp in borders_by_parent[tag]:
-                    final_image, has_borders = self.image_manager._composite_border_onto_image(comp, border_comp)
+                    # Pass the current state of final_image to be drawn on
+                    final_image, has_borders = self.image_manager._composite_border_onto_image(final_image, comp, border_comp)
 
             save_path = os.path.join(save_dir, f"{tag}.{export_format}")
             try:

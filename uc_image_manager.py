@@ -301,12 +301,13 @@ class ImageManager:
         # No overlap, return original image and False
         return target_comp.pil_image, False
 
-    def _composite_border_onto_image(self, target_comp, border_comp):
+    def _composite_border_onto_image(self, image_to_composite_onto, target_comp, border_comp):
         """
         Composites a pre-rendered border component onto its parent tile's image.
         This is a simplified version for preset borders which are already correctly sized.
         """
-        target_img = target_comp.pil_image
+        # The image to draw on is now passed in directly.
+        target_img = image_to_composite_onto
         border_img = border_comp.pil_image
 
         if not target_img or not border_img:
