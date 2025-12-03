@@ -19,6 +19,7 @@ class BorderManager:
         self.selected_style = tk.StringVar()
         self.border_thickness = tk.IntVar(value=10)
         self.border_width = tk.IntVar(value=100) # NEW: For adjusting border component width as a percentage
+        self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
 
         # --- Preset Definitions ---
         # A dictionary where each key is a preset name.
@@ -165,11 +166,19 @@ class BorderManager:
         # The inner rectangle is the white outline, inset from the outer edge.
         # --- DEFINITIVE FIX: Inset the outline's coordinates by half its width ---
         # This ensures the outline draws fully *inside* the green area, not centered on its edge.
+        growth_direction = self.border_growth_direction.get()
         thickness_screen = self.border_thickness.get() * self.app.camera.zoom_scale
-        inset = thickness_screen / 2
+        
+        # --- NEW: Adjust inset based on growth direction ---
+        if growth_direction == 'in':
+            inset = thickness_screen / 2
+            ox1, oy1, ox2, oy2 = sx1 + inset, sy1 + inset, sx2 - inset, sy2 - inset
+        else: # 'out'
+            outset = thickness_screen / 2
+            ox1, oy1, ox2, oy2 = sx1 - outset, sy1 - outset, sx2 + outset, sy2 + outset
+
         self.canvas.create_rectangle(
-            sx1 + inset, sy1 + inset, 
-            sx2 - inset, sy2 - inset,
+            ox1, oy1, ox2, oy2,
             outline="white",
             width=thickness_screen,
             tags=("border_preview", "outline")
@@ -196,16 +205,21 @@ class BorderManager:
 
         final_image = Image.new("RGBA", (width, height), (0,0,0,0))
         thickness = self.border_thickness.get()
+        growth_direction = self.border_growth_direction.get()
 
         # --- DEFINITIVE FIX: Create a mask that grows inward ---
         # 1. Create a mask for the border by drawing a filled rectangle and then
         #    drawing a smaller, empty rectangle inside it.
         mask = Image.new("L", (width, height), 0)
         draw = ImageDraw.Draw(mask)
-        # Draw the outer, filled shape
-        draw.rectangle([(0, 0), (width, height)], fill=255)
-        # "Cut out" the inside by drawing a smaller, empty rectangle
-        draw.rectangle([(thickness, thickness), (width - thickness, height - thickness)], fill=0)
+
+        # --- NEW: Adjust mask based on growth direction ---
+        if growth_direction == 'in':
+            draw.rectangle([(0, 0), (width, height)], fill=255) # Outer shape
+            draw.rectangle([(thickness, thickness), (width - thickness, height - thickness)], fill=0) # Inner cutout
+        else: # 'out'
+            draw.rectangle([(-thickness, -thickness), (width + thickness, height + thickness)], fill=255) # Outer shape (expanded)
+            draw.rectangle([(0, 0), (width, height)], fill=0) # Inner cutout (original size)
 
         # 2. Create a layer with the tiled texture
         tiled_texture_layer = Image.new("RGBA", (width, height))

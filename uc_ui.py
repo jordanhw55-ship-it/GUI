@@ -211,6 +211,15 @@ class UIManager:
         button_font = ('Inter', 11, 'bold')
         manager = self.app.border_manager
 
+        # --- NEW: Style for Radio Buttons ---
+        style = ttk.Style(self.master)
+        style.configure('Dark.TRadiobutton', background="#374151", foreground="white", indicatorcolor="#6b7280")
+        style.map('Dark.TRadiobutton',
+            background=[('active', '#4b5563'), ('selected', '#374151')],
+            foreground=[('active', 'white')],
+            indicatorcolor=[('selected', '#3b82f6')]
+        )
+
         # --- Preset Selection ---
         tk.Label(tab, text="BORDER PRESETS", **label_style).pack(fill='x')
         
@@ -247,6 +256,15 @@ class UIManager:
         # --- NEW: Update the preview when the width slider is moved ---
         width_slider.config(command=manager.show_preset_preview)
 
+        # --- NEW: Growth Direction Toggle ---
+        tk.Label(controls_frame, text="Growth:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w', pady=2)
+        growth_radio_frame = tk.Frame(controls_frame, bg="#374151")
+        growth_radio_frame.grid(row=4, column=1, sticky='w')
+        radio_in = ttk.Radiobutton(growth_radio_frame, text="Inward", variable=manager.border_growth_direction, value="in", command=manager.show_preset_preview, style='Dark.TRadiobutton')
+        radio_out = ttk.Radiobutton(growth_radio_frame, text="Outward", variable=manager.border_growth_direction, value="out", command=manager.show_preset_preview, style='Dark.TRadiobutton')
+        radio_in.pack(side=tk.LEFT, padx=(0, 10))
+        radio_out.pack(side=tk.LEFT)
+
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
 
@@ -269,6 +287,11 @@ class UIManager:
         
         tk.Button(tab, text="Save Modified as DDS", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=lambda: self.app._export_modified_images('dds')).pack(fill='x', padx=10, pady=(5, 10))
+
+        # --- NEW: Checkbox to control export behavior ---
+        tk.Checkbutton(tab, text="Export all tiles (not just modified)", variable=self.app.export_all_tiles,
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
+                        ).pack(pady=5)
 
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
         tk.Label(tab, text="OPEN EXPORT FOLDER", **label_style).pack(fill='x')
