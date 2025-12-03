@@ -79,35 +79,19 @@ class DraggableComponent:
         print(f"[DEBUG] Applying image to '{self.tag}'.")
         print(f"[DEBUG] BEFORE image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)}) | Zoom={self.app.camera.zoom_scale:.2f}")
 
-        self.pil_image = pil_image
-        
-        if self.border_pil_image:
-            pil_image = self._composite_border(pil_image)
-
-        x_start, y_start = self.app.camera.world_to_screen(self.world_x1, self.world_y1)
-
-        if resize_to_fit:
-            image_to_render = self.preview_pil_image if self.is_dock_asset else self.pil_image
-            w, h = int(self.world_x2 - self.world_x1), int(self.world_y2 - self.world_y1)
-            image_to_render = image_to_render.resize((w, h), Image.Resampling.LANCZOS) if w > 0 and h > 0 else image_to_render
-        else:
-            image_to_render = self.pil_image
-
-        new_tk_image = ImageTk.PhotoImage(image_to_render)
-
-        self.canvas.delete(self.rect_id)
+        # --- REFACTOR: Only update the internal PIL image. ---
+        # The redraw_all_zoomable function will handle all canvas drawing,
+        # including creating the Tkinter image and placing it correctly.
+        self.pil_image = pil_image.copy() # Use a copy to prevent aliasing issues
+ 
+        # If there was a placeholder text, we no longer need it.
         if self.text_id:
             self.canvas.delete(self.text_id)
             self.text_id = None
-
-        self.rect_id = self.canvas.create_image(x_start, y_start,
-                                                 image=new_tk_image,
-                                                 anchor=tk.NW,
-                                                 tags=(self.tag, "draggable"))
-        if not self.is_dock_asset:
-            self.canvas.addtag_withtag("zoom_target", self.rect_id)
-
-        self.tk_image = new_tk_image
+        
+        # If the component didn't have an image before, ensure it's now a zoom target.
+        if self.tk_image is None and not self.is_dock_asset:
+             self.canvas.addtag_withtag("zoom_target", self.rect_id)
         
         # --- FIX: Force a full redraw after setting an image ---
         # This ensures the new image is correctly scaled and positioned by the camera's zoom.
