@@ -105,7 +105,11 @@ class ImageManager:
         clone_tag = f"{clone_prefix}{self.next_clone_id}"
         self.next_clone_id += 1
         
-        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        # --- MODIFICATION: Center the new clone in the composition area ---
+        # Instead of creating the clone at the mouse position, we now place it
+        # in the center of the main canvas for a predictable starting point.
+        world_x = self.app.CANVAS_WIDTH / 2
+        world_y = self.app.CANVAS_HEIGHT / 2
         w, h = asset_comp.original_pil_image.size
         clone_comp = DraggableComponent(self.canvas, self.app, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
         
