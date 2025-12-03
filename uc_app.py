@@ -55,6 +55,7 @@ class ImageEditorApp:
         self.dragged_item_tag = None
         self.last_drag_x = 0
         self.last_drag_y = 0
+        self.selection_highlight_id = None # NEW: To track the selection highlight rectangle
         self.selected_component_tag = None
         self.tile_eraser_mode_active = False # NEW: For the tile eraser tool
         self.pre_move_state = {} # NEW: To store component positions before a move
@@ -833,6 +834,9 @@ class ImageEditorApp:
         # Only redraw the preview if the border tab is the one being displayed.
         if self.border_manager.preview_rect_id and self.is_border_tab_active():
             self.border_manager.show_preset_preview()
+
+        # --- NEW: Redraw the selection highlight ---
+        self._update_selection_highlight()
             
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
@@ -846,6 +850,10 @@ class ImageEditorApp:
             self.master.after(10, lambda: self.border_manager.show_preset_preview()) # Use 'after' to ensure tab has changed
         else:
             self.border_manager.clear_preset_preview()
+
+        # --- NEW: Update the selection highlight when changing tabs ---
+        # This will show/hide the highlight when entering/leaving the Tile Control tab.
+        self._update_selection_highlight()
 
     def handle_tab_click(self, name):
         """Handles the logic when a sidebar button is clicked."""
@@ -894,12 +902,38 @@ class ImageEditorApp:
             self.update_resize_entries()
             # Update the button visuals to show the current selection
             self._update_resize_selector_visuals()
+            # --- NEW: Update the visual highlight on the canvas ---
+            self._update_selection_highlight()
 
     def _update_resize_selector_visuals(self):
         """Updates the background color of the resize selector buttons."""
         for name, button in self.resize_selector_buttons.items():
             bg_color = '#3b82f6' if name == self.selected_component_tag else '#6b7280'
             button.config(bg=bg_color)
+
+    def _update_selection_highlight(self):
+        """Draws or removes a highlight rectangle over the selected component."""
+        # First, remove any existing highlight
+        if self.selection_highlight_id:
+            self.canvas.delete(self.selection_highlight_id)
+            self.selection_highlight_id = None
+
+        # Only draw a new highlight if a component is selected AND the Tile Control tab is active
+        if self.selected_component_tag and self.is_tile_control_tab_active():
+            comp = self.components.get(self.selected_component_tag)
+            if comp:
+                # Get the component's current screen coordinates
+                sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+                sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
+
+                # Draw a new semi-transparent rectangle
+                self.selection_highlight_id = self.canvas.create_rectangle(
+                    sx1, sy1, sx2, sy2,
+                    fill="#22c55e",      # A nice green color
+                    stipple="gray50",    # This gives a semi-transparent effect
+                    outline="",          # No outline on the highlight itself
+                    tags=("selection_highlight",)
+                )
 
     def is_border_tab_active(self, event=None):
         """Checks if the 'Border' tab is the currently selected tab in the sidebar."""
@@ -908,6 +942,16 @@ class ImageEditorApp:
             selected_tab_index = notebook.index(notebook.select())
             selected_tab_text = notebook.tab(selected_tab_index, "text")
             return selected_tab_text == 'Border'
+        except Exception:
+            return False
+
+    def is_tile_control_tab_active(self, event=None):
+        """Checks if the 'Tile Control' tab is the currently selected tab."""
+        try:
+            notebook = self.ui_manager.notebook
+            selected_tab_index = notebook.index(notebook.select())
+            selected_tab_text = notebook.tab(selected_tab_index, "text")
+            return selected_tab_text == 'Tile Control'
         except Exception:
             return False
 
