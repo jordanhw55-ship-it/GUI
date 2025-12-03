@@ -86,9 +86,7 @@ class ImageManager:
             target_canvas.create_text(x + 7, y + 7, text="X", fill="red", font=("Arial", 10, "bold"), tags=(delete_tag, asset_tag))
 
             # Bind the click event to the delete function
-            target_canvas.tag_bind(delete_tag, '<Button-1>', 
-                lambda event, comp=asset_comp: self.delete_dock_asset(comp))
-
+            target_canvas.tag_bind(delete_tag, '<Button-1>', lambda event, comp=asset_comp: self._delete_and_stop_propagation(comp))
             self.dock_assets.append(asset_comp)
             
             target_canvas.config(scrollregion=target_canvas.bbox("all"))
@@ -119,9 +117,9 @@ class ImageManager:
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
 
             items_per_row = 4
-            padding = 5
-            asset_width = 68
-            asset_height = 68
+            padding = 15
+            asset_width = 128
+            asset_height = 128
 
             col = item_index % items_per_row
             row = item_index // items_per_row
@@ -143,13 +141,16 @@ class ImageManager:
             delete_tag = f"delete_{asset_tag}"
             target_canvas.create_oval(x, y, x + 14, y + 14, fill='white', outline='black', tags=(delete_tag, asset_tag))
             target_canvas.create_text(x + 7, y + 7, text="X", fill="red", font=("Arial", 10, "bold"), tags=(delete_tag, asset_tag))
-            target_canvas.tag_bind(delete_tag, '<Button-1>', 
-                lambda event, comp=asset_comp: self.delete_dock_asset(comp))
-
+            target_canvas.tag_bind(delete_tag, '<Button-1>', lambda event, comp=asset_comp: self._delete_and_stop_propagation(comp))
             self.dock_assets.append(asset_comp)
             target_canvas.config(scrollregion=target_canvas.bbox("all"))
         except Exception as e:
             print(f"[ERROR] Failed to reload asset from path '{image_path}': {e}")
+
+    def _delete_and_stop_propagation(self, asset_to_delete):
+        """Calls the delete function and returns 'break' to stop event propagation."""
+        self.delete_dock_asset(asset_to_delete)
+        return "break"
 
     def delete_dock_asset(self, asset_to_delete):
         """Removes an asset from the dock and redraws the dock."""
