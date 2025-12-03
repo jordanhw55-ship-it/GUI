@@ -321,4 +321,7 @@ class ImageManager:
         # Ensure the dock itself remains on top after creating a clone
         self.app._keep_docks_on_top()
 
+        # --- FIX: Redraw the canvas to make the new clone visible ---
+        self.app.redraw_all_zoomable()
+
         print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
