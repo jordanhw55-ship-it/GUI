@@ -203,8 +203,36 @@ class UIManager:
 
     def _populate_border_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
-        tk.Label(tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
-        tk.Label(tab, text="This section is currently empty.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
+        button_font = ('Inter', 11, 'bold')
+        manager = self.app.border_manager
+
+        # --- Preset Selection ---
+        tk.Label(tab, text="BORDER PRESETS", **label_style).pack(fill='x')
+        
+        controls_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        controls_frame.pack(fill='x')
+        controls_frame.grid_columnconfigure(1, weight=1)
+
+        # Preset Dropdown
+        tk.Label(controls_frame, text="Preset:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
+        preset_names = list(manager.border_presets.keys())
+        if preset_names:
+            preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, preset_names[0], *preset_names)
+            preset_menu.grid(row=0, column=1, sticky='ew', padx=5)
+
+        # Style Dropdown
+        tk.Label(controls_frame, text="Style:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
+        style_names = list(manager.border_textures.keys())
+        if style_names:
+            style_menu = ttk.OptionMenu(controls_frame, manager.selected_style, style_names[0], *style_names)
+            style_menu.grid(row=1, column=1, sticky='ew', padx=5)
+
+        # Thickness Slider
+        tk.Label(controls_frame, text="Thickness:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
+        tk.Scale(controls_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=manager.border_thickness, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
+
+        # Apply Button
+        tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
