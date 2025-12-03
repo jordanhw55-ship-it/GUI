@@ -313,11 +313,9 @@ class ImageManager:
         clone_comp.is_decal = True
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
 
-        # Set the initial image; the transform function will apply the visual effects
-        clone_comp.set_image(asset_comp.original_pil_image)
-
-        # --- FIX: Immediately calculate the correct world bounds after setting the image ---
-        self._update_active_decal_transform()
+        # --- FIX: Set the base image AND apply the initial transparent transform ---
+        # Set the actual image data for stamping.
+        clone_comp.set_image(clone_comp.original_pil_image)
 
         # Add to the main components dictionary so it gets drawn on the main canvas
         self.app.components[clone_tag] = clone_comp
