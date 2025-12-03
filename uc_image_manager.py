@@ -56,8 +56,8 @@ class ImageManager:
 
             items_per_row = 4
             padding = 5
-            asset_width = 64
-            asset_height = 64
+            asset_width = 68
+            asset_height = 68
 
             col = item_index % items_per_row
             row = item_index // items_per_row
@@ -109,8 +109,8 @@ class ImageManager:
 
             items_per_row = 4
             padding = 5
-            asset_width = 64
-            asset_height = 64
+            asset_width = 68
+            asset_height = 68
 
             col = item_index % items_per_row
             row = item_index // items_per_row
