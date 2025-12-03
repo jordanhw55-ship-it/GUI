@@ -186,21 +186,22 @@ class BorderManager:
 
         elif style == "Brick" and "Brick" in self.border_textures:
             texture = self.border_textures["Brick"]
-            thickness = self.border_thickness.get()
-            # Tile the texture along the 4 edges of the bounding box
-            # Top edge
-            for x in range(0, width, texture.width):
-                final_image.paste(texture, (x, 0))
-            # Bottom edge
-            for x in range(0, width, texture.width):
-                final_image.paste(texture, (x, height - texture.height))
-            # Left edge
+            thickness = self.border_thickness.get() # Use the thickness value
+
+            # 1. Create a mask for the border outline
+            mask = Image.new("L", (width, height), 0) # 'L' mode for grayscale mask
+            draw = ImageDraw.Draw(mask)
+            # Draw a white rectangle outline on the black mask
+            draw.rectangle([(0,0), (width-1, height-1)], fill=0, outline=255, width=thickness)
+
+            # 2. Create a layer with the tiled texture
+            tiled_texture_layer = Image.new("RGBA", (width, height))
             for y in range(0, height, texture.height):
-                final_image.paste(texture, (0, y))
-            # Right edge
-            for y in range(0, height, texture.height):
-                final_image.paste(texture, (width - texture.width, y))
-            # This is a simplified tiling; more advanced methods exist.
+                for x in range(0, width, texture.width):
+                    tiled_texture_layer.paste(texture, (x, y))
+
+            # 3. Composite the tiled texture onto the final image using the mask
+            final_image.paste(tiled_texture_layer, (0, 0), mask)
 
         # Apply glow effect if enabled
         if self.glow_enabled.get():
