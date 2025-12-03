@@ -663,24 +663,18 @@ class ImageEditorApp:
             if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_"):
                 continue
 
-
-            # Start with the component's current image (which may have decals)
-            final_image = comp.pil_image.copy()
-            has_paint = False
-
-            if paint_layer:
-                # --- CRITICAL FIX: Use world coordinates, not screen bbox ---
-                # Using canvas.bbox(comp.rect_id) was incorrect because it returns screen coordinates,
-                # which are affected by zoom. We must use the component's world coordinates to
-                # correctly crop the full-resolution paint layer.
-                if comp.world_x2 > comp.world_x1 and comp.world_y2 > comp.world_y1:
-                    world_bbox = (comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2)
-                    cropped_paint = paint_layer.crop(world_bbox)
-                    resized_paint = cropped_paint.resize(final_image.size, Image.Resampling.LANCZOS)
-                    # Composite paint only if there's something to composite
-                    if resized_paint.getbbox():
-                        final_image = Image.alpha_composite(final_image, resized_paint)
-                        has_paint = True
+            # --- REFACTOR: Use the centralized compositing logic from ImageManager ---
+            # This ensures that paint application during export uses the same robust,
+            # zoom-independent logic as decal application.
+            final_image, has_paint = self.image_manager._composite_decal_onto_image(
+                target_comp=comp,
+                decal_stamp_image=paint_layer,
+                stamp_world_x1=0,
+                stamp_world_y1=0,
+                stamp_world_x2=self.CANVAS_WIDTH,
+                stamp_world_y2=self.CANVAS_HEIGHT,
+                is_border=False # Treat paint as a regular decal
+            )
 
             is_decal_changed = comp.pil_image is not comp.original_pil_image
             if not is_decal_changed and not has_paint:

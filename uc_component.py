@@ -8,7 +8,7 @@ class DraggableComponent:
     A class to represent and manage an independent, draggable element 
     on the Tkinter canvas, now supporting real images with transparency.
     """
-    def __init__(self, canvas, app_instance, tag, x1, y1, x2, y2, color, text):
+    def __init__(self, canvas, app_instance, tag, x1, y1, x2, y2, color, text, is_dock_asset=False):
         self.canvas = canvas
         self.app = app_instance # Reference to the main app
         self.tag = tag
@@ -29,7 +29,7 @@ class DraggableComponent:
         self._cached_screen_w = -1
         self._cached_screen_h = -1
 
-        self.is_dock_asset = False # To identify dock assets
+        self.is_dock_asset = is_dock_asset # To identify dock assets
         # Initialize with the colored box
         self._draw_placeholder(x1, y1, x2, y2, color, text)
         

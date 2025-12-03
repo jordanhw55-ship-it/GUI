@@ -52,11 +52,11 @@ class ImageManager:
 
             col = item_index % items_per_row
             row = item_index // items_per_row
-            x = padding + col * (asset_width + padding)
-            y = padding + row * (asset_height + padding)
+            # --- FIX: Use relative coordinates for the dock canvas, not absolute ---
+            x, y = padding + col * (asset_width + padding), padding + row * (asset_height + padding)
 
-            asset_comp = DraggableComponent(target_canvas, self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET")
-            asset_comp.is_dock_asset = True
+            # Create the component on the target dock canvas
+            asset_comp = DraggableComponent(target_canvas, self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
             asset_comp.is_border_asset = is_border
 
             target_canvas.tag_bind(asset_tag, '<Button-1>', 
@@ -148,54 +148,16 @@ class ImageManager:
             if target_comp.tag == stamp_source_comp.tag or target_comp.is_dock_asset or not target_comp.pil_image:
                 continue
 
-            intersect_x1 = max(stamp_world_x1, target_comp.world_x1)
-            intersect_y1 = max(stamp_world_y1, target_comp.world_y1)
-            intersect_x2 = min(stamp_world_x2, target_comp.world_x2)
-            intersect_y2 = min(stamp_world_y2, target_comp.world_y2)
-
-            if intersect_x1 < intersect_x2 and intersect_y1 < intersect_y2:
+            final_image, applied = self._composite_decal_onto_image(target_comp, decal_stamp_image, stamp_world_x1, stamp_world_y1, stamp_world_x2, stamp_world_y2, stamp_source_comp.is_border_asset)
+            
+            if applied:
                 if target_comp.tag not in undo_data:
                     undo_data[target_comp.tag] = target_comp.pil_image.copy()
-
-                target_world_w = target_comp.world_x2 - target_comp.world_x1
-                target_world_h = target_comp.world_y2 - target_comp.world_y1
-                if target_world_w == 0 or target_world_h == 0: continue
-
-                scale_x = target_comp.pil_image.width / target_world_w
-                scale_y = target_comp.pil_image.height / target_world_h
-
-                paste_x = int((intersect_x1 - target_comp.world_x1) * scale_x)
-                paste_y = int((intersect_y1 - target_comp.world_y1) * scale_y)
-
-                crop_x1 = int(intersect_x1 - stamp_world_x1)
-                crop_y1 = int(intersect_y1 - stamp_world_y1)
-                crop_x2 = int(intersect_x2 - stamp_world_x1)
-                crop_y2 = int(intersect_y2 - stamp_world_y1)
-                
-                cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
-
-                final_image = target_comp.pil_image.copy()
-                
-                decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
-                
-                final_stamp_w = int(cropped_stamp.width * scale_x)
-                final_stamp_h = int(cropped_stamp.height * scale_y)
-                if final_stamp_w > 0 and final_stamp_h > 0:
-                    cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
-
-                decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
-
-                if not stamp_source_comp.is_border_asset:
-                    comp_alpha_mask = final_image.getchannel('A')
-                    combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
-                    decal_layer.putalpha(combined_alpha)
-                    
-                final_image = Image.alpha_composite(final_image, decal_layer)
-
                 target_comp._set_pil_image(final_image)
                 applied_count += 1
                 print(f"Stamped decal onto layer '{target_comp.tag}'.")
-        
+
+
         if applied_count == 0:
             messagebox.showwarning("No Target", "Decal must be positioned over a valid layer to be applied.")
             return
@@ -206,6 +168,64 @@ class ImageManager:
         self._remove_stamp_source_component(stamp_source_comp)
         self.app.redraw_all_zoomable()
         self.app._keep_docks_on_top()
+
+    def _composite_decal_onto_image(self, target_comp, decal_stamp_image, stamp_world_x1, stamp_world_y1, stamp_world_x2, stamp_world_y2, is_border):
+        """
+        Helper function to composite a decal/stamp image onto a target component's image.
+        Returns the new composited image and a boolean indicating if a change was made.
+        """
+        # Calculate the intersection in WORLD coordinates
+        intersect_x1 = max(stamp_world_x1, target_comp.world_x1)
+        intersect_y1 = max(stamp_world_y1, target_comp.world_y1)
+        intersect_x2 = min(stamp_world_x2, target_comp.world_x2)
+        intersect_y2 = min(stamp_world_y2, target_comp.world_y2)
+
+        # If they overlap...
+        if intersect_x1 < intersect_x2 and intersect_y1 < intersect_y2:
+            # Scale paste position relative to the target's PIL image size
+            target_world_w = target_comp.world_x2 - target_comp.world_x1
+            target_world_h = target_comp.world_y2 - target_comp.world_y1
+            if target_world_w == 0 or target_world_h == 0:
+                return target_comp.pil_image, False
+
+            scale_x = target_comp.pil_image.width / target_world_w
+            scale_y = target_comp.pil_image.height / target_world_h
+
+            paste_x = int((intersect_x1 - target_comp.world_x1) * scale_x)
+            paste_y = int((intersect_y1 - target_comp.world_y1) * scale_y)
+
+            # Determine which part of the stamp image to use
+            crop_x1 = int(intersect_x1 - stamp_world_x1)
+            crop_y1 = int(intersect_y1 - stamp_world_y1)
+            crop_x2 = int(intersect_x2 - stamp_world_x1)
+            crop_y2 = int(intersect_y2 - stamp_world_y1)
+            
+            cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
+
+            # Resize the cropped stamp to match the target's image scale
+            final_stamp_w = int(cropped_stamp.width * scale_x)
+            final_stamp_h = int(cropped_stamp.height * scale_y)
+            if final_stamp_w > 0 and final_stamp_h > 0:
+                cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
+
+            # Composite the images
+            final_image = target_comp.pil_image.copy()
+            decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
+            decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
+
+            # Conditionally respect transparency of the underlying tile
+            if not is_border:
+                comp_alpha_mask = final_image.getchannel('A')
+                combined_alpha = ImageChops.multiply(decal_layer.getchannel('A'), comp_alpha_mask)
+                decal_layer.putalpha(combined_alpha)
+                
+            final_image = Image.alpha_composite(final_image, decal_layer)
+
+            # Return the new image and True to indicate a change was made
+            return final_image, True
+
+        # No overlap, return original image and False
+        return target_comp.pil_image, False
 
     def schedule_transform_update(self, event=None):
         """Schedules a decal transformation update, debouncing slider events."""
