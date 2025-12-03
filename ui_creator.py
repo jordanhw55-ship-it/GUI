@@ -86,7 +86,7 @@ class ImageEditorApp:
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
         # --- NEW: Define base paths for UI Creator resources ---
-        self.base_path = os.path.dirname(get_base_path())
+        self.base_path = get_base_path()
         self.ui_creator_contents_path = os.path.join(self.base_path, "Contents", "ui creator")
         self.image_base_dir = os.path.join(self.ui_creator_contents_path, "images")
         self.tools_dir = os.path.join(self.ui_creator_contents_path, "tools")
