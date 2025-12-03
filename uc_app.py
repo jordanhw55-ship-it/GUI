@@ -64,6 +64,7 @@ class ImageEditorApp:
         self.resize_width = tk.StringVar()
         self.resize_height = tk.StringVar()
         self.maintain_aspect = tk.BooleanVar(value=True)
+        self.move_amount = tk.IntVar(value=1) # NEW: For moving tiles by pixels
         self.resize_width.trace_add("write", self.on_resize_entry_change)
         self.resize_height.trace_add("write", self.on_resize_entry_change)
 
@@ -999,6 +1000,42 @@ class ImageEditorApp:
         # Redraw to apply the new size within the camera view
         self.redraw_all_zoomable()
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
+
+    def move_selected_component(self, direction: str):
+        """Moves the selected component by the amount specified in the UI."""
+        if not self.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a tile to move.")
+            return
+
+        comp = self.components.get(self.selected_component_tag)
+        if not comp: return
+
+        try:
+            amount = self.move_amount.get()
+        except (ValueError, tk.TclError):
+            messagebox.showerror("Invalid Input", "Please enter a valid number for the move amount.")
+            return
+
+        # Save state for undo
+        undo_data = {
+            'type': 'move',
+            'positions': {comp.tag: (comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2)}
+        }
+        self._save_undo_state(undo_data)
+
+        dx, dy = 0, 0
+        if direction == 'up': dy = -amount
+        elif direction == 'down': dy = amount
+        elif direction == 'left': dx = -amount
+        elif direction == 'right': dx = amount
+
+        comp.world_x1 += dx
+        comp.world_y1 += dy
+        comp.world_x2 += dx
+        comp.world_y2 += dy
+
+        self.redraw_all_zoomable()
+        print(f"Moved '{comp.tag}' {direction} by {amount} pixels.")
 
     def apply_border_to_selection(self):
         """Applies a loaded border image to the currently selected component."""

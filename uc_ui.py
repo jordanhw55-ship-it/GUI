@@ -82,7 +82,7 @@ class UIManager:
         image_tab = tk.Frame(self.notebook, bg="#374151")
         filters_tab = tk.Frame(self.notebook, bg="#374151")
         border_tab = tk.Frame(self.notebook, bg="#374151")
-        resize_tab = tk.Frame(self.notebook, bg="#374151")
+        tile_control_tab = tk.Frame(self.notebook, bg="#374151")
         text_tab = tk.Frame(self.notebook, bg="#374151")
         export_tab = tk.Frame(self.notebook, bg="#374151")
 
@@ -90,7 +90,7 @@ class UIManager:
         self.notebook.add(paint_tab, text='Paint')
         self.notebook.add(border_tab, text='Border')
         self.notebook.add(image_tab, text='Image')
-        self.notebook.add(resize_tab, text='Resize Tile')
+        self.notebook.add(tile_control_tab, text='Tile Control')
         self.notebook.add(filters_tab, text='Filters')
         self.notebook.add(text_tab, text='Text')
         self.notebook.add(export_tab, text='Export')
@@ -98,7 +98,7 @@ class UIManager:
         self._populate_layer_tab(layer_tab)
         self._populate_paint_tab(paint_tab)
         self._populate_image_tab(image_tab)
-        self._populate_resize_tab(resize_tab)
+        self._populate_tile_control_tab(tile_control_tab)
         self._populate_border_tab(border_tab)
         self._populate_filters_tab(filters_tab)
         self._populate_text_tab(text_tab)
@@ -193,7 +193,7 @@ class UIManager:
         tk.Button(image_action_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=button_font,
                   command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
-    def _populate_resize_tab(self, tab):
+    def _populate_tile_control_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
         tk.Label(tab, text="RESIZE TILE", **label_style).pack(fill='x')
@@ -213,6 +213,27 @@ class UIManager:
                         command=self.app.update_resize_entries).pack(pady=5)
         tk.Button(tab, text="Apply Size", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.app.resize_selected_component).pack(fill='x', padx=10, pady=5)
+
+        # --- NEW: Add controls for moving the tile ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="MOVE TILE (PIXELS)", **label_style).pack(fill='x')
+        
+        move_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        move_frame.pack(fill='x')
+
+        tk.Label(move_frame, text="Amount:", bg="#374151", fg="white").pack(side=tk.LEFT, padx=(0, 5))
+        tk.Entry(move_frame, textvariable=self.app.move_amount, width=5).pack(side=tk.LEFT)
+
+        btn_frame = tk.Frame(tab, bg="#374151", padx=10)
+        btn_frame.pack(fill='x')
+        
+        # Grid for directional buttons
+        tk.Button(btn_frame, text="Up", bg='#6b7280', fg='white', relief='flat', command=lambda: self.app.move_selected_component('up')).grid(row=0, column=1, pady=2)
+        tk.Button(btn_frame, text="Left", bg='#6b7280', fg='white', relief='flat', command=lambda: self.app.move_selected_component('left')).grid(row=1, column=0, padx=2)
+        tk.Button(btn_frame, text="Right", bg='#6b7280', fg='white', relief='flat', command=lambda: self.app.move_selected_component('right')).grid(row=1, column=2, padx=2)
+        tk.Button(btn_frame, text="Down", bg='#6b7280', fg='white', relief='flat', command=lambda: self.app.move_selected_component('down')).grid(row=2, column=1, pady=2)
+        btn_frame.grid_columnconfigure(0, weight=1); btn_frame.grid_columnconfigure(1, weight=1); btn_frame.grid_columnconfigure(2, weight=1)
+
 
         # --- NEW: Add a tile selector directly in the resize tab ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
