@@ -204,6 +204,25 @@ class UIManager:
     def _populate_border_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
+
+        # --- Dynamic Border Properties ---
+        tk.Label(tab, text="DYNAMIC BORDER", **label_style).pack(fill='x')
+        props_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        props_frame.pack(fill='x')
+        props_frame.grid_columnconfigure(1, weight=1)
+
+        tk.Label(props_frame, text="Color:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
+        self.border_color_btn = tk.Button(props_frame, text="", bg=self.app.border_manager.border_color, width=10, relief='sunken',
+                                         command=self.app.border_manager.choose_border_color)
+        self.border_color_btn.grid(row=0, column=1, sticky='ew', padx=5)
+
+        tk.Label(props_frame, text="Thickness:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
+        tk.Scale(props_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=self.app.border_manager.border_thickness,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=1, column=1, sticky='ew', padx=5)
+
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=15)
+
+        # --- Preset Border Assets ---
         tk.Label(tab, text="BORDER ASSETS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=self.app.border_manager.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
@@ -220,8 +239,13 @@ class UIManager:
         self.border_dock_canvas.configure(yscrollcommand=border_scrollbar.set)
 
         # --- Border Actions ---
-        tk.Button(tab, text="Apply Border to Tile", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.app.border_manager.apply_border_to_selection).pack(fill='x', padx=10, pady=(10, 5))
+        action_frame = tk.Frame(tab, bg="#374151")
+        action_frame.pack(fill='x', padx=10, pady=(10, 5))
+        tk.Button(action_frame, text="Apply Dynamic Border", bg='#3b82f6', fg='white', relief='flat', font=button_font,
+                  command=self.app.border_manager.apply_dynamic_border_to_selection).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(action_frame, text="Apply Asset Border", bg='#10b981', fg='white', relief='flat', font=button_font,
+                  command=self.app.border_manager.apply_asset_border_to_selection).pack(side=tk.LEFT, fill='x', expand=True, padx=(5, 0))
+
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
