@@ -55,7 +55,7 @@ class ImageManager:
             row = item_index // items_per_row
             x, y = padding + col * (asset_width + padding), padding + row * (asset_height + padding)
 
-            asset_comp = DraggableComponent(asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
+            asset_comp = DraggableComponent(self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
             asset_comp.is_border_asset = is_border
 
             target_canvas.tag_bind(asset_tag, '<Button-1>', 
@@ -236,6 +236,9 @@ class ImageManager:
             
             # --- DEFINITIVE FIX: Set the component's image to the new transparent preview ---
             decal.set_image(display_image)
+            # --- DEFINITIVE FIX: The manager is responsible for redrawing ---
+            self.app.redraw_all_zoomable()
+
 
     def discard_active_image(self):
         """Finds and removes the active decal without applying it."""
@@ -307,7 +310,7 @@ class ImageManager:
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
-        clone_comp = DraggableComponent(clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
+        clone_comp = DraggableComponent(self.app, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
         
         # --- REFACTOR: Correct the order of operations for clone creation ---
         
@@ -326,5 +329,6 @@ class ImageManager:
 
         # 4. Final setup.
         self.app._keep_docks_on_top()
+        self.app.redraw_all_zoomable()
 
         print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")

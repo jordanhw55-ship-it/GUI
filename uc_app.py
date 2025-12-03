@@ -178,6 +178,7 @@ class ImageEditorApp:
 
         # TILE 01 (Row 1, Col 1)
         comp = DraggableComponent(
+            self,
             "humanuitile01",
             50, 50, 300, 350,  # W:250, H:300
             base_color, "UI TILE 01"
@@ -188,6 +189,7 @@ class ImageEditorApp:
 
         # TILE 02 (Row 1, Col 2)
         comp = DraggableComponent(
+            self,
             "humanuitile02",
             350, 50, 600, 350,
             base_color, "UI TILE 02"
@@ -198,6 +200,7 @@ class ImageEditorApp:
 
         # TILE 03 (Row 1, Col 3)
         comp = DraggableComponent(
+            self,
             "humanuitile03",
             650, 50, 900, 350,
             base_color, "UI TILE 03"
@@ -208,6 +211,7 @@ class ImageEditorApp:
 
         # TILE 04 (Row 1, Col 4)
         comp = DraggableComponent(
+            self,
             "humanuitile04",
             950, 50, 980, 350,
             base_color, "UI TILE 04"
@@ -218,6 +222,7 @@ class ImageEditorApp:
 
         # TILE 05 (Row 2, Col 1)
         comp = DraggableComponent(
+            self,
             "humanuitile05",
             50, 400, 300, 700,
             base_color, "UI TILE 05"
@@ -228,6 +233,7 @@ class ImageEditorApp:
 
         # TILE 06 (Row 2, Col 2)
         comp = DraggableComponent(
+            self,
             "humanuitile06",
             350, 400, 600, 700,
             base_color, "UI TILE 06"
@@ -238,6 +244,7 @@ class ImageEditorApp:
 
         # TILE 07 (Row 2, Col 3) - Inventory Cover (Tag matches filename)
         comp = DraggableComponent(
+            self,
             "humanuitile-inventorycover",
             650, 400, 770, 700,
             base_color, "INVENTORY COVER"
@@ -248,6 +255,7 @@ class ImageEditorApp:
 
         # TILE 08 (Row 2, Col 4) - Time Indicator Frame (Tag matches filename)
         comp = DraggableComponent(
+            self,
             "humanuitile-timeindicatorframe",
             950, 400, 1085, 475,
             base_color, "TIME FRAME"

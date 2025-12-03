@@ -6,8 +6,9 @@ class DraggableComponent:
     A data class to represent the state of a draggable element.
     It holds data but does not interact directly with the canvas.
     """
-    def __init__(self, tag, x1, y1, x2, y2, color, text, is_dock_asset=False):
+    def __init__(self, app, tag, x1, y1, x2, y2, color, text, is_dock_asset=False):
         self.tag = tag
+        self.app = app # Reference to the main application instance
         self.last_x = 0
         self.last_y = 0
         self.tk_image = None # Reference to the PhotoImage object
@@ -39,9 +40,6 @@ class DraggableComponent:
         print("-" * 20)
         print(f"[DEBUG] Applying image to '{self.tag}'.")
         self.pil_image = pil_image.copy() if pil_image else None
-        # --- DEFINITIVE FIX: The component's set_image method should handle redrawing ---
-        # This ensures that whenever an image is set (including transparent previews),
-        # the canvas is updated correctly.
-        self.app.redraw_all_zoomable()
+        # The manager that calls this method is now responsible for redrawing.
         print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")
         print("-" * 20)
