@@ -116,22 +116,7 @@ class ImageEditorApp:
         # before any callbacks (like on_image_set_changed) can be triggered.
         self._initialize_components()
 
-        # Now create the rest of the UI, which can safely reference components
-        self.ui_manager = UIManager(self)
-        # Initialize camera here, after canvas is created but before status box
-        self.camera = Camera(self, self.ui_manager.create_canvas())
         self.ui_manager.create_ui()
-        # --- PREVIEW LAYOUT COORDINATES ---
-        self.preview_layout = {
-            "humanuitile01": {"coords": [261, 57, 511, 357]},
-            "humanuitile02": {"coords": [511, 57, 761, 357]},
-            "humanuitile03": {"coords": [761, 57, 1011, 357]},
-            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
-            "humanuitile05": {"coords": [11, 57, 261, 357]},
-            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
-            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
-            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
-        }
 
         # --- Setup Image Set Callbacks AFTER components are initialized ---
         if os.path.isdir(self.image_base_dir):
@@ -140,74 +125,86 @@ class ImageEditorApp:
         self.selected_image_set.trace_add("write", self.on_image_set_changed)
 
 
-        # --- 2. Initialize Draggable Components (Layers) ---
+        # --- 4. Auto-Load Images ---
+        # If there are image sets, select the first one by default.
+        # Otherwise, fall back to loading from the base images directory.
+        if self.image_sets:
+            self.selected_image_set.set(self.image_sets[0])
+        else:
+            self._attempt_auto_load_images(self.image_base_dir)
+            
+        # --- 5. Apply Initial Layout ---
+        self.apply_preview_layout()
+
+    def _initialize_components(self):
+        """Creates the initial set of draggable components on the canvas."""
         self.components = {}
-        base_color = "#1e40af" # A more modern, vibrant blue
+        base_color = "#1e40af"  # A more modern, vibrant blue
 
         # Define tile dimensions for the 4x2 grid (increased size)
         tile_width = 250
         tile_height = 300
-        
+
         # Define starting coordinates for the 4x2 grid with 50px padding/spacing
         # C1_X=50, C2_X=350, C3_X=650, C4_X=950
         # R1_Y=50, R2_Y=400 (50 + 300 + 50)
-        
+
         # TILE 01 (Row 1, Col 1)
         self.components['humanuitile01'] = DraggableComponent(
-            self.canvas, self, "humanuitile01", 
-            50, 50, 300, 350, # W:250, H:300
+            self.canvas, self, "humanuitile01",
+            50, 50, 300, 350,  # W:250, H:300
             base_color, "UI TILE 01"
         )
 
         # TILE 02 (Row 1, Col 2)
         self.components['humanuitile02'] = DraggableComponent(
-            self.canvas, self, "humanuitile02", 
-            350, 50, 600, 350, 
+            self.canvas, self, "humanuitile02",
+            350, 50, 600, 350,
             base_color, "UI TILE 02"
         )
-        
+
         # TILE 03 (Row 1, Col 3)
         self.components['humanuitile03'] = DraggableComponent(
-            self.canvas, self, "humanuitile03", 
-            650, 50, 900, 350, 
+            self.canvas, self, "humanuitile03",
+            650, 50, 900, 350,
             base_color, "UI TILE 03"
         )
 
         # TILE 04 (Row 1, Col 4)
         self.components['humanuitile04'] = DraggableComponent(
-            self.canvas, self, "humanuitile04", 
-            950, 50, 980, 350, 
+            self.canvas, self, "humanuitile04",
+            950, 50, 980, 350,
             base_color, "UI TILE 04"
         )
-        
+
         # TILE 05 (Row 2, Col 1)
         self.components['humanuitile05'] = DraggableComponent(
-            self.canvas, self, "humanuitile05", 
-            50, 400, 300, 700, 
+            self.canvas, self, "humanuitile05",
+            50, 400, 300, 700,
             base_color, "UI TILE 05"
         )
-        
+
         # TILE 06 (Row 2, Col 2)
         self.components['humanuitile06'] = DraggableComponent(
-            self.canvas, self, "humanuitile06", 
-            350, 400, 600, 700, 
+            self.canvas, self, "humanuitile06",
+            350, 400, 600, 700,
             base_color, "UI TILE 06"
         )
 
         # TILE 07 (Row 2, Col 3) - Inventory Cover (Tag matches filename)
         self.components['humanuitile-inventorycover'] = DraggableComponent(
-            self.canvas, self, "humanuitile-inventorycover", 
-            650, 400, 770, 700, 
+            self.canvas, self, "humanuitile-inventorycover",
+            650, 400, 770, 700,
             base_color, "INVENTORY COVER"
         )
-        
+
         # TILE 08 (Row 2, Col 4) - Time Indicator Frame (Tag matches filename)
         self.components['humanuitile-timeindicatorframe'] = DraggableComponent(
-            self.canvas, self, "humanuitile-timeindicatorframe", 
-            950, 400, 1085, 475, 
+            self.canvas, self, "humanuitile-timeindicatorframe",
+            950, 400, 1085, 475,
             base_color, "TIME FRAME"
         )
-        
+
         self.preview_layout = {
             "humanuitile01": {"coords": [261, 57, 511, 357]},
             "humanuitile02": {"coords": [511, 57, 761, 357]},
@@ -221,18 +218,6 @@ class ImageEditorApp:
 
         # Set a default selected component
         self.set_selected_component('humanuitile01')
-        
-        # --- 4. Auto-Load Images ---
-        # If there are image sets, select the first one by default.
-        # Otherwise, fall back to loading from the base images directory.
-        if self.image_sets:
-            self.selected_image_set.set(self.image_sets[0])
-        else:
-            self._attempt_auto_load_images(self.image_base_dir)
-            
-        # --- 5. Apply Initial Layout ---
-        self.apply_preview_layout()
-
 
     def move_all_main_tiles(self, dx_world, dy_world):
         """Moves all primary component tiles by a delta in world coordinates."""
