@@ -87,7 +87,11 @@ class ImageManager:
 
     def apply_decal_to_underlying_layer(self):
         """Finds the active decal and stamps it onto any underlying components."""
-        stamp_source_comp = self._find_topmost_stamp_source(clone_type='any')
+        # --- DEFINITIVE FIX: The active decal is the one being transformed, not just any clone. ---
+        # The `_find_topmost_stamp_source` is the correct way to identify the active decal
+        # that the user is manipulating via the transform sliders.
+        stamp_source_comp = self._find_topmost_stamp_source(show_warning=True, clone_type='any')
+
         if not stamp_source_comp:
             return
 
