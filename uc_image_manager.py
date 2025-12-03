@@ -65,6 +65,7 @@ class ImageManager:
 
             asset_comp = DraggableComponent(self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
             asset_comp.is_border_asset = is_border
+            asset_comp.image_path = image_path # FIX: Save the file path for persistence
 
             target_canvas.tag_bind(asset_tag, '<Button-1>', 
                 lambda event, comp=asset_comp: self.handle_dock_asset_press(event, comp))

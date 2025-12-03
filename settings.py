@@ -49,24 +49,22 @@ class SettingsManager:
         if hasattr(window_instance, 'image_manager'):
             dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in window_instance.image_manager.dock_assets if asset.image_path]
 
-        settings_to_save = {
-            "theme_index": window_instance.current_theme_index,
-            "last_tab_index": window_instance.stacked_widget.currentIndex(),
-            "character_path": window_instance.character_load_manager.character_path, # type: ignore
-            "message_hotkeys": window_instance.automation_manager.message_hotkeys,
-            "custom_theme": window_instance.custom_theme,
-            "custom_title_image_path": window_instance.custom_title_image_path,
-            "in_progress_recipes": [window_instance.items_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.items_tab.in_progress_recipes_list.count())],
-            "keybinds": {},
-            "dock_assets": dock_assets_to_save,
-            "automation": window_instance.get_automation_settings_from_ui(),
-            "watchlist": window_instance.lobby_manager.watchlist,
-            "play_sound_on_found": window_instance.lobby_manager.lobbies_tab.lobby_placeholder_checkbox.isChecked(),
-            "selected_sound": window_instance.lobby_manager.selected_sound,
-            "volume": window_instance.lobby_manager.volume,
-            "font_family": window_instance.font_family,
-            "font_size": window_instance.font_size
-        }
+        # Start with the current settings to avoid losing keys
+        settings_to_save = self.settings.copy()
+
+        # Safely update values if the window instance has them
+        if hasattr(window_instance, 'current_theme_index'):
+            settings_to_save["theme_index"] = window_instance.current_theme_index
+        if hasattr(window_instance, 'stacked_widget'):
+            settings_to_save["last_tab_index"] = window_instance.stacked_widget.currentIndex()
+        if hasattr(window_instance, 'character_load_manager'):
+            settings_to_save["character_path"] = window_instance.character_load_manager.character_path
+        if hasattr(window_instance, 'automation_manager'):
+            settings_to_save["message_hotkeys"] = window_instance.automation_manager.message_hotkeys
+            settings_to_save["automation"] = window_instance.get_automation_settings_from_ui()
+        if hasattr(window_instance, 'image_manager'):
+            settings_to_save["dock_assets"] = dock_assets_to_save
+
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)
 
