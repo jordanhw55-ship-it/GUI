@@ -46,14 +46,6 @@ except ImportError:
     win32con = None
 
 
-class ThemePreview(QWidget):
-    """Clickable theme preview."""
-    clicked = Signal()
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-        super().mousePressEvent(event)
-
 class FlatStackedWidget(QStackedWidget):
     """
     A QStackedWidget subclass that overrides the paint event to ensure no borders
@@ -1418,16 +1410,18 @@ class SimpleWindow(QMainWindow):
         """Launches the Tkinter UI creator as a separate process."""
         try:
             # Get the directory containing the 'GUI' project.
-            project_dir = os.path.dirname(os.path.abspath(__file__))
+            # In a bundled app, sys.executable is the path to the .exe.
+            # We run the .exe again with a special argument to launch the UI creator.
+            command = [sys.executable, "--run-ui-creator"]
+            
+            # The working directory should be the base path of the application
+            # to ensure it can find all its resources.
+            working_dir = get_base_path()
 
-            # Command to run the ui_creator package as a module.
-            # The '-m' flag tells Python to look for the module in its path.
-            # We set the working directory to the project root to ensure it finds it.
-            command = [sys.executable, "-m", "uc_app"]
             # Launch the new process.
             # In dev: python.exe 1.pyw --run-ui-creator
             # In prod: HellfireHelper.exe --run-ui-creator
-            subprocess.Popen(command, cwd=project_dir)
+            subprocess.Popen(command, cwd=working_dir)
         except Exception as e:
             QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}")
 
@@ -1444,17 +1438,32 @@ class SimpleWindow(QMainWindow):
         event.accept()
  
 
-if __name__ == "__main__":
+class ThemePreview(QWidget):
+    """Clickable theme preview."""
+    clicked = Signal()
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
-    # --- Run the main application ---
-    if os.name == 'nt':
-        myappid = 'cherrybandit.hellfirehelper.1.0'
-        shell32 = ctypes.windll.shell32
-        shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        SHCNE_ASSOCCHANGED = 0x08000000
-        shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    window = SimpleWindow()
-    window.show()
-    sys.exit(app.exec())
+if __name__ == "__main__":
+    # Check for the special argument to run the UI creator
+    if "--run-ui-creator" in sys.argv:
+        from uc_app import ImageEditorApp
+        import tkinter as tk
+        root = tk.Tk()
+        app = ImageEditorApp(root)
+        root.mainloop()
+    else:
+        # --- Run the main application ---
+        if os.name == 'nt':
+            myappid = 'cherrybandit.hellfirehelper.1.0'
+            shell32 = ctypes.windll.shell32
+            shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            SHCNE_ASSOCCHANGED = 0x08000000
+            shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
+        app = QApplication(sys.argv)
+        app.setStyle("Fusion")
+        window = SimpleWindow()
+        window.show()
+        sys.exit(app.exec())

@@ -32,12 +32,43 @@ class BorderManager:
             "Minimap Border": {
                 "target_tile": "humanuitile01",
                 "shape_type": "relative_rect",
-                "shape_data": [0.0390625, 0.431640625, 0.5390625, 0.5390625] # High-precision values for the minimap cutout, shifted 1px right/down
+                "shape_data": [0.0390625, 0.431640625, 0.5390625, 0.5390625]
             },
             "Action Bar Top Edge": {
                 "target_tile": "humanuitile02",
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
+            },
+            # --- NEW: Placeholder presets ---
+            "Top Border": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Bottom Border": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Minimap Buttons": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Character Frame": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Character Hub Frame": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "HP Frame": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Mana Frame": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Inventory Title": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Inventory Slots": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
+            },
+            "Spells Slots": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0, 0, 0.1, 0.1]
             }
         }
 

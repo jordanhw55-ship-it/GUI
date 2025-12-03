@@ -17,7 +17,8 @@ class ThemeManager:
 
     def create_theme_grid(self, layout: QGridLayout):
         """Populates the provided grid layout with theme preview widgets."""
-        from __main__ import ThemePreview # Avoid circular import
+        # Import from the main script file where it's defined.
+        from __main__ import ThemePreview
 
         row, col = 0, 0
         for i, theme in enumerate(self.themes):
