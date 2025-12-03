@@ -193,10 +193,17 @@ class UIManager:
         tk.Button(image_action_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=button_font,
                   command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
-        # --- NEW: Add checkbox to ignore borders when stamping ---
-        tk.Checkbutton(tab, text="Ignore Borders", variable=self.app.image_manager.ignore_borders_on_stamp,
+        # --- NEW: Frame for stamping options ---
+        stamp_options_frame = tk.Frame(tab, bg="#374151")
+        stamp_options_frame.pack(pady=5)
+
+        tk.Checkbutton(stamp_options_frame, text="Ignore Borders", variable=self.app.image_manager.ignore_borders_on_stamp,
                         bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
-                        ).pack(pady=5)
+                        ).pack(side=tk.LEFT, padx=5)
+        
+        tk.Checkbutton(stamp_options_frame, text="Only Affect Borders", variable=self.app.image_manager.only_affect_borders_on_stamp,
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
+                        ).pack(side=tk.LEFT, padx=5)
 
     def _populate_tile_control_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
