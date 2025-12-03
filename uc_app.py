@@ -51,6 +51,7 @@ class ImageEditorApp:
         self.last_drag_x = 0
         self.last_drag_y = 0
         self.selected_component_tag = None
+        self.pre_move_state = {} # NEW: To store component positions before a move
         
         # --- NEW: Painting Feature State ---
         self.resize_width = tk.StringVar()
@@ -293,6 +294,8 @@ class ImageEditorApp:
         if not comp: return
 
         if comp.is_dock_asset:
+            # This is a click on a dock asset, which creates a clone.
+            # It's not a move operation, so we don't save a move state.
             # Dock asset logic is handled by the dock canvas, not here.
             return
 
@@ -302,6 +305,10 @@ class ImageEditorApp:
         
         world_x, world_y = self.camera.screen_to_world(event.x, event.y)
         print(f"[DEBUG] Pressed '{comp.tag}' | Screen: ({event.x}, {event.y}) | World: ({int(world_x)}, {int(world_y)})")
+
+        # --- NEW: Save pre-move state for single tile drag ---
+        if not comp.is_decal:
+            self._save_pre_move_state([comp.tag])
 
         self.canvas.tag_raise(comp.tag)
 
@@ -351,6 +358,12 @@ class ImageEditorApp:
             if comp:
                 print(f"[DEBUG] Released '{comp.tag}' | Screen: ({event.x}, {event.y}) | New World TL: ({int(comp.world_x1)}, {int(comp.world_y1)})")
         self.dragged_item_tag = None
+
+        # --- NEW: Finalize move operation for undo ---
+        if self.pre_move_state:
+            self._save_undo_state({'type': 'move', 'positions': self.pre_move_state})
+            self.pre_move_state = {} # Clear the temporary state
+
         self._keep_docks_on_top()
 
     def move_all_main_tiles(self, dx_world, dy_world):
@@ -359,6 +372,20 @@ class ImageEditorApp:
             if not comp.is_dock_asset and not comp.is_decal:
                 comp.world_x1 += dx_world; comp.world_y1 += dy_world
                 comp.world_x2 += dx_world; comp.world_y2 += dy_world
+
+    def _save_pre_move_state(self, tags_to_save=None):
+        """Saves the world coordinates of specified components before a move operation."""
+        self.pre_move_state = {}
+        
+        components_to_save = []
+        if tags_to_save:
+            components_to_save = [self.components.get(tag) for tag in tags_to_save if tag in self.components]
+        else: # Save all non-decal, non-dock components
+            components_to_save = [c for c in self.components.values() if not c.is_decal and not c.is_dock_asset]
+
+        for comp in components_to_save:
+            if comp:
+                self.pre_move_state[comp.tag] = (comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2)
 
 
     def _attempt_auto_load_images(self, base_dir):
@@ -551,6 +578,13 @@ class ImageEditorApp:
              self.redraw_all_zoomable()
         elif isinstance(last_state, dict): # It's a component image state
             for tag, image in last_state.items():
+                if tag == 'type' and image == 'move': # It's a move state
+                    for move_tag, pos in last_state['positions'].items():
+                        if move_tag in self.components:
+                            comp = self.components[move_tag]
+                            comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2 = pos
+                    self.redraw_all_zoomable()
+                    break # Move state handled
                 if tag in self.components:
                     self.components[tag].set_image(image)
                     print(f"Reverted image for component '{tag}'.")
