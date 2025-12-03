@@ -170,6 +170,9 @@ class ImageEditorApp:
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
 
+        # --- 7. Show initial border preview ---
+        self.border_manager.show_preset_preview()
+
     def save_settings(self):
         """Saves the current application settings to the settings file."""
         # --- DEFINITIVE FIX: Perform a safe read-modify-write to prevent data loss ---
