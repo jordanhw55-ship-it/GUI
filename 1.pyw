@@ -1417,18 +1417,11 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # Lazy import: Only import ui_creator when this function is called.
-            from ui_creator import ImageEditorApp, tk
+            # The path to the ui_creator's main script.
+            ui_creator_script_path = os.path.join(os.path.dirname(__file__), 'ui_creator', '__main__.py')
 
-            command = [sys.executable]
-            # If running from source (not compiled), we must tell python.exe to run our main script again.
-            # sys.argv[0] is the path to the currently running script (1.pyw).
-            if not getattr(sys, 'frozen', False) and '.py' in sys.argv[0]:
-                command.append(sys.argv[0])
-            
-            # Add the special flag that the __main__ block will check for.
-            command.append("--run-ui-creator")
-            
+            # Command to run the script with the same Python interpreter.
+            command = [sys.executable, ui_creator_script_path]
             # Launch the new process.
             # In dev: python.exe 1.pyw --run-ui-creator
             # In prod: HellfireHelper.exe --run-ui-creator
@@ -1451,26 +1444,15 @@ class SimpleWindow(QMainWindow):
 
 if __name__ == "__main__":
 
-    # Check for the special flag to run the UI creator.
-    # This allows the compiled .exe to launch the second GUI correctly.
-    if len(sys.argv) > 1 and sys.argv[1] == '--run-ui-creator':
-        # This block will now be executed by the new process.
-        # We import the necessary parts from ui_creator and run its main logic.
-        from ui_creator import ImageEditorApp, tk
-        root = tk.Tk()
-        app = ImageEditorApp(root)
-        # This is a blocking call that runs the Tkinter event loop.
-        root.mainloop()
-    else:
-        # --- Run the main application ---
-        if os.name == 'nt':
-            myappid = 'cherrybandit.hellfirehelper.1.0'
-            shell32 = ctypes.windll.shell32
-            shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-            SHCNE_ASSOCCHANGED = 0x08000000
-            shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
-        app = QApplication(sys.argv)
-        app.setStyle("Fusion")
-        window = SimpleWindow()
-        window.show()
-        sys.exit(app.exec())
+    # --- Run the main application ---
+    if os.name == 'nt':
+        myappid = 'cherrybandit.hellfirehelper.1.0'
+        shell32 = ctypes.windll.shell32
+        shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        SHCNE_ASSOCCHANGED = 0x08000000
+        shell32.SHChangeNotify(SHCNE_ASSOCCHANGED, 0, None, None)
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    window = SimpleWindow()
+    window.show()
+    sys.exit(app.exec())
