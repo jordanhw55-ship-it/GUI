@@ -739,48 +739,6 @@ class ImageEditorApp:
         else:
             messagebox.showinfo("Export Info", "No modified layers (from decals or painting) found to export.")
 
-    def paint_on_canvas(self, event):
-        """Draws on the dedicated paint layer image."""
-        is_painting = self.paint_mode_active or self.eraser_mode_active
-        if not is_painting or not self.paint_layer_image:
-            return
-    
-        # Convert screen event coordinates to world coordinates for drawing
-        world_x, world_y = self.screen_to_world(event.x, event.y)
-
-        # --- NEW: Save state before drawing the first point of a new line ---
-        if self.last_paint_x is None and self.last_paint_y is None:
-            self._save_undo_state(self.paint_layer_image.copy())
-
-        if self.last_paint_x and self.last_paint_y:
-            last_world_x, last_world_y = self.camera.screen_to_world(self.last_paint_x, self.last_paint_y)
-            # --- NEW: Determine color based on tool ---
-            paint_color = (0, 0, 0, 0) if self.eraser_mode_active else self.paint_color
-
-            # Get the ImageDraw object for our paint layer
-            draw = ImageDraw.Draw(self.paint_layer_image)
-            draw.line(
-                (last_world_x, last_world_y, world_x, world_y),
-                fill=paint_color,
-                width=self.brush_size.get(),
-                joint='curve' # Creates smoother connections between line segments
-            )
-            # --- IMPORTANT: Update the canvas to show the change ---
-            self._update_paint_layer_display()
-    
-        # Store the raw screen coordinates for the next event
-        self.last_paint_x, self.last_paint_y = event.x, event.y
-
-    def reset_paint_line(self, event):
-        """Resets the start of the line when the mouse is released."""
-        self.last_paint_x, self.last_paint_y = None, None
-
-    def _update_paint_layer_display(self):
-        """Updates the PhotoImage on the canvas to reflect changes to the PIL image."""
-        # This is now part of the main redraw loop to handle scaling correctly.
-        # We just need to trigger a redraw.
-        self.redraw_all_zoomable()
-
     def _create_and_place_clone(self, asset_comp, event, clone_tag):
         """Helper to create, configure, and place a clone component."""
         w, h = asset_comp.original_pil_image.size
