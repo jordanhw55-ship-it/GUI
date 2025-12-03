@@ -43,6 +43,7 @@ class BorderManager:
         # --- Texture Loading ---
         self.border_textures = {}
         self._load_border_textures()
+        self._create_procedural_textures() # NEW: Add generated patterns
 
         # Set default selections for the UI
         if self.border_presets:
@@ -62,6 +63,38 @@ class BorderManager:
             # Add more textures here, e.g., "stone.png"
         except Exception as e:
             print(f"Could not load default border textures: {e}")
+
+    def _create_procedural_textures(self):
+        """Creates simple, built-in border textures programmatically to offer more default options."""
+        try:
+            # Checkerboard
+            size = 16
+            c1 = (60, 60, 60, 255)  # Dark gray
+            c2 = (80, 80, 80, 255)  # Lighter gray
+            checker_img = Image.new("RGBA", (size, size), (0,0,0,0))
+            draw = ImageDraw.Draw(checker_img)
+            for y in range(0, size, size // 2):
+                for x in range(0, size, size // 2):
+                    color = c1 if (x // (size // 2) + y // (size // 2)) % 2 == 0 else c2
+                    draw.rectangle([x, y, x + size // 2, y + size // 2], fill=color)
+            self.border_textures["Checkerboard"] = checker_img
+
+            # Diagonal Lines
+            diag_img = Image.new("RGBA", (size, size), (0,0,0,0))
+            draw = ImageDraw.Draw(diag_img)
+            line_color = (100, 100, 100, 255)
+            for i in range(-size, size, 4):
+                draw.line([(i, 0), (i + size, size)], fill=line_color, width=1)
+            self.border_textures["Diagonal Lines"] = diag_img
+
+            # Vertical Stripes
+            v_stripes_img = Image.new("RGBA", (size, size), c1)
+            draw = ImageDraw.Draw(v_stripes_img)
+            draw.rectangle([size // 2, 0, size, size], fill=c2)
+            self.border_textures["Vertical Stripes"] = v_stripes_img
+            print("Created procedural border textures.")
+        except Exception as e:
+            print(f"Could not create procedural textures: {e}")
 
     def apply_preset_border(self):
         """Applies the selected border preset to the canvas."""
