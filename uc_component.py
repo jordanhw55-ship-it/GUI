@@ -39,5 +39,9 @@ class DraggableComponent:
         print("-" * 20)
         print(f"[DEBUG] Applying image to '{self.tag}'.")
         self.pil_image = pil_image.copy() if pil_image else None
+        # --- DEFINITIVE FIX: The component's set_image method should handle redrawing ---
+        # This ensures that whenever an image is set (including transparent previews),
+        # the canvas is updated correctly.
+        self.app.redraw_all_zoomable()
         print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")
         print("-" * 20)
