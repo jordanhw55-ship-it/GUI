@@ -75,6 +75,10 @@ class DraggableComponent:
 
     def _set_pil_image(self, pil_image, resize_to_fit=True):
         """Core logic to apply a PIL image to this component."""
+        print("-" * 20)
+        print(f"[DEBUG] Applying image to '{self.tag}'.")
+        print(f"[DEBUG] BEFORE image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)}) | Zoom={self.app.camera.zoom_scale:.2f}")
+
         self.pil_image = pil_image
         
         if self.border_pil_image:
@@ -104,6 +108,9 @@ class DraggableComponent:
             self.canvas.addtag_withtag("zoom_target", self.rect_id)
 
         self.tk_image = new_tk_image
+        
+        print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")
+        print("-" * 20)
 
     def set_border_image(self, border_image_path):
         """Loads and applies a border image from a file path."""
