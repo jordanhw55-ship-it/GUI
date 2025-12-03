@@ -54,7 +54,7 @@ class ImageManager:
                 target_canvas = self.app.ui_manager.image_dock_canvas
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset) # Use manager's list
 
-            items_per_row = 2
+            items_per_row = 4
             padding = 10
             asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
             asset_height = asset_width
@@ -107,7 +107,7 @@ class ImageManager:
                 target_canvas = self.app.ui_manager.image_dock_canvas
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
 
-            items_per_row = 2
+            items_per_row = 4
             padding = 10
             asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
             asset_height = asset_width
