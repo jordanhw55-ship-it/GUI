@@ -756,16 +756,21 @@ class ImageEditorApp:
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()
 
+    def on_tab_changed(self, event):
+        """Handles the event when the user clicks a different main tab."""
+        # --- NEW: Clear any active border previews when switching context ---
+        # Also, if the user is switching *to* the border tab, show the preview.
+        if self.is_border_tab_active():
+            self.master.after(10, lambda: self.border_manager.show_preset_preview()) # Use 'after' to ensure tab has changed
+        else:
+            self.border_manager.clear_preset_preview()
+
     def handle_tab_click(self, name):
         """Handles the logic when a sidebar button is clicked."""
         print("-" * 30)
 
-        # --- NEW: Clear any active border previews when switching context ---
-        # Also, if the user is switching *to* the border tab, show the preview.
-        if self.is_border_tab_active(event):
-            self.master.after(10, lambda: self.border_manager.show_preset_preview()) # Use 'after' to ensure tab has changed
-        else:
-            self.border_manager.clear_preset_preview()
+        # This function is for the "Tiles" tab buttons, not the main notebook tabs.
+        # The border preview logic is handled by on_tab_changed.
 
         # --- MODIFICATION START: Implement isolation mode ---
         if name == "Show All":

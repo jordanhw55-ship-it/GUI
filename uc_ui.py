@@ -74,7 +74,7 @@ class UIManager:
         self.notebook.pack(expand=True, fill='both')
         # --- NEW: Bind an event to clear the border preview when changing main tabs ---
         # This ensures the preview disappears when you navigate away from the Border tab.
-        self.notebook.bind("<<NotebookTabChanged>>", self.app.handle_tab_click)
+        self.notebook.bind("<<NotebookTabChanged>>", self.app.on_tab_changed)
 
 
         layer_tab = tk.Frame(self.notebook, bg="#374151")
