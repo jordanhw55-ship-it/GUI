@@ -113,7 +113,8 @@ class ImageManager:
         # --- CRITICAL FIX: Give the clone its own copy of the image ---
         # This prevents the clone's image from being a direct reference to the dock asset's image.
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        # --- FIX: Use the clone's own copied image for display, not the asset's. ---
+        # --- FIX: Use the clone's own copied image for display, not the asset's, to prevent
+        # the component from accidentally re-linking its original_pil_image to the asset.
         clone_comp._set_pil_image(clone_comp.original_pil_image, resize_to_fit=False)
         
         self.app.components[clone_tag] = clone_comp

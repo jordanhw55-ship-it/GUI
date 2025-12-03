@@ -77,9 +77,6 @@ class DraggableComponent:
         """Core logic to apply a PIL image to this component."""
         self.pil_image = pil_image
         
-        if not self.original_pil_image:
-            self.original_pil_image = pil_image
-
         if self.border_pil_image:
             pil_image = self._composite_border(pil_image)
 
