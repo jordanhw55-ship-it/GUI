@@ -55,7 +55,7 @@ class ImageManager:
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset) # Use manager's list
 
             items_per_row = 4
-            padding = 5
+            padding = 10
             asset_width = 128
             asset_height = 128
 
