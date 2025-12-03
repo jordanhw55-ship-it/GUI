@@ -241,6 +241,15 @@ class ImageManager:
             display_image = rotated_image.copy()
             display_image.putalpha(semi_transparent_alpha)
 
+            # --- CRITICAL FIX: Update the component's world coordinates ---
+            # This ensures the bounding box used for stamping matches the visual size.
+            final_w, final_h = rotated_image.size
+            cx = (decal.world_x1 + decal.world_x2) / 2
+            cy = (decal.world_y1 + decal.world_y2) / 2
+            decal.world_x1 = cx - final_w / 2
+            decal.world_y1 = cy - final_h / 2
+            decal.world_x2 = cx + final_w / 2
+            decal.world_y2 = cy + final_h / 2
             decal._set_pil_image(display_image, resize_to_fit=False)
 
     def discard_active_image(self):
