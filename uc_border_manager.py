@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import colorchooser, messagebox
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
 import numpy as np
+import os
 
 from uc_component import DraggableComponent
 
@@ -71,7 +72,7 @@ class BorderManager:
         self.trace_points = [(event.x, event.y)]
         if self.temp_trace_line_id:
             self.canvas.delete(self.temp_trace_line_id)
-        self.temp_trace_line_id = self.canvas.create_line(self.trace_points, fill="yellow", width=2, dash=(4, 4))
+        self.temp_trace_line_id = self.canvas.create_line(self.trace_points * 2, fill="yellow", width=2, dash=(4, 4))
 
     def _on_trace_drag(self, event):
         """Adds a point to the trace path and updates the temporary line."""
