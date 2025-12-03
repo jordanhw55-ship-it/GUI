@@ -590,8 +590,8 @@ class ImageEditorApp:
 
     def apply_border_to_selection(self):
         """Applies a loaded border image to the currently selected component."""
-        # This function now behaves identically to applying a regular decal.
-        # It finds the topmost active image (of any type) and stamps it onto what's below.
+        # This now correctly uses the decal stamping logic to apply the border
+        # to any underlying tiles it overlaps with, rather than just the selected one.
         self.apply_decal_to_underlying_layer()
 
 
