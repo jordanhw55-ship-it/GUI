@@ -99,11 +99,11 @@ class ImageEditorApp:
         # --- Initialize UI and Camera First ---
         # This ensures the canvas exists before components are created.
         self.ui_manager = UIManager(self)
-        self.camera = Camera(self, self.ui_manager.create_canvas())
 
         # --- Initialize Managers ---
         self.paint_manager = PaintManager(self)
 
+        self.camera = Camera(self, self.ui_manager.create_canvas())
         # --- Initialize Components BEFORE UI that might use them ---
         # This resolves the AttributeError by ensuring self.components exists
         # before any callbacks (like on_image_set_changed) can be triggered.
