@@ -224,8 +224,7 @@ class ImageManager:
             display_image = rotated_image.copy()
             display_image.putalpha(semi_transparent_alpha)
 
-            # --- CRITICAL FIX: Update the component's world coordinates ---
-            # This ensures the bounding box used for stamping matches the visual size.
+            # Update the component's world coordinates to match the new visual size
             final_w, final_h = rotated_image.size
             cx = (decal.world_x1 + decal.world_x2) / 2
             cy = (decal.world_y1 + decal.world_y2) / 2
@@ -235,8 +234,9 @@ class ImageManager:
             decal.world_y2 = cy + final_h / 2
             
             # --- DEFINITIVE FIX: Set the component's image to the new transparent preview ---
-            decal.set_image(display_image)
-            # --- DEFINITIVE FIX: The manager is responsible for redrawing ---
+            # Use `display_pil_image` for on-canvas rendering, preserving `pil_image`
+            decal.display_pil_image = display_image
+            # The manager is responsible for redrawing
             self.app.redraw_all_zoomable()
 
 
@@ -321,7 +321,7 @@ class ImageManager:
         clone_comp.is_border_asset = asset_comp.is_border_asset
         clone_comp.is_decal = True
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        clone_comp.set_image(clone_comp.original_pil_image)
+        clone_comp.pil_image = clone_comp.original_pil_image # Set the base image directly
         self.app._bind_component_events(clone_tag)
 
         # 3. Apply the initial transform (which creates the transparent preview).
