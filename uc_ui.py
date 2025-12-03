@@ -298,7 +298,12 @@ class UIManager:
         tk.Label(tab, text="SELECTED COMPONENT", **header_style).pack(fill='x', padx=10, pady=(10,0))
         details_frame = tk.Frame(tab, bg="#2d3748", bd=1, relief="sunken")
         details_frame.pack(fill='both', expand=True, padx=10, pady=5)
-        tk.Label(details_frame, textvariable=self.app.debug_info['comp_details'], **label_style, wraplength=self.app.SIDEBAR_WIDTH - 40, bg="#2d3748").pack(fill='both', expand=True, padx=5, pady=5)
+
+        # --- FIX: Avoid multiple values for 'bg' keyword ---
+        # Create a copy of the style and override the background color for this specific label.
+        details_label_style = label_style.copy()
+        details_label_style['bg'] = "#2d3748" # Match the parent frame's background
+        tk.Label(details_frame, textvariable=self.app.debug_info['comp_details'], **details_label_style, wraplength=self.app.SIDEBAR_WIDTH - 40).pack(fill='both', expand=True, padx=5, pady=5)
 
         # Initial update
         self.app._update_debug_info()
