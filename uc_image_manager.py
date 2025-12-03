@@ -320,19 +320,24 @@ class ImageManager:
         offset_x_world = border_comp.world_x1 - target_comp.world_x1
         offset_y_world = border_comp.world_y1 - target_comp.world_y1
 
-        # --- DEFINITIVE FIX for EXPORT SCALING ---
-        # 1. Calculate the scale factor between the target's world size and its image pixel size.
+        # --- DEFINITIVE FIX for EXPORT SCALING and POSITIONING ---
+        # 1. Calculate separate scale factors for width and height to handle non-square images correctly.
         target_world_w = target_comp.world_x2 - target_comp.world_x1
-        if target_world_w == 0: return target_img, False
-        pixel_to_world_scale = target_img.width / target_world_w
+        target_world_h = target_comp.world_y2 - target_comp.world_y1
+        if target_world_w == 0 or target_world_h == 0: return target_img, False
+
+        scale_x = target_img.width / target_world_w
+        scale_y = target_img.height / target_world_h
 
         # 2. Calculate the paste position in the target image's pixel space.
-        paste_x = int(offset_x_world * pixel_to_world_scale)
-        paste_y = int(offset_y_world * pixel_to_world_scale)
+        paste_x = int(offset_x_world * scale_x)
+        paste_y = int(offset_y_world * scale_y)
 
         # 3. Resize the border image to match the target's pixel scale.
-        border_w_pixels = int(border_img.width * pixel_to_world_scale)
-        border_h_pixels = int(border_img.height * pixel_to_world_scale)
+        border_world_w = border_comp.world_x2 - border_comp.world_x1
+        border_world_h = border_comp.world_y2 - border_comp.world_y1
+        border_w_pixels = int(border_world_w * scale_x)
+        border_h_pixels = int(border_world_h * scale_y)
         resized_border_img = border_img.resize((border_w_pixels, border_h_pixels), Image.Resampling.LANCZOS)
 
         final_image = target_img.copy()
