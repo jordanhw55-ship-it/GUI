@@ -112,6 +112,9 @@ class ImageEditorApp:
         # before any callbacks (like on_image_set_changed) can be triggered.
         self._initialize_components()
 
+        # Bind canvas events now that all managers are initialized
+        self.ui_manager.bind_canvas_events()
+
         self.ui_manager.create_ui()
 
         # --- Setup Image Set Callbacks AFTER components are initialized ---

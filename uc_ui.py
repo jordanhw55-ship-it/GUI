@@ -27,10 +27,13 @@ class UIManager:
         self.app.main_frame.grid_columnconfigure(0, weight=1) 
         self.app.main_frame.grid_rowconfigure(0, weight=1)
 
-        self.app.canvas.bind("<B1-Motion>", self.app.paint_manager.paint_on_canvas)
-        self.app.canvas.bind("<ButtonRelease-1>", self.app.paint_manager.reset_paint_line)
         self.app.canvas.bind("<Configure>", self.app.on_canvas_resize)
         return self.app.canvas
+
+    def bind_canvas_events(self):
+        """Binds events that depend on other managers being initialized."""
+        self.app.canvas.bind("<B1-Motion>", self.app.paint_manager.paint_on_canvas)
+        self.app.canvas.bind("<ButtonRelease-1>", self.app.paint_manager.reset_paint_line)
 
     def create_ui(self):
         """Creates the rest of the UI that might depend on other components."""
