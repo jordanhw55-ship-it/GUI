@@ -1005,12 +1005,6 @@ class ImageEditorApp:
                 # Crop the stamp to get the exact piece that overlaps.
                 cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
 
-                # --- CRITICAL FIX: Resize the cropped stamp to match the target's image scale ---
-                final_stamp_w = int(cropped_stamp.width * scale_x)
-                final_stamp_h = int(cropped_stamp.height * scale_y)
-                if final_stamp_w > 0 and final_stamp_h > 0:
-                    cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
-
                 # 7. Composite the images.
                 # Start with a copy of the target's current image.
                 final_image = target_comp.pil_image.copy()
@@ -1019,6 +1013,13 @@ class ImageEditorApp:
                 decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
                 # Paste the cropped stamp onto this layer at the correct position.
                 # --- FIX: The third argument (mask) must be the stamp itself to respect its transparency. ---
+                
+                # --- CRITICAL FIX: Resize the cropped stamp to match the target's image scale ---
+                final_stamp_w = int(cropped_stamp.width * scale_x)
+                final_stamp_h = int(cropped_stamp.height * scale_y)
+                if final_stamp_w > 0 and final_stamp_h > 0:
+                    cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
+
                 decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
 
                 # --- FIX: Conditionally respect transparency of the underlying tile ---
