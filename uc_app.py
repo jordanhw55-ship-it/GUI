@@ -931,7 +931,7 @@ class ImageEditorApp:
                     sx1, sy1, sx2, sy2,
                     fill="",             # No fill
                     outline="#22c55e",   # A nice green color
-                    width=3,             # A thick, solid outline
+                    width=1,             # A thinner, solid outline
                     tags=("selection_highlight",)
                 )
 
