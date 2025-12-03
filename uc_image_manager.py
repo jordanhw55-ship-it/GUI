@@ -83,15 +83,13 @@ class ImageManager:
         if not stamp_source_comp:
             return
 
-        scale_factor = self.decal_scale.get() / 100.0
-        rotation_angle = self.decal_rotation.get()
+        # --- FIX: Use the transformed display image for stamping ---
+        # This ensures the stamp has the same scale/rotation as the on-screen preview.
+        # Fallback to pil_image if display_pil_image doesn't exist for some reason.
+        decal_stamp_image = stamp_source_comp.display_pil_image
+        if not decal_stamp_image:
+            decal_stamp_image = stamp_source_comp.pil_image
 
-        original_w, original_h = stamp_source_comp.original_pil_image.size
-        new_w = int(original_w * scale_factor)
-        new_h = int(original_h * scale_factor)
-        resized_image = stamp_source_comp.original_pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-
-        decal_stamp_image = resized_image.rotate(rotation_angle, expand=True, resample=Image.Resampling.BICUBIC)
         stamp_w, stamp_h = decal_stamp_image.size
 
         stamp_cx = (stamp_source_comp.world_x1 + stamp_source_comp.world_x2) / 2
@@ -235,7 +233,6 @@ class ImageManager:
             # --- FIX: Use a separate attribute for the on-canvas preview ---
             # This prevents overwriting the actual pil_image with the transparent one.
             decal.display_pil_image = display_image
-            self.app.redraw_all_zoomable()
 
     def discard_active_image(self):
         """Finds and removes the active decal without applying it."""
