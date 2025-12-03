@@ -1,14 +1,21 @@
 import tkinter as tk
 from tkinter import colorchooser, messagebox
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 class BorderManager:
     """Manages loading and applying border assets."""
     def __init__(self, app):
         self.app = app
         self.canvas = app.canvas
+        # Dynamic Border Properties
         self.border_color = "#ffffff" # Default to white
         self.border_thickness = tk.IntVar(value=5)
+        self.border_style = tk.StringVar(value="Solid")
+        # Effect Properties
+        self.glow_enabled = tk.BooleanVar(value=False)
+        self.shadow_enabled = tk.BooleanVar(value=False)
+        self.effect_color = "#000000" # Default to black for shadow
+        self.effect_size = tk.IntVar(value=5) # For glow radius or shadow offset
 
     def choose_border_color(self):
         """Opens a color chooser and sets the border color."""
@@ -18,6 +25,15 @@ class BorderManager:
             # Update the UI to show the new color
             self.app.ui_manager.border_color_btn.config(bg=self.border_color)
             print(f"Border color set to: {self.border_color}")
+
+    def choose_effect_color(self):
+        """Opens a color chooser and sets the effect color."""
+        color_code = colorchooser.askcolor(title="Choose Effect Color", initialcolor=self.effect_color)
+        if color_code and color_code[1]:
+            self.effect_color = color_code[1]
+            # Update the UI to show the new color
+            self.app.ui_manager.effect_color_btn.config(bg=self.effect_color)
+            print(f"Effect color set to: {self.effect_color}")
 
     def load_border_to_dock(self):
         """Calls the generic asset loader, specifying that this is a border."""
@@ -37,21 +53,63 @@ class BorderManager:
         # Save state for undo
         self.app._save_undo_state({comp.tag: comp.pil_image.copy()})
 
-        # Create a new transparent layer for the border
-        border_layer = Image.new("RGBA", comp.pil_image.size, (0, 0, 0, 0))
+        # Start with the original component image
+        final_image = comp.pil_image.copy()
+        thickness = self.border_thickness.get()
+        effect_size = self.effect_size.get()
+        width, height = final_image.size
+        rect_bounds = [(thickness // 2, thickness // 2), (width - thickness // 2 -1, height - thickness // 2 - 1)]
+
+        # 1. Apply Shadow (if enabled)
+        if self.shadow_enabled.get():
+            shadow_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
+            shadow_draw = ImageDraw.Draw(shadow_layer)
+            shadow_offset = effect_size
+            shadow_bounds = [(rect_bounds[0][0] + shadow_offset, rect_bounds[0][1] + shadow_offset), 
+                             (rect_bounds[1][0] + shadow_offset, rect_bounds[1][1] + shadow_offset)]
+            shadow_draw.rectangle(shadow_bounds, fill=self.effect_color, width=thickness)
+            shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+            final_image = Image.alpha_composite(final_image, shadow_layer)
+
+        # 2. Draw the main border
+        border_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
         draw = ImageDraw.Draw(border_layer)
 
-        thickness = self.border_thickness.get()
-        
-        # Draw the rectangle outline on the transparent layer
-        draw.rectangle(
-            [(0, 0), (comp.pil_image.width - 1, comp.pil_image.height - 1)],
-            outline=self.border_color,
-            width=thickness
-        )
+        if self.border_style.get() == "Solid":
+            draw.rectangle(rect_bounds, outline=self.border_color, width=thickness)
+        elif self.border_style.get() == "Dashed":
+            dash_length = 10
+            # Manually draw dashed lines for each side of the rectangle
+            # Top
+            for i in range(0, width, dash_length * 2):
+                draw.line([(i, 0), (i + dash_length, 0)], fill=self.border_color, width=thickness)
+            # Bottom
+            for i in range(0, width, dash_length * 2):
+                draw.line([(i, height - 1), (i + dash_length, height - 1)], fill=self.border_color, width=thickness)
+            # Left
+            for i in range(0, height, dash_length * 2):
+                draw.line([(0, i), (0, i + dash_length)], fill=self.border_color, width=thickness)
+            # Right
+            for i in range(0, height, dash_length * 2):
+                draw.line([(width - 1, i), (width - 1, i + dash_length)], fill=self.border_color, width=thickness)
 
-        # Composite the border layer onto the component's image
-        final_image = Image.alpha_composite(comp.pil_image.copy(), border_layer)
+        # 3. Apply Glow (if enabled)
+        if self.glow_enabled.get():
+            glow_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
+            glow_draw = ImageDraw.Draw(glow_layer)
+            
+            # Draw a slightly thicker border on the glow layer
+            glow_draw.rectangle(rect_bounds, outline=self.effect_color, width=thickness + effect_size)
+            
+            # Blur the glow layer
+            glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=effect_size))
+            
+            # Composite the glow layer first, so the main border draws over it
+            final_image = Image.alpha_composite(final_image, glow_layer)
+
+        # 4. Composite the main border on top of everything else
+        final_image = Image.alpha_composite(final_image, border_layer)
+
         comp.set_image(final_image)
         print(f"Applied dynamic border to '{comp.tag}'.")
 

@@ -220,6 +220,26 @@ class UIManager:
         tk.Scale(props_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=self.app.border_manager.border_thickness,
                  bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=1, column=1, sticky='ew', padx=5)
 
+        tk.Label(props_frame, text="Style:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
+        style_menu = ttk.OptionMenu(props_frame, self.app.border_manager.border_style, "Solid", "Solid", "Dashed")
+        style_menu.grid(row=2, column=1, sticky='ew', padx=5)
+
+        # --- Effects ---
+        tk.Label(props_frame, text="Glow:", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
+        tk.Checkbutton(props_frame, variable=self.app.border_manager.glow_enabled, bg="#374151", activebackground="#374151", highlightthickness=0).grid(row=3, column=1, sticky='w', padx=5)
+
+        tk.Label(props_frame, text="Shadow:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w', pady=2)
+        tk.Checkbutton(props_frame, variable=self.app.border_manager.shadow_enabled, bg="#374151", activebackground="#374151", highlightthickness=0).grid(row=4, column=1, sticky='w', padx=5)
+
+        tk.Label(props_frame, text="Effect Color:", bg="#374151", fg="white").grid(row=5, column=0, sticky='w', pady=2)
+        self.effect_color_btn = tk.Button(props_frame, text="", bg=self.app.border_manager.effect_color, width=10, relief='sunken',
+                                         command=self.app.border_manager.choose_effect_color)
+        self.effect_color_btn.grid(row=5, column=1, sticky='ew', padx=5)
+
+        tk.Label(props_frame, text="Effect Size:", bg="#374151", fg="white").grid(row=6, column=0, sticky='w', pady=2)
+        tk.Scale(props_frame, from_=1, to=20, orient=tk.HORIZONTAL, variable=self.app.border_manager.effect_size,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=6, column=1, sticky='ew', padx=5)
+
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=15)
 
         # --- Preset Border Assets ---
