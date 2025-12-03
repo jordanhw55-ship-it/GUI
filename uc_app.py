@@ -196,6 +196,17 @@ class ImageEditorApp:
             base_color, "TIME FRAME"
         )
         
+        self.preview_layout = {
+            "humanuitile01": {"coords": [261, 57, 511, 357]},
+            "humanuitile02": {"coords": [511, 57, 761, 357]},
+            "humanuitile03": {"coords": [761, 57, 1011, 357]},
+            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
+            "humanuitile05": {"coords": [11, 57, 261, 357]},
+            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
+            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
+            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
+        }
+
         # Set a default selected component
         self.set_selected_component('humanuitile01')
         
