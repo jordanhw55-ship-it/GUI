@@ -227,12 +227,14 @@ class BorderManager:
 
         # --- NEW: Adjust mask based on growth direction ---
         if growth_direction == 'in':
-            draw.rectangle([(0, 0), (logical_w, logical_h)], fill=255) # Outer shape
+            # FIX: Expand the outer shape by 1px to ensure the edge is solid.
+            draw.rectangle([(0, 0), (logical_w, logical_h)], fill=255)
             draw.rectangle([(thickness, thickness), (logical_w - thickness, logical_h - thickness)], fill=0) # Inner cutout
         else: # 'out'
             # For outward growth, the render size is larger.
-            draw.rectangle([(0, 0), (render_w, render_h)], fill=255) # Outer shape (expanded)
-            draw.rectangle([(thickness, thickness), (render_w - thickness, render_h - thickness)], fill=0) # Inner cutout (original size)
+            draw.rectangle([(0, 0), (render_w, render_h)], fill=255)
+            # FIX: Shrink the inner cutout by 1px to ensure the inner edge is solid.
+            draw.rectangle([(thickness, thickness), (render_w - thickness - 1, render_h - thickness - 1)], fill=0)
 
         # 2. Create a layer with the tiled texture
         tiled_texture_layer = Image.new("RGBA", (render_w, render_h))
