@@ -20,6 +20,7 @@ class ImageManager:
         self.decal_scale = tk.DoubleVar(value=100)
         self.decal_rotation = tk.DoubleVar(value=0)
         self.transform_job = None
+        self.ignore_borders_on_stamp = tk.BooleanVar(value=False) # NEW: For the checkbox
         self.dock_assets = []
         self.next_clone_id = 0
 
@@ -209,6 +210,11 @@ class ImageManager:
         for target_comp in self.app.components.values():
             # Skip if it's the stamp itself, a dock asset, or has no image to stamp onto.
             if target_comp.tag == stamp_source_comp.tag or target_comp.is_dock_asset or not target_comp.pil_image:
+                continue
+
+            # --- NEW: Check if we should ignore borders based on the checkbox ---
+            if self.ignore_borders_on_stamp.get() and target_comp.tag.startswith("preset_border_"):
+                print(f"Skipping border component '{target_comp.tag}' due to 'Ignore Borders' setting.")
                 continue
 
             # Attempt to composite the decal onto this specific target component.

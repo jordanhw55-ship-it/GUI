@@ -193,6 +193,11 @@ class UIManager:
         tk.Button(image_action_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=button_font,
                   command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
+        # --- NEW: Add checkbox to ignore borders when stamping ---
+        tk.Checkbutton(tab, text="Ignore Borders", variable=self.app.image_manager.ignore_borders_on_stamp,
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
+                        ).pack(pady=5)
+
     def _populate_tile_control_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
@@ -303,12 +308,18 @@ class UIManager:
         width_slider = tk.Scale(controls_frame, from_=1, to=200, orient=tk.HORIZONTAL, variable=manager.border_width, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
         width_slider.grid(row=3, column=1, sticky='ew', padx=5)
         # --- NEW: Update the preview when the width slider is moved ---
-        width_slider.config(command=manager.show_preset_preview)
+        width_slider.config(command=manager.show_preset_preview) # type: ignore
+
+        # --- NEW: Feather Slider ---
+        tk.Label(controls_frame, text="Feather:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w', pady=2)
+        feather_slider = tk.Scale(controls_frame, from_=0, to=20, orient=tk.HORIZONTAL, variable=manager.border_feather, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
+        feather_slider.grid(row=4, column=1, sticky='ew', padx=5)
+        feather_slider.config(command=manager.show_preset_preview) # type: ignore
 
         # --- NEW: Growth Direction Toggle ---
-        tk.Label(controls_frame, text="Growth:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w', pady=2)
+        tk.Label(controls_frame, text="Growth:", bg="#374151", fg="white").grid(row=5, column=0, sticky='w', pady=2)
         growth_radio_frame = tk.Frame(controls_frame, bg="#374151")
-        growth_radio_frame.grid(row=4, column=1, sticky='w')
+        growth_radio_frame.grid(row=5, column=1, sticky='w')
         radio_in = ttk.Radiobutton(growth_radio_frame, text="Inward", variable=manager.border_growth_direction, value="in", command=manager.show_preset_preview, style='Dark.TRadiobutton')
         radio_out = ttk.Radiobutton(growth_radio_frame, text="Outward", variable=manager.border_growth_direction, value="out", command=manager.show_preset_preview, style='Dark.TRadiobutton')
         radio_in.pack(side=tk.LEFT, padx=(0, 10))

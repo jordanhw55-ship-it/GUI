@@ -19,6 +19,7 @@ class BorderManager:
         self.selected_style = tk.StringVar()
         self.border_thickness = tk.IntVar(value=10)
         self.border_width = tk.IntVar(value=100) # NEW: For adjusting border component width as a percentage
+        self.border_feather = tk.IntVar(value=0) # NEW: For feathering/blurring the border edge
         self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
 
         # --- Preset Definitions ---
@@ -233,6 +234,12 @@ class BorderManager:
             draw.rectangle([0, 0, render_w, render_h], fill=255) 
             # The inner cutout is inset by the thickness. The second point is exclusive, so we must subtract 1.
             draw.rectangle([thickness, thickness, render_w - thickness - 1, render_h - thickness - 1], fill=0) 
+
+        # --- NEW: Apply feathering if requested ---
+        feather_amount = self.border_feather.get()
+        if feather_amount > 0:
+            # Use GaussianBlur for a smooth, high-quality feathering effect.
+            mask = mask.filter(ImageFilter.GaussianBlur(radius=feather_amount))
 
         # 2. Create a layer with the tiled texture
         tiled_texture_layer = Image.new("RGBA", (render_w, render_h))
