@@ -669,9 +669,13 @@ class ImageEditorApp:
             has_paint = False
 
             if paint_layer:
-                bbox = self.canvas.bbox(comp.rect_id)
-                if bbox:
-                    cropped_paint = paint_layer.crop(bbox)
+                # --- CRITICAL FIX: Use world coordinates, not screen bbox ---
+                # Using canvas.bbox(comp.rect_id) was incorrect because it returns screen coordinates,
+                # which are affected by zoom. We must use the component's world coordinates to
+                # correctly crop the full-resolution paint layer.
+                if comp.world_x2 > comp.world_x1 and comp.world_y2 > comp.world_y1:
+                    world_bbox = (comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2)
+                    cropped_paint = paint_layer.crop(world_bbox)
                     resized_paint = cropped_paint.resize(final_image.size, Image.Resampling.LANCZOS)
                     # Composite paint only if there's something to composite
                     if resized_paint.getbbox():
