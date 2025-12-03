@@ -796,26 +796,14 @@ class ImageEditorApp:
 
                     # Only regenerate the Tkinter image if the size has actually changed.
                     if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h or comp.tk_image is None):
-                        comp._cached_screen_w = int(screen_w)
-                        comp._cached_screen_h = int(screen_h)
+                        comp._cached_screen_w = int(screen_w); comp._cached_screen_h = int(screen_h)
                         if comp._cached_screen_w <= 0 or comp._cached_screen_h <= 0: continue
-
-                        source_img = comp.display_pil_image if comp.display_pil_image is not None else comp.pil_image
+                        
+                        source_img = comp.display_pil_image if comp.display_pil_image is not None else comp.pil_image # type: ignore
                         if not source_img: continue
 
-                        # --- DEFINITIVE FIX for ZOOM LAG (Corrected) ---
-                        # When zooming IN (upscaling), use thumbnail which is fast and doesn't create a larger-than-source image.
-                        # When zooming OUT (downscaling), use resize which is necessary and fast for making images smaller.
-                        orig_w, orig_h = source_img.size
-                        if comp._cached_screen_w > orig_w or comp._cached_screen_h > orig_h:
-                            # Upscaling case: Use thumbnail on a copy. It resizes in-place.
-                            resized_img = source_img.copy()
-                            resized_img.thumbnail((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
-                        else:
-                            # Downscaling case: Use resize.
-                            resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                            resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
-
+                        resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
