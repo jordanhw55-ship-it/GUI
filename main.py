@@ -14,9 +14,9 @@ try:
 except ImportError:
     WAND_AVAILABLE = False
 
-from component import DraggableComponent
+from uc_component import DraggableComponent
 from uc_camera import Camera
-from ui import UIManager
+from uc_ui import UIManager
 
 # --- NEW: Centralized Path Management ---
 def get_base_path():
