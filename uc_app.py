@@ -746,6 +746,9 @@ class ImageEditorApp:
         """Handles the logic when a sidebar button is clicked."""
         print("-" * 30)
 
+        # --- NEW: Clear any active border previews when switching context ---
+        self.border_manager.clear_preset_preview()
+
         # --- MODIFICATION START: Implement isolation mode ---
         if name == "Show All":
             self.set_selected_component(None)

@@ -219,6 +219,8 @@ class UIManager:
         if preset_names:
             preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, preset_names[0], *preset_names)
             preset_menu.grid(row=0, column=1, sticky='ew', padx=5)
+            # --- NEW: Bind an event to show the preview when a preset is selected ---
+            preset_menu.bind("<<OptionMenuChanged>>", manager.show_preset_preview)
 
         # Style Dropdown
         tk.Label(controls_frame, text="Style:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
@@ -233,7 +235,10 @@ class UIManager:
 
         # NEW: Border Width Slider
         tk.Label(controls_frame, text="Width (%):", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
-        tk.Scale(controls_frame, from_=1, to=200, orient=tk.HORIZONTAL, variable=manager.border_width, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=3, column=1, sticky='ew', padx=5)
+        width_slider = tk.Scale(controls_frame, from_=1, to=200, orient=tk.HORIZONTAL, variable=manager.border_width, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
+        width_slider.grid(row=3, column=1, sticky='ew', padx=5)
+        # --- NEW: Update the preview when the width slider is moved ---
+        width_slider.config(command=manager.show_preset_preview)
 
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)

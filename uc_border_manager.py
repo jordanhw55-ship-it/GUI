@@ -12,6 +12,7 @@ class BorderManager:
         self.app = app
         self.canvas = app.canvas
         self.next_border_id = 0
+        self.preview_rect_id = None # NEW: To track the preview rectangle
 
         # --- UI-related state variables ---
         self.selected_preset = tk.StringVar()
@@ -63,6 +64,9 @@ class BorderManager:
     def apply_preset_border(self):
         """Applies the selected border preset to the canvas."""
         preset_name = self.selected_preset.get()
+        # --- NEW: Clear the preview when applying the border ---
+        self.clear_preset_preview()
+
         if not preset_name:
             messagebox.showwarning("Preset Required", "Please select a border preset.")
             return
@@ -108,6 +112,51 @@ class BorderManager:
         self.app.redraw_all_zoomable()
         print(f"Applied preset '{preset_name}' to '{target_comp.tag}'.")
 
+    def show_preset_preview(self, event=None):
+        """Draws a temporary, semi-transparent rectangle to preview the preset border."""
+        # First, clear any existing preview
+        self.clear_preset_preview()
+
+        preset_name = self.selected_preset.get()
+        if not preset_name:
+            return
+
+        preset = self.border_presets.get(preset_name)
+        if not preset:
+            return
+
+        target_comp = self.app.components.get(preset["target_tile"])
+        if not target_comp:
+            return
+
+        # Calculate absolute coordinates from relative data
+        parent_w = target_comp.world_x2 - target_comp.world_x1
+        parent_h = target_comp.world_y2 - target_comp.world_y1
+        rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
+
+        width_multiplier = self.border_width.get() / 100.0
+        border_w = (parent_w * rel_w) * width_multiplier
+        border_h = (parent_h * rel_h) * width_multiplier
+
+        border_x1 = target_comp.world_x1 + (parent_w * rel_x)
+        border_y1 = target_comp.world_y1 + (parent_h * rel_y)
+        border_x2 = border_x1 + border_w
+        border_y2 = border_y1 + border_h
+
+        # Convert world coordinates to screen coordinates for drawing
+        sx1, sy1 = self.app.camera.world_to_screen(border_x1, border_y1)
+        sx2, sy2 = self.app.camera.world_to_screen(border_x2, border_y2)
+
+        # Draw the semi-transparent rectangle on the canvas
+        self.preview_rect_id = self.canvas.create_rectangle(
+            sx1, sy1, sx2, sy2,
+            fill="#22c55e",  # A nice green color
+            stipple="gray50", # This gives a semi-transparent effect
+            outline="white",
+            width=2,
+            tags=("border_preview",)
+        )
+
     def apply_border_to_selection(self):
         pass # This method is now handled by the decal system
 
@@ -141,3 +190,9 @@ class BorderManager:
         # 3. Composite the tiled texture onto the final image using the mask
         final_image.paste(tiled_texture_layer, (0, 0), mask)
         return final_image
+
+    def clear_preset_preview(self):
+        """Removes the preset preview rectangle from the canvas if it exists."""
+        if self.preview_rect_id:
+            self.canvas.delete(self.preview_rect_id)
+            self.preview_rect_id = None
