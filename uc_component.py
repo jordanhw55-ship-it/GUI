@@ -109,6 +109,9 @@ class DraggableComponent:
 
         self.tk_image = new_tk_image
         
+        # --- FIX: Force a full redraw after setting an image ---
+        # This ensures the new image is correctly scaled and positioned by the camera's zoom.
+        self.app.redraw_all_zoomable()
         print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")
         print("-" * 20)
 
