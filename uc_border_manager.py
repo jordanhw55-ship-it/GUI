@@ -178,13 +178,7 @@ class BorderManager:
         sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
         sx2, sy2 = self.app.camera.world_to_screen(preview_x2, preview_y2)
 
-        self.preview_rect_id = self.canvas.create_rectangle(
-            sx1, sy1, sx2, sy2,
-            fill="#22c55e",  # A nice green color
-            stipple="gray12", # This gives an even more transparent effect
-            outline="", # No outline on the fill itself
-            tags=("border_preview", "fill")
-        )
+        self.preview_rect_id = 1 # Set a dummy ID since we are only drawing one item now.
 
         # --- DEFINITIVE FIX for Inaccurate Outline Thickness ---
         # Inset the outline's coordinates by half its width. This ensures the outline
