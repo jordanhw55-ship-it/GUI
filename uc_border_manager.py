@@ -101,6 +101,10 @@ class BorderManager:
         border_comp.set_image(border_image)
         self.app.components[border_tag] = border_comp
         self.app.canvas.tag_lower(border_tag, "draggable") # Send behind other components
+
+        # --- NEW: Save state for Undo ---
+        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+
         self.app.redraw_all_zoomable()
         print(f"Applied preset '{preset_name}' to '{target_comp.tag}'.")
 

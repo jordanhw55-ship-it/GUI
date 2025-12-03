@@ -614,17 +614,28 @@ class ImageEditorApp:
              self.paint_manager.paint_layer_image = last_state
              self.redraw_all_zoomable()
         elif isinstance(last_state, dict): # It's a component image state
-            for tag, image in last_state.items():
-                if tag == 'type' and image == 'move': # It's a move state
-                    for move_tag, pos in last_state['positions'].items():
-                        if move_tag in self.components:
-                            comp = self.components[move_tag]
-                            comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2 = pos
+            action_type = last_state.get('type')
+
+            if action_type == 'move':
+                for move_tag, pos in last_state.get('positions', {}).items():
+                    if move_tag in self.components:
+                        comp = self.components[move_tag]
+                        comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2 = pos
+                self.redraw_all_zoomable()
+            elif action_type == 'add_component':
+                tag_to_remove = last_state.get('tag')
+                if tag_to_remove and tag_to_remove in self.components:
+                    comp_to_remove = self.components[tag_to_remove]
+                    self.canvas.delete(comp_to_remove.tag)
+                    if comp_to_remove.rect_id: self.canvas.delete(comp_to_remove.rect_id)
+                    del self.components[tag_to_remove]
                     self.redraw_all_zoomable()
-                    break # Move state handled
-                if tag in self.components:
-                    self.components[tag].set_image(image)
-                    print(f"Reverted image for component '{tag}'.")
+                    print(f"Undid component addition for '{tag_to_remove}'.")
+            else: # It's a component image state (original implementation)
+                for tag, image in last_state.items():
+                    if tag in self.components:
+                        self.components[tag].set_image(image)
+                        print(f"Reverted image for component '{tag}'.")
 
         print("Undo successful.")
         # Disable button if stack is now empty
