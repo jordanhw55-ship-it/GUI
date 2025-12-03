@@ -1409,10 +1409,16 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # Get the directory containing the 'GUI' project.
-            # In a bundled app, sys.executable is the path to the .exe.
-            # We run the .exe again with a special argument to launch the UI creator.
-            command = [sys.executable, "--run-ui-creator"]
+            # Check if the app is running as a bundled executable
+            if getattr(sys, 'frozen', False):
+                # In a bundled app, sys.executable is the path to the .exe.
+                # We run the .exe again with a special argument.
+                command = [sys.executable, "--run-ui-creator"]
+            else:
+                # In a development environment, we need to explicitly call python
+                # and pass the main script file before the argument.
+                main_script_path = os.path.abspath(__file__)
+                command = [sys.executable, main_script_path, "--run-ui-creator"]
             
             # The working directory should be the base path of the application
             # to ensure it can find all its resources.
