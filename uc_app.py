@@ -326,9 +326,8 @@ class ImageEditorApp:
         self.last_drag_x = event.x
         self.last_drag_y = event.y
 
-        # --- DEFINITIVE FIX: Update the decal's transform during drag ---
-        # For decals, we must call the transform update to regenerate the semi-transparent
-        # preview and ensure its world coordinates are correctly centered.
+        # --- REFACTOR: Call the correct update function for the component type ---
+        # The transform function now handles its own redraw, ensuring no race conditions.
         if comp.is_decal:
             self.image_manager._update_active_decal_transform()
         else:

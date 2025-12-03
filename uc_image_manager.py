@@ -234,6 +234,9 @@ class ImageManager:
             # This prevents overwriting the actual pil_image with the transparent one.
             decal.display_pil_image = display_image
 
+            # --- DEFINITIVE FIX: Trigger a redraw AFTER updating the display image ---
+            self.app.redraw_all_zoomable()
+
     def discard_active_image(self):
         """Finds and removes the active decal without applying it."""
         image_to_discard = self._find_topmost_stamp_source(clone_type='any')
