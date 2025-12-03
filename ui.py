@@ -13,8 +13,8 @@ class UIManager:
         self.paint_toggle_btn = None
         self.eraser_toggle_btn = None
 
-    def create_ui(self):
-        """Creates the main UI layout, canvas, and sidebar."""
+    def create_canvas(self):
+        """Creates the main canvas and returns it."""
         self.app.main_frame = tk.Frame(self.master, padx=10, pady=10, bg="#1f2937")
         self.app.main_frame.pack(fill="both", expand=True)
 
@@ -26,11 +26,14 @@ class UIManager:
         self.app.canvas.grid(row=0, column=0, padx=(0, 10), sticky="nsew", rowspan=2)
         self.app.main_frame.grid_columnconfigure(0, weight=1) 
         self.app.main_frame.grid_rowconfigure(0, weight=1)
-        
+
         self.app.canvas.bind("<B1-Motion>", self.app.paint_on_canvas)
         self.app.canvas.bind("<ButtonRelease-1>", self.app.reset_paint_line)
         self.app.canvas.bind("<Configure>", self.app.on_canvas_resize)
+        return self.app.canvas
 
+    def create_ui(self):
+        """Creates the rest of the UI that might depend on other components."""
         self.create_status_box()
         self.create_sidebar_tabs()
 

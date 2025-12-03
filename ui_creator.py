@@ -100,8 +100,9 @@ class ImageEditorApp:
         self.selected_image_set.trace_add("write", self.on_image_set_changed)
 
         self.ui_manager = UIManager(self)
+        # Initialize camera here, after canvas is created but before status box
+        self.camera = Camera(self, self.ui_manager.create_canvas())
         self.ui_manager.create_ui()
-        self.camera = Camera(self, self.canvas)
         
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
