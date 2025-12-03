@@ -231,7 +231,11 @@ class ImageManager:
             decal.world_y1 = cy - final_h / 2
             decal.world_x2 = cx + final_w / 2
             decal.world_y2 = cy + final_h / 2
-            decal.set_image(display_image)
+            
+            # --- FIX: Use a separate attribute for the on-canvas preview ---
+            # This prevents overwriting the actual pil_image with the transparent one.
+            decal.display_pil_image = display_image
+            self.app.redraw_all_zoomable()
 
     def discard_active_image(self):
         """Finds and removes the active decal without applying it."""
@@ -239,6 +243,7 @@ class ImageManager:
         if not image_to_discard:
             return
         self._remove_stamp_source_component(image_to_discard)
+        self.app.redraw_all_zoomable()
         print(f"Discarded image '{image_to_discard.tag}'.")
 
     def _find_topmost_stamp_source(self, show_warning=True, clone_type: str = 'clone'):
@@ -268,6 +273,7 @@ class ImageManager:
         self.canvas.delete(comp_to_remove.tag)
         if comp_to_remove.tag in self.app.components:
             del self.app.components[comp_to_remove.tag]
+        self.app.redraw_all_zoomable()
 
     def load_asset_to_dock(self):
         """Loads a regular image to the asset dock."""

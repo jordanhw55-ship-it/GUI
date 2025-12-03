@@ -13,6 +13,7 @@ class DraggableComponent:
         self.tk_image = None # Reference to the PhotoImage object
         self.preview_pil_image = None # For dock previews
         self.pil_image = None # Reference to the PIL Image object
+        self.display_pil_image = None # For temporary on-canvas display (e.g., transparent decal)
         self.border_pil_image = None # For storing the border image
         self.original_pil_image = None # For storing the pristine decal image
         self.rect_id = None

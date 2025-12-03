@@ -609,7 +609,9 @@ class ImageEditorApp:
                         comp._cached_screen_w = int(screen_w)
                         comp._cached_screen_h = int(screen_h)
 
-                        source_img = comp.pil_image
+                        # --- FIX: Prioritize the temporary display image for rendering ---
+                        # This allows the decal to be semi-transparent without affecting the source data.
+                        source_img = comp.display_pil_image if comp.display_pil_image else comp.pil_image
                         if not source_img: continue
 
                         resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
