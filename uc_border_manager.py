@@ -89,18 +89,29 @@ class BorderManager:
         border_w = (parent_w * rel_w) * width_multiplier
         border_h = (parent_h * rel_h) * width_multiplier
 
+        # --- FIX: Adjust component position and size for outward growth ---
+        thickness = self.border_thickness.get()
+        growth_direction = self.border_growth_direction.get()
+        
         border_x = target_comp.world_x1 + (parent_w * rel_x)
         border_y = target_comp.world_y1 + (parent_h * rel_y)
+        
+        render_w, render_h = border_w, border_h
+        if growth_direction == 'out':
+            border_x -= thickness
+            border_y -= thickness
+            render_w += thickness * 2
+            render_h += thickness * 2
 
         # Create a new component for the border
         border_tag = f"preset_border_{self.next_border_id}"
         self.next_border_id += 1
-        border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + border_w, border_y + border_h, "blue", "BORDER")
+        border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + render_w, border_y + render_h, "blue", "BORDER")
         border_comp.is_draggable = False # Borders are not draggable by default
         border_comp.parent_tag = target_comp.tag # Link the border to its parent tile
 
         # Render the border image using the selected style and thickness
-        border_image = self._render_border_image((border_w, border_h))
+        border_image = self._render_border_image((border_w, border_h), (render_w, render_h))
         if not border_image: return
 
         border_comp.set_image(border_image)
@@ -193,38 +204,40 @@ class BorderManager:
     def remove_border_from_selection(self):
         pass
 
-    def _render_border_image(self, size):
+    def _render_border_image(self, logical_size, render_size):
         """Renders the selected border style onto a PIL image."""
-        width, height = int(size[0]), int(size[1])
+        logical_w, logical_h = int(logical_size[0]), int(logical_size[1])
+        render_w, render_h = int(render_size[0]), int(render_size[1])
         style = self.selected_style.get()
         texture = self.border_textures.get(style)
 
-        if not texture or width <= 0 or height <= 0:
+        if not texture or logical_w <= 0 or logical_h <= 0:
             messagebox.showwarning("Render Error", f"Could not render border. Style '{style}' not found or size is invalid.")
             return None
 
-        final_image = Image.new("RGBA", (width, height), (0,0,0,0))
+        final_image = Image.new("RGBA", (render_w, render_h), (0,0,0,0))
         thickness = self.border_thickness.get()
         growth_direction = self.border_growth_direction.get()
 
         # --- DEFINITIVE FIX: Create a mask that grows inward ---
         # 1. Create a mask for the border by drawing a filled rectangle and then
         #    drawing a smaller, empty rectangle inside it.
-        mask = Image.new("L", (width, height), 0)
+        mask = Image.new("L", (render_w, render_h), 0)
         draw = ImageDraw.Draw(mask)
 
         # --- NEW: Adjust mask based on growth direction ---
         if growth_direction == 'in':
-            draw.rectangle([(0, 0), (width, height)], fill=255) # Outer shape
-            draw.rectangle([(thickness, thickness), (width - thickness, height - thickness)], fill=0) # Inner cutout
+            draw.rectangle([(0, 0), (logical_w, logical_h)], fill=255) # Outer shape
+            draw.rectangle([(thickness, thickness), (logical_w - thickness, logical_h - thickness)], fill=0) # Inner cutout
         else: # 'out'
-            draw.rectangle([(-thickness, -thickness), (width + thickness, height + thickness)], fill=255) # Outer shape (expanded)
-            draw.rectangle([(0, 0), (width, height)], fill=0) # Inner cutout (original size)
+            # For outward growth, the render size is larger.
+            draw.rectangle([(0, 0), (render_w, render_h)], fill=255) # Outer shape (expanded)
+            draw.rectangle([(thickness, thickness), (render_w - thickness, render_h - thickness)], fill=0) # Inner cutout (original size)
 
         # 2. Create a layer with the tiled texture
-        tiled_texture_layer = Image.new("RGBA", (width, height))
-        for y in range(0, height, texture.height):
-            for x in range(0, width, texture.width):
+        tiled_texture_layer = Image.new("RGBA", (render_w, render_h))
+        for y in range(0, render_h, texture.height):
+            for x in range(0, render_w, texture.width):
                 tiled_texture_layer.paste(texture, (x, y))
 
         # 3. Composite the tiled texture onto the final image using the mask
