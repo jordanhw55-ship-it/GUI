@@ -160,12 +160,24 @@ class BorderManager:
         border_x2 = border_x1 + border_w
         border_y2 = border_y1 + border_h
 
-        # Convert world coordinates to screen coordinates for drawing
-        sx1, sy1 = self.app.camera.world_to_screen(border_x1, border_y1)
-        sx2, sy2 = self.app.camera.world_to_screen(border_x2, border_y2)
+        # --- DEFINITIVE FIX: Calculate all coordinates in WORLD space first, then convert to SCREEN space ---
+        # This ensures the preview logic perfectly matches the apply logic.
+        growth_direction = self.border_growth_direction.get()
+        thickness = self.border_thickness.get()
+        thickness_screen = thickness * self.app.camera.zoom_scale
 
-        # --- DEFINITIVE FIX: Draw two rectangles to represent an inward-growing border ---
-        # The outer rectangle is the semi-transparent fill.
+        # Determine the final bounding box for the preview fill
+        preview_x1, preview_y1, preview_x2, preview_y2 = border_x1, border_y1, border_x2, border_y2
+        if growth_direction == 'out':
+            preview_x1 -= thickness
+            preview_y1 -= thickness
+            preview_x2 += thickness
+            preview_y2 += thickness
+
+        # Convert the final world coordinates to screen coordinates for drawing.
+        sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
+        sx2, sy2 = self.app.camera.world_to_screen(preview_x2, preview_y2)
+
         self.preview_rect_id = self.canvas.create_rectangle(
             sx1, sy1, sx2, sy2,
             fill="#22c55e",  # A nice green color
@@ -174,22 +186,8 @@ class BorderManager:
             tags=("border_preview", "fill")
         )
 
-        # The inner rectangle is the white outline, inset from the outer edge.
-        # --- DEFINITIVE FIX: Inset the outline's coordinates by half its width ---
-        # This ensures the outline draws fully *inside* the green area, not centered on its edge.
-        growth_direction = self.border_growth_direction.get()
-        thickness_screen = self.border_thickness.get() * self.app.camera.zoom_scale
-        
-        # --- NEW: Adjust inset based on growth direction ---
-        if growth_direction == 'in':
-            inset = thickness_screen / 2
-            ox1, oy1, ox2, oy2 = sx1 + inset, sy1 + inset, sx2 - inset, sy2 - inset
-        else: # 'out'
-            outset = thickness_screen / 2
-            ox1, oy1, ox2, oy2 = sx1 - outset, sy1 - outset, sx2 + outset, sy2 + outset
-
         self.canvas.create_rectangle(
-            ox1, oy1, ox2, oy2,
+            sx1, sy1, sx2, sy2,
             outline="white",
             width=thickness_screen,
             tags=("border_preview", "outline")
