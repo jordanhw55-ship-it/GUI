@@ -15,7 +15,7 @@ except ImportError:
     WAND_AVAILABLE = False
 
 from component import DraggableComponent
-from camera import Camera
+from uc_camera import Camera
 from ui import UIManager
 
 # --- NEW: Centralized Path Management ---
