@@ -54,6 +54,7 @@ class Camera:
         self._update_zoom_display()
         self._clamp_camera_pan()
         self.app.redraw_all_zoomable(use_fast_preview=True)
+        self.app._schedule_debug_update()
 
     def zoom_in(self, event=None):
         """Zooms in on the center of the canvas."""
@@ -70,6 +71,7 @@ class Camera:
         self._update_zoom_display()
         self._clamp_camera_pan()
         self.app.redraw_all_zoomable()
+        self.app._schedule_debug_update()
         return "break"
 
     def zoom_out(self, event=None):
@@ -87,6 +89,7 @@ class Camera:
         self._update_zoom_display()
         self._clamp_camera_pan()
         self.app.redraw_all_zoomable()
+        self.app._schedule_debug_update()
         return "break"
 
     def _update_zoom_display(self):
@@ -102,6 +105,7 @@ class Camera:
         self.pan_offset_y = 0.0
         self._update_zoom_display()
         self.app.redraw_all_zoomable()
+        self.app._schedule_debug_update()
         print("View has been reset.")
 
     def _clamp_camera_pan(self):
@@ -151,6 +155,7 @@ class Camera:
         self.pan_start_y = event.y
         
         self.app.redraw_all_zoomable()
+        self.app._schedule_debug_update()
 
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""

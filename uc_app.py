@@ -60,6 +60,17 @@ class ImageEditorApp:
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
 
+        # --- NEW: Debugging State ---
+        self.debug_info = {
+            'camera_zoom': tk.StringVar(value="Zoom: N/A"),
+            'camera_pan': tk.StringVar(value="Pan: N/A"),
+            'mouse_screen': tk.StringVar(value="Mouse (Screen): N/A"),
+            'mouse_world': tk.StringVar(value="Mouse (World): N/A"),
+            'app_state': tk.StringVar(value="State: N/A"),
+            'comp_details': tk.StringVar(value="Select a component to see details.")
+        }
+        self.debug_update_job = None
+
         self.is_group_dragging = False # Flag to prevent single-drag during group-pan
         
         # --- NEW: Composition Area Bounds ---
@@ -111,6 +122,7 @@ class ImageEditorApp:
 
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events()
+        self.canvas.bind("<Motion>", self._schedule_debug_update) # For mouse coords
 
         self.ui_manager.create_ui()
 
@@ -263,7 +275,51 @@ class ImageEditorApp:
     def set_selected_component(self, tag):
         """Updates the tracking variable for the currently selected component."""
         self.selected_component_tag = tag
+        self._schedule_debug_update()
 
+    def _schedule_debug_update(self, event=None):
+        """Schedules a debug info update to avoid excessive updates on mouse motion."""
+        if self.debug_update_job:
+            self.master.after_cancel(self.debug_update_job)
+        # Update mouse position immediately if event is provided
+        if event:
+            screen_x, screen_y = event.x, event.y
+            world_x, world_y = self.camera.screen_to_world(screen_x, screen_y)
+            self.debug_info['mouse_screen'].set(f"Mouse (Screen): {screen_x}, {screen_y}")
+            self.debug_info['mouse_world'].set(f"Mouse (World): {int(world_x)}, {int(world_y)}")
+        
+        self.debug_update_job = self.master.after(50, self._update_debug_info)
+
+    def _update_debug_info(self):
+        """Updates all labels in the debug tab with the current application state."""
+        # Camera Info
+        self.debug_info['camera_zoom'].set(f"Zoom: {self.camera.zoom_scale:.2f}x")
+        self.debug_info['camera_pan'].set(f"Pan: {int(self.camera.pan_offset_x)}, {int(self.camera.pan_offset_y)}")
+
+        # App State
+        total_comps = len(self.components)
+        dock_comps = len(self.image_manager.dock_assets)
+        undo_size = len(self.undo_stack)
+        self.debug_info['app_state'].set(f"Comps: {total_comps} | Docks: {dock_comps} | Undo: {undo_size}")
+
+        # Selected Component Details
+        comp = self.components.get(self.selected_component_tag)
+        if comp:
+            details = []
+            details.append(f"Tag: {comp.tag}")
+            details.append(f"World Coords: ({int(comp.world_x1)}, {int(comp.world_y1)}) to ({int(comp.world_x2)}, {int(comp.world_y2)})")
+            details.append(f"World Size: {int(comp.world_x2 - comp.world_x1)} x {int(comp.world_y2 - comp.world_y1)}")
+            
+            pil_size = f"{comp.pil_image.width}x{comp.pil_image.height}" if comp.pil_image else "N/A"
+            orig_pil_size = f"{comp.original_pil_image.width}x{comp.original_pil_image.height}" if comp.original_pil_image else "N/A"
+            details.append(f"PIL Size: {pil_size}")
+            details.append(f"Orig. PIL Size: {orig_pil_size}")
+            
+            details.append(f"Is Decal: {comp.is_decal}")
+            details.append(f"Is Dock Asset: {comp.is_dock_asset}")
+            self.debug_info['comp_details'].set("\n".join(details))
+        else:
+            self.debug_info['comp_details'].set("Select a component to see details.")
     
     def move_layer(self, direction):
         """Raises or lowers the currently selected layer's Z-order."""
@@ -583,6 +639,7 @@ class ImageEditorApp:
         
         # Redraw to apply the new size within the camera view
         self.redraw_all_zoomable()
+        self._schedule_debug_update() # Update debug info after resize
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
 
     def apply_border_to_selection(self):
@@ -629,6 +686,7 @@ class ImageEditorApp:
     
         # Redraw everything with the new positions
         self.redraw_all_zoomable()
+        self._schedule_debug_update()
 
     def _export_modified_images(self, export_format):
         """

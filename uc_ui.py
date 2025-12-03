@@ -80,6 +80,7 @@ class UIManager:
         resize_tab = tk.Frame(notebook, bg="#374151")
         text_tab = tk.Frame(notebook, bg="#374151")
         export_tab = tk.Frame(notebook, bg="#374151")
+        debug_tab = tk.Frame(notebook, bg="#374151")
 
         notebook.add(layer_tab, text='Tiles')
         notebook.add(paint_tab, text='Paint')
@@ -89,6 +90,7 @@ class UIManager:
         notebook.add(filters_tab, text='Filters')
         notebook.add(text_tab, text='Text')
         notebook.add(export_tab, text='Export')
+        notebook.add(debug_tab, text='Debug')
 
         self._populate_layer_tab(layer_tab)
         self._populate_paint_tab(paint_tab)
@@ -98,6 +100,7 @@ class UIManager:
         self._populate_filters_tab(filters_tab)
         self._populate_text_tab(text_tab)
         self._populate_export_tab(export_tab)
+        self._populate_debug_tab(debug_tab)
 
     def _populate_layer_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
@@ -274,3 +277,28 @@ class UIManager:
         tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
                   command=lambda: self.app.image_manager.decal_rotation.set(0) or self.app.image_manager._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
         transform_frame.grid_columnconfigure(1, weight=1)
+
+    def _populate_debug_tab(self, tab):
+        """Creates the UI for the new Debug tab."""
+        header_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
+        label_style = {"bg": "#374151", "fg": "#d1d5db", "font": ("Consolas", 10), "justify": tk.LEFT, "anchor": "w"}
+        
+        # --- General State ---
+        tk.Label(tab, text="GENERAL STATE", **header_style).pack(fill='x', padx=10)
+        tk.Label(tab, textvariable=self.app.debug_info['app_state'], **label_style).pack(fill='x', padx=10)
+
+        # --- Camera & Mouse ---
+        tk.Label(tab, text="CAMERA & MOUSE", **header_style).pack(fill='x', padx=10, pady=(10,0))
+        tk.Label(tab, textvariable=self.app.debug_info['camera_zoom'], **label_style).pack(fill='x', padx=10)
+        tk.Label(tab, textvariable=self.app.debug_info['camera_pan'], **label_style).pack(fill='x', padx=10)
+        tk.Label(tab, textvariable=self.app.debug_info['mouse_screen'], **label_style).pack(fill='x', padx=10)
+        tk.Label(tab, textvariable=self.app.debug_info['mouse_world'], **label_style).pack(fill='x', padx=10)
+
+        # --- Selected Component ---
+        tk.Label(tab, text="SELECTED COMPONENT", **header_style).pack(fill='x', padx=10, pady=(10,0))
+        details_frame = tk.Frame(tab, bg="#2d3748", bd=1, relief="sunken")
+        details_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        tk.Label(details_frame, textvariable=self.app.debug_info['comp_details'], **label_style, wraplength=self.app.SIDEBAR_WIDTH - 40, bg="#2d3748").pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Initial update
+        self.app._update_debug_info()
