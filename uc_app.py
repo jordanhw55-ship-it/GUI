@@ -18,6 +18,8 @@ from uc_component import DraggableComponent
 from uc_camera import Camera
 from uc_ui import UIManager
 from uc_paint_manager import PaintManager
+from uc_border_manager import BorderManager
+from uc_image_manager import ImageManager
 
 # --- NEW: Centralized Path Management ---
 def get_base_path():
@@ -60,12 +62,6 @@ class ImageEditorApp:
 
         self.is_group_dragging = False # Flag to prevent single-drag during group-pan
         
-        # --- NEW: Decal Feature State ---
-        self.active_decal = None
-        self.decal_scale = tk.DoubleVar(value=100) # For the resize slider
-        self.transform_job = None # NEW: For debouncing slider updates
-        self.decal_rotation = tk.DoubleVar(value=0) # NEW: For the rotation slider
-
         # --- NEW: Composition Area Bounds ---
         # These define the draggable area for tiles.
         # DEFINITIVE REWRITE: The top half of the canvas is the composition area.
@@ -74,9 +70,6 @@ class ImageEditorApp:
         self.COMP_AREA_X2 = CANVAS_WIDTH 
         self.COMP_AREA_Y2 = CANVAS_HEIGHT # Use the full canvas height
 
-        # --- NEW: Asset Dock State ---
-        self.dock_assets = []
-        self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
         # --- NEW: Define base paths for UI Creator resources ---
         self.base_path = get_base_path()
         self.ui_creator_contents_path = os.path.join(self.base_path, "Contents", "ui creator")
@@ -106,9 +99,11 @@ class ImageEditorApp:
         # The UIManager's create_canvas method assigns the canvas to self.app.canvas.
         canvas = self.ui_manager.create_canvas()
 
+        self.border_manager = BorderManager(self)
         # --- Initialize Managers ---
         self.paint_manager = PaintManager(self)
         self.camera = Camera(self, canvas)
+        self.image_manager = ImageManager(self)
         # --- Initialize Components BEFORE UI that might use them ---
         # This resolves the AttributeError by ensuring self.components exists
         # before any callbacks (like on_image_set_changed) can be triggered.
@@ -592,15 +587,12 @@ class ImageEditorApp:
 
     def apply_border_to_selection(self):
         """Applies a loaded border image to the currently selected component."""
-        # This now correctly uses the decal stamping logic to apply the border
-        # to any underlying tiles it overlaps with, rather than just the selected one.
-        self.apply_decal_to_underlying_layer()
+        self.border_manager.apply_border_to_selection()
 
 
     def remove_border_from_selection(self):
         """Removes the border from the currently selected component."""
-        # This function is no longer needed with the new workflow, but we keep the stub.
-        messagebox.showinfo("Info", "To remove a border, simply re-apply the original image from the 'Image' tab or reset the layer.")
+        self.border_manager.remove_border_from_selection()
 
 
     def _keep_docks_on_top(self):
@@ -826,7 +818,7 @@ class ImageEditorApp:
 
     def load_border_to_dock(self):
         """Loads a border image to the asset dock, marking it specifically as a border."""
-        self._load_asset_to_dock_generic(is_border=True)
+        self.border_manager.load_border_to_dock()
 
     def load_asset_to_dock(self):
         """Loads a regular image to the asset dock."""
@@ -1049,108 +1041,6 @@ class ImageEditorApp:
         # Clean up the temporary decal/clone and redraw everything.
         self._remove_stamp_source_component(stamp_source_comp)
         self.redraw_all_zoomable()
-
-    def schedule_transform_update(self, event=None):
-        """Schedules a decal transformation update, debouncing slider events."""
-        # Cancel any previously scheduled update
-        if self.transform_job:
-            self.master.after_cancel(self.transform_job)
-        
-        # Schedule the actual update to run after 150ms of inactivity
-        self.transform_job = self.master.after(150, self._update_active_decal_transform)
-
-    def _update_active_decal_transform(self, event=None, use_fast_preview=False):
-        """Applies both resize and rotation transformations to the active decal."""
-        # Debounce the high-quality update
-        if self.transform_job:
-            self.master.after_cancel(self.transform_job)
-        if use_fast_preview:
-            # If we're just dragging, schedule a high-quality render for when we stop.
-            self.transform_job = self.master.after(250, self._update_active_decal_transform)
-
-        decal = self._find_topmost_stamp_source(show_warning=False, clone_type='any')
-        if not decal or not decal.original_pil_image:
-            return
-
-        scale_factor = self.decal_scale.get() / 100.0
-        rotation_angle = self.decal_rotation.get()
-
-        # 1. Scale the original image
-        original_w, original_h = decal.original_pil_image.size
-        new_w = int(original_w * scale_factor)
-        new_h = int(original_h * scale_factor)
-
-        if new_w > 0 and new_h > 0:
-            # Use a faster algorithm for live preview, and a high-quality one for the final render.
-            resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-            rotate_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.BICUBIC
-
-            resized_image = decal.original_pil_image.resize((new_w, new_h), resample_quality)
-
-            # 2. Rotate the scaled image
-            # Use expand=True to prevent corners from being clipped.
-            # The background is transparent, so this is safe.
-            rotated_image = resized_image.rotate(rotation_angle, expand=True, resample=rotate_quality)
-
-            # 3. Create the semi-transparent version for display
-            alpha = rotated_image.getchannel('A')
-            semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
-            display_image = rotated_image.copy()
-            display_image.putalpha(semi_transparent_alpha)
-
-            # 4. Update the component on the canvas
-            decal._set_pil_image(display_image, resize_to_fit=False)
-
-    def discard_active_image(self):
-        """Finds and removes the top-most draggable image (decal or clone) without applying it."""
-        image_to_discard = self._find_topmost_stamp_source(clone_type='any')
-        if not image_to_discard:
-            # The helper function already shows a warning if nothing is found.
-            return
-
-        self._remove_stamp_source_component(image_to_discard)
-        print(f"Discarded image '{image_to_discard.tag}'.")
-
-    def _find_topmost_stamp_source(self, show_warning=True, clone_type: str = 'clone'):
-        """
-        Finds the top-most draggable image (decal or clone) that can be used for stamping.
-        clone_type can be 'clone', 'border', or 'any'.
-        """
-        prefix = f"{clone_type}_"
-        all_items = self.canvas.find_all()
-        # Iterate from the top of the stack downwards
-        for item_id in reversed(all_items):
-            tags = self.canvas.gettags(item_id)
-            if not tags:
-                continue
-            
-            tag = tags[0]
-            if tag in self.components:
-                comp = self.components[tag]
-                # Check if it's a draggable image but NOT a dock asset
-                if comp.is_draggable and comp.pil_image and not comp.is_dock_asset:
-                    if clone_type == 'any' and (tag.startswith('clone_') or tag.startswith('border_')):
-                        return comp
-                    if tag.startswith(prefix):
-                        return comp
-        
-        # If the loop finishes without finding anything
-        if show_warning:
-            messagebox.showwarning("No Image Found", f"Could not find an active '{clone_type}' image to apply or discard.")
-        return None
-    
-    def _remove_stamp_source_component(self, comp_to_remove):
-        """Helper function to cleanly remove a stamp source (decal/clone) from the canvas and component list."""
-        if not comp_to_remove:
-            return
-        
-        self.canvas.delete(comp_to_remove.tag)
-        if comp_to_remove.tag in self.components:
-            del self.components[comp_to_remove.tag]
-        
-        if comp_to_remove == self.active_decal:
-            self.active_decal = None
-
 
 # --- EXECUTION ---
 if __name__ == "__main__":

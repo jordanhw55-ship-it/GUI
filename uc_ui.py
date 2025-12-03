@@ -159,7 +159,7 @@ class UIManager:
         button_font = ('Inter', 11, 'bold')
         tk.Label(tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(tab, text="Load Asset to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=self.app.load_asset_to_dock).pack(fill='x', padx=10, pady=(5,10))
+                  command=self.app.image_manager.load_asset_to_dock).pack(fill='x', padx=10, pady=(5,10))
 
         image_dock_frame = tk.Frame(tab, bg="#2d3748", bd=2, relief="sunken")
         image_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
@@ -176,9 +176,9 @@ class UIManager:
         image_action_frame = tk.Frame(tab, bg="#374151")
         image_action_frame.pack(fill='x', padx=10, pady=(10, 5))
         tk.Button(image_action_frame, text="Apply Image", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.app.apply_decal_to_underlying_layer).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+                  command=self.app.image_manager.apply_decal_to_underlying_layer).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         tk.Button(image_action_frame, text="Discard Image", bg='#ef4444', fg='white', relief='flat', font=button_font,
-                  command=self.app.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+                  command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
     def _populate_resize_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
@@ -206,7 +206,7 @@ class UIManager:
         button_font = ('Inter', 11, 'bold')
         tk.Label(tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
         tk.Button(tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=self.app.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
+                  command=self.app.border_manager.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
 
         border_dock_frame = tk.Frame(tab, bg="#2d3748", bd=2, relief="sunken")
         border_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
@@ -223,9 +223,9 @@ class UIManager:
         border_action_frame = tk.Frame(tab, bg="#374151")
         border_action_frame.pack(fill='x', padx=10, pady=5)
         tk.Button(border_action_frame, text="Apply Border", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=self.app.apply_border_to_selection).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+                  command=self.app.image_manager.apply_decal_to_underlying_layer).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         tk.Button(border_action_frame, text="Discard Border", bg='#ef4444', fg='white', relief='flat', font=button_font,
-                  command=self.app.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+                  command=self.app.image_manager.discard_active_image).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
@@ -255,14 +255,14 @@ class UIManager:
         transform_frame.pack(fill='x', padx=10, pady=5)
         
         tk.Label(transform_frame, text="Resize:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w')
-        tk.Scale(transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.app.decal_scale,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self.app._update_active_decal_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
+        tk.Scale(transform_frame, from_=10, to=200, orient=tk.HORIZONTAL, variable=self.app.image_manager.decal_scale,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self.app.image_manager._update_active_decal_transform(use_fast_preview=True)).grid(row=0, column=1, sticky='ew')
         tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.app.decal_scale.set(100) or self.app._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
+                  command=lambda: self.app.image_manager.decal_scale.set(100) or self.app.image_manager._update_active_decal_transform()).grid(row=0, column=2, padx=(5,0))
 
         tk.Label(transform_frame, text="Rotate:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
-        tk.Scale(transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.app.decal_rotation,
-                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self.app._update_active_decal_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
+        tk.Scale(transform_frame, from_=-180, to=180, orient=tk.HORIZONTAL, variable=self.app.image_manager.decal_rotation,
+                 bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0, command=lambda e: self.app.image_manager._update_active_decal_transform(use_fast_preview=True)).grid(row=1, column=1, sticky='ew')
         tk.Button(transform_frame, text="Reset", bg='#6b7280', fg='white', relief='flat', font=('Inter', 8),
-                  command=lambda: self.app.decal_rotation.set(0) or self.app._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
+                  command=lambda: self.app.image_manager.decal_rotation.set(0) or self.app.image_manager._update_active_decal_transform()).grid(row=1, column=2, padx=(5,0))
         transform_frame.grid_columnconfigure(1, weight=1)
