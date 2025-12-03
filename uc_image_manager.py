@@ -63,7 +63,9 @@ class ImageManager:
             target_canvas.tag_bind(asset_tag, '<Button-1>', 
                 lambda event, comp=asset_comp: self.handle_dock_asset_press(event, comp))
 
-            asset_comp.original_pil_image = full_res_image
+            # --- CRITICAL FIX: Give the dock asset its own copy of the original image ---
+            # This prevents the asset's image from being garbage-collected when a clone is deleted.
+            asset_comp.original_pil_image = full_res_image.copy()
             asset_comp.preview_pil_image = full_res_image.copy()
             asset_comp.preview_pil_image.thumbnail((asset_width, asset_height), Image.Resampling.LANCZOS)
             
