@@ -172,10 +172,14 @@ class ImageEditorApp:
 
     def save_on_exit(self):
         """Saves settings and closes the application."""
-        # This is a simplified save method for the Tkinter app.
-        # It only saves the dock assets for now.
+        # --- DEFINITIVE FIX: Perform a safe read-modify-write to prevent data loss ---
+        # 1. Load the most recent settings from the file.
+        self.settings_manager.load()
+        # 2. Get the current dock assets from the UI Creator.
         dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in self.image_manager.dock_assets if asset.image_path]
+        # 3. Update only the 'dock_assets' key in the loaded settings.
         self.settings_manager.settings['dock_assets'] = dock_assets_to_save
+        # 4. Write the entire, updated settings object back to the file.
         with open(self.settings_manager.settings_path, 'w') as f:
             json.dump(self.settings_manager.settings, f, indent=4)
         self.master.destroy()
