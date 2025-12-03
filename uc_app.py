@@ -406,10 +406,10 @@ class ImageEditorApp:
         self.COMP_AREA_Y2 = new_height
 
         # If the paint layer exists, it needs to be recreated to match the new size
-         if self.paint_manager.paint_layer_image:
+        if self.paint_manager.paint_layer_image:
             # We can't just resize, as drawing is based on world coords.
             # It's safer to clear it, but for now, we'll just recreate it blank.
-             self.paint_manager.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
+            self.paint_manager.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
             self.redraw_all_zoomable() # Redraw to update the paint layer display
 
     # --- NEW: Camera Transformation Functions ---
