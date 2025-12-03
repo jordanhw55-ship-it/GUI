@@ -56,8 +56,8 @@ class ImageManager:
 
             items_per_row = 4
             padding = 5
-            asset_width = 120
-            asset_height = 120
+            asset_width = 68
+            asset_height = 68
 
             col = item_index % items_per_row
             row = item_index // items_per_row
@@ -77,6 +77,17 @@ class ImageManager:
             asset_comp.tk_image = ImageTk.PhotoImage(asset_comp.preview_pil_image)
             asset_comp.rect_id = target_canvas.create_image(x, y, anchor=tk.NW, image=asset_comp.tk_image, tags=(asset_tag,))
             asset_comp.pil_image = asset_comp.preview_pil_image
+
+            # --- NEW: Add a delete 'X' button ---
+            delete_tag = f"delete_{asset_tag}"
+            # Create a small white circle background for the 'X'
+            target_canvas.create_oval(x, y, x + 14, y + 14, fill='white', outline='black', tags=(delete_tag, asset_tag))
+            # Create the 'X' text on top of the circle
+            target_canvas.create_text(x + 7, y + 7, text="X", fill="red", font=("Arial", 10, "bold"), tags=(delete_tag, asset_tag))
+
+            # Bind the click event to the delete function
+            target_canvas.tag_bind(delete_tag, '<Button-1>', 
+                lambda event, comp=asset_comp: self.delete_dock_asset(comp))
 
             self.dock_assets.append(asset_comp)
             
@@ -127,10 +138,44 @@ class ImageManager:
             asset_comp.preview_pil_image.thumbnail((int(asset_width), int(asset_height)), Image.Resampling.LANCZOS)
             asset_comp.tk_image = ImageTk.PhotoImage(asset_comp.preview_pil_image)
             asset_comp.rect_id = target_canvas.create_image(x, y, anchor=tk.NW, image=asset_comp.tk_image, tags=(asset_tag,))
+            
+            # --- NEW: Add a delete 'X' button ---
+            delete_tag = f"delete_{asset_tag}"
+            target_canvas.create_oval(x, y, x + 14, y + 14, fill='white', outline='black', tags=(delete_tag, asset_tag))
+            target_canvas.create_text(x + 7, y + 7, text="X", fill="red", font=("Arial", 10, "bold"), tags=(delete_tag, asset_tag))
+            target_canvas.tag_bind(delete_tag, '<Button-1>', 
+                lambda event, comp=asset_comp: self.delete_dock_asset(comp))
+
             self.dock_assets.append(asset_comp)
             target_canvas.config(scrollregion=target_canvas.bbox("all"))
         except Exception as e:
             print(f"[ERROR] Failed to reload asset from path '{image_path}': {e}")
+
+    def delete_dock_asset(self, asset_to_delete):
+        """Removes an asset from the dock and redraws the dock."""
+        if not asset_to_delete or not asset_to_delete.is_dock_asset:
+            return
+
+        # Remove from the manager's list
+        if asset_to_delete in self.dock_assets:
+            self.dock_assets.remove(asset_to_delete)
+
+        # Clear the relevant dock canvas
+        target_canvas = self.app.ui_manager.border_dock_canvas if asset_to_delete.is_border_asset else self.app.ui_manager.image_dock_canvas
+        target_canvas.delete("all")
+
+        # Reload remaining assets for that dock type
+        assets_to_reload = [asset for asset in self.dock_assets if asset.is_border_asset == asset_to_delete.is_border_asset]
+        
+        # Temporarily remove them from the main list to avoid duplicates during reload
+        self.dock_assets = [asset for asset in self.dock_assets if asset.is_border_asset != asset_to_delete.is_border_asset]
+
+        for asset in assets_to_reload:
+            self.load_asset_from_path(asset.image_path, asset.is_border_asset)
+
+        self.app.save_settings()
+        print(f"Deleted asset '{asset_to_delete.tag}' from the dock.")
+
     def apply_decal_to_underlying_layer(self):
         """Finds the active decal and stamps it onto any underlying components."""
         stamp_source_comp = self._find_topmost_stamp_source(show_warning=True, clone_type='any')
