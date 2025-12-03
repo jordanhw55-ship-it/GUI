@@ -64,6 +64,16 @@ class SettingsManager:
             settings_to_save["automation"] = window_instance.get_automation_settings_from_ui()
         if hasattr(window_instance, 'image_manager'):
             settings_to_save["dock_assets"] = dock_assets_to_save
+        if hasattr(window_instance, 'lobby_manager'):
+            settings_to_save["watchlist"] = window_instance.lobby_manager.watchlist
+            settings_to_save["play_sound_on_found"] = window_instance.lobby_manager.play_sound_on_found
+            settings_to_save["selected_sound"] = window_instance.lobby_manager.selected_sound
+            settings_to_save["volume"] = window_instance.lobby_manager.volume
+        if hasattr(window_instance, 'font_family'):
+            settings_to_save["font_family"] = window_instance.font_family
+        if hasattr(window_instance, 'font_size'):
+            settings_to_save["font_size"] = window_instance.font_size
+
 
         with open(self.settings_path, 'w') as f:
             json.dump(settings_to_save, f, indent=4)
