@@ -12,11 +12,11 @@ try:
     import io
     WAND_AVAILABLE = True
 except ImportError:
-    WAND_AVAILABLE = False
+    WAND_AVAILABLE = False # type: ignore
 
-from .component import DraggableComponent
-from .camera import Camera
-from .ui import UIManager
+from component import DraggableComponent
+from camera import Camera
+from ui import UIManager
 
 # --- NEW: Centralized Path Management ---
 def get_base_path():
