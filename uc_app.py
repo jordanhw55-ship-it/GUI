@@ -94,12 +94,6 @@ class ImageEditorApp:
         self.layouts_dir = os.path.join(self.ui_creator_contents_path, "layouts")
 
         self.image_sets = []
-        if os.path.isdir(self.image_base_dir):
-            self.image_sets = [d for d in os.listdir(self.image_base_dir) if os.path.isdir(os.path.join(self.image_base_dir, d))]
-        self.selected_image_set = tk.StringVar()
-        self.selected_image_set.trace_add("write", self.on_image_set_changed)
-
-        # Define the component list before creating the UI that uses it
         self.component_list = [
             "Show All", 
             "humanuitile01", 
@@ -112,6 +106,17 @@ class ImageEditorApp:
             "humanuitile-timeindicatorframe"
         ]
 
+        # --- Initialize UI and Camera First ---
+        # This ensures the canvas exists before components are created.
+        self.ui_manager = UIManager(self)
+        self.camera = Camera(self, self.ui_manager.create_canvas())
+
+        # --- Initialize Components BEFORE UI that might use them ---
+        # This resolves the AttributeError by ensuring self.components exists
+        # before any callbacks (like on_image_set_changed) can be triggered.
+        self._initialize_components()
+
+        # Now create the rest of the UI, which can safely reference components
         self.ui_manager = UIManager(self)
         # Initialize camera here, after canvas is created but before status box
         self.camera = Camera(self, self.ui_manager.create_canvas())
@@ -127,6 +132,13 @@ class ImageEditorApp:
             "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
             "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
         }
+
+        # --- Setup Image Set Callbacks AFTER components are initialized ---
+        if os.path.isdir(self.image_base_dir):
+            self.image_sets = [d for d in os.listdir(self.image_base_dir) if os.path.isdir(os.path.join(self.image_base_dir, d))]
+        self.selected_image_set = tk.StringVar()
+        self.selected_image_set.trace_add("write", self.on_image_set_changed)
+
 
         # --- 2. Initialize Draggable Components (Layers) ---
         self.components = {}
@@ -220,6 +232,7 @@ class ImageEditorApp:
             
         # --- 5. Apply Initial Layout ---
         self.apply_preview_layout()
+
 
     def move_all_main_tiles(self, dx_world, dy_world):
         """Moves all primary component tiles by a delta in world coordinates."""
