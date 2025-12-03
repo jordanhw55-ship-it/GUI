@@ -205,6 +205,7 @@ class ImageManager:
 
         self._remove_stamp_source_component(stamp_source_comp)
         self.app.redraw_all_zoomable()
+        self.app._keep_docks_on_top()
 
     def schedule_transform_update(self, event=None):
         """Schedules a decal transformation update, debouncing slider events."""
