@@ -137,10 +137,12 @@ class Camera:
         self.pan_start_x = event.x
         self.pan_start_y = event.y
         self.app.is_group_dragging = True
-        # --- NEW: Save pre-move state for all main tiles ---
+        # --- FIX: Save pre-move state for all main tiles ---
         self.app._save_pre_move_state()
 
         self.canvas.config(cursor="fleur")
+        # Return "break" to prevent other bindings from firing (like individual component drag)
+        return "break"
 
     def on_pan_drag(self, event):
         """Drags all non-dock, non-clone components at once."""
@@ -158,9 +160,11 @@ class Camera:
     def on_pan_release(self, event):
         """Resets the cursor when panning is finished."""
         self.app.is_group_dragging = False
-        # --- NEW: Finalize group move for undo ---
+        # --- FIX: Finalize group move for undo ---
         if self.app.pre_move_state:
             self.app._save_undo_state({'type': 'move', 'positions': self.app.pre_move_state})
             self.app.pre_move_state = {} # Clear the temp state
 
         self.canvas.config(cursor="")
+        # Return "break" to prevent other release bindings from firing
+        return "break"

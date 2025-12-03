@@ -117,6 +117,10 @@ class ImageEditorApp:
         # This resolves the AttributeError by ensuring self.components exists
         # before any callbacks (like on_image_set_changed) can be triggered.
         self._initialize_components()
+        
+        # Bind camera pan events directly to the canvas
+        self.canvas.bind("<Control-Button-1>", self.camera.on_pan_press)
+        self.canvas.bind("<Control-B1-Motion>", self.camera.on_pan_drag)
 
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events() # Binds paint events
@@ -786,6 +790,12 @@ class ImageEditorApp:
         comp = self.components.get(self.selected_component_tag)
         if not comp: return
 
+        # --- NEW: Save pre-resize state for Undo ---
+        undo_data = {
+            'type': 'move', # Re-use the 'move' undo type as it restores all 4 world coordinates
+            'positions': {comp.tag: (comp.world_x1, comp.world_y1, comp.world_x2, comp.world_y2)}
+        }
+        self._save_undo_state(undo_data)
         try:
             new_w = int(self.resize_width.get())
             new_h = int(self.resize_height.get())
