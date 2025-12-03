@@ -1417,11 +1417,12 @@ class SimpleWindow(QMainWindow):
     def launch_ui_creator(self):
         """Launches the Tkinter UI creator as a separate process."""
         try:
-            # The path to the ui_creator's main script.
-            ui_creator_script_path = os.path.join(os.path.dirname(__file__), 'ui_creator', '__main__.py')
+            # The path to the ui_creator package.
+            # We use '-m' to run it as a module, which is more robust.
+            ui_creator_module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui_creator')
 
             # Command to run the script with the same Python interpreter.
-            command = [sys.executable, ui_creator_script_path]
+            command = [sys.executable, "-m", "ui_creator"]
             # Launch the new process.
             # In dev: python.exe 1.pyw --run-ui-creator
             # In prod: HellfireHelper.exe --run-ui-creator
