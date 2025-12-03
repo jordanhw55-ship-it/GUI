@@ -20,6 +20,7 @@ from uc_ui import UIManager
 from uc_paint_manager import PaintManager
 from uc_border_manager import BorderManager
 from uc_image_manager import ImageManager
+from settings import SettingsManager
 
 # --- NEW: Centralized Path Management ---
 def get_base_path():
@@ -40,6 +41,10 @@ class ImageEditorApp:
         master.configure(bg="#1f2937") # NEW: Set a dark background for the root window
         master.title("UI Creator")
         master.state('zoomed') # NEW: Maximize the window on startup
+
+        # --- NEW: Initialize Settings Manager ---
+        self.settings_manager = SettingsManager()
+        master.protocol("WM_DELETE_WINDOW", self.save_on_exit)
 
         # Constants
         self.CANVAS_WIDTH = CANVAS_WIDTH
@@ -164,6 +169,16 @@ class ImageEditorApp:
 
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
+
+    def save_on_exit(self):
+        """Saves settings and closes the application."""
+        # This is a simplified save method for the Tkinter app.
+        # It only saves the dock assets for now.
+        dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in self.image_manager.dock_assets if asset.image_path]
+        self.settings_manager.settings['dock_assets'] = dock_assets_to_save
+        with open(self.settings_manager.settings_path, 'w') as f:
+            json.dump(self.settings_manager.settings, f, indent=4)
+        self.master.destroy()
 
     def _reload_dock_assets(self):
         """Loads assets into the dock from paths saved in settings."""
