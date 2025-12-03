@@ -155,6 +155,7 @@ class DraggableComponent:
         self.last_x = event.x
         self.last_y = event.y
         
+        print(f"[DEBUG] Pressed '{self.tag}' at screen coords ({event.x}, {event.y})")
         self.canvas.tag_raise(self.rect_id)
         if self.text_id:
             self.canvas.tag_raise(self.text_id)
@@ -193,6 +194,7 @@ class DraggableComponent:
 
     def on_release(self, event):
         """Action after drag finishes."""
+        print(f"[DEBUG] Released '{self.tag}' at final world coords ({int(self.world_x1)}, {int(self.world_y1)})")
         self.app._keep_docks_on_top()
 
     def select(self, app_instance):
