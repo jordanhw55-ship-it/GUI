@@ -17,6 +17,7 @@ class BorderManager:
         self.selected_preset = tk.StringVar()
         self.selected_style = tk.StringVar()
         self.border_thickness = tk.IntVar(value=10)
+        self.border_width = tk.IntVar(value=100) # NEW: For adjusting border component width as a percentage
 
         # --- Preset Definitions ---
         # A dictionary where each key is a preset name.
@@ -78,8 +79,11 @@ class BorderManager:
         parent_h = target_comp.world_y2 - target_comp.world_y1
         rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
 
-        border_w = parent_w * rel_w
-        border_h = parent_h * rel_h
+        # NEW: Adjust border component size by the width slider value
+        width_multiplier = self.border_width.get() / 100.0
+        border_w = (parent_w * rel_w) * width_multiplier
+        border_h = (parent_h * rel_h) * width_multiplier
+
         border_x = target_comp.world_x1 + (parent_w * rel_x)
         border_y = target_comp.world_y1 + (parent_h * rel_y)
 

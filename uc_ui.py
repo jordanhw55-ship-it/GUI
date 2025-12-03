@@ -231,6 +231,10 @@ class UIManager:
         tk.Label(controls_frame, text="Thickness:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
         tk.Scale(controls_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=manager.border_thickness, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
 
+        # NEW: Border Width Slider
+        tk.Label(controls_frame, text="Width (%):", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
+        tk.Scale(controls_frame, from_=1, to=200, orient=tk.HORIZONTAL, variable=manager.border_width, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=3, column=1, sticky='ew', padx=5)
+
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
 
