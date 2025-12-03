@@ -176,16 +176,19 @@ class ImageEditorApp:
         else:
             self._attempt_auto_load_images(self.image_base_dir)
             
-        # --- 5. Apply Initial Layout ---
-        self.apply_preview_layout()
-
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
 
-        # --- 7. Schedule initial border preview ---
+        # --- 7. Schedule initial draw and layout ---
         # We schedule this to run after the main loop starts, ensuring the window
-        # is fully initialized and visible before we try to draw on it.
-        self.master.after(100, self.border_manager.show_preset_preview)
+        # is fully initialized and visible before we try to draw anything. This
+        # prevents a race condition where culling hides everything on startup.
+        self.master.after(100, self.initial_draw)
+
+    def initial_draw(self):
+        """Performs the first layout application and redraw after the UI is ready."""
+        self.apply_preview_layout()
+        self.border_manager.show_preset_preview()
 
     def save_settings(self):
         """Saves the current application settings to the settings file."""
