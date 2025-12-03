@@ -12,7 +12,7 @@ try:
     import io
     WAND_AVAILABLE = True
 except ImportError:
-    WAND_AVAILABLE = False
+    WAND_AVAILABLE = False # type: ignore
 
 from uc_component import DraggableComponent
 from uc_camera import Camera
@@ -86,7 +86,7 @@ class ImageEditorApp:
         self.dock_assets = []
         self.next_dynamic_id = 0 # FIX: Unified counter for clones and assets
         # --- NEW: Define base paths for UI Creator resources ---
-        self.base_path = os.path.dirname(get_base_path())
+        self.base_path = get_base_path()
         self.ui_creator_contents_path = os.path.join(self.base_path, "Contents", "ui creator")
         self.image_base_dir = os.path.join(self.ui_creator_contents_path, "images")
         self.tools_dir = os.path.join(self.ui_creator_contents_path, "tools")
@@ -99,10 +99,23 @@ class ImageEditorApp:
         self.selected_image_set = tk.StringVar()
         self.selected_image_set.trace_add("write", self.on_image_set_changed)
 
+        # Define the component list before creating the UI that uses it
+        self.component_list = [
+            "Show All", 
+            "humanuitile01", 
+            "humanuitile02", 
+            "humanuitile03", 
+            "humanuitile04", 
+            "humanuitile05", 
+            "humanuitile06", 
+            "humanuitile-inventorycover", 
+            "humanuitile-timeindicatorframe"
+        ]
+
         self.ui_manager = UIManager(self)
+        # Initialize camera here, after canvas is created but before status box
+        self.camera = Camera(self, self.ui_manager.create_canvas())
         self.ui_manager.create_ui()
-        self.camera = Camera(self, self.canvas)
-        
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
             "humanuitile01": {"coords": [261, 57, 511, 357]},
@@ -183,17 +196,6 @@ class ImageEditorApp:
             base_color, "TIME FRAME"
         )
         
-        self.component_list = [
-            "Show All", 
-            "humanuitile01", 
-            "humanuitile02", 
-            "humanuitile03", 
-            "humanuitile04", 
-            "humanuitile05", 
-            "humanuitile06", 
-            "humanuitile-inventorycover", 
-            "humanuitile-timeindicatorframe"
-        ]
         # Set a default selected component
         self.set_selected_component('humanuitile01')
         
@@ -1260,3 +1262,13 @@ class ImageEditorApp:
         
         if comp_to_remove == self.active_decal:
             self.active_decal = None
+
+
+# --- EXECUTION ---
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ImageEditorApp(root)
+    try:
+        root.mainloop()
+    except Exception as e:
+        messagebox.showerror("Application Error", f"An error occurred: {e}")

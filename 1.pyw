@@ -1423,7 +1423,7 @@ class SimpleWindow(QMainWindow):
             # Command to run the ui_creator package as a module.
             # The '-m' flag tells Python to look for the module in its path.
             # We set the working directory to the project root to ensure it finds it.
-            command = [sys.executable, "-m", "ui_creator"]
+            command = [sys.executable, "-m", "uc_app"]
             # Launch the new process.
             # In dev: python.exe 1.pyw --run-ui-creator
             # In prod: HellfireHelper.exe --run-ui-creator

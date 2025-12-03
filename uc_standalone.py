@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-from ui_creator import ImageEditorApp
+from uc_app import ImageEditorApp
 
 if __name__ == "__main__":
     root = tk.Tk()
