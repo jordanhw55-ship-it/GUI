@@ -57,6 +57,8 @@ class ImageEditorApp:
         self.undo_stack = []
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
+
+        self.is_group_dragging = False # Flag to prevent single-drag during group-pan
         
         # --- NEW: Decal Feature State ---
         self.active_decal = None
