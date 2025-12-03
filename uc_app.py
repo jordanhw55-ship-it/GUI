@@ -170,8 +170,10 @@ class ImageEditorApp:
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
 
-        # --- 7. Show initial border preview ---
-        self.border_manager.show_preset_preview()
+        # --- 7. Schedule initial border preview ---
+        # We schedule this to run after the main loop starts, ensuring the window
+        # is fully initialized and visible before we try to draw on it.
+        self.master.after(100, self.border_manager.show_preset_preview)
 
     def save_settings(self):
         """Saves the current application settings to the settings file."""
@@ -390,6 +392,10 @@ class ImageEditorApp:
             self.image_manager._update_active_decal_transform()
         else:
             self.redraw_all_zoomable()
+
+        # --- FIX: If a border preview is active, update it when its parent moves ---
+        if self.border_manager.preview_rect_id:
+            self.border_manager.show_preset_preview()
 
     def on_component_release(self, event):
         """Handles release events, finalizing the drag."""
@@ -742,9 +748,10 @@ class ImageEditorApp:
                 self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
 
         # --- FIX: Redraw the border preview last to ensure it's on top ---
-        if self.border_manager.preview_rect_id:
+        # Only redraw the preview if the border tab is the one being displayed.
+        if self.border_manager.preview_rect_id and self.is_border_tab_active():
             self.border_manager.show_preset_preview()
-
+            
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()
@@ -754,7 +761,11 @@ class ImageEditorApp:
         print("-" * 30)
 
         # --- NEW: Clear any active border previews when switching context ---
-        self.border_manager.clear_preset_preview()
+        # Also, if the user is switching *to* the border tab, show the preview.
+        if self.is_border_tab_active(event):
+            self.master.after(10, lambda: self.border_manager.show_preset_preview()) # Use 'after' to ensure tab has changed
+        else:
+            self.border_manager.clear_preset_preview()
 
         # --- MODIFICATION START: Implement isolation mode ---
         if name == "Show All":
@@ -786,6 +797,16 @@ class ImageEditorApp:
             messagebox.showinfo("Layer Control", f"Layer '{name}' selected. Use 'Load Image' to assign a visual component. Note: This tile is not currently initialized on the canvas.")
             print(f"Action: Selecting layer '{name}' for potential image loading (Placeholder).")
         # --- MODIFICATION END ---
+
+    def is_border_tab_active(self, event=None):
+        """Checks if the 'Border' tab is the currently selected tab in the sidebar."""
+        try:
+            notebook = self.ui_manager.notebook # Get the notebook widget
+            selected_tab_index = notebook.index(notebook.select())
+            selected_tab_text = notebook.tab(selected_tab_index, "text")
+            return selected_tab_text == 'Border'
+        except Exception:
+            return False
 
     def update_resize_entries(self):
         """Updates the width and height entry boxes with the selected component's dimensions."""

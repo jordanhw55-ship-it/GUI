@@ -114,6 +114,11 @@ class BorderManager:
 
     def show_preset_preview(self, event=None):
         """Draws a temporary, semi-transparent rectangle to preview the preset border."""
+        # --- FIX: Do not show preview if the border tab is not the active context ---
+        # This prevents the preview from appearing unexpectedly during startup or tab switching.
+        if not self.app.is_border_tab_active():
+            return
+
         # First, clear any existing preview
         self.clear_preset_preview()
 

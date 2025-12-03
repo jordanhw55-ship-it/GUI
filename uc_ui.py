@@ -12,6 +12,7 @@ class UIManager:
         self.paint_color_button = None
         self.paint_toggle_btn = None
         self.eraser_toggle_btn = None
+        self.notebook = None # NEW: To hold a reference to the main notebook
 
     def create_canvas(self):
         """Creates the main canvas and returns it."""
@@ -69,30 +70,30 @@ class UIManager:
         style.configure('TNotebook.Tab', font=('Inter', 11, 'bold'), padding=[15, 5], background="#374151", foreground="#d1d5db", borderwidth=0)
         style.map("TNotebook.Tab", background=[("selected", "#4b5563")], foreground=[("selected", "white")])
 
-        notebook = ttk.Notebook(self.sidebar_frame, style='TNotebook')
-        notebook.pack(expand=True, fill='both')
+        self.notebook = ttk.Notebook(self.sidebar_frame, style='TNotebook')
+        self.notebook.pack(expand=True, fill='both')
         # --- NEW: Bind an event to clear the border preview when changing main tabs ---
         # This ensures the preview disappears when you navigate away from the Border tab.
-        notebook.bind("<<NotebookTabChanged>>", lambda event: self.app.border_manager.clear_preset_preview())
+        self.notebook.bind("<<NotebookTabChanged>>", self.app.handle_tab_click)
 
 
-        layer_tab = tk.Frame(notebook, bg="#374151")
-        paint_tab = tk.Frame(notebook, bg="#374151")
-        image_tab = tk.Frame(notebook, bg="#374151")
-        filters_tab = tk.Frame(notebook, bg="#374151")
-        border_tab = tk.Frame(notebook, bg="#374151")
-        resize_tab = tk.Frame(notebook, bg="#374151")
-        text_tab = tk.Frame(notebook, bg="#374151")
-        export_tab = tk.Frame(notebook, bg="#374151")
+        layer_tab = tk.Frame(self.notebook, bg="#374151")
+        paint_tab = tk.Frame(self.notebook, bg="#374151")
+        image_tab = tk.Frame(self.notebook, bg="#374151")
+        filters_tab = tk.Frame(self.notebook, bg="#374151")
+        border_tab = tk.Frame(self.notebook, bg="#374151")
+        resize_tab = tk.Frame(self.notebook, bg="#374151")
+        text_tab = tk.Frame(self.notebook, bg="#374151")
+        export_tab = tk.Frame(self.notebook, bg="#374151")
 
-        notebook.add(layer_tab, text='Tiles')
-        notebook.add(paint_tab, text='Paint')
-        notebook.add(border_tab, text='Border')
-        notebook.add(image_tab, text='Image')
-        notebook.add(resize_tab, text='Resize Tile')
-        notebook.add(filters_tab, text='Filters')
-        notebook.add(text_tab, text='Text')
-        notebook.add(export_tab, text='Export')
+        self.notebook.add(layer_tab, text='Tiles')
+        self.notebook.add(paint_tab, text='Paint')
+        self.notebook.add(border_tab, text='Border')
+        self.notebook.add(image_tab, text='Image')
+        self.notebook.add(resize_tab, text='Resize Tile')
+        self.notebook.add(filters_tab, text='Filters')
+        self.notebook.add(text_tab, text='Text')
+        self.notebook.add(export_tab, text='Export')
 
         self._populate_layer_tab(layer_tab)
         self._populate_paint_tab(paint_tab)
