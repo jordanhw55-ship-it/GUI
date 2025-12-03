@@ -746,6 +746,110 @@ class ImageEditorApp:
         self.redraw_all_zoomable()
         print(f"Resized '{comp.tag}' to {new_w}x{new_h}.")
 
+    def apply_border_to_selection(self):
+        """Applies a loaded border image to the currently selected component."""
+        self.border_manager.apply_border_to_selection()
+
+    def remove_border_from_selection(self):
+        """Removes the border from the currently selected component."""
+        self.border_manager.remove_border_from_selection()
+
+    def _keep_docks_on_top(self):
+        """Raises the dock canvases to ensure they are always visible."""
+        if self.ui_manager.image_dock_canvas:
+            self.ui_manager.image_dock_canvas.master.master.lift()
+        if self.ui_manager.border_dock_canvas:
+            self.ui_manager.border_dock_canvas.master.master.lift()
+
+    def apply_preview_layout(self):
+        """Makes all components visible and moves them to the 'Show All' layout positions."""
+        print("Action: Applying 'Preview All' layout.")
+        for tag, comp in self.components.items():
+            if comp.rect_id:
+                self.canvas.itemconfig(comp.rect_id, state='normal')
+            if tag in self.preview_layout and "coords" in self.preview_layout[tag]:
+                target_x1, target_y1, _, _ = self.preview_layout[tag]["coords"]
+                width = comp.world_x2 - comp.world_x1
+                height = comp.world_y2 - comp.world_y1
+                comp.world_x1, comp.world_y1 = target_x1, target_y1
+                comp.world_x2, comp.world_y2 = target_x1 + width, target_y1 + height
+            if comp.pil_image is None and comp.rect_id:
+                self.canvas.itemconfig(comp.rect_id, outline='white', width=2)
+        self.redraw_all_zoomable()
+
+    def _export_modified_images(self, export_format):
+        """Generic export function to save modified layers as either PNG or DDS."""
+        print("-" * 30)
+        print(f"Starting export process for {export_format.upper()}...")
+        if export_format not in ['png', 'dds']:
+            messagebox.showerror("Export Error", f"Unsupported export format: {export_format}")
+            return
+
+        save_dir = os.path.join(self.output_dir, f"export_{export_format}")
+        os.makedirs(save_dir, exist_ok=True)
+
+        paint_layer = self.paint_manager.paint_layer_image
+        exported_count = 0
+
+        for tag, comp in self.components.items():
+            if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_") or tag.startswith("border_"):
+                continue
+
+            final_image, has_paint = self.image_manager._composite_decal_onto_image(
+                target_comp=comp,
+                decal_stamp_image=paint_layer,
+                stamp_world_x1=0, stamp_world_y1=0,
+                stamp_world_x2=self.CANVAS_WIDTH, stamp_world_y2=self.CANVAS_HEIGHT,
+                is_border=False
+            )
+
+            is_decal_changed = comp.pil_image is not comp.original_pil_image
+            if not is_decal_changed and not has_paint:
+                continue
+
+            save_path = os.path.join(save_dir, f"{tag}.{export_format}")
+            try:
+                if export_format == 'dds':
+                    texconv_path = os.path.join(self.tools_dir, "texconv.exe")
+                    if not os.path.exists(texconv_path):
+                        messagebox.showerror("DDS Export Error", f"texconv.exe not found at:\n{texconv_path}")
+                        return
+
+                    temp_png_path = os.path.join(save_dir, f"{tag}.png")
+                    final_image.save(temp_png_path, format='PNG')
+
+                    command = [texconv_path, "-f", "BC3_UNORM", "-o", save_dir, "-y", temp_png_path]
+                    result = subprocess.run(command, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+
+                    if result.returncode != 0:
+                        error_message = f"texconv.exe failed.\nSTDOUT:\n{result.stdout.strip()}\n\nSTDERR:\n{result.stderr.strip()}"
+                        raise RuntimeError(error_message)
+                    os.remove(temp_png_path)
+                else:
+                    final_image.save(save_path)
+
+                exported_count += 1
+                print(f"Saved modified image to: {save_path}")
+            except (Exception, RuntimeError) as e:
+                messagebox.showerror("DDS Export Error", f"Could not save '{os.path.basename(save_path)}'.\n\nDetails:\n{e}")
+
+        if exported_count > 0:
+            messagebox.showinfo("Export Complete", f"Successfully exported {exported_count} modified files.")
+        else:
+            messagebox.showinfo("Export Info", "No modified layers found to export.")
+
+    def open_export_folder(self, export_format: str):
+        """Opens the specified export folder."""
+        folder_path = os.path.join(self.output_dir, f"export_{export_format}")
+        if not os.path.isdir(folder_path):
+            messagebox.showinfo("Folder Not Found", "The export folder does not exist yet. Please export images first.")
+            return
+        try:
+            if sys.platform == "win32":
+                os.startfile(folder_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open folder: {e}")
+
     def reset_selected_layer(self):
         """Resets the currently selected layer to its original, unmodified image."""
         if not self.selected_component_tag:

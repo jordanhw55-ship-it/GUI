@@ -205,8 +205,7 @@ class UIManager:
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
         tk.Label(tab, text="ASSET & DECAL CONTROLS", **label_style).pack(fill='x', pady=(10,0))
-        tk.Button(tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=self.app.image_manager._load_asset_to_dock_generic(is_border=True)).pack(fill='x', padx=10, pady=(5,10))
+        tk.Button(tab, text="Load Border to Dock", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=self.app.border_manager.load_border_to_dock).pack(fill='x', padx=10, pady=(5,10))
 
         border_dock_frame = tk.Frame(tab, bg="#2d3748", bd=2, relief="sunken")
         border_dock_frame.pack(fill='both', expand=True, padx=10, pady=5)
