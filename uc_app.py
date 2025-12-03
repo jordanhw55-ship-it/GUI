@@ -902,12 +902,24 @@ class ImageEditorApp:
 
         exported_count = 0
 
+        # --- NEW: Pre-calculate which borders belong to which tiles ---
+        borders_by_parent = {}
+        for comp in self.components.values():
+            # Find all created preset borders that have a parent.
+            if comp.tag.startswith("preset_border_") and comp.parent_tag:
+                parent_tag = comp.parent_tag
+                if parent_tag not in borders_by_parent:
+                    borders_by_parent[parent_tag] = []
+                borders_by_parent[parent_tag].append(comp)
+
         for tag, comp in self.components.items():
-            if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_") or tag.startswith("border_"):
+            # We only export primary tiles, not assets, clones, or the borders themselves.
+            if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_") or tag.startswith("preset_border_"):
                 continue
 
             final_image = comp.pil_image.copy()
             has_paint = False
+            has_borders = False
             if paint_layer:
                 # Composite the paint layer onto the component's image
                 final_image, has_paint = self.image_manager._composite_decal_onto_image(comp, paint_layer, 0, 0, self.CANVAS_WIDTH, self.CANVAS_HEIGHT, is_border=False)
@@ -915,7 +927,14 @@ class ImageEditorApp:
             # Check if the image was modified by decals or paint
             is_modified = (comp.original_pil_image is not None and not self.image_manager._are_images_identical(comp.pil_image, comp.original_pil_image)) or has_paint
             if not is_modified:
-                continue
+                # --- NEW: Check if the only modification is an applied border ---
+                if tag not in borders_by_parent:
+                    continue # Skip if not modified and has no borders
+
+            # --- NEW: Composite any borders onto the final image ---
+            if tag in borders_by_parent:
+                for border_comp in borders_by_parent[tag]:
+                    final_image, has_borders = self.image_manager._composite_decal_onto_image(comp, border_comp.pil_image, border_comp.world_x1, border_comp.world_y1, border_comp.world_x2, border_comp.world_y2, is_border=True)
 
             save_path = os.path.join(save_dir, f"{tag}.{export_format}")
             try:

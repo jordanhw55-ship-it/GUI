@@ -88,6 +88,7 @@ class BorderManager:
         self.next_border_id += 1
         border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + border_w, border_y + border_h, "blue", "BORDER")
         border_comp.is_draggable = False # Borders are not draggable by default
+        border_comp.parent_tag = target_comp.tag # Link the border to its parent tile
 
         # Render the border image using the selected style and thickness
         border_image = self._render_border_image((border_w, border_h))
