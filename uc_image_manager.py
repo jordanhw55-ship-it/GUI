@@ -183,13 +183,7 @@ class ImageManager:
             
             cropped_stamp = decal_stamp_image.crop((crop_x1, crop_y1, crop_x2, crop_y2))
 
-            # Resize the cropped stamp to match the target's image scale
-            final_stamp_w = int(cropped_stamp.width * scale_x)
-            final_stamp_h = int(cropped_stamp.height * scale_y)
-            if final_stamp_w > 0 and final_stamp_h > 0:
-                cropped_stamp = cropped_stamp.resize((final_stamp_w, final_stamp_h), Image.Resampling.LANCZOS)
-
-            # Composite the images
+            # --- DEFINITIVE FIX: Do not resize the cropped stamp. It's already at the correct scale. ---
             final_image = target_comp.pil_image.copy()
             decal_layer = Image.new("RGBA", final_image.size, (0, 0, 0, 0))
             decal_layer.paste(cropped_stamp, (paste_x, paste_y), cropped_stamp)
