@@ -320,14 +320,23 @@ class ImageManager:
         offset_x_world = border_comp.world_x1 - target_comp.world_x1
         offset_y_world = border_comp.world_y1 - target_comp.world_y1
 
-        # Convert world offset to pixel offset on the target image
+        # --- DEFINITIVE FIX for EXPORT SCALING ---
+        # 1. Calculate the scale factor between the target's world size and its image pixel size.
         target_world_w = target_comp.world_x2 - target_comp.world_x1
-        paste_x = int((offset_x_world / target_world_w) * target_img.width)
-        paste_y = int((offset_y_world / target_world_w) * target_img.width) # Use width for uniform scaling
+        if target_world_w == 0: return target_img, False
+        pixel_to_world_scale = target_img.width / target_world_w
+
+        # 2. Calculate the paste position in the target image's pixel space.
+        paste_x = int(offset_x_world * pixel_to_world_scale)
+        paste_y = int(offset_y_world * pixel_to_world_scale)
+
+        # 3. Resize the border image to match the target's pixel scale.
+        border_w_pixels = int(border_img.width * pixel_to_world_scale)
+        border_h_pixels = int(border_img.height * pixel_to_world_scale)
+        resized_border_img = border_img.resize((border_w_pixels, border_h_pixels), Image.Resampling.LANCZOS)
 
         final_image = target_img.copy()
-        # Paste the border image onto the copy of the target image at the calculated pixel offset
-        final_image.paste(border_img, (paste_x, paste_y), border_img)
+        final_image.paste(resized_border_img, (paste_x, paste_y), resized_border_img)
         return final_image, True
 
     def schedule_transform_update(self, event=None):
