@@ -158,7 +158,7 @@ class BorderManager:
             fill="#22c55e",  # A nice green color
             stipple="gray50", # This gives a semi-transparent effect
             outline="white",
-            width=self.border_thickness.get(),
+            width=self.border_thickness.get() * self.app.camera.zoom_scale,
             tags=("border_preview",)
         )
         # --- FIX: Ensure the preview is always drawn on top of other items ---
