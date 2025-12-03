@@ -1,6 +1,6 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
-from PIL import Image
+from tkinter import colorchooser, messagebox
+from PIL import Image, ImageDraw
 import os
 
 class BorderManager:
@@ -8,26 +8,56 @@ class BorderManager:
     def __init__(self, app):
         self.app = app
         self.canvas = app.canvas
+        self.shape_color = "#ff0000" # Default to red
+
+    def choose_shape_color(self):
+        """Opens a color chooser and sets the shape color."""
+        color_code = colorchooser.askcolor(title="Choose Shape Color", initialcolor=self.shape_color)
+        if color_code and color_code[1]:
+            self.shape_color = color_code[1]
+            # Update the UI to show the new color
+            self.app.ui_manager.shape_color_btn.config(bg=self.shape_color)
+            print(f"Shape color set to: {self.shape_color}")
+
+    def draw_rectangle_on_selection(self, x, y, width, height):
+        """Draws a solid rectangle on the selected component's image."""
+        if not self.app.selected_component_tag:
+            messagebox.showwarning("Selection Required", "Please select a tile to draw on.")
+            return
+
+        comp = self.app.components.get(self.app.selected_component_tag)
+        if not comp or not comp.pil_image:
+            messagebox.showwarning("No Image", "The selected tile does not have an image to draw on.")
+            return
+
+        try:
+            x, y, width, height = int(x), int(y), int(width), int(height)
+            if width <= 0 or height <= 0:
+                raise ValueError("Dimensions must be positive.")
+        except (ValueError, TypeError):
+            messagebox.showerror("Invalid Input", "Please enter valid numbers for shape dimensions.")
+            return
+
+        # Save state for undo
+        self.app._save_undo_state({comp.tag: comp.pil_image.copy()})
+
+        # Draw directly on the image
+        modified_image = comp.pil_image.copy()
+        draw = ImageDraw.Draw(modified_image)
+        draw.rectangle([x, y, x + width, y + height], fill=self.shape_color)
+
+        # Apply the modified image back to the component
+        comp.set_image(modified_image)
+        print(f"Drew a rectangle on '{comp.tag}'.")
 
     def load_border_to_dock(self):
-        """Loads a border image to the asset dock, marking it specifically as a border."""
-        self.app.image_manager._load_asset_to_dock_generic(is_border=True) # This is now correct
+        """Placeholder for future border loading functionality."""
+        pass
 
     def apply_border_to_selection(self):
-        """
-        Applies a border to the underlying tile(s) by treating it as a decal stamp.
-        This function finds the active border decal and stamps it onto any component
-        it overlaps with.
-        """
-        self.app.apply_decal_to_underlying_layer()
+        """Placeholder for future border application functionality."""
+        pass
 
     def remove_border_from_selection(self):
-        """
-        In the current decal-based workflow, removing a border is the same as
-        resetting the tile's image. This provides user guidance.
-        """
-        if not self.app.selected_component_tag:
-            messagebox.showwarning("Selection Required", "Please select a tile to remove a border from.")
-            return
-        self.app.reset_selected_layer()
-        messagebox.showinfo("Border Removed", f"The border has been removed from '{self.app.selected_component_tag}' by resetting the tile.")
+        """Placeholder for future border removal functionality."""
+        pass
