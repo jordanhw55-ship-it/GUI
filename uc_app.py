@@ -754,12 +754,27 @@ class ImageEditorApp:
     def redraw_all_zoomable(self, use_fast_preview=False):
         """Redraws all zoomable items based on the current camera view."""
         zoom_scale = self.camera.zoom_scale
+        canvas_w = self.canvas.winfo_width()
+        canvas_h = self.canvas.winfo_height()
 
         # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
+            # --- DEFINITIVE FIX: Implement View Frustum Culling ---
+            # 1. Calculate the component's on-screen bounding box.
+            sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+            sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
+
+            # 2. Check if the component is outside the visible canvas area.
+            if sx2 < 0 or sx1 > canvas_w or sy2 < 0 or sy1 > canvas_h:
+                # If it's off-screen, hide it and skip all expensive processing.
+                if comp.rect_id: self.canvas.itemconfig(comp.rect_id, state='hidden')
+                continue # Go to the next component
+            else:
+                # If it's on-screen, ensure it's visible.
+                if comp.rect_id: self.canvas.itemconfig(comp.rect_id, state='normal')
+
             # --- FIX: Handle components that have not been drawn yet ---
             # If a component (like a new clone) has no rect_id, it means it's not on the canvas.
-            # We must create a canvas item for it before we can update it.
             if not comp.rect_id:
                 if comp.pil_image: # It's an image component (like a clone)
                     sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
@@ -793,8 +808,6 @@ class ImageEditorApp:
 
                     # --- DEFINITIVE FIX for GAPS ---
                     # Calculate screen coordinates first, then derive width/height from them.
-                    sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
-                    sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
                     screen_w, screen_h = sx2 - sx1, sy2 - sy1
 
                     # Only regenerate the Tkinter image if the size has actually changed.
@@ -814,8 +827,6 @@ class ImageEditorApp:
                     self.canvas.coords(comp.rect_id, sx1, sy1)
 
                 elif comp.text_id: # It's a placeholder
-                    sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
-                    sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
