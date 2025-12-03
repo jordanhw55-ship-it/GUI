@@ -181,7 +181,7 @@ class BorderManager:
         self.preview_rect_id = self.canvas.create_rectangle(
             sx1, sy1, sx2, sy2,
             fill="#22c55e",  # A nice green color
-            stipple="gray25", # This gives a more transparent effect
+            stipple="gray12", # This gives an even more transparent effect
             outline="", # No outline on the fill itself
             tags=("border_preview", "fill")
         )
