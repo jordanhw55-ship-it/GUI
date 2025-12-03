@@ -66,6 +66,8 @@ class ImageEditorApp:
         self.resize_height.trace_add("write", self.on_resize_entry_change)
 
         # --- NEW: Undo Stack ---
+        self.export_all_tiles = tk.BooleanVar(value=True) # FIX: For the export checkbox
+
         self.undo_stack = []
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
