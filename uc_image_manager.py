@@ -16,7 +16,8 @@ class ImageManager:
         self.decal_rotation = tk.DoubleVar(value=0)
         self.transform_job = None
         self.dock_assets = []
-        self.next_dynamic_id = 0
+        self.next_clone_id = 0
+        self.next_asset_id = 0
 
     def load_asset_to_dock(self):
         """Loads a regular image to the asset dock."""
@@ -35,8 +36,8 @@ class ImageManager:
 
         try:
             full_res_image = Image.open(image_path).convert("RGBA")
-            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
-            self.next_dynamic_id += 1
+            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_asset_id}"
+            self.next_asset_id += 1
 
             if is_border:
                 target_canvas = self.app.ui_manager.border_dock_canvas
@@ -99,8 +100,8 @@ class ImageManager:
         if existing_active_image:
             self._remove_stamp_source_component(existing_active_image)
 
-        clone_tag = f"{clone_prefix}{self.next_dynamic_id}"
-        self.next_dynamic_id += 1
+        clone_tag = f"{clone_prefix}{self.next_clone_id}"
+        self.next_clone_id += 1
         
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
@@ -112,7 +113,8 @@ class ImageManager:
         # --- CRITICAL FIX: Give the clone its own copy of the image ---
         # This prevents the clone's image from being a direct reference to the dock asset's image.
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
+        # --- FIX: Use the clone's own copied image for display, not the asset's. ---
+        clone_comp._set_pil_image(clone_comp.original_pil_image, resize_to_fit=False)
         
         self.app.components[clone_tag] = clone_comp
         self._update_active_decal_transform()
