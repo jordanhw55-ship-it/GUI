@@ -308,27 +308,24 @@ class ImageManager:
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
         clone_comp = DraggableComponent(clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
-
+        
+        # --- REFACTOR: Correct the order of operations for clone creation ---
+        
+        # 1. Add the component to the main dictionary so it can be found by other methods.
+        self.app.components[clone_tag] = clone_comp
+        
+        # 2. Set its core properties and images.
         clone_comp.is_border_asset = asset_comp.is_border_asset
         clone_comp.is_decal = True
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-
-        # --- FIX: Set the base image AND apply the initial transparent transform ---
-        # Set the actual image data for stamping.
         clone_comp.set_image(clone_comp.original_pil_image)
-
-        # Add to the main components dictionary so it gets drawn on the main canvas
-        self.app.components[clone_tag] = clone_comp
-        # Bind events for the new clone
         self.app._bind_component_events(clone_tag)
 
-        # Apply the initial semi-transparent transform
+        # 3. Apply the initial transform (which creates the transparent preview).
         self._update_active_decal_transform()
 
-        # Ensure the dock itself remains on top after creating a clone
+        # 4. Redraw everything to make the new, correctly-configured clone visible.
         self.app._keep_docks_on_top()
-
-        # --- FIX: Redraw the canvas to make the new clone visible ---
         self.app.redraw_all_zoomable()
 
         print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
