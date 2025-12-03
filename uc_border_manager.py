@@ -27,7 +27,7 @@ class BorderManager:
             "Minimap Border": {
                 "target_tile": "humanuitile01",
                 "shape_type": "relative_rect",
-                "shape_data": [0.037109375, 0.4296875, 0.5390625, 0.5390625] # High-precision values for the minimap cutout
+                "shape_data": [0.0390625, 0.431640625, 0.5390625, 0.5390625] # High-precision values for the minimap cutout, shifted 1px right/down
             },
             "Action Bar Top Edge": {
                 "target_tile": "humanuitile02",
