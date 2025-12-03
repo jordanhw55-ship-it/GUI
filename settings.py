@@ -21,8 +21,9 @@ class SettingsManager:
             "play_sound_on_found": False,
             "selected_sound": "ping1.mp3",
             "volume": 100,            
-            "font_family": "Segoe UI",
-            "font_size": 11
+            "font_family": "Segoe UI", # This is part of the PySide6 app, not the Tkinter one
+            "font_size": 11,
+            "dock_assets": [] # NEW: To store paths of loaded dock images
         }
         self.settings = self.defaults.copy()
         self.load()
@@ -49,7 +50,9 @@ class SettingsManager:
             "custom_theme": window_instance.custom_theme,
             "custom_title_image_path": window_instance.custom_title_image_path,
             "in_progress_recipes": [window_instance.items_tab.in_progress_recipes_list.item(i).text() for i in range(window_instance.items_tab.in_progress_recipes_list.count())],
-            "keybinds": window_instance.get_keybind_settings_from_ui(),
+            # For the UI Creator, these settings don't exist, so we provide defaults.
+            "keybinds": {},
+            "dock_assets": [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in window_instance.image_manager.dock_assets if asset.image_path],
             "automation": window_instance.get_automation_settings_from_ui(),
             "watchlist": window_instance.lobby_manager.watchlist,
             "play_sound_on_found": window_instance.lobby_manager.lobbies_tab.lobby_placeholder_checkbox.isChecked(),

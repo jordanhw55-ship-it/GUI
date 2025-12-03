@@ -85,6 +85,48 @@ class ImageManager:
         except Exception as e:
             messagebox.showerror(f"{asset_type} Load Error", f"Could not load {asset_type.lower()} image: {e}")
 
+    def load_asset_from_path(self, image_path: str, is_border: bool):
+        """Loads a dock asset directly from a file path without a dialog."""
+        if not image_path or not os.path.exists(image_path):
+            print(f"[WARNING] Could not reload asset. File not found: {image_path}")
+            return
+
+        try:
+            full_res_image = Image.open(image_path).convert("RGBA")
+            asset_tag = f"dock_{'border' if is_border else 'asset'}_{self.next_dynamic_id}"
+            self.next_dynamic_id += 1
+
+            if is_border:
+                target_canvas = self.app.ui_manager.border_dock_canvas
+                item_index = sum(1 for asset in self.dock_assets if asset.is_border_asset)
+            else:
+                target_canvas = self.app.ui_manager.image_dock_canvas
+                item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
+
+            items_per_row = 2
+            padding = 10
+            asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
+            asset_height = asset_width
+
+            col = item_index % items_per_row
+            row = item_index // items_per_row
+            x, y = padding + col * (asset_width + padding), padding + row * (asset_height + padding)
+
+            asset_comp = DraggableComponent(self.app, asset_tag, x, y, x + asset_width, y + asset_height, "blue", "ASSET", is_dock_asset=True)
+            asset_comp.is_border_asset = is_border
+            asset_comp.image_path = image_path # Save the path
+
+            target_canvas.tag_bind(asset_tag, '<Button-1>', lambda event, comp=asset_comp: self.handle_dock_asset_press(event, comp))
+
+            asset_comp.original_pil_image = full_res_image
+            asset_comp.preview_pil_image = full_res_image.copy()
+            asset_comp.preview_pil_image.thumbnail((int(asset_width), int(asset_height)), Image.Resampling.LANCZOS)
+            asset_comp.tk_image = ImageTk.PhotoImage(asset_comp.preview_pil_image)
+            asset_comp.rect_id = target_canvas.create_image(x, y, anchor=tk.NW, image=asset_comp.tk_image, tags=(asset_tag,))
+            self.dock_assets.append(asset_comp)
+            target_canvas.config(scrollregion=target_canvas.bbox("all"))
+        except Exception as e:
+            print(f"[ERROR] Failed to reload asset from path '{image_path}': {e}")
     def apply_decal_to_underlying_layer(self):
         """Finds the active decal and stamps it onto any underlying components."""
         stamp_source_comp = self._find_topmost_stamp_source(show_warning=True, clone_type='any')

@@ -162,6 +162,15 @@ class ImageEditorApp:
         # --- 5. Apply Initial Layout ---
         self.apply_preview_layout()
 
+        # --- 6. Reload saved dock assets ---
+        self._reload_dock_assets()
+
+    def _reload_dock_assets(self):
+        """Loads assets into the dock from paths saved in settings."""
+        saved_assets = self.settings_manager.get("dock_assets", [])
+        for asset_info in saved_assets:
+            self.image_manager.load_asset_from_path(asset_info.get('path'), asset_info.get('is_border', False))
+
     def _bind_component_events(self, comp_tag):
         """Binds press, drag, and release events for a given component tag."""
         self.canvas.tag_bind(comp_tag, '<Button-1>', self.on_component_press)
