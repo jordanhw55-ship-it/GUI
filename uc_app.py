@@ -741,6 +741,10 @@ class ImageEditorApp:
                 self.canvas.itemconfig(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
                 self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
 
+        # --- FIX: Redraw the border preview last to ensure it's on top ---
+        if self.border_manager.preview_rect_id:
+            self.border_manager.show_preset_preview()
+
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()

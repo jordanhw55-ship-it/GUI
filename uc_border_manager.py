@@ -156,6 +156,8 @@ class BorderManager:
             width=self.border_thickness.get(),
             tags=("border_preview",)
         )
+        # --- FIX: Ensure the preview is always drawn on top of other items ---
+        self.canvas.tag_raise(self.preview_rect_id)
 
     def apply_border_to_selection(self):
         pass # This method is now handled by the decal system
