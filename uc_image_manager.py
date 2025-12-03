@@ -109,7 +109,9 @@ class ImageManager:
         clone_comp.is_border_asset = asset_comp.is_border_asset
         clone_comp.is_decal = True
 
-        clone_comp.original_pil_image = asset_comp.original_pil_image
+        # --- CRITICAL FIX: Give the clone its own copy of the image ---
+        # This prevents the clone's image from being a direct reference to the dock asset's image.
+        clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
         clone_comp._set_pil_image(asset_comp.original_pil_image, resize_to_fit=False)
         
         self.app.components[clone_tag] = clone_comp
