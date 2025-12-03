@@ -56,7 +56,9 @@ class ImageManager:
 
             items_per_row = 4
             padding = 10
-            asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
+            scrollbar_width = 20 # Approximate width of the scrollbar
+            available_width = self.app.SIDEBAR_WIDTH - scrollbar_width
+            asset_width = (available_width - (padding * (items_per_row + 1))) / items_per_row
             asset_height = asset_width
 
             col = item_index % items_per_row
@@ -109,7 +111,9 @@ class ImageManager:
 
             items_per_row = 4
             padding = 10
-            asset_width = (self.app.SIDEBAR_WIDTH - (padding * (items_per_row + 1))) / items_per_row
+            scrollbar_width = 20 # Approximate width of the scrollbar
+            available_width = self.app.SIDEBAR_WIDTH - scrollbar_width
+            asset_width = (available_width - (padding * (items_per_row + 1))) / items_per_row
             asset_height = asset_width
 
             col = item_index % items_per_row
