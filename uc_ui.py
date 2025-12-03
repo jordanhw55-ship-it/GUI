@@ -138,13 +138,17 @@ class UIManager:
         tk.Label(tab, text="PAINTING TOOLS", **label_style).pack(fill='x')
         paint_frame = tk.Frame(tab, bg="#374151")
         paint_frame.pack(fill='x', padx=10, pady=5)
-        self.paint_toggle_btn = tk.Button(paint_frame, text="Enable Paint Mode", bg='#d97706', fg='white', relief='flat', font=button_font,
+        self.paint_toggle_btn = tk.Button(paint_frame, text="Paint Brush", bg='#d97706', fg='white', relief='flat', font=button_font,
                                            command=lambda: self.app.paint_manager.toggle_paint_mode(tool='paint'))
         self.paint_toggle_btn.pack(fill='x', expand=True)
 
-        self.eraser_toggle_btn = tk.Button(paint_frame, text="Enable Eraser", bg='#6b7280', fg='white', relief='flat', font=button_font,
+        self.eraser_toggle_btn = tk.Button(paint_frame, text="Transparency Brush", bg='#0e7490', fg='white', relief='flat', font=button_font,
                                             command=lambda: self.app.paint_manager.toggle_paint_mode(tool='eraser'))
         self.eraser_toggle_btn.pack(fill='x', expand=True, pady=(5,0))
+
+        self.tile_eraser_btn = tk.Button(paint_frame, text="Tile Eraser", bg='#991b1b', fg='white', relief='flat', font=button_font,
+                                           command=lambda: self.app.toggle_tile_eraser_mode())
+        self.tile_eraser_btn.pack(fill='x', expand=True, pady=(5,0))
 
         tk.Frame(paint_frame, height=2, bg="#6b7280").pack(fill='x', pady=10)
 

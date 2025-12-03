@@ -56,6 +56,7 @@ class ImageEditorApp:
         self.last_drag_x = 0
         self.last_drag_y = 0
         self.selected_component_tag = None
+        self.tile_eraser_mode_active = False # NEW: For the tile eraser tool
         self.pre_move_state = {} # NEW: To store component positions before a move
         
         # --- NEW: Painting Feature State ---
@@ -337,6 +338,15 @@ class ImageEditorApp:
         comp = self.components.get(comp_tag)
         if not comp: return
 
+        # --- NEW: Handle Tile Eraser ---
+        if self.tile_eraser_mode_active:
+            # We don't want to erase the main tiles, only clones, decals, or borders.
+            if not comp.is_decal and not comp.tag.startswith("preset_border_"):
+                messagebox.showwarning("Action Not Allowed", "The Tile Eraser can only remove temporary images and preset borders, not the main layout tiles.")
+                return
+            self.delete_component(comp.tag)
+            return # Stop further processing
+
         if comp.is_dock_asset:
             # This is a click on a dock asset, which creates a clone.
             # It's not a move operation, so we don't save a move state.
@@ -521,6 +531,48 @@ class ImageEditorApp:
             # This ensures all layers are visible and selectable again.
             self.apply_preview_layout()
 
+    def toggle_tile_eraser_mode(self):
+        """Toggles the tile eraser mode on or off."""
+        self.tile_eraser_mode_active = not self.tile_eraser_mode_active
+
+        if self.tile_eraser_mode_active:
+            # Deactivate other modes
+            self.paint_manager.toggle_paint_mode('off')
+            
+            self.ui_manager.tile_eraser_btn.config(text="Tile Eraser (Active)", bg='#ef4444', relief='sunken')
+            self.canvas.config(cursor="X_cursor")
+            print("Tile Eraser mode ENABLED.")
+        else:
+            self.ui_manager.tile_eraser_btn.config(text="Tile Eraser", bg='#991b1b', relief='flat')
+            self.canvas.config(cursor="")
+            print("Tile Eraser mode DISABLED.")
+
+    def delete_component(self, tag_to_delete):
+        """Deletes a component from the canvas and the application state."""
+        comp_to_delete = self.components.get(tag_to_delete)
+        if not comp_to_delete:
+            return
+
+        print(f"Deleting component '{tag_to_delete}'...")
+
+        # --- NEW: Save state for Undo ---
+        # We save all necessary data to fully reconstruct the component.
+        undo_data = {
+            'type': 'delete_component',
+            'component_data': {
+                'tag': comp_to_delete.tag, 'x1': comp_to_delete.world_x1, 'y1': comp_to_delete.world_y1,
+                'x2': comp_to_delete.world_x2, 'y2': comp_to_delete.world_y2, 'color': comp_to_delete.placeholder_color,
+                'text': comp_to_delete.placeholder_text, 'is_decal': comp_to_delete.is_decal,
+                'is_border_asset': comp_to_delete.is_border_asset, 'parent_tag': comp_to_delete.parent_tag,
+                'pil_image': comp_to_delete.pil_image.copy() if comp_to_delete.pil_image else None,
+                'original_pil_image': comp_to_delete.original_pil_image.copy() if comp_to_delete.original_pil_image else None
+            }
+        }
+        self._save_undo_state(undo_data)
+
+        self.image_manager._remove_stamp_source_component(comp_to_delete)
+        print(f"Component '{tag_to_delete}' deleted.")
+
     def save_layout(self):
         """Saves the current coordinates of all components to a JSON file."""
         if not self.components:
@@ -642,6 +694,26 @@ class ImageEditorApp:
                     del self.components[tag_to_remove]
                     self.redraw_all_zoomable()
                     print(f"Undid component addition for '{tag_to_remove}'.")
+            elif action_type == 'delete_component':
+                data = last_state.get('component_data')
+                if data:
+                    # Re-create the component from the saved data
+                    new_comp = DraggableComponent(
+                        self, data['tag'], data['x1'], data['y1'], data['x2'], data['y2'],
+                        data['color'], data['text']
+                    )
+                    new_comp.is_decal = data['is_decal']
+                    new_comp.is_border_asset = data['is_border_asset']
+                    new_comp.parent_tag = data['parent_tag']
+                    new_comp.original_pil_image = data['original_pil_image']
+                    
+                    self.components[data['tag']] = new_comp
+                    self._bind_component_events(data['tag'])
+                    
+                    # Set the image, which will trigger a redraw
+                    if data['pil_image']:
+                        new_comp.set_image(data['pil_image'])
+                    print(f"Undid component deletion for '{data['tag']}'.")
             else: # It's a component image state (original implementation)
                 for tag, image in last_state.items():
                     if tag in self.components:

@@ -26,19 +26,19 @@ class PaintManager:
         # Deactivate all tools first
         self.paint_mode_active = False
         self.eraser_mode_active = False
-        self.app.ui_manager.paint_toggle_btn.config(text="Enable Paint Mode", bg='#d97706', relief='flat')
-        self.app.ui_manager.eraser_toggle_btn.config(text="Enable Eraser", bg='#6b7280', relief='flat')
+        self.app.ui_manager.paint_toggle_btn.config(text="Paint Brush", bg='#d97706', relief='flat')
+        self.app.ui_manager.eraser_toggle_btn.config(text="Transparency Brush", bg='#0e7490', relief='flat')
         self.app.ui_manager.paint_color_button.config(state='disabled')
 
         # Activate the selected tool if it wasn't already active
         if is_activating_paint:
             self.paint_mode_active = True
-            self.app.ui_manager.paint_toggle_btn.config(text="Disable Paint Mode", bg='#ef4444', relief='sunken')
+            self.app.ui_manager.paint_toggle_btn.config(text="Paint Brush (Active)", bg='#ef4444', relief='sunken')
             self.app.ui_manager.paint_color_button.config(state='normal')
             print("Paint mode ENABLED.")
         elif is_activating_eraser:
-            self.eraser_mode_active = True
-            self.app.ui_manager.eraser_toggle_btn.config(text="Disable Eraser", bg='#ef4444', relief='sunken')
+            self.eraser_mode_active = True # This is our transparency brush
+            self.app.ui_manager.eraser_toggle_btn.config(text="Transparency Brush (Active)", bg='#ef4444', relief='sunken')
             print("Eraser mode ENABLED.")
         else:
             print("Paint and Eraser modes DISABLED.")
