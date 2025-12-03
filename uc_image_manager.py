@@ -319,24 +319,27 @@ class ImageManager:
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
         w, h = asset_comp.original_pil_image.size
         clone_comp = DraggableComponent(self.app, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
-        
-        # --- REFACTOR: Correct the order of operations for clone creation ---
-        
-        # 1. Add the component to the main dictionary so it can be found by other methods.
-        self.app.components[clone_tag] = clone_comp
-        
-        # 2. Set its core properties and bind events so it can be dragged.
+
+        # --- DEFINITIVE FIX: Create the transparent preview BEFORE drawing ---
+        # 1. Set the clone's core properties.
         clone_comp.is_border_asset = asset_comp.is_border_asset
         clone_comp.is_decal = True
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        # Set the main pil_image to the full-res original for stamping.
         clone_comp.pil_image = clone_comp.original_pil_image.copy()
+
+        # 2. Generate the initial semi-transparent display image.
+        # This is the same logic from _update_active_decal_transform, but applied immediately.
+        alpha = clone_comp.original_pil_image.getchannel('A')
+        semi_transparent_alpha = Image.eval(alpha, lambda a: a // 2)
+        display_image = clone_comp.original_pil_image.copy()
+        display_image.putalpha(semi_transparent_alpha)
+        clone_comp.display_pil_image = display_image # Set the transparent image
+
+        # 3. Now, add the fully prepared component to the app and draw it.
+        self.app.components[clone_tag] = clone_comp
         self.app._bind_component_events(clone_tag)
 
-        # 3. Apply the initial transform (which creates the transparent preview).
-        self._update_active_decal_transform()
-
-        # 4. Final setup.
+        # 4. Final setup and redraw.
         self.app._keep_docks_on_top()
         self.app.redraw_all_zoomable()
 
