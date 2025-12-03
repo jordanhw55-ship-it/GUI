@@ -334,10 +334,10 @@ class ImageManager:
         paste_y = int(offset_y_world * scale_y)
 
         # 3. Resize the border image to match the target's pixel scale.
-        border_world_w = border_comp.world_x2 - border_comp.world_x1
-        border_world_h = border_comp.world_y2 - border_comp.world_y1
-        border_w_pixels = int(border_world_w * scale_x)
-        border_h_pixels = int(border_world_h * scale_y)
+        # --- DEFINITIVE FIX for off-by-one errors ---
+        # Use the border component's world dimensions for precise scaling.
+        border_w_pixels = int((border_comp.world_x2 - border_comp.world_x1) * scale_x)
+        border_h_pixels = int((border_comp.world_y2 - border_comp.world_y1) * scale_y)
         resized_border_img = border_img.resize((border_w_pixels, border_h_pixels), Image.Resampling.LANCZOS)
 
         final_image = target_img.copy()
