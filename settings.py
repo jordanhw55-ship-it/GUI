@@ -42,9 +42,10 @@ class SettingsManager:
 
     def save(self, window_instance):
         """Gathers current state from the UI and saves it to the JSON file."""
-        # --- DEFINITIVE FIX: Safely handle dock_assets saving ---
-        # Check for image_manager before trying to access it to prevent AttributeError
-        # when saving from the main PySide6 application.
+        # --- DEFINITIVE FIX: Perform a safe read-modify-write operation ---
+        # 1. Load the most recent settings from the file to avoid overwriting data from other apps.
+        self.load()
+
         dock_assets_to_save = []
         if hasattr(window_instance, 'image_manager'):
             dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in window_instance.image_manager.dock_assets if asset.image_path]
