@@ -155,12 +155,15 @@ class DraggableComponent:
         self.last_x = event.x
         self.last_y = event.y
         
-        print(f"[DEBUG] Pressed '{self.tag}' at screen coords ({event.x}, {event.y})")
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        print(f"[DEBUG] Pressed '{self.tag}' | Screen: ({event.x}, {event.y}) | World: ({int(world_x)}, {int(world_y)})")
+
         self.canvas.tag_raise(self.rect_id)
         if self.text_id:
             self.canvas.tag_raise(self.text_id)
 
     def on_drag(self, event):
+        """Calculates the distance moved and updates the element's position."""
         """Calculates the distance moved and updates the element's position."""
         if not self.is_draggable or (self.app.is_group_dragging and not self.is_decal) or self.is_dock_asset:
             return
@@ -190,11 +193,15 @@ class DraggableComponent:
         self.last_x = event.x
         self.last_y = event.y
         
+        # This can be very verbose, so it's commented out. Uncomment for detailed drag logging.
+        # print(f"[DEBUG] Dragging '{self.tag}' to world coords ({int(self.world_x1)}, {int(self.world_y1)})")
+
         self.app.redraw_all_zoomable()
 
     def on_release(self, event):
         """Action after drag finishes."""
-        print(f"[DEBUG] Released '{self.tag}' at final world coords ({int(self.world_x1)}, {int(self.world_y1)})")
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        print(f"[DEBUG] Released '{self.tag}' | Screen: ({event.x}, {event.y}) | New World TL: ({int(self.world_x1)}, {int(self.world_y1)})")
         self.app._keep_docks_on_top()
 
     def select(self, app_instance):
@@ -208,4 +215,4 @@ class DraggableComponent:
         if self.tk_image is None:
             self.canvas.itemconfig(self.rect_id, outline='yellow', width=3)
         
-        print(f"Component selected: {self.tag}")
+        print(f"[ACTION] Component '{self.tag}' selected via sidebar.")
