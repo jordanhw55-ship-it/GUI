@@ -203,41 +203,8 @@ class UIManager:
 
     def _populate_border_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
-        button_font = ('Inter', 11, 'bold')
-        tk.Label(tab, text="SHAPE TOOLS", **label_style).pack(fill='x')
-
-        # --- Shape Properties Frame ---
-        props_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
-        props_frame.pack(fill='x')
-        props_frame.grid_columnconfigure(1, weight=1)
-
-        # Color Picker
-        tk.Label(props_frame, text="Color:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
-        self.shape_color_btn = tk.Button(props_frame, text="", bg=self.app.border_manager.shape_color, width=10, relief='sunken',
-                                         command=self.app.border_manager.choose_shape_color)
-        self.shape_color_btn.grid(row=0, column=1, sticky='ew', padx=5)
-
-        # --- Rectangle Drawing Frame ---
-        rect_frame = tk.Frame(tab, bg="#374151", padx=10, pady=10)
-        rect_frame.pack(fill='x', pady=(10,0))
-        rect_frame.grid_columnconfigure(1, weight=1)
-        tk.Label(rect_frame, text="Draw Rectangle", font=('Inter', 11, 'bold'), bg="#374151", fg="white").grid(row=0, column=0, columnspan=2, sticky='w')
-
-        x_var, y_var = tk.StringVar(value="10"), tk.StringVar(value="10")
-        w_var, h_var = tk.StringVar(value="50"), tk.StringVar(value="50")
-
-        tk.Label(rect_frame, text="X:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w')
-        tk.Entry(rect_frame, textvariable=x_var, width=5).grid(row=1, column=1, sticky='ew', padx=5)
-        tk.Label(rect_frame, text="Y:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w')
-        tk.Entry(rect_frame, textvariable=y_var, width=5).grid(row=2, column=1, sticky='ew', padx=5)
-        tk.Label(rect_frame, text="W:", bg="#374151", fg="white").grid(row=3, column=0, sticky='w')
-        tk.Entry(rect_frame, textvariable=w_var, width=5).grid(row=3, column=1, sticky='ew', padx=5)
-        tk.Label(rect_frame, text="H:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w')
-        tk.Entry(rect_frame, textvariable=h_var, width=5).grid(row=4, column=1, sticky='ew', padx=5)
-
-        tk.Button(tab, text="Add Rectangle to Tile", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.app.border_manager.draw_rectangle_on_selection(x_var.get(), y_var.get(), w_var.get(), h_var.get())
-                  ).pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="BORDER CONTROLS", **label_style).pack(fill='x')
+        tk.Label(tab, text="This section is currently empty.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
