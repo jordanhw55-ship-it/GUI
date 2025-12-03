@@ -146,7 +146,6 @@ class UIManager:
         brush_size_frame = tk.Frame(paint_frame, bg="#374151")
         brush_size_frame.pack(fill='x', pady=5)
         tk.Label(brush_size_frame, text="Size:", bg="#374151", fg="white").pack(side=tk.LEFT)
-         tk.Scale(brush_size_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=self.app.paint_manager.brush_size, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(side=tk.LEFT, expand=True)
         tk.Scale(brush_size_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=self.app.paint_manager.brush_size, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(side=tk.LEFT, expand=True)
         clear_paint_btn = tk.Button(paint_frame, text="Clear All Paintings", bg='#ef4444', fg='white', relief='flat', font=('Inter', 10),
                                      command=self.app.paint_manager.clear_paintings)
