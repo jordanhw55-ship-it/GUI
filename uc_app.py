@@ -971,13 +971,6 @@ class ImageEditorApp:
                 # Composite the paint layer onto the component's image
                 final_image, has_paint = self.image_manager._composite_decal_onto_image(comp, paint_layer, 0, 0, self.CANVAS_WIDTH, self.CANVAS_HEIGHT, is_border=False)
 
-            # Check if the image was modified by decals or paint
-            is_modified = (comp.original_pil_image is not None and not self.image_manager._are_images_identical(comp.pil_image, comp.original_pil_image)) or has_paint
-            if not is_modified:
-                # --- NEW: Check if the only modification is an applied border ---
-                if tag not in borders_by_parent:
-                    continue # Skip if not modified and has no borders
-
             # --- NEW: Composite any borders onto the final image ---
             if tag in borders_by_parent:
                 for border_comp in borders_by_parent[tag]:
