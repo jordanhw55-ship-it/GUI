@@ -9,10 +9,12 @@ class PaintManager:
         
         self.paint_mode_active = False
         self.eraser_mode_active = False
+        self.universal_eraser_mode_active = False # NEW: For the universal eraser
         self.paint_color = "red"
         self.brush_size = tk.IntVar(value=4)
         self.last_paint_x = None
         self.last_paint_y = None
+        self.modified_in_drag = set() # NEW: Track components modified in a single drag for undo
         
         self.paint_layer_image = None
         self.paint_layer_tk = None
@@ -22,12 +24,15 @@ class PaintManager:
         """Toggles the painting or erasing mode on or off."""
         is_activating_paint = tool == 'paint' and not self.paint_mode_active
         is_activating_eraser = tool == 'eraser' and not self.eraser_mode_active
+        is_activating_universal_eraser = tool == 'universal_eraser' and not self.universal_eraser_mode_active
 
         # Deactivate all tools first
         self.paint_mode_active = False
         self.eraser_mode_active = False
+        self.universal_eraser_mode_active = False
         self.app.ui_manager.paint_toggle_btn.config(text="Paint Brush", bg='#d97706', relief='flat')
         self.app.ui_manager.eraser_toggle_btn.config(text="Transparency Brush", bg='#0e7490', relief='flat')
+        self.app.ui_manager.universal_eraser_btn.config(text="Universal Eraser", bg='#be123c', relief='flat')
         self.app.ui_manager.paint_color_button.config(state='disabled')
 
         # Activate the selected tool if it wasn't already active
@@ -40,11 +45,15 @@ class PaintManager:
             self.eraser_mode_active = True # This is our transparency brush
             self.app.ui_manager.eraser_toggle_btn.config(text="Transparency Brush (Active)", bg='#ef4444', relief='sunken')
             print("Eraser mode ENABLED.")
+        elif is_activating_universal_eraser:
+            self.universal_eraser_mode_active = True
+            self.app.ui_manager.universal_eraser_btn.config(text="Universal Eraser (Active)", bg='#ef4444', relief='sunken')
+            print("Universal Eraser mode ENABLED.")
         else:
             print("Paint and Eraser modes DISABLED.")
 
-        is_any_tool_active = self.paint_mode_active or self.eraser_mode_active
-        if is_any_tool_active:
+        is_any_paint_tool_active = self.paint_mode_active or self.eraser_mode_active
+        if is_any_paint_tool_active:
             if not self.paint_layer_image:
                 canvas_w = self.canvas.winfo_width()
                 canvas_h = self.canvas.winfo_height()
@@ -53,14 +62,18 @@ class PaintManager:
                 self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags=("paint_layer", "zoom_target"), state='normal')
                 self.app._save_undo_state(self.paint_layer_image.copy())
 
+        # Disable dragging if any tool is active
+        is_any_tool_active = self.paint_mode_active or self.eraser_mode_active or self.universal_eraser_mode_active
+        if is_any_tool_active:
             for comp in self.app.components.values():
                 comp.is_draggable = False
-            self.canvas.tag_raise(self.paint_layer_id)
+            if self.paint_layer_id:
+                self.canvas.tag_raise(self.paint_layer_id)
             self.app._keep_docks_on_top()
         else:
             for comp in self.app.components.values():
                 comp.is_draggable = True
-            print("Paint mode DISABLED. Component dragging is enabled.")
+            print("All tools DISABLED. Component dragging is enabled.")
 
     def choose_paint_color(self):
         """Opens a color chooser and sets the paint color."""
@@ -109,3 +122,58 @@ class PaintManager:
     def reset_paint_line(self, event):
         """Resets the start of the line when the mouse is released."""
         self.last_paint_x, self.last_paint_y = None, None
+        self.modified_in_drag.clear() # Clear the set of modified components for the next drag
+
+    def erase_on_components(self, event):
+        """Erases parts of any component image under the brush stroke."""
+        if not self.universal_eraser_mode_active:
+            return
+
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+
+        if self.last_paint_x and self.last_paint_y:
+            last_world_x, last_world_y = self.app.camera.screen_to_world(self.last_paint_x, self.last_paint_y)
+            brush_size = self.brush_size.get()
+
+            # Iterate through all components to check for intersection
+            for comp in self.app.components.values():
+                if not comp.pil_image or comp.is_dock_asset:
+                    continue
+
+                # Simple bounding box check for intersection
+                if (max(last_world_x, world_x) + brush_size > comp.world_x1 and
+                    min(last_world_x, world_x) - brush_size < comp.world_x2 and
+                    max(last_world_y, world_y) + brush_size > comp.world_y1 and
+                    min(last_world_y, world_y) - brush_size < comp.world_y2):
+
+                    # --- Save state for Undo ---
+                    # If this is the first time we're hitting this component in this drag, save its state.
+                    if comp.tag not in self.modified_in_drag:
+                        undo_data = {comp.tag: comp.pil_image.copy()}
+                        self.app._save_undo_state(undo_data)
+                        self.modified_in_drag.add(comp.tag)
+
+                    # --- Translate world coordinates to local image coordinates ---
+                    target_world_w = comp.world_x2 - comp.world_x1
+                    target_world_h = comp.world_y2 - comp.world_y1
+                    if target_world_w == 0 or target_world_h == 0: continue
+
+                    scale_x = comp.pil_image.width / target_world_w
+                    scale_y = comp.pil_image.height / target_world_h
+
+                    local_x1 = (last_world_x - comp.world_x1) * scale_x
+                    local_y1 = (last_world_y - comp.world_y1) * scale_y
+                    local_x2 = (world_x - comp.world_x1) * scale_x
+                    local_y2 = (world_y - comp.world_y1) * scale_y
+
+                    # Draw a transparent line on the component's image
+                    draw = ImageDraw.Draw(comp.pil_image)
+                    draw.line((local_x1, local_y1, local_x2, local_y2),
+                              fill=(0, 0, 0, 0), # RGBA transparent
+                              width=int(brush_size * scale_x), # Scale brush size
+                              joint='curve')
+
+                    # Force the component to update its visual on the canvas
+                    comp.set_image(comp.pil_image)
+
+        self.last_paint_x, self.last_paint_y = event.x, event.y

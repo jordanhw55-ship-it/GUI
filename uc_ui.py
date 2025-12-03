@@ -150,6 +150,10 @@ class UIManager:
                                            command=lambda: self.app.toggle_tile_eraser_mode())
         self.tile_eraser_btn.pack(fill='x', expand=True, pady=(5,0))
 
+        self.universal_eraser_btn = tk.Button(paint_frame, text="Universal Eraser", bg='#be123c', fg='white', relief='flat', font=button_font,
+                                           command=lambda: self.app.paint_manager.toggle_paint_mode(tool='universal_eraser'))
+        self.universal_eraser_btn.pack(fill='x', expand=True, pady=(5,0))
+
         tk.Frame(paint_frame, height=2, bg="#6b7280").pack(fill='x', pady=10)
 
         self.paint_color_button = tk.Button(paint_frame, text="Choose Color", bg='#6b7280', fg='white', relief='flat', font=('Inter', 10),

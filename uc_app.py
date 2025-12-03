@@ -132,7 +132,13 @@ class ImageEditorApp:
 
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events() # Binds paint events
-
+        # --- NEW: Bind the universal eraser event ---
+        def on_drag(event):
+            # This function will call the correct handler based on the active mode.
+            self.paint_manager.paint_on_canvas(event)
+            self.paint_manager.erase_on_components(event)
+        
+        self.canvas.bind("<B1-Motion>", on_drag)
         self.ui_manager.create_ui()
 
         # --- PREVIEW LAYOUT COORDINATES ---
