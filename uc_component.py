@@ -38,8 +38,18 @@ class DraggableComponent:
     def set_image(self, pil_image):
         """Sets the internal PIL image for this component."""
         print("-" * 20)
-        print(f"[DEBUG] Applying image to '{self.tag}'.")
+        print(f"[DEBUG] Setting image for '{self.tag}'.")
         self.pil_image = pil_image.copy() if pil_image else None
-        # The manager that calls this method is now responsible for redrawing.
+
+        # If this is the first time an image is set, replace the placeholder
+        if self.pil_image and self.text_id:
+            self.app.canvas.delete(self.rect_id)
+            self.app.canvas.delete(self.text_id)
+            self.rect_id = None
+            self.text_id = None
+            self.tk_image = None # Force redraw to create a new image item
+
+        # The manager that calls this method is responsible for redrawing.
+        self.app.redraw_all_zoomable()
         print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")
         print("-" * 20)

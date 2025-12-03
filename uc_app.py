@@ -122,6 +122,23 @@ class ImageEditorApp:
 
         self.ui_manager.create_ui()
 
+        # --- PREVIEW LAYOUT COORDINATES ---
+        self.preview_layout = {
+            "humanuitile01": {"coords": [261, 57, 511, 357]},
+            "humanuitile02": {"coords": [511, 57, 761, 357]},
+            "humanuitile03": {"coords": [761, 57, 1011, 357]},
+            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
+            "humanuitile05": {"coords": [11, 57, 261, 357]},
+            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
+            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
+            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
+        }
+
+        # Set a default selected component
+        self.set_selected_component('humanuitile01')
+
+
+
         # --- Setup Image Set Callbacks AFTER components are initialized ---
         if os.path.isdir(self.image_base_dir):
             self.image_sets = [d for d in os.listdir(self.image_base_dir) if os.path.isdir(os.path.join(self.image_base_dir, d))]
@@ -165,13 +182,13 @@ class ImageEditorApp:
 
     def _initialize_components(self):
         """Creates the initial set of draggable components on the canvas."""
-        self.components = {}
+        self.components = {} # type: ignore
         base_color = "#1e40af"  # A more modern, vibrant blue
 
         # Define tile dimensions for the 4x2 grid (increased size)
         tile_width = 250
         tile_height = 300
-
+        
         # Define starting coordinates for the 4x2 grid with 50px padding/spacing
         # C1_X=50, C2_X=350, C3_X=650, C4_X=950
         # R1_Y=50, R2_Y=400 (50 + 300 + 50)
@@ -179,7 +196,7 @@ class ImageEditorApp:
         # TILE 01 (Row 1, Col 1)
         comp = DraggableComponent(
             self,
-            "humanuitile01",
+            "humanuitile01", 
             50, 50, 300, 350,  # W:250, H:300
             base_color, "UI TILE 01"
         )
@@ -190,7 +207,7 @@ class ImageEditorApp:
         # TILE 02 (Row 1, Col 2)
         comp = DraggableComponent(
             self,
-            "humanuitile02",
+            "humanuitile02", 
             350, 50, 600, 350,
             base_color, "UI TILE 02"
         )
@@ -201,7 +218,7 @@ class ImageEditorApp:
         # TILE 03 (Row 1, Col 3)
         comp = DraggableComponent(
             self,
-            "humanuitile03",
+            "humanuitile03", 
             650, 50, 900, 350,
             base_color, "UI TILE 03"
         )
@@ -212,7 +229,7 @@ class ImageEditorApp:
         # TILE 04 (Row 1, Col 4)
         comp = DraggableComponent(
             self,
-            "humanuitile04",
+            "humanuitile04", 
             950, 50, 980, 350,
             base_color, "UI TILE 04"
         )
@@ -223,7 +240,7 @@ class ImageEditorApp:
         # TILE 05 (Row 2, Col 1)
         comp = DraggableComponent(
             self,
-            "humanuitile05",
+            "humanuitile05", 
             50, 400, 300, 700,
             base_color, "UI TILE 05"
         )
@@ -234,7 +251,7 @@ class ImageEditorApp:
         # TILE 06 (Row 2, Col 2)
         comp = DraggableComponent(
             self,
-            "humanuitile06",
+            "humanuitile06", 
             350, 400, 600, 700,
             base_color, "UI TILE 06"
         )
@@ -245,7 +262,7 @@ class ImageEditorApp:
         # TILE 07 (Row 2, Col 3) - Inventory Cover (Tag matches filename)
         comp = DraggableComponent(
             self,
-            "humanuitile-inventorycover",
+            "humanuitile-inventorycover", 
             650, 400, 770, 700,
             base_color, "INVENTORY COVER"
         )
@@ -256,27 +273,13 @@ class ImageEditorApp:
         # TILE 08 (Row 2, Col 4) - Time Indicator Frame (Tag matches filename)
         comp = DraggableComponent(
             self,
-            "humanuitile-timeindicatorframe",
+            "humanuitile-timeindicatorframe", 
             950, 400, 1085, 475,
             base_color, "TIME FRAME"
         )
         self.components['humanuitile-timeindicatorframe'] = comp
         self._draw_placeholder(comp)
-        self._bind_component_events(comp.tag)
-
-        self.preview_layout = {
-            "humanuitile01": {"coords": [261, 57, 511, 357]},
-            "humanuitile02": {"coords": [511, 57, 761, 357]},
-            "humanuitile03": {"coords": [761, 57, 1011, 357]},
-            "humanuitile04": {"coords": [1011, 57, 1041, 357]},
-            "humanuitile05": {"coords": [11, 57, 261, 357]},
-            "humanuitile06": {"coords": [1041, 57, 1291, 357]},
-            "humanuitile-inventorycover": {"coords": [724, 57, 844, 357]},
-            "humanuitile-timeindicatorframe": {"coords": [585, 57, 720, 132]}
-        }
-
-        # Set a default selected component
-        self.set_selected_component('humanuitile01')
+        self._bind_component_events(comp.tag) # type: ignore
 
     def on_component_press(self, event):
         """Handles press events on any component."""
@@ -816,22 +819,25 @@ class ImageEditorApp:
         os.makedirs(save_dir, exist_ok=True)
 
         paint_layer = self.paint_manager.paint_layer_image
+        if paint_layer:
+            # Create a full-canvas sized paint layer to composite with.
+            paint_layer = paint_layer.resize((self.CANVAS_WIDTH, self.CANVAS_HEIGHT), Image.Resampling.LANCZOS)
+
         exported_count = 0
 
         for tag, comp in self.components.items():
             if not comp.pil_image or comp.is_dock_asset or tag.startswith("clone_") or tag.startswith("border_"):
                 continue
 
-            final_image, has_paint = self.image_manager._composite_decal_onto_image(
-                target_comp=comp,
-                decal_stamp_image=paint_layer,
-                stamp_world_x1=0, stamp_world_y1=0,
-                stamp_world_x2=self.CANVAS_WIDTH, stamp_world_y2=self.CANVAS_HEIGHT,
-                is_border=False
-            )
+            final_image = comp.pil_image.copy()
+            has_paint = False
+            if paint_layer:
+                # Composite the paint layer onto the component's image
+                final_image, has_paint = self.image_manager._composite_decal_onto_image(comp, paint_layer, 0, 0, self.CANVAS_WIDTH, self.CANVAS_HEIGHT, is_border=False)
 
-            is_decal_changed = comp.pil_image is not comp.original_pil_image
-            if not is_decal_changed and not has_paint:
+            # Check if the image was modified by decals or paint
+            is_modified = (comp.original_pil_image is not None and not self.image_manager._are_images_identical(comp.pil_image, comp.original_pil_image)) or has_paint
+            if not is_modified:
                 continue
 
             save_path = os.path.join(save_dir, f"{tag}.{export_format}")

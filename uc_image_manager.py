@@ -23,6 +23,14 @@ class ImageManager:
         self.dock_assets = []
         self.next_clone_id = 0
 
+    def _are_images_identical(self, img1, img2):
+        """Helper to check if two PIL images are identical."""
+        if img1 is None or img2 is None:
+            return img1 == img2
+        if img1.size != img2.size or img1.mode != img2.mode:
+            return False
+        return ImageChops.difference(img1, img2).getbbox() is None
+
     def _load_asset_to_dock_generic(self, is_border: bool):
         """Loads an image, scales it, and places it in the asset dock as a new draggable component."""
         asset_type = "Border" if is_border else "Asset"
@@ -317,11 +325,12 @@ class ImageManager:
         # 1. Add the component to the main dictionary so it can be found by other methods.
         self.app.components[clone_tag] = clone_comp
         
-        # 2. Set its core properties and images.
+        # 2. Set its core properties and bind events so it can be dragged.
         clone_comp.is_border_asset = asset_comp.is_border_asset
         clone_comp.is_decal = True
         clone_comp.original_pil_image = asset_comp.original_pil_image.copy()
-        clone_comp.pil_image = clone_comp.original_pil_image # Set the base image directly
+        # Set the main pil_image to the full-res original for stamping.
+        clone_comp.pil_image = clone_comp.original_pil_image.copy()
         self.app._bind_component_events(clone_tag)
 
         # 3. Apply the initial transform (which creates the transparent preview).
