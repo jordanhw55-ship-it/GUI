@@ -82,6 +82,9 @@ class ImageManager:
             
             target_canvas.config(scrollregion=target_canvas.bbox("all"))
             print(f"{asset_type} '{os.path.basename(image_path)}' loaded into dock.")
+            
+            # --- NEW: Save settings immediately after adding an asset ---
+            self.app.save_settings()
 
         except Exception as e:
             messagebox.showerror(f"{asset_type} Load Error", f"Could not load {asset_type.lower()} image: {e}")

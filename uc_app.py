@@ -170,8 +170,8 @@ class ImageEditorApp:
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
 
-    def save_on_exit(self):
-        """Saves settings and closes the application."""
+    def save_settings(self):
+        """Saves the current application settings to the settings file."""
         # --- DEFINITIVE FIX: Perform a safe read-modify-write to prevent data loss ---
         # 1. Load the most recent settings from the file.
         self.settings_manager.load()
@@ -182,6 +182,11 @@ class ImageEditorApp:
         # 4. Write the entire, updated settings object back to the file.
         with open(self.settings_manager.settings_path, 'w') as f:
             json.dump(self.settings_manager.settings, f, indent=4)
+        print("[INFO] UI Creator settings saved.")
+
+    def save_on_exit(self):
+        """Saves settings and closes the application."""
+        self.save_settings()
         self.master.destroy()
 
     def _reload_dock_assets(self):
