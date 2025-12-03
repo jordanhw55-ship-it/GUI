@@ -310,6 +310,9 @@ class ImageManager:
         # Set the initial image; the transform function will apply the visual effects
         clone_comp.set_image(asset_comp.original_pil_image)
 
+        # --- FIX: Immediately calculate the correct world bounds after setting the image ---
+        self._update_active_decal_transform()
+
         # Add to the main components dictionary so it gets drawn on the main canvas
         self.app.components[clone_tag] = clone_comp
         # Bind events for the new clone
