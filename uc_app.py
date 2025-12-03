@@ -322,11 +322,17 @@ class ImageEditorApp:
         else: # It's a decal, allow free movement
             comp.world_x1 += dx_world; comp.world_y1 += dy_world
             comp.world_x2 += dx_world; comp.world_y2 += dy_world
-        
+
         self.last_drag_x = event.x
         self.last_drag_y = event.y
-        
-        self.redraw_all_zoomable()
+
+        # --- DEFINITIVE FIX: Update the decal's transform during drag ---
+        # For decals, we must call the transform update to regenerate the semi-transparent
+        # preview and ensure its world coordinates are correctly centered.
+        if comp.is_decal:
+            self.image_manager._update_active_decal_transform()
+        else:
+            self.redraw_all_zoomable()
 
     def on_component_release(self, event):
         """Handles release events, finalizing the drag."""
