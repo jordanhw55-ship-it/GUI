@@ -17,6 +17,7 @@ except ImportError:
 from uc_component import DraggableComponent
 from uc_camera import Camera
 from uc_ui import UIManager
+from uc_paint_manager import PaintManager
 
 # --- NEW: Centralized Path Management ---
 def get_base_path():
@@ -56,17 +57,6 @@ class ImageEditorApp:
         self.undo_stack = []
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
-        
-        self.is_group_dragging = False # NEW: Flag to prevent single-drag during group-drag
-        self.paint_mode_active = False
-        self.eraser_mode_active = False # NEW: Eraser state
-        self.paint_color = "red"
-        self.brush_size = tk.IntVar(value=4)
-        self.last_paint_x, self.last_paint_y = None, None
-        # --- NEW: Dedicated Paint Layer ---
-        self.paint_layer_image = None # The PIL Image for painting.
-        self.paint_layer_tk = None    # The PhotoImage for displaying on the canvas
-        self.paint_layer_id = None    # The canvas item ID for the paint layer
         
         # --- NEW: Decal Feature State ---
         self.active_decal = None
@@ -110,6 +100,9 @@ class ImageEditorApp:
         # This ensures the canvas exists before components are created.
         self.ui_manager = UIManager(self)
         self.camera = Camera(self, self.ui_manager.create_canvas())
+
+        # --- Initialize Managers ---
+        self.paint_manager = PaintManager(self)
 
         # --- Initialize Components BEFORE UI that might use them ---
         # This resolves the AttributeError by ensuring self.components exists
@@ -367,79 +360,6 @@ class ImageEditorApp:
                 messagebox.showerror("Load Error", f"Failed to load layout: {e}")
 
 
-    def toggle_paint_mode(self, tool: str):
-        """Toggles the painting or erasing mode on or off."""
-        # Determine which tool is being activated and which is being deactivated
-        is_activating_paint = tool == 'paint' and not self.paint_mode_active
-        is_activating_eraser = tool == 'eraser' and not self.eraser_mode_active
-
-        # Deactivate all tools first
-        self.paint_mode_active = False
-        self.eraser_mode_active = False
-        self.ui_manager.paint_toggle_btn.config(text="Enable Paint Mode", bg='#d97706', relief='flat')
-        self.ui_manager.eraser_toggle_btn.config(text="Enable Eraser", bg='#6b7280', relief='flat')
-        self.ui_manager.paint_color_button.config(state='disabled')
-
-        # Activate the selected tool if it wasn't already active
-        if is_activating_paint:
-            self.paint_mode_active = True
-            self.paint_toggle_btn.config(text="Disable Paint Mode", bg='#ef4444', relief='sunken')
-            self.paint_color_button.config(state='normal')
-            print("Paint mode ENABLED.")
-        elif is_activating_eraser:
-            self.eraser_mode_active = True
-            self.eraser_toggle_btn.config(text="Disable Eraser", bg='#ef4444', relief='sunken')
-            print("Eraser mode ENABLED.")
-        else:
-            print("Paint and Eraser modes DISABLED.")
-
-        # Common logic for when any tool is active vs. when all are inactive
-        is_any_tool_active = self.paint_mode_active or self.eraser_mode_active
-        if is_any_tool_active:
-            # --- NEW: Create the transparent paint layer ---
-            if not self.paint_layer_image:
-                canvas_w = self.canvas.winfo_width()
-                canvas_h = self.canvas.winfo_height()
-                self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                self.paint_layer_tk = ImageTk.PhotoImage(self.paint_layer_image)
-                self.paint_layer_id = self.canvas.create_image(0, 0, image=self.paint_layer_tk, anchor=tk.NW, tags=("paint_layer", "zoom_target"), state='normal') # Save initial blank state for undo
-                self._save_undo_state(self.paint_layer_image.copy())
-
-            # Disable dragging for all components
-            for comp in self.components.values():
-                comp.is_draggable = False
-
-            # Ensure the paint layer is on top of components but below the UI docks
-            self.canvas.tag_raise(self.paint_layer_id)
-            self._keep_docks_on_top()
-        else:
-            # Re-enable dragging for all components
-            for comp in self.components.values():
-                comp.is_draggable = True
-            print("Paint mode DISABLED. Component dragging is enabled.")
-
-    def choose_paint_color(self):
-        """Opens a color chooser and sets the paint color."""
-        from tkinter import colorchooser
-        color_code = colorchooser.askcolor(title="Choose paint color")
-        if color_code and color_code[1]:
-            self.paint_color = color_code[1]
-            print(f"Paint color set to: {self.paint_color}")
-
-    def clear_paintings(self):
-        """Removes all lines drawn on the canvas."""
-        if self.paint_layer_image:
-            # Save current paint state before clearing
-            self._save_undo_state(self.paint_layer_image.copy())
-
-            # Create a new, blank transparent image
-            canvas_w = self.canvas.winfo_width()
-            canvas_h = self.canvas.winfo_height()
-            self.paint_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-            # Update the canvas to show the cleared image
-            self._update_paint_layer_display()
-            print("All paintings have been cleared.")
-
     def _save_undo_state(self, undo_data):
         """
         Saves an action to the undo stack.
@@ -463,8 +383,8 @@ class ImageEditorApp:
         last_state = self.undo_stack.pop()
 
         if isinstance(last_state, Image.Image): # It's a paint layer state
-            self.paint_layer_image = last_state
-            self._update_paint_layer_display()
+             self.paint_manager.paint_layer_image = last_state
+             self.redraw_all_zoomable()
         elif isinstance(last_state, dict): # It's a component image state
             for tag, image in last_state.items():
                 if tag in self.components:
@@ -486,10 +406,10 @@ class ImageEditorApp:
         self.COMP_AREA_Y2 = new_height
 
         # If the paint layer exists, it needs to be recreated to match the new size
-        if self.paint_layer_image:
+         if self.paint_manager.paint_layer_image:
             # We can't just resize, as drawing is based on world coords.
             # It's safer to clear it, but for now, we'll just recreate it blank.
-            self.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
+             self.paint_manager.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
             self.redraw_all_zoomable() # Redraw to update the paint layer display
 
     # --- NEW: Camera Transformation Functions ---
@@ -530,15 +450,15 @@ class ImageEditorApp:
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
         # Also redraw the paint layer if it exists
-        if self.paint_layer_id and self.paint_layer_image:
-            orig_w, orig_h = self.paint_layer_image.size
+        if self.paint_manager.paint_layer_id and self.paint_manager.paint_layer_image:
+            orig_w, orig_h = self.paint_manager.paint_layer_image.size
             new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
             if new_w > 0 and new_h > 0:
                 resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                resized_paint_img = self.paint_layer_image.resize((new_w, new_h), resample_quality)
-                self.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
-                self.canvas.itemconfig(self.paint_layer_id, image=self.paint_layer_tk)
-                self.canvas.coords(self.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
+                resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), resample_quality)
+                self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
+                self.canvas.itemconfig(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
+                self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
 
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
@@ -557,8 +477,8 @@ class ImageEditorApp:
             # Hide all other components to isolate the selected one
             for tag, comp in self.components.items():
                 # Also ensure the paint layer is visible
-                if self.paint_layer_id:
-                    self.canvas.itemconfig("paint_layer", state='normal')
+                if self.paint_manager.paint_layer_id:
+                    self.canvas.itemconfig(self.paint_manager.paint_layer_id, state='normal')
 
                 state_to_set = 'normal' if tag == name else 'hidden'
                 if comp.rect_id:
@@ -731,19 +651,11 @@ class ImageEditorApp:
             messagebox.showerror("Export Error", f"Could not create save directory: {e}")
             return
 
-        # Get all painted lines from the canvas
-        paint_lines = self.canvas.find_withtag("paint_line")
+        # Get the paint layer directly from the manager
         paint_layer = None
-        if paint_lines:
-            print(f"Found {len(paint_lines)} paint strokes to process.")
-            paint_layer = Image.new("RGBA", (self.canvas.winfo_width(), self.canvas.winfo_height()), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(paint_layer)
-            for line_id in paint_lines:
-                coords = self.canvas.coords(line_id)
-                options = self.canvas.itemcget(line_id, "fill")
-                width = int(float(self.canvas.itemcget(line_id, "width")))
-                for i in range(0, len(coords) - 2, 2):
-                    draw.line(coords[i:i+4], fill=options, width=width, joint='curve')
+        if self.paint_manager.paint_layer_image:
+            print(f"Found paint layer to process.")
+            paint_layer = self.paint_manager.paint_layer_image
 
         exported_count = 0
         for tag, comp in self.components.items():
