@@ -934,7 +934,7 @@ class ImageEditorApp:
             # --- NEW: Composite any borders onto the final image ---
             if tag in borders_by_parent:
                 for border_comp in borders_by_parent[tag]:
-                    final_image, has_borders = self.image_manager._composite_decal_onto_image(comp, border_comp.pil_image, border_comp.world_x1, border_comp.world_y1, border_comp.world_x2, border_comp.world_y2, is_border=True)
+                    final_image, has_borders = self.image_manager._composite_border_onto_image(comp, border_comp)
 
             save_path = os.path.join(save_dir, f"{tag}.{export_format}")
             try:

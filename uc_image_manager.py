@@ -301,6 +301,35 @@ class ImageManager:
         # No overlap, return original image and False
         return target_comp.pil_image, False
 
+    def _composite_border_onto_image(self, target_comp, border_comp):
+        """
+        Composites a pre-rendered border component onto its parent tile's image.
+        This is a simplified version for preset borders which are already correctly sized.
+        """
+        target_img = target_comp.pil_image
+        border_img = border_comp.pil_image
+
+        if not target_img or not border_img:
+            return target_img, False
+
+        # The border's position is already calculated relative to the world.
+        # We just need to find its offset from the parent tile's top-left corner.
+        # The parent's image (target_img) is our canvas.
+        
+        # Calculate the offset in world coordinates
+        offset_x_world = border_comp.world_x1 - target_comp.world_x1
+        offset_y_world = border_comp.world_y1 - target_comp.world_y1
+
+        # Convert world offset to pixel offset on the target image
+        target_world_w = target_comp.world_x2 - target_comp.world_x1
+        paste_x = int((offset_x_world / target_world_w) * target_img.width)
+        paste_y = int((offset_y_world / target_world_w) * target_img.width) # Use width for uniform scaling
+
+        final_image = target_img.copy()
+        # Paste the border image onto the copy of the target image at the calculated pixel offset
+        final_image.paste(border_img, (paste_x, paste_y), border_img)
+        return final_image, True
+
     def schedule_transform_update(self, event=None):
         """Schedules a decal transformation update, debouncing slider events."""
         if self.transform_job:
