@@ -567,8 +567,20 @@ class ImageEditorApp:
 
         # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
-            # REFACTOR: Check if the component has a canvas ID
-            if comp.rect_id and "zoom_target" in self.canvas.gettags(comp.rect_id):
+            # --- FIX: Handle components that have not been drawn yet ---
+            # If a component (like a new clone) has no rect_id, it means it's not on the canvas.
+            # We must create a canvas item for it before we can update it.
+            if not comp.rect_id:
+                if comp.pil_image: # It's an image component (like a clone)
+                    sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+                    comp.rect_id = self.canvas.create_image(
+                        sx1, sy1,
+                        anchor=tk.NW,
+                        tags=(comp.tag, "draggable", "zoom_target")
+                    )
+                    print(f"[DEBUG] Created initial canvas image for new component '{comp.tag}'.")
+
+            if comp.rect_id: # Now, proceed with updating the component on the canvas
                 # For components with an image, we need to resize the image itself
                 # and then place it at the new screen coordinates.
                 if comp.pil_image:
