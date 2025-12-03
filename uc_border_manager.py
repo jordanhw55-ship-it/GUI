@@ -153,7 +153,7 @@ class BorderManager:
             fill="#22c55e",  # A nice green color
             stipple="gray50", # This gives a semi-transparent effect
             outline="white",
-            width=2,
+            width=self.border_thickness.get(),
             tags=("border_preview",)
         )
 

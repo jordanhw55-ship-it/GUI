@@ -71,6 +71,10 @@ class UIManager:
 
         notebook = ttk.Notebook(self.sidebar_frame, style='TNotebook')
         notebook.pack(expand=True, fill='both')
+        # --- NEW: Bind an event to clear the border preview when changing main tabs ---
+        # This ensures the preview disappears when you navigate away from the Border tab.
+        notebook.bind("<<NotebookTabChanged>>", lambda event: self.app.border_manager.clear_preset_preview())
+
 
         layer_tab = tk.Frame(notebook, bg="#374151")
         paint_tab = tk.Frame(notebook, bg="#374151")
@@ -231,7 +235,9 @@ class UIManager:
 
         # Thickness Slider
         tk.Label(controls_frame, text="Thickness:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
-        tk.Scale(controls_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=manager.border_thickness, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
+        thickness_slider = tk.Scale(controls_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=manager.border_thickness, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
+        thickness_slider.grid(row=2, column=1, sticky='ew', padx=5)
+        thickness_slider.config(command=manager.show_preset_preview)
 
         # NEW: Border Width Slider
         tk.Label(controls_frame, text="Width (%):", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
