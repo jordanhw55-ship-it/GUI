@@ -796,31 +796,26 @@ class ImageEditorApp:
 
                     # Only regenerate the Tkinter image if the size has actually changed.
                     if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h or comp.tk_image is None):
-                        # --- FIX: Prioritize the temporary display image for rendering ---
-                        # This allows the decal to be semi-transparent without affecting the source data.
+                        comp._cached_screen_w = int(screen_w)
+                        comp._cached_screen_h = int(screen_h)
+                        if comp._cached_screen_w <= 0 or comp._cached_screen_h <= 0: continue
+
                         source_img = comp.display_pil_image if comp.display_pil_image is not None else comp.pil_image
                         if not source_img: continue
 
-                        # --- DEFINITIVE FIX for ZOOM LAG ---
-                        # Cap the resize dimensions at the source image's actual size.
-                        # There's no benefit to up-scaling with LANCZOS; it's slow and doesn't add detail.
-                        # Let the graphics card handle the final stretch from the original resolution.
+                        # --- DEFINITIVE FIX for ZOOM LAG (Corrected) ---
+                        # When zooming IN (upscaling), use thumbnail which is fast and doesn't create a larger-than-source image.
+                        # When zooming OUT (downscaling), use resize which is necessary and fast for making images smaller.
                         orig_w, orig_h = source_img.size
-                        target_w = min(int(screen_w), orig_w)
-                        target_h = min(int(screen_h), orig_h)
+                        if comp._cached_screen_w > orig_w or comp._cached_screen_h > orig_h:
+                            # Upscaling case: Use thumbnail on a copy. It resizes in-place.
+                            resized_img = source_img.copy()
+                            resized_img.thumbnail((comp._cached_screen_w, comp._cached_screen_h), Image.Resampling.LANCZOS)
+                        else:
+                            # Downscaling case: Use resize.
+                            resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                            resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
 
-                        # Only resize if the new target size is different from the last one.
-                        if target_w == comp._cached_screen_w and target_h == comp._cached_screen_h:
-                            self.canvas.coords(comp.rect_id, sx1, sy1)
-                            continue
-
-                        comp._cached_screen_w = target_w
-                        comp._cached_screen_h = target_h
-                        if comp._cached_screen_w <= 0 or comp._cached_screen_h <= 0: continue
-
-
-                        resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                        resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
                         self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
 
