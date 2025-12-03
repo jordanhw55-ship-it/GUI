@@ -49,6 +49,10 @@ class DraggableComponent:
             self.text_id = None
             self.tk_image = None # Force redraw to create a new image item
 
+        # --- DEFINITIVE FIX: Reset the cache to force a visual update ---
+        # This ensures that even if the component's size hasn't changed, the new image data will be rendered.
+        self._cached_screen_w, self._cached_screen_h = -1, -1
+
         # The manager that calls this method is responsible for redrawing.
         self.app.redraw_all_zoomable()
         print(f"[DEBUG] AFTER image set: World Coords=({int(self.world_x1)}, {int(self.world_y1)})")

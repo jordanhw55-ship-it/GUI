@@ -621,7 +621,7 @@ class ImageEditorApp:
                     screen_h = (comp.world_y2 - comp.world_y1) * zoom_scale
 
                     # Only regenerate the Tkinter image if the size has actually changed.
-                    if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h):
+                    if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h or comp.tk_image is None):
                         comp._cached_screen_w = int(screen_w)
                         comp._cached_screen_h = int(screen_h)
 
