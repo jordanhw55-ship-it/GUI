@@ -246,6 +246,14 @@ class UIManager:
         
         tk.Button(tab, text="Save Modified as DDS", bg='#3b82f6', fg='white', relief='flat', font=button_font,
                   command=lambda: self.app._export_modified_images('dds')).pack(fill='x', padx=10, pady=(5, 10))
+
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="OPEN EXPORT FOLDER", **label_style).pack(fill='x')
+        open_folder_frame = tk.Frame(tab, bg="#374151")
+        open_folder_frame.pack(fill='x', padx=10, pady=5)
+        tk.Button(open_folder_frame, text="Open PNG Folder", bg='#6b7280', fg='white', relief='flat', font=button_font, command=lambda: self.app.open_export_folder('png')).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(open_folder_frame, text="Open DDS Folder", bg='#6b7280', fg='white', relief='flat', font=button_font, command=lambda: self.app.open_export_folder('dds')).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
         tk.Label(tab, text="Note: DDS export requires the image\ndimensions to be a power of two\n(e.g., 256x256, 512x512) and may not\nsupport all internal DDS formats.",
                  bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x')
 

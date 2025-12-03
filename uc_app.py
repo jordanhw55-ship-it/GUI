@@ -739,6 +739,24 @@ class ImageEditorApp:
         else:
             messagebox.showinfo("Export Info", "No modified layers (from decals or painting) found to export.")
 
+    def open_export_folder(self, export_format: str):
+        """Opens the specified export folder in the system's file explorer."""
+        if export_format not in ['png', 'dds']:
+            return
+
+        folder_path = os.path.join(self.output_dir, f"export_{export_format}")
+
+        if not os.path.isdir(folder_path):
+            messagebox.showinfo("Folder Not Found", f"The {export_format.upper()} export folder does not exist yet.\n\nPlease export some images first to create it.")
+            return
+
+        try:
+            # os.startfile is the most direct way on Windows
+            if sys.platform == "win32":
+                os.startfile(folder_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open folder: {e}")
+
     def _create_and_place_clone(self, asset_comp, event, clone_tag):
         """Helper to create, configure, and place a clone component."""
         w, h = asset_comp.original_pil_image.size
