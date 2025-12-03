@@ -55,11 +55,9 @@ class ImageManager:
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset) # Use manager's list
 
             items_per_row = 4
-            padding = 10
-            scrollbar_width = 20 # Approximate width of the scrollbar
-            available_width = self.app.SIDEBAR_WIDTH - scrollbar_width
-            asset_width = (available_width - (padding * (items_per_row + 1))) / items_per_row
-            asset_height = asset_width
+            padding = 5
+            asset_width = 64
+            asset_height = 64
 
             col = item_index % items_per_row
             row = item_index // items_per_row
@@ -110,11 +108,9 @@ class ImageManager:
                 item_index = sum(1 for asset in self.dock_assets if not asset.is_border_asset)
 
             items_per_row = 4
-            padding = 10
-            scrollbar_width = 20 # Approximate width of the scrollbar
-            available_width = self.app.SIDEBAR_WIDTH - scrollbar_width
-            asset_width = (available_width - (padding * (items_per_row + 1))) / items_per_row
-            asset_height = asset_width
+            padding = 5
+            asset_width = 64
+            asset_height = 64
 
             col = item_index % items_per_row
             row = item_index // items_per_row
