@@ -434,6 +434,20 @@ class ImageEditorApp:
                 # For components with an image, we need to resize the image itself
                 # and then place it at the new screen coordinates.
                 if comp.pil_image:
+                    # --- FIX: Handle transition from placeholder to image ---
+                    # If we have a PIL image but no TK image, it means we just loaded one.
+                    # We must delete the old rectangle and create a new image item.
+                    if comp.tk_image is None:
+                        self.canvas.delete(comp.rect_id) # Delete the placeholder rectangle
+                        # Create the new image item, initially empty. It will be configured below.
+                        sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+                        comp.rect_id = self.canvas.create_image(
+                            sx1, sy1,
+                            anchor=tk.NW,
+                            tags=(comp.tag, "draggable", "zoom_target")
+                        )
+                        comp._cached_screen_w, comp._cached_screen_h = -1, -1 # Reset cache
+
                     screen_w = (comp.world_x2 - comp.world_x1) * zoom_scale
                     screen_h = (comp.world_y2 - comp.world_y1) * zoom_scale
 
