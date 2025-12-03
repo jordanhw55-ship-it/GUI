@@ -20,6 +20,7 @@ class BorderManager:
         self.border_thickness = tk.IntVar(value=10)
         self.border_width = tk.IntVar(value=100) # NEW: For adjusting border component width as a percentage
         self.border_feather = tk.IntVar(value=0) # NEW: For feathering/blurring the border edge
+        self.preview_tk_image = None # NEW: To hold the PhotoImage for the preview
         self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
 
         # --- Preset Definitions ---
@@ -193,37 +194,34 @@ class BorderManager:
         border_y1 = target_comp.world_y1 + (parent_h * rel_y)
         border_x2 = border_x1 + border_w
         border_y2 = border_y1 + border_h
-
-        # --- DEFINITIVE FIX: Calculate all coordinates in WORLD space first, then convert to SCREEN space ---
-        # This ensures the preview logic perfectly matches the apply logic.
+        
+        # --- DEFINITIVE FIX: Render the actual border for the preview ---
         growth_direction = self.border_growth_direction.get()
         thickness = self.border_thickness.get()
-        thickness_screen = thickness * self.app.camera.zoom_scale
-
-        # Determine the final bounding box for the preview fill
-        preview_x1, preview_y1, preview_x2, preview_y2 = border_x1, border_y1, border_x2, border_y2
+        
+        # Calculate the final render size in world coordinates
+        render_w_world, render_h_world = border_w, border_h
+        preview_x1, preview_y1 = border_x1, border_y1
         if growth_direction == 'out':
             preview_x1 -= thickness
             preview_y1 -= thickness
-            preview_x2 += thickness
-            preview_y2 += thickness
+            render_w_world += thickness * 2
+            render_h_world += thickness * 2
 
-        # Convert the final world coordinates to screen coordinates for drawing.
+        # Render the border image using the same logic as the final apply.
+        preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world))
+        if not preview_image: return
+
+        # Convert the preview image to a Tkinter-compatible format.
+        self.preview_tk_image = ImageTk.PhotoImage(preview_image)
+
+        # Convert the top-left world coordinate to screen coordinate for placing the image.
         sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
-        sx2, sy2 = self.app.camera.world_to_screen(preview_x2, preview_y2)
-
-        self.preview_rect_id = 1 # Set a dummy ID since we are only drawing one item now.
-
-        # --- DEFINITIVE FIX for Inaccurate Outline Thickness ---
-        # Inset the outline's coordinates by half its width. This ensures the outline
-        # draws fully *inside* the green area, not centered on its edge, which
-        # correctly simulates both inward and outward growing borders.
-        inset = thickness_screen / 2
-        self.canvas.create_rectangle(
-            sx1 + inset, sy1 + inset, sx2 - inset, sy2 - inset,
-            outline="white",
-            width=thickness_screen,
-            tags=("border_preview", "outline")
+        self.preview_rect_id = self.canvas.create_image(
+            sx1, sy1,
+            anchor=tk.NW,
+            image=self.preview_tk_image,
+            tags=("border_preview",)
         )
 
         # --- FIX: Ensure the preview is always drawn on top of other items ---
