@@ -328,7 +328,12 @@ class ImageManager:
         clone_tag = f"{clone_prefix}{self.next_dynamic_id}"
         self.next_dynamic_id += 1
 
-        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        # --- MODIFICATION: Place the clone in the center of the canvas, not at the cursor ---
+        # 1. Get the center of the canvas in screen coordinates.
+        center_x_screen = self.app.CANVAS_WIDTH / 2
+        center_y_screen = self.app.CANVAS_HEIGHT / 2
+        # 2. Convert the screen center to world coordinates to respect pan/zoom.
+        world_x, world_y = self.app.camera.screen_to_world(center_x_screen, center_y_screen)
         w, h = asset_comp.original_pil_image.size
         clone_comp = DraggableComponent(self.app, clone_tag, world_x - w/2, world_y - h/2, world_x + w/2, world_y + h/2, "green", clone_tag)
 
