@@ -152,15 +152,25 @@ class BorderManager:
         sx1, sy1 = self.app.camera.world_to_screen(border_x1, border_y1)
         sx2, sy2 = self.app.camera.world_to_screen(border_x2, border_y2)
 
-        # Draw the semi-transparent rectangle on the canvas
+        # --- DEFINITIVE FIX: Draw two rectangles to represent an inward-growing border ---
+        # The outer rectangle is the semi-transparent fill.
         self.preview_rect_id = self.canvas.create_rectangle(
             sx1, sy1, sx2, sy2,
             fill="#22c55e",  # A nice green color
             stipple="gray50", # This gives a semi-transparent effect
-            outline="white",
-            width=self.border_thickness.get() * self.app.camera.zoom_scale,
-            tags=("border_preview",)
+            outline="", # No outline on the fill itself
+            tags=("border_preview", "fill")
         )
+
+        # The inner rectangle is the white outline, inset from the outer edge.
+        thickness_screen = self.border_thickness.get() * self.app.camera.zoom_scale
+        self.canvas.create_rectangle(
+            sx1, sy1, sx2, sy2,
+            outline="white",
+            width=thickness_screen,
+            tags=("border_preview", "outline")
+        )
+
         # --- FIX: Ensure the preview is always drawn on top of other items ---
         self.canvas.tag_raise(self.preview_rect_id)
 
@@ -183,10 +193,15 @@ class BorderManager:
         final_image = Image.new("RGBA", (width, height), (0,0,0,0))
         thickness = self.border_thickness.get()
 
-        # 1. Create a mask for the border outline
+        # --- DEFINITIVE FIX: Create a mask that grows inward ---
+        # 1. Create a mask for the border by drawing a filled rectangle and then
+        #    drawing a smaller, empty rectangle inside it.
         mask = Image.new("L", (width, height), 0)
         draw = ImageDraw.Draw(mask)
-        draw.rectangle([(0,0), (width-1, height-1)], fill=0, outline=255, width=thickness)
+        # Draw the outer, filled shape
+        draw.rectangle([(0, 0), (width, height)], fill=255)
+        # "Cut out" the inside by drawing a smaller, empty rectangle
+        draw.rectangle([(thickness, thickness), (width - thickness, height - thickness)], fill=0)
 
         # 2. Create a layer with the tiled texture
         tiled_texture_layer = Image.new("RGBA", (width, height))
@@ -201,5 +216,5 @@ class BorderManager:
     def clear_preset_preview(self):
         """Removes the preset preview rectangle from the canvas if it exists."""
         if self.preview_rect_id:
-            self.canvas.delete(self.preview_rect_id)
+            self.canvas.delete("border_preview") # Delete all parts of the preview
             self.preview_rect_id = None
