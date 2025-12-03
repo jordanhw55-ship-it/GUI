@@ -11,7 +11,7 @@ class BorderManager:
 
     def load_border_to_dock(self):
         """Loads a border image to the asset dock, marking it specifically as a border."""
-        self.app._load_asset_to_dock_generic(is_border=True)
+        self.app.image_manager._load_asset_to_dock_generic(is_border=True)
 
     def apply_border_to_selection(self):
         """
