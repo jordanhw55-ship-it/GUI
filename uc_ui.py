@@ -354,6 +354,8 @@ class UIManager:
         trace_frame.pack(fill='x', padx=10, pady=5)
         manager.trace_button = tk.Button(trace_frame, text="Start Tracing", bg='#d97706', fg='white', relief='flat', font=button_font, command=manager.toggle_tracing)
         manager.trace_button.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        manager.magic_wand_button = tk.Button(trace_frame, text="Magic Wand", bg='#8b5cf6', fg='white', relief='flat', font=button_font, command=manager.toggle_magic_wand)
+        manager.magic_wand_button.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         manager.finish_button = tk.Button(trace_frame, text="Finish & Save", bg='#10b981', fg='white', relief='flat', font=button_font, command=manager.finish_tracing, state='disabled')
         manager.finish_button.pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 

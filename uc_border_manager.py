@@ -28,10 +28,12 @@ class BorderManager:
         self.traced_points = []
         self.trace_preview_id = None
         self.trace_button = None # Will be set by UIManager
+        self.magic_wand_button = None # Will be set by UIManager
         self.finish_button = None # Will be set by UIManager
 
         # --- Preset Definitions ---
         # A dictionary where each key is a preset name.
+        self.is_magic_wand_active = False
         # 'target_tile': The component tag the border is relative to.
         # 'shape_data': A list of ratios [x_offset, y_offset, width, height]
         #               relative to the target tile's dimensions.
@@ -198,6 +200,10 @@ class BorderManager:
             if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
             self.traced_points = []
 
+        # Ensure magic wand is off
+        if self.is_magic_wand_active:
+            self.toggle_magic_wand()
+
     def finish_tracing(self):
         """Finalizes the tracing and saves the new preset."""
         if not self.traced_points or len(self.traced_points) < 2:
@@ -236,6 +242,103 @@ class BorderManager:
         if self.is_tracing and self.traced_points:
             self.traced_points.pop()
             self._update_trace_preview()
+
+    def toggle_magic_wand(self):
+        """Toggles the 'magic wand' edge detection mode."""
+        self.is_magic_wand_active = not self.is_magic_wand_active
+
+        if self.is_magic_wand_active:
+            # Deactivate manual tracing if it's on
+            if self.is_tracing:
+                self.toggle_tracing()
+
+            self.magic_wand_button.config(text="Magic Wand (Active)", bg="#a78bfa", relief='sunken')
+            self.canvas.config(cursor="magic")
+            messagebox.showinfo("Magic Wand Active", "Click on a tile with an image to automatically trace its outline.")
+        else:
+            self.magic_wand_button.config(text="Magic Wand", bg="#8b5cf6", relief='flat')
+            self.canvas.config(cursor="")
+
+    def run_magic_wand(self, event):
+        """Finds the component under the click and runs the contour detection."""
+        if not self.is_magic_wand_active: return
+
+        item_id = self.canvas.find_closest(event.x, event.y)[0]
+        tags = self.canvas.gettags(item_id)
+        if not tags: return
+
+        comp_tag = tags[0]
+        comp = self.app.components.get(comp_tag)
+
+        if not comp or not comp.pil_image:
+            messagebox.showwarning("Invalid Target", "Magic Wand requires a tile with an image loaded.")
+            return
+
+        try:
+            contour = self._find_contour(comp.pil_image)
+            if not contour:
+                messagebox.showwarning("No Contour Found", "Could not find a distinct shape in the image's alpha channel.")
+                return
+
+            # Convert local contour points to world coordinates
+            world_contour = [(comp.world_x1 + x, comp.world_y1 + y) for x, y in contour]
+
+            preset_name = simpledialog.askstring("Save Preset", "Enter a name for your new magic-traced preset:")
+            if not preset_name: return
+
+            new_preset = {
+                "shape_type": "multi_span_path",
+                "segments": [{"type": "path", "path_coords": world_contour}]
+            }
+            self.border_presets[preset_name] = new_preset
+
+            self.app.ui_manager._populate_border_tab(self.app.ui_manager.border_tab)
+            self.selected_preset.set(preset_name)
+            self.show_preset_preview() # Show the new border immediately
+            print(f"New magic preset '{preset_name}' saved with {len(world_contour)} points.")
+
+        except Exception as e:
+            messagebox.showerror("Magic Wand Error", f"An error occurred during contour detection: {e}")
+        finally:
+            # Deactivate the tool after use
+            self.toggle_magic_wand()
+
+    def _find_contour(self, image):
+        """
+        Finds the contour of the first non-transparent shape in an image.
+        Returns a list of (x, y) points.
+        """
+        try:
+            import cv2 # type: ignore
+            import numpy as np
+        except ImportError:
+            messagebox.showerror("Dependency Missing", "The Magic Wand tool requires OpenCV and NumPy.\nPlease install them via: pip install opencv-python numpy")
+            return None
+
+        # Use the alpha channel as the basis for contour detection
+        if 'A' not in image.getbands():
+            return None # No alpha channel to trace
+
+        alpha = image.getchannel('A')
+        # Convert to numpy array for OpenCV
+        alpha_np = np.array(alpha)
+
+        # Find contours
+        # RETR_EXTERNAL finds only the outermost contours.
+        # CHAIN_APPROX_SIMPLE compresses horizontal, vertical, and diagonal segments, leaving only their end points.
+        contours, _ = cv2.findContours(alpha_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return None
+
+        # We are interested in the largest contour
+        largest_contour = max(contours, key=cv2.contourArea)
+
+        # The contour is a numpy array of shape (N, 1, 2). We need to reshape it to (N, 2).
+        points = largest_contour.reshape(-1, 2)
+
+        # Convert numpy points to a list of python tuples
+        return [tuple(point) for point in points]
 
     def _load_border_textures(self):
         """Loads default border textures into memory from the images directory."""

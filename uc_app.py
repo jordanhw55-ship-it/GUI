@@ -341,6 +341,11 @@ class ImageEditorApp:
     def on_component_press(self, event):
         """Handles press events on any component."""
         # --- NEW: Divert click to border tracer if active ---
+        if self.border_manager.is_magic_wand_active:
+            self.border_manager.run_magic_wand(event)
+            return
+
+        # --- NEW: Divert click to border tracer if active ---
         if self.border_manager.is_tracing:
             self.border_manager.add_trace_point(event)
             return
