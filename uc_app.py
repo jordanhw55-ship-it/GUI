@@ -136,7 +136,7 @@ class ImageEditorApp:
         # --- NEW: Bind the universal eraser event ---
         def on_drag(event): # This is the generic B1-Motion handler
             # If border tracing is active, it has its own drag handler, so we do nothing here.
-            if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False):
+            if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False) or self.border_manager.is_magic_wand_active:
                 return
 
             # Otherwise, delegate to the paint and eraser managers.
