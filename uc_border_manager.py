@@ -388,7 +388,7 @@ class BorderManager:
                         'form': 'rect'
                     })
                 elif segment["type"] == "path":
-                    path_tile = self.app.components.get(segment["target_tile"])
+                    path_tile = self.app.components.get(segment.get("target_tile"))
                     if not segment.get("path_coords"): continue
 
                     # If a target tile is specified, treat coords as relative. Otherwise, treat as absolute world coords.
