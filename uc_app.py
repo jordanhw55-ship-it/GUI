@@ -349,9 +349,15 @@ class ImageEditorApp:
     def on_component_press(self, event):
         """Handles press events on any component."""
         # --- NEW: Divert click to border tracer if active ---
-        # --- DEFINITIVE FIX: Check all interactive border modes ---
-        if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False):
-            # This mode has its own bindings, so we just stop propagation.
+        # --- DEFINITIVE FIX: Explicitly delegate the event to the active tool ---
+        # This is the core fix. Instead of just blocking, we now actively hand off
+        # the event to the correct manager if a special tool is active.
+        if getattr(self.border_manager, 'is_magic_trace_active', False):
+            self.border_manager._start_magic_trace(event)
+            return "break"
+        
+        if self.border_manager.is_tracing:
+            self.border_manager.add_trace_point(event)
             return "break"
 
         if self.border_manager.is_magic_wand_active:

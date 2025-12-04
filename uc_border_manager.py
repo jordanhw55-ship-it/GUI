@@ -254,23 +254,20 @@ class BorderManager:
             self.magic_trace_button.config(text="Magic Trace (Active)", bg="#14b8a6", relief='sunken')
             self.canvas.config(cursor="crosshair")
             messagebox.showinfo("Magic Trace Active", "Click and drag to draw a loose selection around the shape you want to create a border for. The tool will automatically snap to the detected outline.")
-            # --- DEFINITIVE FIX: Unbind generic handlers and bind specific ones ---
+            # --- DEFINITIVE FIX: The main app now delegates clicks, so we only need to manage drag/release ---
             self.canvas.unbind("<B1-Motion>")
-            self.canvas.unbind("<ButtonRelease-1>")
-            self.canvas.bind("<ButtonPress-1>", self._start_magic_trace)
             self.canvas.bind("<B1-Motion>", self._draw_magic_trace)
             self.canvas.bind("<ButtonRelease-1>", self._finish_magic_trace)
         else:
             self.magic_trace_button.config(text="Magic Trace", bg="#0d9488", relief='flat')
             self.canvas.config(cursor="")
-            # --- DEFINITIVE FIX: Unbind specific handlers and restore generic ones ---
+            # --- DEFINITIVE FIX: Unbind our specific handlers and restore the app's defaults ---
             self.canvas.unbind("<ButtonPress-1>")
             self.canvas.unbind("<B1-Motion>")
             self.canvas.unbind("<ButtonRelease-1>")
             if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
             self.traced_points = []
             self.app.bind_generic_drag_handler()
-            self.app.ui_manager.bind_canvas_events() # Re-bind the paint release event
 
     def _start_magic_trace(self, event):
         """Starts drawing the magic trace lasso."""
