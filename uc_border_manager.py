@@ -281,12 +281,20 @@ class BorderManager:
 
     def _start_magic_trace(self, event):
         """Starts drawing the magic trace lasso."""
+        # --- DEFINITIVE FIX: Correctly initialize the trace path ---
+        # 1. Clear any previous points and preview lines.
         self.traced_points = []
         if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
-        self.add_drag_trace_point(event)
+        # 2. Get the world coordinates of the initial click.
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        # 3. Set the last_trace_point to these coordinates. This is the crucial step that was missing.
+        self.last_trace_point = (world_x, world_y)
+        # 4. Add the first point to the list.
+        self.traced_points.append((int(world_x), int(world_y)))
 
     def _draw_magic_trace(self, event):
         """Adds points to the lasso path while dragging."""
+        # This function now correctly continues the path started by _start_magic_trace.
         self.add_drag_trace_point(event)
 
     def _finish_magic_trace(self, event):
