@@ -39,16 +39,13 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
-            # --- DEFINITIVE FIX: Simplify "Top Border" for debugging ---
+            # --- DEFINITIVE FIX: Revert to a simple, relative rect for debugging ---
             "Top Border": {
-                "shape_type": "multi_span_path",
-                "segments": [
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile05", "start_coords": [1, 44],
-                        "end_tile": "humanuitile05", "end_coords": [511, 44]
-                    }
-                ]
+                "target_tile": "humanuitile05",
+                "shape_type": "relative_rect",
+                # Using relative coordinates based on a 512x512 tile.
+                # x=1/512, y=44/512, w=510/512, h=thickness (handled by renderer)
+                "shape_data": [0.00195, 0.0859, 0.996, 0.02] 
             },
             # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
             # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
