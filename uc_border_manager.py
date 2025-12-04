@@ -59,8 +59,8 @@ class BorderManager:
             },
             "HP Frame": {
                 "shape_type": "span_rect",
-                # DEFINITIVE FIX: Use absolute world coordinates [x1, y1, x2, y2]
-                "shape_data": [471, 322, 544, 336]
+                "start_tile": "humanuitile01", "end_tile": "humanuitile02",
+                "shape_data": [430, 455, 69, 24] # [start_x_offset, start_y_offset, end_x_offset, height_px]
             },
             "Mana Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
@@ -216,11 +216,28 @@ class BorderManager:
 
         # --- DEFINITIVE FIX: Handle the new "span_rect" shape type ---
         if preset.get("shape_type") == "span_rect":
-            # Read absolute world coordinates directly from the preset
-            border_x1, border_y1, border_x2, border_y2 = preset["shape_data"]
+            start_tile = self.app.components.get(preset["start_tile"])
+            end_tile = self.app.components.get(preset["end_tile"])
+            if not start_tile or not end_tile: return
+
+            start_x_offset, start_y_offset, end_x_offset, height_px = preset["shape_data"]
+
+            # --- LOGIC FIX: Correctly scale pixel offsets to world coordinates ---
+            # Calculate scale factor based on the tile's original image size (e.g., 512x512) vs its current world size.
+            start_tile_world_w = start_tile.world_x2 - start_tile.world_x1
+            start_scale_factor = start_tile_world_w / (start_tile.original_pil_image.width if start_tile.original_pil_image else 512.0)
+
+            end_tile_world_w = end_tile.world_x2 - end_tile.world_x1
+            end_scale_factor = end_tile_world_w / (end_tile.original_pil_image.width if end_tile.original_pil_image else 512.0)
+
+            # Calculate the final world coordinates using the scaled offsets
+            border_x1 = start_tile.world_x1 + (start_x_offset * start_scale_factor)
+            border_y1 = start_tile.world_y1 + (start_y_offset * start_scale_factor)
+            border_x2 = end_tile.world_x1 + (end_x_offset * end_scale_factor)
+            border_y2 = border_y1 + (height_px * start_scale_factor)
+
             border_w = border_x2 - border_x1
             border_h = border_y2 - border_y1
-
         else: # Handle the original "relative_rect"
             target_comp = self.app.components.get(preset["target_tile"])
             if not target_comp:
