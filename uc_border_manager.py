@@ -45,33 +45,33 @@ class BorderManager:
                 "shapes": [
                     { 
                         "target_tile": "humanuitile05", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                        "shape_data": [0.0, 0.0859, 1.0, 0] # FIX: Span full width
                     },
                     { 
                         "target_tile": "humanuitile01", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                        "shape_data": [0.0, 0.0859, 1.0, 0] # FIX: Span full width
                     },
                     { 
                         "target_tile": "humanuitile02", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.4218, 0] # 1,44 to 217,44
+                        "shape_data": [0.0, 0.0859, 0.4238, 0] # FIX: 0 to 217
                     },
                     { 
                         "target_tile": "humanuitile02", "shape_form": "rect", 
-                        "shape_data": [0.7011, 0.0859, 0.2968, 0] # 359,44 to 511,44
+                        "shape_data": [0.7011, 0.0859, 0.2988, 0] # FIX: 359 to 512
                     },
                     { 
                         "target_tile": "humanuitile03", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                        "shape_data": [0.0, 0.0859, 1.0, 0] # FIX: Span full width
                     },
                     { 
                         "target_tile": "humanuitile04", "shape_form": "rect", 
                         # DEFINITIVE FIX: Correct relative width for the narrow tile04.
                         # The border (1 to 63) is wider than the tile (width 30).
-                        "shape_data": [0.0333, 0.0859, 2.0667, 0] # x=1/30, w=(63-1)/30
+                        "shape_data": [0.0, 0.0859, 2.1, 0] # FIX: 0 to 63
                     },
                     { 
                         "target_tile": "humanuitile06", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                        "shape_data": [0.0, 0.0859, 1.0, 0] # FIX: Span full width
                     }
                 ]
             },
