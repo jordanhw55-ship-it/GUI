@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk, ImageChops, ImageEnhance
+from PIL import Image, ImageTk, ImageChops, ImageEnhance, ImageDraw
 import os
 
 from uc_component import DraggableComponent
@@ -534,4 +534,3 @@ class ImageManager:
         # Update the component's image to show the new dot
         target_comp.set_image(image_to_draw_on)
         print(f"Drew debug dot on '{target_tile_tag}' at local coordinates ({x}, {y}).")
-        print(f"Created clone '{clone_tag}' from asset '{asset_comp.tag}'.")
