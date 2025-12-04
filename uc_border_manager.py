@@ -253,11 +253,21 @@ class BorderManager:
 
             self.magic_trace_button.config(text="Magic Trace (Active)", bg="#14b8a6", relief='sunken')
             self.canvas.config(cursor="crosshair")
-            messagebox.showinfo("Magic Trace Active", "Click and drag to draw a loose selection around the shape you want to create a border for. The tool will automatically snap to the detected outline.")
+            
+            # --- DEFINITIVE FIX: Remove the blocking messagebox and use a temporary on-canvas label instead ---
+            status_label = tk.Label(self.canvas, text="Magic Trace Active: Drag to draw a selection.", bg="#10b981", fg="white", font=("Inter", 12, "bold"))
+            status_window_id = self.canvas.create_window(self.canvas.winfo_width() / 2, 20, window=status_label, anchor="n")
+            
+            def clear_status():
+                self.canvas.delete(status_window_id)
+
+            self.canvas.after(2500, clear_status) # The message will disappear after 2.5 seconds
+
             # --- DEFINITIVE FIX: The main app now delegates clicks, so we only need to manage drag/release ---
             self.canvas.unbind("<B1-Motion>")
             self.canvas.bind("<B1-Motion>", self._draw_magic_trace)
             self.canvas.bind("<ButtonRelease-1>", self._finish_magic_trace)
+
         else:
             self.magic_trace_button.config(text="Magic Trace", bg="#0d9488", relief='flat')
             self.canvas.config(cursor="")
