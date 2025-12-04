@@ -253,7 +253,7 @@ class BorderManager:
                 self.toggle_tracing()
 
             self.magic_wand_button.config(text="Magic Wand (Active)", bg="#a78bfa", relief='sunken')
-            self.canvas.config(cursor="magic")
+            self.canvas.config(cursor="spraycan")
             messagebox.showinfo("Magic Wand Active", "Click on a tile with an image to automatically trace its outline.")
         else:
             self.magic_wand_button.config(text="Magic Wand", bg="#8b5cf6", relief='flat')
