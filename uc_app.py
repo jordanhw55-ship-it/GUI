@@ -20,14 +20,8 @@ from uc_ui import UIManager
 from uc_paint_manager import PaintManager
 from uc_border_manager import BorderManager
 from uc_image_manager import ImageManager
-from settings import SettingsManager
-
-# --- NEW: Centralized Path Management ---
-def get_base_path():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    else:
-        return os.path.dirname(os.path.abspath(__file__))
+from settings import SettingsManager # type: ignore
+from utils import get_base_path # Import the centralized function
 
 # --- CONFIGURATION (SCALED UP FOR LARGER GUI) ---
 CANVAS_WIDTH = 1440  # Increased by 20% for a wider GUI
