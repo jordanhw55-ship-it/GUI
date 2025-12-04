@@ -40,6 +40,33 @@ class BorderManager:
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
             "Top Border": {
+                "shape_type": "multi_span_path",
+                "segments": [
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile05", "start_coords": [1, 44],
+                        "end_tile": "humanuitile02", "end_coords": [229, 44]
+                    },
+                    {
+                        "type": "path",
+                        "target_tile": "humanuitile02",
+                        "path_coords": [
+                            [229, 44], [231, 46], [233, 48], [235, 50], [237, 53], [240, 56],
+                            [243, 59], [246, 62], [249, 65], [253, 68], [257, 71], [261, 74],
+                            [265, 77], [270, 80], [275, 83], [280, 86], [285, 88], [291, 88],
+                            [296, 87], [301, 85], [306, 83], [311, 80], [316, 77], [320, 74],
+                            [324, 71], [328, 68], [332, 65], [335, 62], [338, 59], [341, 56],
+                            [343, 53], [345, 50], [347, 48], [347, 44]
+                        ]
+                    },
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile02", "start_coords": [347, 44],
+                        "end_tile": "humanuitile06", "end_coords": [511, 44]
+                    }
+                ]
+            },
+            "Top Border": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 0.08]
             },
             "Bottom Border": {
@@ -162,11 +189,25 @@ class BorderManager:
         elif preset.get("shape_type") == "relative_rect":
             # For backward compatibility, treat single presets as a list with one item
             shapes_to_create = [{"shape_data": preset.get("shape_data")}]
+        elif preset.get("shape_type") == "multi_span_path":
+            # For the new complex path type, we create one component per segment
+            shapes_to_create = preset.get("segments", [])
+        else:
+            shapes_to_create = []
 
         for shape in shapes_to_create:
-            if not shape.get("shape_data"): continue
+            # --- NEW: Handle different shape data structures ---
+            shape_data = shape.get("shape_data")
+            shape_type = preset.get("shape_type")
 
-            target_comp = self.app.components.get(preset["target_tile"])
+            if shape_type == "multi_span_path":
+                # For paths, the logic is different. We'll handle it inside the loop.
+                pass
+            elif not shape_data:
+                continue
+
+            # Determine the target component
+            target_comp = self.app.components.get(preset.get("target_tile") or shape.get("target_tile"))
             if not target_comp:
                 messagebox.showerror("Error", f"Target tile '{preset['target_tile']}' for preset not found on canvas.")
                 return
@@ -174,29 +215,61 @@ class BorderManager:
             parent_w = target_comp.world_x2 - target_comp.world_x1
             parent_h = target_comp.world_y2 - target_comp.world_y1
             rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
-
-            width_multiplier = self.border_width.get() / 100.0
-            border_w = (parent_w * rel_w) * width_multiplier
-            border_h = (parent_h * rel_h) * width_multiplier
-
             thickness = self.border_thickness.get()
             growth_direction = self.border_growth_direction.get()
-            
-            border_x = target_comp.world_x1 + (parent_w * rel_x)
-            border_y = target_comp.world_y1 + (parent_h * rel_y)
-            
-            render_w, render_h = border_w, border_h
+
+            if shape_type == "multi_span_path":
+                segment_type = shape.get("type")
+                if segment_type == "line":
+                    start_tile = self.app.components.get(shape["start_tile"])
+                    end_tile = self.app.components.get(shape["end_tile"])
+                    if not start_tile or not end_tile: continue
+
+                    start_x_world = start_tile.world_x1 + shape["start_coords"][0]
+                    start_y_world = start_tile.world_y1 + shape["start_coords"][1]
+                    end_x_world = end_tile.world_x1 + shape["end_coords"][0]
+                    end_y_world = end_tile.world_y1 + shape["end_coords"][1]
+
+                    border_x = min(start_x_world, end_x_world)
+                    border_y = min(start_y_world, end_y_world)
+                    border_w = abs(end_x_world - start_x_world)
+                    border_h = abs(end_y_world - start_y_world) if abs(end_y_world - start_y_world) > 0 else thickness
+                    render_w, render_h = border_w, border_h
+                    shape_form = "rect"
+
+                elif segment_type == "path":
+                    path_coords = shape["path_coords"]
+                    path_tile = self.app.components.get(shape["target_tile"])
+                    if not path_tile or not path_coords: continue
+
+                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in path_coords]
+                    min_x = min(p[0] for p in world_path)
+                    max_x = max(p[0] for p in world_path)
+                    min_y = min(p[1] for p in world_path)
+                    max_y = max(p[1] for p in world_path)
+
+                    border_x, border_y = min_x, min_y
+                    border_w, border_h = max_x - min_x, max_y - min_y
+                    render_w, render_h = border_w, border_h
+                    shape_form = "path"
+            else: # Existing rect/circle logic
+                width_multiplier = self.border_width.get() / 100.0
+                border_w = (parent_w * rel_w) * width_multiplier
+                border_h = (parent_h * rel_h) * width_multiplier
+                border_x = target_comp.world_x1 + (parent_w * rel_x)
+                border_y = target_comp.world_y1 + (parent_h * rel_y)
+                render_w, render_h = border_w, border_h
+                shape_form = shape.get("shape_form", "rect")
+
             if growth_direction == 'out':
-                border_x -= thickness
-                border_y -= thickness
-                render_w += thickness * 2
-                render_h += thickness * 2
+                border_x -= thickness; border_y -= thickness
+                render_w += thickness * 2; render_h += thickness * 2
 
             border_tag = f"preset_border_{self.next_border_id}"
             self.next_border_id += 1
             border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + render_w, border_y + render_h, "blue", "BORDER")
             border_comp.is_draggable = False
-            border_comp.parent_tag = target_comp.tag
+            border_comp.parent_tag = target_comp.tag # Assign parent
 
             border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape.get("shape_form", "rect"))
             if not border_image: continue
@@ -207,7 +280,7 @@ class BorderManager:
             self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
         self.app.redraw_all_zoomable()
-        print(f"Applied preset '{preset_name}' to '{target_comp.tag}'.")
+        print(f"Applied preset '{preset_name}'.")
 
     def _get_shapes_from_preset(self, preset):
         """Helper to return a list of shapes from a preset, handling single and multi-shape types."""
@@ -311,6 +384,39 @@ class BorderManager:
             # Also wrap single rects in a list to use the common render logic
             shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h, 'form': 'rect'}]
 
+        # --- NEW: Handle multi_span_path for preview ---
+        if preset.get("shape_type") == "multi_span_path":
+            shapes_to_preview = []
+            for segment in preset.get("segments", []):
+                thickness = self.border_thickness.get()
+                if segment["type"] == "line":
+                    start_tile = self.app.components.get(segment["start_tile"])
+                    end_tile = self.app.components.get(segment["end_tile"])
+                    if not start_tile or not end_tile: continue
+
+                    start_x = start_tile.world_x1 + segment["start_coords"][0]
+                    start_y = start_tile.world_y1 + segment["start_coords"][1]
+                    end_x = end_tile.world_x1 + segment["end_coords"][0]
+                    end_y = end_tile.world_y1 + segment["end_coords"][1]
+
+                    shapes_to_preview.append({
+                        'x': min(start_x, end_x), 'y': min(start_y, end_y),
+                        'w': abs(end_x - start_x), 'h': abs(end_y - start_y) if abs(end_y - start_y) > 0 else thickness,
+                        'form': 'rect'
+                    })
+                elif segment["type"] == "path":
+                    path_tile = self.app.components.get(segment["target_tile"])
+                    if not path_tile: continue
+                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in segment["path_coords"]]
+                    
+                    min_x, max_x = min(p[0] for p in world_path), max(p[0] for p in world_path)
+                    min_y, max_y = min(p[1] for p in world_path), max(p[1] for p in world_path)
+                    
+                    shapes_to_preview.append({
+                        'x': min_x, 'y': min_y, 'w': max_x - min_x, 'h': max_y - min_y,
+                        'form': 'path', 'path_data': world_path # Pass the absolute path data
+                    })
+
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
         # This now loops through all shapes calculated above (even if it's just one)
         for shape_coords in shapes_to_preview:
@@ -327,7 +433,7 @@ class BorderManager:
                 render_w_world += thickness * 2
                 render_h_world += thickness * 2
 
-            preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world), shape_form)
+            preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world), shape_form, shape_coords.get('path_data'))
             if not preview_image: continue
 
             self.preview_tk_image = ImageTk.PhotoImage(preview_image)
@@ -351,7 +457,7 @@ class BorderManager:
     def remove_border_from_selection(self):
         pass
 
-    def _render_border_image(self, logical_size, render_size, shape_form="rect"):
+    def _render_border_image(self, logical_size, render_size, shape_form="rect", path_data=None):
         """Renders the selected border style onto a PIL image."""
         logical_w, logical_h = int(logical_size[0]), int(logical_size[1])
         render_w, render_h = int(render_size[0]), int(render_size[1])
@@ -372,16 +478,29 @@ class BorderManager:
         mask = Image.new("L", (render_w, render_h), 0)
         draw = ImageDraw.Draw(mask)
 
+        # --- NEW: Handle path drawing ---
+        if shape_form == "path" and path_data:
+            # The path_data is in world coordinates. We need to make it relative to the render box.
+            min_x = min(p[0] for p in path_data)
+            min_y = min(p[1] for p in path_data)
+            relative_path = [(p[0] - min_x, p[1] - min_y) for p in path_data]
+            
+            # Draw the path as a series of lines with the specified thickness
+            draw.line(relative_path, fill=255, width=thickness, joint="curve")
+
         # --- NEW: Adjust mask based on growth direction ---
-        if growth_direction == 'in':
+        elif growth_direction == 'in':
             if shape_form == "circle":
                 draw.ellipse([0, 0, logical_w, logical_h], fill=255)
                 if logical_w > thickness * 2 and logical_h > thickness * 2:
                     draw.ellipse([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
-            else: # Default to rectangle
+            elif shape_form == "rect":
                 draw.rectangle([0, 0, logical_w, logical_h], fill=255)
                 if logical_w > thickness * 2 and logical_h > thickness * 2:
                     draw.rectangle([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
+            # Path with 'in' growth is complex and not fully supported in this simplified render.
+            # The line drawing above serves as the primary shape.
+
         else: # 'out'
             if shape_form == "circle":
                 draw.ellipse([0, 0, render_w, render_h], fill=255)
@@ -389,10 +508,12 @@ class BorderManager:
                     # The inner cutout is inset by the thickness.
                     draw.ellipse([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
             else: # Default to rectangle
-                draw.rectangle([0, 0, render_w, render_h], fill=255)
-                if render_w > thickness * 2 and render_h > thickness * 2:
-                    draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
-
+                # Only draw the rectangle if it's not a path, to avoid overwriting the path mask
+                if shape_form != "path":
+                    draw.rectangle([0, 0, render_w, render_h], fill=255)
+                    if render_w > thickness * 2 and render_h > thickness * 2:
+                        draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
+                        
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
         if feather_amount > 0:
