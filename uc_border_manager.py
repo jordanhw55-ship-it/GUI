@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import colorchooser, messagebox
+from tkinter import colorchooser, messagebox, simpledialog
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
 import numpy as np
 import os
@@ -22,6 +22,13 @@ class BorderManager:
         self.border_feather = tk.IntVar(value=0)
         self.preview_tk_images = [] # DEFINITIVE FIX: Hold multiple PhotoImage objects
         self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
+
+        # --- NEW: Interactive Tracing State ---
+        self.is_tracing = False
+        self.traced_points = []
+        self.trace_preview_id = None
+        self.trace_button = None # Will be set by UIManager
+        self.finish_button = None # Will be set by UIManager
 
         # --- Preset Definitions ---
         # A dictionary where each key is a preset name.
@@ -172,6 +179,63 @@ class BorderManager:
             self.selected_preset.set(list(self.border_presets.keys())[0])
         if self.border_textures:
             self.selected_style.set(list(self.border_textures.keys())[0])
+
+    def toggle_tracing(self):
+        """Starts or stops the interactive border tracing mode."""
+        self.is_tracing = not self.is_tracing
+
+        if self.is_tracing:
+            self.traced_points = []
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.trace_button.config(text="Cancel Tracing", bg="#ef4444")
+            self.finish_button.config(state='normal')
+            self.canvas.config(cursor="crosshair")
+            messagebox.showinfo("Tracing Started", "Click on the canvas to place points for your border path. Right-click to remove the last point. Press 'Finish & Save' when done.")
+        else: # Tracing was cancelled
+            self.trace_button.config(text="Start Tracing", bg="#d97706")
+            self.finish_button.config(state='disabled')
+            self.canvas.config(cursor="")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+
+    def finish_tracing(self):
+        """Finalizes the tracing and saves the new preset."""
+        if not self.traced_points or len(self.traced_points) < 2:
+            messagebox.showwarning("Trace Incomplete", "You must place at least two points to create a border.")
+            return
+
+        preset_name = simpledialog.askstring("Save Preset", "Enter a name for your new border preset:")
+        if not preset_name:
+            return # User cancelled
+
+        # Create the new preset definition
+        new_preset = {
+            "shape_type": "multi_span_path",
+            "segments": [
+                {"type": "path", "path_coords": self.traced_points}
+            ]
+        }
+        self.border_presets[preset_name] = new_preset
+
+        # Update the preset dropdown menu in the UI
+        self.app.ui_manager._populate_border_tab(self.app.ui_manager.notebook.tabs()[2]) # A bit of a hack to get the tab
+        self.selected_preset.set(preset_name)
+        
+        print(f"New border preset '{preset_name}' saved with {len(self.traced_points)} points.")
+        self.toggle_tracing() # Reset the tracing state
+
+    def add_trace_point(self, event):
+        """Adds a point to the current trace path."""
+        if not self.is_tracing: return
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        self.traced_points.append((int(world_x), int(world_y)))
+        self._update_trace_preview()
+
+    def remove_last_trace_point(self, event):
+        """Removes the last added point from the trace."""
+        if self.is_tracing and self.traced_points:
+            self.traced_points.pop()
+            self._update_trace_preview()
 
     def _load_border_textures(self):
         """Loads default border textures into memory from the images directory."""
@@ -527,6 +591,17 @@ class BorderManager:
 
         # --- FIX: Ensure the preview is always drawn on top of other items ---
         self.canvas.tag_raise("border_preview")
+
+    def _update_trace_preview(self):
+        """Draws a line connecting the currently traced points."""
+        if self.trace_preview_id:
+            self.canvas.delete(self.trace_preview_id)
+
+        if len(self.traced_points) >= 2:
+            screen_points = [self.app.camera.world_to_screen(x, y) for x, y in self.traced_points]
+            self.trace_preview_id = self.canvas.create_line(
+                screen_points, fill="cyan", width=2, tags="trace_preview"
+            )
 
     def apply_border_to_selection(self):
         pass # This method is now handled by the decal system

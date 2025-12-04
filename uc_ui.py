@@ -342,6 +342,16 @@ class UIManager:
         radio_in.pack(side=tk.LEFT, padx=(0, 10))
         radio_out.pack(side=tk.LEFT)
 
+        # --- NEW: Border Tracing ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="INTERACTIVE TRACING", **label_style).pack(fill='x')
+        trace_frame = tk.Frame(tab, bg="#374151")
+        trace_frame.pack(fill='x', padx=10, pady=5)
+        manager.trace_button = tk.Button(trace_frame, text="Start Tracing", bg='#d97706', fg='white', relief='flat', font=button_font, command=manager.toggle_tracing)
+        manager.trace_button.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        manager.finish_button = tk.Button(trace_frame, text="Finish & Save", bg='#10b981', fg='white', relief='flat', font=button_font, command=manager.finish_tracing, state='disabled')
+        manager.finish_button.pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
 

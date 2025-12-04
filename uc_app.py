@@ -127,6 +127,9 @@ class ImageEditorApp:
         # Bind camera pan events directly to the canvas
         self.canvas.bind("<Control-Button-1>", self.camera.on_pan_press)
         self.canvas.bind("<Control-B1-Motion>", self.camera.on_pan_drag)
+        # --- NEW: Bind right-click for tracing ---
+        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
+
 
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events() # Binds paint events
@@ -337,6 +340,11 @@ class ImageEditorApp:
 
     def on_component_press(self, event):
         """Handles press events on any component."""
+        # --- NEW: Divert click to border tracer if active ---
+        if self.border_manager.is_tracing:
+            self.border_manager.add_trace_point(event)
+            return
+
         # Find the component tag from the canvas item clicked
         item_id = self.canvas.find_closest(event.x, event.y)[0]
         tags = self.canvas.gettags(item_id)
@@ -431,6 +439,11 @@ class ImageEditorApp:
             self.pre_move_state = {} # Clear the temporary state
 
         self._keep_docks_on_top()
+
+    def on_canvas_right_click(self, event):
+        """Handles right-click events on the canvas, primarily for border tracing."""
+        if self.border_manager.is_tracing:
+            self.border_manager.remove_last_trace_point(event)
 
     def move_all_main_tiles(self, dx_world, dy_world):
         """Moves all primary component tiles by a delta in world coordinates."""
