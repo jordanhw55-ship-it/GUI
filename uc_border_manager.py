@@ -371,13 +371,29 @@ class BorderManager:
                 if dist < min_dist:
                     min_dist = dist
                     best_contour = contour
+        
+        if not best_contour:
+            messagebox.showwarning("No Contour Found", "Could not find a contour near your selection.")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+            self.toggle_magic_trace() # Exit the mode
+            return
 
         # Convert the chosen local contour points to absolute world coordinates
         self.traced_points = [(target_comp.world_x1 + x, target_comp.world_y1 + y) for x, y in best_contour]
-        self._update_trace_preview() # Update preview to show the snapped path
         
-        # Now that the path is refined, the user can click "Finish & Save"
-        self.finish_button.config(state='normal')
+        # --- DEFINITIVE FIX: Immediately prompt to save the preset, bypassing the 'Finish' button ---
+        preset_name = simpledialog.askstring("Save Preset", "Enter a name for your new magic-traced preset:")
+        if preset_name:
+            new_preset = {
+                "shape_type": "multi_span_path",
+                "segments": [{"type": "path", "path_coords": self.traced_points}]
+            }
+            self.border_presets[preset_name] = new_preset
+            self.app.ui_manager._populate_border_tab(self.app.ui_manager.border_tab)
+            self.selected_preset.set(preset_name)
+            self.show_preset_preview() # Show the new border immediately
+
         self.toggle_magic_trace() # Exit the mode
 
     def add_trace_point(self, event):
