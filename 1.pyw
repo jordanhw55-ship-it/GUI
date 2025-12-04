@@ -1,7 +1,12 @@
 import sys
-import json
 import os
-import re
+
+# --- Fix for ModuleNotFoundError ---
+# Add the script's directory to the Python path. This allows the script
+# to find its sibling modules (like utils.py, data.py, etc.) when run
+# from any working directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import subprocess
 from typing import List
 
