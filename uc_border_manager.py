@@ -46,7 +46,15 @@ class BorderManager:
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.92, 1.0, 0.08]
             },
             "Minimap Buttons": {
-                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.6035, 0.4375, 0.0898, 0.4453]
+                "target_tile": "humanuitile01",
+                "shape_type": "multi_rect",
+                "shapes": [
+                    { "shape_data": [0.6035, 0.4375, 0.0898, 0.0801] }, # Button 1
+                    { "shape_data": [0.6035, 0.5234, 0.0898, 0.0781] }, # Button 2
+                    { "shape_data": [0.6035, 0.6094, 0.0898, 0.0781] }, # Button 3
+                    { "shape_data": [0.6035, 0.6953, 0.0898, 0.0781] }, # Button 4
+                    { "shape_data": [0.6055, 0.8027, 0.0859, 0.0801] }  # Button 5 (Circle)
+                ]
             },
             "Character Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.05, 0.1, 0.9, 0.15]
@@ -147,53 +155,56 @@ class BorderManager:
             return
 
         preset = self.border_presets[preset_name]
-        target_comp = self.app.components.get(preset["target_tile"])
 
-        if not target_comp:
-            messagebox.showerror("Error", f"Target tile '{preset['target_tile']}' for preset not found on canvas.")
-            return
+        # --- NEW: Handle multi-shape presets ---
+        if preset.get("shape_type") == "multi_rect":
+            shapes_to_create = preset.get("shapes", [])
+        else:
+            # For backward compatibility, treat single presets as a list with one item
+            shapes_to_create = [{"shape_data": preset.get("shape_data")}]
 
-        # Calculate absolute coordinates from relative data
-        parent_w = target_comp.world_x2 - target_comp.world_x1
-        parent_h = target_comp.world_y2 - target_comp.world_y1
-        rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
+        for shape in shapes_to_create:
+            if not shape.get("shape_data"): continue
 
-        # NEW: Adjust border component size by the width slider value
-        width_multiplier = self.border_width.get() / 100.0
-        border_w = (parent_w * rel_w) * width_multiplier
-        border_h = (parent_h * rel_h) * width_multiplier
+            target_comp = self.app.components.get(preset["target_tile"])
+            if not target_comp:
+                messagebox.showerror("Error", f"Target tile '{preset['target_tile']}' for preset not found on canvas.")
+                return
 
-        # --- FIX: Adjust component position and size for outward growth ---
-        thickness = self.border_thickness.get()
-        growth_direction = self.border_growth_direction.get()
-        
-        border_x = target_comp.world_x1 + (parent_w * rel_x)
-        border_y = target_comp.world_y1 + (parent_h * rel_y)
-        
-        render_w, render_h = border_w, border_h
-        if growth_direction == 'out':
-            border_x -= thickness
-            border_y -= thickness
-            render_w += thickness * 2
-            render_h += thickness * 2
+            parent_w = target_comp.world_x2 - target_comp.world_x1
+            parent_h = target_comp.world_y2 - target_comp.world_y1
+            rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
 
-        # Create a new component for the border
-        border_tag = f"preset_border_{self.next_border_id}"
-        self.next_border_id += 1
-        border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + render_w, border_y + render_h, "blue", "BORDER")
-        border_comp.is_draggable = False # Borders are not draggable by default
-        border_comp.parent_tag = target_comp.tag # Link the border to its parent tile
+            width_multiplier = self.border_width.get() / 100.0
+            border_w = (parent_w * rel_w) * width_multiplier
+            border_h = (parent_h * rel_h) * width_multiplier
 
-        # Render the border image using the selected style and thickness
-        border_image = self._render_border_image((border_w, border_h), (render_w, render_h))
-        if not border_image: return
+            thickness = self.border_thickness.get()
+            growth_direction = self.border_growth_direction.get()
+            
+            border_x = target_comp.world_x1 + (parent_w * rel_x)
+            border_y = target_comp.world_y1 + (parent_h * rel_y)
+            
+            render_w, render_h = border_w, border_h
+            if growth_direction == 'out':
+                border_x -= thickness
+                border_y -= thickness
+                render_w += thickness * 2
+                render_h += thickness * 2
 
-        border_comp.set_image(border_image)
-        self.app.components[border_tag] = border_comp
-        self.app.canvas.tag_lower(border_tag, "draggable") # Send behind other components
+            border_tag = f"preset_border_{self.next_border_id}"
+            self.next_border_id += 1
+            border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + render_w, border_y + render_h, "blue", "BORDER")
+            border_comp.is_draggable = False
+            border_comp.parent_tag = target_comp.tag
 
-        # --- NEW: Save state for Undo ---
-        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+            border_image = self._render_border_image((border_w, border_h), (render_w, render_h))
+            if not border_image: continue
+
+            border_comp.set_image(border_image)
+            self.app.components[border_tag] = border_comp
+            self.app.canvas.tag_lower(border_tag, "draggable")
+            self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
         self.app.redraw_all_zoomable()
         print(f"Applied preset '{preset_name}' to '{target_comp.tag}'.")
