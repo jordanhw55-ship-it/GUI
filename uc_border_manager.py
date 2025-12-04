@@ -255,6 +255,35 @@ class BorderManager:
 
             border_w = (border_x2 - border_x1) + 1 # Add 1px to fix off-by-one rendering error
             border_h = border_y2 - border_y1
+            
+            # Since span_rect is a single shape, we wrap it in a list to use the common render logic below
+            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h}]
+
+        elif preset.get("shape_type") == "multi_rect":
+            shapes_to_preview = []
+            target_comp = self.app.components.get(preset["target_tile"])
+            if not target_comp: return
+
+            parent_w = target_comp.world_x2 - target_comp.world_x1
+            parent_h = target_comp.world_y2 - target_comp.world_y1
+            width_multiplier = self.border_width.get() / 100.0
+
+            for shape in preset.get("shapes", []):
+                if not shape.get("shape_data"): continue
+                rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
+
+                border_w = (parent_w * rel_w) * width_multiplier
+                border_h = (parent_h * rel_h) * width_multiplier
+                border_x1 = target_comp.world_x1 + (parent_w * rel_x)
+                border_y1 = target_comp.world_y1 + (parent_h * rel_y)
+                
+                shapes_to_preview.append({
+                    'x': border_x1, 'y': border_y1,
+                    'w': border_w, 'h': border_h
+                })
+            
+            if not shapes_to_preview: return # No valid shapes found
+
         else: # Handle the original "relative_rect"
             target_comp = self.app.components.get(preset["target_tile"])
             if not target_comp:
@@ -273,35 +302,38 @@ class BorderManager:
             border_y1 = target_comp.world_y1 + (parent_h * rel_y)
             border_x2 = border_x1 + border_w
             border_y2 = border_y1 + border_h
+            
+            # Also wrap single rects in a list to use the common render logic
+            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h}]
 
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
-        growth_direction = self.border_growth_direction.get()
-        thickness = self.border_thickness.get()
-        
-        # Calculate the final render size in world coordinates
-        render_w_world, render_h_world = border_w, border_h
-        preview_x1, preview_y1 = border_x1, border_y1
-        if growth_direction == 'out':
-            preview_x1 -= thickness
-            preview_y1 -= thickness
-            render_w_world += thickness * 2
-            render_h_world += thickness * 2
+        # This now loops through all shapes calculated above (even if it's just one)
+        for shape_coords in shapes_to_preview:
+            border_x1, border_y1, border_w, border_h = shape_coords['x'], shape_coords['y'], shape_coords['w'], shape_coords['h']
+            
+            growth_direction = self.border_growth_direction.get()
+            thickness = self.border_thickness.get()
+            
+            render_w_world, render_h_world = border_w, border_h
+            preview_x1, preview_y1 = border_x1, border_y1
+            if growth_direction == 'out':
+                preview_x1 -= thickness
+                preview_y1 -= thickness
+                render_w_world += thickness * 2
+                render_h_world += thickness * 2
 
-        # Render the border image using the same logic as the final apply.
-        preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world))
-        if not preview_image: return
+            preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world))
+            if not preview_image: continue
 
-        # Convert the preview image to a Tkinter-compatible format.
-        self.preview_tk_image = ImageTk.PhotoImage(preview_image)
+            self.preview_tk_image = ImageTk.PhotoImage(preview_image)
 
-        # Convert the top-left world coordinate to screen coordinate for placing the image.
-        sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
-        self.preview_rect_id = self.canvas.create_image(
-            sx1, sy1,
-            anchor=tk.NW,
-            image=self.preview_tk_image,
-            tags=("border_preview",)
-        )
+            sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
+            self.preview_rect_id = self.canvas.create_image(
+                sx1, sy1,
+                anchor=tk.NW,
+                image=self.preview_tk_image,
+                tags=("border_preview",)
+            )
 
         # --- FIX: Ensure the preview is always drawn on top of other items ---
         self.canvas.tag_raise(self.preview_rect_id)
