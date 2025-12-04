@@ -12,15 +12,15 @@ class BorderManager:
         self.app = app
         self.canvas = app.canvas
         self.next_border_id = 0
-        self.preview_rect_id = None # NEW: To track the preview rectangle
+        self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
         # --- UI-related state variables ---
         self.selected_preset = tk.StringVar()
         self.selected_style = tk.StringVar()
         self.border_thickness = tk.IntVar(value=10)
         self.border_width = tk.IntVar(value=100) # NEW: For adjusting border component width as a percentage
-        self.border_feather = tk.IntVar(value=0) # NEW: For feathering/blurring the border edge
-        self.preview_tk_image = None # NEW: To hold the PhotoImage for the preview
+        self.border_feather = tk.IntVar(value=0)
+        self.preview_tk_images = [] # DEFINITIVE FIX: Hold multiple PhotoImage objects
         self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
 
         # --- Preset Definitions ---
@@ -331,17 +331,19 @@ class BorderManager:
             if not preview_image: continue
 
             self.preview_tk_image = ImageTk.PhotoImage(preview_image)
+            self.preview_tk_images.append(ImageTk.PhotoImage(preview_image))
 
             sx1, sy1 = self.app.camera.world_to_screen(preview_x1, preview_y1)
-            self.preview_rect_id = self.canvas.create_image(
+            preview_id = self.canvas.create_image(
                 sx1, sy1,
                 anchor=tk.NW,
-                image=self.preview_tk_image,
+                image=self.preview_tk_images[-1], # Use the most recently added image
                 tags=("border_preview",)
             )
+            self.preview_rect_ids.append(preview_id)
 
         # --- FIX: Ensure the preview is always drawn on top of other items ---
-        self.canvas.tag_raise(self.preview_rect_id)
+        self.canvas.tag_raise("border_preview")
 
     def apply_border_to_selection(self):
         pass # This method is now handled by the decal system
@@ -409,6 +411,7 @@ class BorderManager:
 
     def clear_preset_preview(self):
         """Removes the preset preview rectangle from the canvas if it exists."""
-        if self.preview_rect_id:
-            self.canvas.delete("border_preview") # Delete all parts of the preview
-            self.preview_rect_id = None
+        if self.preview_rect_ids:
+            self.canvas.delete("border_preview")
+            self.preview_rect_ids.clear()
+            self.preview_tk_images.clear()
