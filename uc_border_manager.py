@@ -234,7 +234,6 @@ class BorderManager:
 
             parent_w = target_comp.world_x2 - target_comp.world_x1
             parent_h = target_comp.world_y2 - target_comp.world_y1
-            rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
             thickness = self.border_thickness.get()
             growth_direction = self.border_growth_direction.get()
 
@@ -272,7 +271,8 @@ class BorderManager:
                     border_w, border_h = max_x - min_x, max_y - min_y
                     render_w, render_h = border_w, border_h
                     shape_form = "path"
-            else: # Existing rect/circle logic
+            else: # Existing rect/circle logic for multi_rect and relative_rect
+                rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
                 width_multiplier = self.border_width.get() / 100.0
                 border_w = (parent_w * rel_w) * width_multiplier
                 border_h = (parent_h * rel_h) * width_multiplier
