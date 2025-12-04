@@ -57,7 +57,8 @@ class BorderManager:
                     },
                     { 
                         "target_tile": "humanuitile02", "shape_form": "rect", 
-                        "shape_data": [0.7011, 0.0859, 0.2988, 0] # FIX: 359 to 512
+                        # DEFINITIVE FIX: Correct width to span from 359 to the edge (512).
+                        "shape_data": [0.7011, 0.0859, 0.2989, 0] # w = (512-359)/512
                     },
                     { 
                         "target_tile": "humanuitile03", "shape_form": "rect", 
