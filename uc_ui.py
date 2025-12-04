@@ -279,6 +279,10 @@ class UIManager:
                 col = 0; row += 1
 
     def _populate_border_tab(self, tab):
+        # --- FIX: Clear existing widgets before repopulating to prevent duplicates ---
+        for widget in tab.winfo_children():
+            widget.destroy()
+
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
         manager = self.app.border_manager
