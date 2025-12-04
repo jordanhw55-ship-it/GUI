@@ -4,6 +4,12 @@ from PIL import Image, ImageDraw, ImageFilter, ImageTk
 import numpy as np
 import os
 
+try:
+    import cv2
+    import numpy as np
+except ImportError:
+    cv2 = None
+    np = None
 from uc_component import DraggableComponent
 
 class BorderManager:
@@ -276,6 +282,10 @@ class BorderManager:
         and snaps the user's path to the best-fit contour.
         """
         if not self.traced_points: return
+        
+        if not cv2 or not np:
+            messagebox.showerror("Dependency Missing", "Magic Trace requires OpenCV and NumPy. Please install them via: pip install opencv-python numpy")
+            return
 
         # Find the component under the drawn path
         bounds = self.canvas.bbox(self.trace_preview_id)
@@ -448,8 +458,6 @@ class BorderManager:
     def _find_all_contours(self, image):
         """Finds all external contours in an image's alpha channel."""
         try:
-            global cv2
-            import cv2
             import numpy as np
         except ImportError:
             messagebox.showerror("Dependency Missing", "This feature requires OpenCV and NumPy.\nPlease install them via: pip install opencv-python numpy")
@@ -480,12 +488,6 @@ class BorderManager:
         Returns a list of (x, y) points.
         """
         try:
-            import cv2 # type: ignore
-            import numpy as np
-        except ImportError:
-            messagebox.showerror("Dependency Missing", "The Magic Wand tool requires OpenCV and NumPy.\nPlease install them via: pip install opencv-python numpy")
-            return None
-
         # Use the alpha channel as the basis for contour detection
         if 'A' not in image.getbands():
             return None # No alpha channel to trace
