@@ -39,35 +39,39 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
+            "Top Border": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 0.08]
             },
+            "Bottom Border": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.92, 1.0, 0.08]
             },
-            "Minimap Buttons": {1", "shape_type": "relative_rect", "shape_data": [0.55, 0.8, 0.4, 0.15]
+            "Minimap Buttons": {
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.55, 0.8, 0.4, 0.15]
             },
-            "Character Frame": { 0.15]
+            "Character Frame": {
+                "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.05, 0.1, 0.9, 0.15]
             },
             "Character Hub Frame": {
                 "target_tile": "humanuitile06", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
             },
+            "HP Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.3, 0.7, 0.08]
             },
-            "Mana Frame": {5", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
+            "Mana Frame": {
+                "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
             },
-            "Inventory Ti1, 0.05, 0.8, 0.1]
+            "Inventory Title": {
+                "target_tile": "humanuitile-inventorycover", "shape_type": "relative_rect", "shape_data": [0.1, 0.05, 0.8, 0.1]
             },
             "Inventory Slots": {
                 "target_tile": "humanuitile-inventorycover", "shape_type": "relative_rect", "shape_data": [0.1, 0.2, 0.8, 0.75]
             },
+            "Spells Slots": {
                 "target_tile": "humanuitile02", "shape_type": "relative_rect", "shape_data": [0.05, 0.1, 0.9, 0.8]
             },
-            "Time Indicator Border": {-timeindicatorframe", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
+            "Time Indicator Border": {
+                "target_tile": "humanuitile-timeindicatorframe", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
             }
-        }
-        self.border_presets["HP Frame"] = {
-            "target_tile": "humanuitile01",
-            "shape_type": "relative_rect",
-            "shape_data": [1.52, 1.35, 0.196, 0.08]  # Calculated from pixel coordinates spanning tile01 and tile02
         }
         # --- Texture Loading ---
         self.border_textures = {}
