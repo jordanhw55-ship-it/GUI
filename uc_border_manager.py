@@ -244,14 +244,15 @@ class BorderManager:
                     end_tile = self.app.components.get(shape["end_tile"])
                     if not start_tile or not end_tile: continue
 
-                    # --- DEFINITIVE FIX: Correctly calculate world coordinates from absolute offsets ---
+                    # --- DEFINITIVE FIX: Use absolute coordinates within the tile's space ---
                     start_x_world = start_tile.world_x1 + shape["start_coords"][0]
                     start_y_world = start_tile.world_y1 + shape["start_coords"][1]
                     end_x_world = end_tile.world_x1 + shape["end_coords"][0]
                     end_y_world = end_tile.world_y1 + shape["end_coords"][1]
 
-                    border_x = min(start_x_world, end_x_world); border_y = min(start_y_world, end_y_world)
-                    border_w = abs(end_x_world - start_x_world) 
+                    border_x = min(start_x_world, end_x_world)
+                    border_y = shape["start_coords"][1] # Use the absolute Y coordinate from the preset
+                    border_w = abs(end_x_world - start_x_world)
                     border_h = abs(end_y_world - start_y_world) if abs(end_y_world - start_y_world) > 0 else thickness
                     render_w, render_h = border_w, border_h
                     shape_form = "rect"
@@ -338,14 +339,14 @@ class BorderManager:
                     end_tile = self.app.components.get(segment["end_tile"])
                     if not start_tile or not end_tile: continue
 
-                    # --- DEFINITIVE FIX: Correctly calculate world coordinates for preview ---
+                    # --- DEFINITIVE FIX: Use absolute coordinates for preview as well ---
                     start_x_world = start_tile.world_x1 + segment["start_coords"][0]
                     start_y_world = start_tile.world_y1 + segment["start_coords"][1]
                     end_x_world = end_tile.world_x1 + segment["end_coords"][0]
                     end_y_world = end_tile.world_y1 + segment["end_coords"][1]
 
                     shapes_to_preview.append({
-                        'x': min(start_x_world, end_x_world), 'y': min(start_y_world, end_y_world),
+                        'x': min(start_x_world, end_x_world), 'y': segment["start_coords"][1],
                         'w': abs(end_x_world - start_x_world), 'h': abs(end_y_world - start_y_world) if abs(end_y_world - start_y_world) > 0 else thickness,
                         'form': 'rect'
                     })
