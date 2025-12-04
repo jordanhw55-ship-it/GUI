@@ -134,6 +134,11 @@ class ImageEditorApp:
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events() # Binds paint events
         # --- NEW: Bind the universal eraser event ---
+        self.bind_generic_drag_handler()
+        self.ui_manager.create_ui()
+        self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
+
+    def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
             # If border tracing is active, it has its own drag handler, so we do nothing here.
             if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False) or self.border_manager.is_magic_wand_active:
@@ -145,8 +150,6 @@ class ImageEditorApp:
             if self.paint_manager.universal_eraser_mode_active:
                 self.paint_manager.erase_on_components(event)
         self.canvas.bind("<B1-Motion>", on_drag)
-        self.ui_manager.create_ui()
-        self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
 
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {

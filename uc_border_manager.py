@@ -254,19 +254,21 @@ class BorderManager:
             self.magic_trace_button.config(text="Magic Trace (Active)", bg="#14b8a6", relief='sunken')
             self.canvas.config(cursor="crosshair")
             messagebox.showinfo("Magic Trace Active", "Click and drag to draw a loose selection around the shape you want to create a border for. The tool will automatically snap to the detected outline.")
-            # --- FIX: Bind events here, as on_component_press will now correctly yield ---
-            self.canvas.bind("<ButtonPress-1>", self._start_magic_trace, add='+')
-            self.canvas.bind("<B1-Motion>", self._draw_magic_trace, add='+')
-            self.canvas.bind("<ButtonRelease-1>", self._finish_magic_trace, add='+')
+            # --- DEFINITIVE FIX: Take exclusive control of mouse events ---
+            self.canvas.unbind("<B1-Motion>") # Unbind the generic drag handler
+            self.canvas.bind("<ButtonPress-1>", self._start_magic_trace)
+            self.canvas.bind("<B1-Motion>", self._draw_magic_trace)
+            self.canvas.bind("<ButtonRelease-1>", self._finish_magic_trace)
         else:
             self.magic_trace_button.config(text="Magic Trace", bg="#0d9488", relief='flat')
             self.canvas.config(cursor="")
-            # --- FIX: Unbind the specific handlers ---
+            # --- DEFINITIVE FIX: Restore default event handlers ---
             self.canvas.unbind("<ButtonPress-1>")
             self.canvas.unbind("<B1-Motion>")
             self.canvas.unbind("<ButtonRelease-1>")
             if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
             self.traced_points = []
+            self.app.bind_generic_drag_handler() # Re-bind the app's default drag logic
 
     def _start_magic_trace(self, event):
         """Starts drawing the magic trace lasso."""
