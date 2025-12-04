@@ -25,8 +25,8 @@ import keyboard
 import pyautogui
 
 from utils import get_base_path
-from styles import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from data import ItemDatabase
+from styles import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
 from theme_manager import ThemeManager
 from items_manager import ItemsManager
 from lobby_manager import LobbyManager
