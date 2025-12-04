@@ -326,8 +326,43 @@ class BorderManager:
         if not preset:
             return
 
+        shapes_to_preview = []
+
+        # --- DEFINITIVE FIX: Restructure logic to handle each shape type explicitly ---
+        shape_type = preset.get("shape_type")
+
+        if shape_type == "multi_span_path":
+            for segment in preset.get("segments", []):
+                thickness = self.border_thickness.get()
+                if segment["type"] == "line":
+                    start_tile = self.app.components.get(segment["start_tile"])
+                    end_tile = self.app.components.get(segment["end_tile"])
+                    if not start_tile or not end_tile: continue
+
+                    start_x = start_tile.world_x1 + segment["start_coords"][0]
+                    start_y = start_tile.world_y1 + segment["start_coords"][1]
+                    end_x = end_tile.world_x1 + segment["end_coords"][0]
+                    end_y = end_tile.world_y1 + segment["end_coords"][1]
+
+                    shapes_to_preview.append({
+                        'x': min(start_x, end_x), 'y': min(start_y, end_y),
+                        'w': abs(end_x - start_x), 'h': abs(end_y - start_y) if abs(end_y - start_y) > 0 else thickness,
+                        'form': 'rect'
+                    })
+                elif segment["type"] == "path":
+                    path_tile = self.app.components.get(segment["target_tile"])
+                    if not path_tile: continue
+                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in segment["path_coords"]]
+                    
+                    min_x, max_x = min(p[0] for p in world_path), max(p[0] for p in world_path)
+                    min_y, max_y = min(p[1] for p in world_path), max(p[1] for p in world_path)
+                    
+                    shapes_to_preview.append({
+                        'x': min_x, 'y': min_y, 'w': max_x - min_x, 'h': max_y - min_y,
+                        'form': 'path', 'path_data': world_path
+                    })
         # --- DEFINITIVE FIX: Handle the new "span_rect" shape type ---
-        if preset.get("shape_type") == "span_rect":
+        elif shape_type == "span_rect":
             start_tile = self.app.components.get(preset["start_tile"])
             end_tile = self.app.components.get(preset["end_tile"])
             if not start_tile or not end_tile: return
@@ -356,9 +391,9 @@ class BorderManager:
             border_h = border_y2 - border_y1
             
             # Since span_rect is a single shape, we wrap it in a list to use the common render logic below
-            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h}]
+            shapes_to_preview.append({'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h, 'form': 'rect'})
 
-        elif preset.get("shape_type") == "multi_rect":
+        elif shape_type == "multi_rect":
             shapes_to_preview = []
             target_comp = self.app.components.get(preset["target_tile"])
             if not target_comp: return
@@ -384,7 +419,7 @@ class BorderManager:
             
             if not shapes_to_preview: return # No valid shapes found
 
-        else: # Handle the original "relative_rect"
+        elif shape_type == "relative_rect": # Handle the original "relative_rect"
             target_comp = self.app.components.get(preset["target_tile"])
             if not target_comp:
                 return
@@ -404,40 +439,7 @@ class BorderManager:
             border_y2 = border_y1 + border_h
             
             # Also wrap single rects in a list to use the common render logic
-            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h, 'form': 'rect'}]
-
-        # --- NEW: Handle multi_span_path for preview ---
-        if preset.get("shape_type") == "multi_span_path":
-            shapes_to_preview = []
-            for segment in preset.get("segments", []):
-                thickness = self.border_thickness.get()
-                if segment["type"] == "line":
-                    start_tile = self.app.components.get(segment["start_tile"])
-                    end_tile = self.app.components.get(segment["end_tile"])
-                    if not start_tile or not end_tile: continue
-
-                    start_x = start_tile.world_x1 + segment["start_coords"][0]
-                    start_y = start_tile.world_y1 + segment["start_coords"][1]
-                    end_x = end_tile.world_x1 + segment["end_coords"][0]
-                    end_y = end_tile.world_y1 + segment["end_coords"][1]
-
-                    shapes_to_preview.append({
-                        'x': min(start_x, end_x), 'y': min(start_y, end_y),
-                        'w': abs(end_x - start_x), 'h': abs(end_y - start_y) if abs(end_y - start_y) > 0 else thickness,
-                        'form': 'rect'
-                    })
-                elif segment["type"] == "path":
-                    path_tile = self.app.components.get(segment["target_tile"])
-                    if not path_tile: continue
-                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in segment["path_coords"]]
-                    
-                    min_x, max_x = min(p[0] for p in world_path), max(p[0] for p in world_path)
-                    min_y, max_y = min(p[1] for p in world_path), max(p[1] for p in world_path)
-                    
-                    shapes_to_preview.append({
-                        'x': min_x, 'y': min_y, 'w': max_x - min_x, 'h': max_y - min_y,
-                        'form': 'path', 'path_data': world_path # Pass the absolute path data
-                    })
+            shapes_to_preview.append({'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h, 'form': 'rect'})
 
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
         # This now loops through all shapes calculated above (even if it's just one)
