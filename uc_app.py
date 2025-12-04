@@ -60,6 +60,7 @@ class ImageEditorApp:
         self.resize_height = tk.StringVar()
         self.maintain_aspect = tk.BooleanVar(value=True)
         self.move_amount = tk.IntVar(value=1) # NEW: For moving tiles by pixels
+        self.mouse_coords_var = tk.StringVar(value="World: (0, 0)") # NEW: For coordinate display
         self.resize_width.trace_add("write", self.on_resize_entry_change)
         self.resize_height.trace_add("write", self.on_resize_entry_change)
 
@@ -137,6 +138,7 @@ class ImageEditorApp:
         
         self.canvas.bind("<B1-Motion>", on_drag)
         self.ui_manager.create_ui()
+        self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
 
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
@@ -1250,6 +1252,12 @@ class ImageEditorApp:
         # REFACTOR: This logic is now correctly handled entirely by the ImageManager.
         self.image_manager.apply_decal_to_underlying_layer()
         self._keep_docks_on_top()
+
+    def _update_mouse_coords(self, event):
+        """Updates the world coordinate display based on mouse position."""
+        world_x, world_y = self.camera.screen_to_world(event.x, event.y)
+        self.mouse_coords_var.set(f"World: ({int(world_x)}, {int(world_y)})")
+
 
 # --- EXECUTION ---
 if __name__ == "__main__":

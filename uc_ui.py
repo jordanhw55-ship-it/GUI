@@ -39,6 +39,7 @@ class UIManager:
     def create_ui(self):
         """Creates the rest of the UI that might depend on other components."""
         self.create_status_box()
+        self.create_coordinate_display() # NEW: Add the coordinate display
         self.create_sidebar_tabs()
 
     def create_status_box(self):
@@ -57,6 +58,15 @@ class UIManager:
         self.app.reset_view_button.pack(side=tk.LEFT, padx=(0, 5), pady=5)
 
         self.app.canvas.create_window(10, 10, window=status_box_frame, anchor="nw")
+
+    def create_coordinate_display(self):
+        """Creates a floating box in the bottom-left to show mouse world coordinates."""
+        coord_box_frame = tk.Frame(self.app.canvas, bg="#1f2937", bd=1, relief="solid", highlightbackground="#4b5563", highlightthickness=1)
+        
+        coord_label = tk.Label(coord_box_frame, textvariable=self.app.mouse_coords_var, bg="#1f2937", fg="#d1d5db", font=('Inter', 10, 'bold'))
+        coord_label.pack(padx=5, pady=5)
+
+        self.app.canvas.create_window(10, self.app.CANVAS_HEIGHT - 10, window=coord_box_frame, anchor="sw")
 
     def create_sidebar_tabs(self):
         """Creates a tabbed interface in the sidebar for organizing controls."""
