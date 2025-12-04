@@ -392,19 +392,17 @@ class BorderManager:
 
         elif shape_type == "multi_rect":
             shapes_to_preview = []
-            target_comp = self.app.components.get(preset.get("target_tile")) # Fallback for single-target multi_rects
-            if not target_comp: return
-
-            parent_w = target_comp.world_x2 - target_comp.world_x1
-            parent_h = target_comp.world_y2 - target_comp.world_y1
             width_multiplier = self.border_width.get() / 100.0
+
+            # --- DEFINITIVE FIX: Get the global target, but don't fail if it's not there ---
+            global_target_comp = self.app.components.get(preset.get("target_tile"))
 
             for i, shape in enumerate(preset.get("shapes", [])):
                 if not shape.get("shape_data"): continue
 
                 # --- DEFINITIVE FIX: Allow per-shape target_tile in multi_rect ---
                 # If the shape has its own target, use it. Otherwise, use the preset's global target.
-                shape_target_comp = self.app.components.get(shape.get("target_tile")) or target_comp
+                shape_target_comp = self.app.components.get(shape.get("target_tile")) or global_target_comp
                 if not shape_target_comp: continue
 
                 shape_parent_w = shape_target_comp.world_x2 - shape_target_comp.world_x1
