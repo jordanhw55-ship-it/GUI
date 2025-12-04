@@ -218,7 +218,7 @@ class BorderManager:
         self.border_presets[preset_name] = new_preset
 
         # Update the preset dropdown menu in the UI
-        self.app.ui_manager._populate_border_tab(self.app.ui_manager.notebook.tabs()[2]) # A bit of a hack to get the tab
+        self.app.ui_manager._populate_border_tab(self.app.ui_manager.border_tab) # Use the direct reference
         self.selected_preset.set(preset_name)
         
         print(f"New border preset '{preset_name}' saved with {len(self.traced_points)} points.")

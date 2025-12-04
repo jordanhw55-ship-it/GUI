@@ -12,6 +12,7 @@ class UIManager:
         self.paint_color_button = None
         self.paint_toggle_btn = None
         self.eraser_toggle_btn = None
+        self.border_tab = None # NEW: To hold a reference to the border tab widget
         self.notebook = None # NEW: To hold a reference to the main notebook
 
     def create_canvas(self):
@@ -91,14 +92,14 @@ class UIManager:
         paint_tab = tk.Frame(self.notebook, bg="#374151")
         image_tab = tk.Frame(self.notebook, bg="#374151")
         filters_tab = tk.Frame(self.notebook, bg="#374151")
-        border_tab = tk.Frame(self.notebook, bg="#374151")
+        self.border_tab = tk.Frame(self.notebook, bg="#374151") # Use the new instance variable
         tile_control_tab = tk.Frame(self.notebook, bg="#374151")
         text_tab = tk.Frame(self.notebook, bg="#374151")
         export_tab = tk.Frame(self.notebook, bg="#374151")
 
         self.notebook.add(layer_tab, text='Tiles')
         self.notebook.add(paint_tab, text='Paint')
-        self.notebook.add(border_tab, text='Border')
+        self.notebook.add(self.border_tab, text='Border')
         self.notebook.add(image_tab, text='Image')
         self.notebook.add(tile_control_tab, text='Tile Control')
         self.notebook.add(filters_tab, text='Filters')
@@ -109,7 +110,7 @@ class UIManager:
         self._populate_paint_tab(paint_tab)
         self._populate_image_tab(image_tab)
         self._populate_tile_control_tab(tile_control_tab)
-        self._populate_border_tab(border_tab)
+        self._populate_border_tab(self.border_tab)
         self._populate_filters_tab(filters_tab)
         self._populate_text_tab(text_tab)
         self._populate_export_tab(export_tab)
