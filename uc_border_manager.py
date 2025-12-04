@@ -240,7 +240,7 @@ class BorderManager:
             border_x2 = end_tile.world_x1 + (end_x_offset * end_scale_w)
             border_y2 = border_y1 + (height_px * start_scale_h)
 
-            border_w = border_x2 - border_x1
+            border_w = (border_x2 - border_x1) + 1 # Add 1px to fix off-by-one rendering error
             border_h = border_y2 - border_y1
         else: # Handle the original "relative_rect"
             target_comp = self.app.components.get(preset["target_tile"])
