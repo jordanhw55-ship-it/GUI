@@ -49,11 +49,11 @@ class BorderManager:
                 "target_tile": "humanuitile01",
                 "shape_type": "multi_rect",
                 "shapes": [
-                    { "shape_data": [0.6035, 0.4375, 0.0898, 0.0801] }, # Button 1
-                    { "shape_data": [0.6035, 0.5234, 0.0898, 0.0781] }, # Button 2
-                    { "shape_data": [0.6035, 0.6094, 0.0898, 0.0781] }, # Button 3
-                    { "shape_data": [0.6035, 0.6953, 0.0898, 0.0781] }, # Button 4
-                    { "shape_data": [0.6055, 0.8027, 0.0859, 0.0801] }  # Button 5 (Circle)
+                    { "shape_form": "rect", "shape_data": [0.6035, 0.4375, 0.0898, 0.0801] }, # Button 1
+                    { "shape_form": "rect", "shape_data": [0.6035, 0.5234, 0.0898, 0.0781] }, # Button 2
+                    { "shape_form": "rect", "shape_data": [0.6035, 0.6094, 0.0898, 0.0781] }, # Button 3
+                    { "shape_form": "rect", "shape_data": [0.6035, 0.6953, 0.0898, 0.0781] }, # Button 4
+                    { "shape_form": "circle", "shape_data": [0.6055, 0.8027, 0.0859, 0.0801] }  # Button 5 (Circle)
                 ]
             },
             "Character Frame": {
@@ -159,7 +159,7 @@ class BorderManager:
         # --- NEW: Handle multi-shape presets ---
         if preset.get("shape_type") == "multi_rect":
             shapes_to_create = preset.get("shapes", [])
-        else:
+        elif preset.get("shape_type") == "relative_rect":
             # For backward compatibility, treat single presets as a list with one item
             shapes_to_create = [{"shape_data": preset.get("shape_data")}]
 
@@ -198,7 +198,7 @@ class BorderManager:
             border_comp.is_draggable = False
             border_comp.parent_tag = target_comp.tag
 
-            border_image = self._render_border_image((border_w, border_h), (render_w, render_h))
+            border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape.get("shape_form", "rect"))
             if not border_image: continue
 
             border_comp.set_image(border_image)
@@ -208,6 +208,10 @@ class BorderManager:
 
         self.app.redraw_all_zoomable()
         print(f"Applied preset '{preset_name}' to '{target_comp.tag}'.")
+
+    def _get_shapes_from_preset(self, preset):
+        """Helper to return a list of shapes from a preset, handling single and multi-shape types."""
+        return preset.get("shapes", [{"shape_form": "rect", "shape_data": preset.get("shape_data")}])
 
     def show_preset_preview(self, event=None):
         """Draws a temporary, semi-transparent rectangle to preview the preset border."""
@@ -268,7 +272,7 @@ class BorderManager:
             parent_h = target_comp.world_y2 - target_comp.world_y1
             width_multiplier = self.border_width.get() / 100.0
 
-            for shape in preset.get("shapes", []):
+            for i, shape in enumerate(preset.get("shapes", [])):
                 if not shape.get("shape_data"): continue
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
 
@@ -279,7 +283,8 @@ class BorderManager:
                 
                 shapes_to_preview.append({
                     'x': border_x1, 'y': border_y1,
-                    'w': border_w, 'h': border_h
+                    'w': border_w, 'h': border_h,
+                    'form': shape.get("shape_form", "rect") # Pass the shape form to the preview
                 })
             
             if not shapes_to_preview: return # No valid shapes found
@@ -304,12 +309,12 @@ class BorderManager:
             border_y2 = border_y1 + border_h
             
             # Also wrap single rects in a list to use the common render logic
-            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h}]
+            shapes_to_preview = [{'x': border_x1, 'y': border_y1, 'w': border_w, 'h': border_h, 'form': 'rect'}]
 
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
         # This now loops through all shapes calculated above (even if it's just one)
         for shape_coords in shapes_to_preview:
-            border_x1, border_y1, border_w, border_h = shape_coords['x'], shape_coords['y'], shape_coords['w'], shape_coords['h']
+            border_x1, border_y1, border_w, border_h, shape_form = shape_coords['x'], shape_coords['y'], shape_coords['w'], shape_coords['h'], shape_coords['form']
             
             growth_direction = self.border_growth_direction.get()
             thickness = self.border_thickness.get()
@@ -322,7 +327,7 @@ class BorderManager:
                 render_w_world += thickness * 2
                 render_h_world += thickness * 2
 
-            preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world))
+            preview_image = self._render_border_image((border_w, border_h), (render_w_world, render_h_world), shape_form)
             if not preview_image: continue
 
             self.preview_tk_image = ImageTk.PhotoImage(preview_image)
@@ -344,7 +349,7 @@ class BorderManager:
     def remove_border_from_selection(self):
         pass
 
-    def _render_border_image(self, logical_size, render_size):
+    def _render_border_image(self, logical_size, render_size, shape_form="rect"):
         """Renders the selected border style onto a PIL image."""
         logical_w, logical_h = int(logical_size[0]), int(logical_size[1])
         render_w, render_h = int(render_size[0]), int(render_size[1])
@@ -367,17 +372,24 @@ class BorderManager:
 
         # --- NEW: Adjust mask based on growth direction ---
         if growth_direction == 'in':
-            # The outer shape is the full logical size. The second point is exclusive.
-            draw.rectangle([0, 0, logical_w, logical_h], fill=255)
-            # The inner cutout is inset by the thickness. Only draw it if the shape is larger than the border itself.
-            if logical_w > thickness * 2 and logical_h > thickness * 2:
-                draw.rectangle([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
+            if shape_form == "circle":
+                draw.ellipse([0, 0, logical_w, logical_h], fill=255)
+                if logical_w > thickness * 2 and logical_h > thickness * 2:
+                    draw.ellipse([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
+            else: # Default to rectangle
+                draw.rectangle([0, 0, logical_w, logical_h], fill=255)
+                if logical_w > thickness * 2 and logical_h > thickness * 2:
+                    draw.rectangle([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
         else: # 'out'
-            # The outer shape is the full render size. The second point is exclusive.
-            draw.rectangle([0, 0, render_w, render_h], fill=255)
-            # The inner cutout is inset by the thickness. Only draw it if the shape is larger than the border itself.
-            if render_w > thickness * 2 and render_h > thickness * 2:
-                draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
+            if shape_form == "circle":
+                draw.ellipse([0, 0, render_w, render_h], fill=255)
+                if render_w > thickness * 2 and render_h > thickness * 2:
+                    # The inner cutout is inset by the thickness.
+                    draw.ellipse([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
+            else: # Default to rectangle
+                draw.rectangle([0, 0, render_w, render_h], fill=255)
+                if render_w > thickness * 2 and render_h > thickness * 2:
+                    draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
 
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
