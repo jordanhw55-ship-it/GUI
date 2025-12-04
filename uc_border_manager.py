@@ -39,13 +39,39 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
-            # --- DEFINITIVE FIX: Revert to a simple, relative rect for debugging ---
+            # --- DEFINITIVE FIX: Expand "Top Border" to a multi-rect preset ---
             "Top Border": {
-                "target_tile": "humanuitile05",
-                "shape_type": "relative_rect",
-                # Using relative coordinates. y=44/512.
-                # A relative height of 0 tells the system to use the thickness slider value.
-                "shape_data": [0.00195, 0.0859, 0.996, 0] 
+                "shape_type": "multi_rect",
+                "shapes": [
+                    { 
+                        "target_tile": "humanuitile05", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                    },
+                    { 
+                        "target_tile": "humanuitile01", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                    },
+                    { 
+                        "target_tile": "humanuitile02", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.4218, 0] # 1,44 to 217,44
+                    },
+                    { 
+                        "target_tile": "humanuitile02", "shape_form": "rect", 
+                        "shape_data": [0.7011, 0.0859, 0.2968, 0] # 359,44 to 511,44
+                    },
+                    { 
+                        "target_tile": "humanuitile03", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                    },
+                    { 
+                        "target_tile": "humanuitile04", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.121, 0] # 1,44 to 63,44
+                    },
+                    { 
+                        "target_tile": "humanuitile06", "shape_form": "rect", 
+                        "shape_data": [0.00195, 0.0859, 0.996, 0] # 1,44 to 511,44
+                    }
+                ]
             },
             # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
             # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
@@ -192,7 +218,7 @@ class BorderManager:
 
             # Determine the target component
             # --- FIX: Correctly determine the target tile for error messages and parenting ---
-            target_tile_name = preset.get("target_tile") or shape.get("target_tile") or shape.get("start_tile")
+            target_tile_name = shape.get("target_tile") or preset.get("target_tile") or shape.get("start_tile")
             target_comp = self.app.components.get(target_tile_name)
 
             if not target_comp:
@@ -366,7 +392,7 @@ class BorderManager:
 
         elif shape_type == "multi_rect":
             shapes_to_preview = []
-            target_comp = self.app.components.get(preset["target_tile"])
+            target_comp = self.app.components.get(preset.get("target_tile")) # Fallback for single-target multi_rects
             if not target_comp: return
 
             parent_w = target_comp.world_x2 - target_comp.world_x1
@@ -375,12 +401,21 @@ class BorderManager:
 
             for i, shape in enumerate(preset.get("shapes", [])):
                 if not shape.get("shape_data"): continue
+
+                # --- DEFINITIVE FIX: Allow per-shape target_tile in multi_rect ---
+                # If the shape has its own target, use it. Otherwise, use the preset's global target.
+                shape_target_comp = self.app.components.get(shape.get("target_tile")) or target_comp
+                if not shape_target_comp: continue
+
+                shape_parent_w = shape_target_comp.world_x2 - shape_target_comp.world_x1
+                shape_parent_h = shape_target_comp.world_y2 - shape_target_comp.world_y1
+
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
 
-                border_w = (parent_w * rel_w) * width_multiplier
-                border_h = (parent_h * rel_h) * width_multiplier
-                border_x1 = target_comp.world_x1 + (parent_w * rel_x)
-                border_y1 = target_comp.world_y1 + (parent_h * rel_y)
+                border_w = (shape_parent_w * rel_w) * width_multiplier
+                border_h = (shape_parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
+                border_x1 = shape_target_comp.world_x1 + (shape_parent_w * rel_x)
+                border_y1 = shape_target_comp.world_y1 + (shape_parent_h * rel_y)
                 
                 shapes_to_preview.append({
                     'x': border_x1, 'y': border_y1,
