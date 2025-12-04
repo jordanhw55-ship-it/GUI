@@ -134,11 +134,16 @@ class ImageEditorApp:
         # Bind canvas events now that all managers are initialized
         self.ui_manager.bind_canvas_events() # Binds paint events
         # --- NEW: Bind the universal eraser event ---
-        def on_drag(event):
-            # This function will call the correct handler based on the active mode.
-            self.paint_manager.paint_on_canvas(event)
-            self.paint_manager.erase_on_components(event)
-        
+        def on_drag(event): # This is the generic B1-Motion handler
+            # If border tracing is active, it has its own drag handler, so we do nothing here.
+            if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False):
+                return
+
+            # Otherwise, delegate to the paint and eraser managers.
+            if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active:
+                self.paint_manager.paint_on_canvas(event)
+            if self.paint_manager.universal_eraser_mode_active:
+                self.paint_manager.erase_on_components(event)
         self.canvas.bind("<B1-Motion>", on_drag)
         self.ui_manager.create_ui()
         self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
@@ -341,6 +346,10 @@ class ImageEditorApp:
     def on_component_press(self, event):
         """Handles press events on any component."""
         # --- NEW: Divert click to border tracer if active ---
+        if getattr(self.border_manager, 'is_magic_trace_active', False):
+            # This mode has its own bindings, so we just stop propagation.
+            return "break"
+
         if self.border_manager.is_magic_wand_active:
             self.border_manager.run_magic_wand(event)
             return
@@ -348,7 +357,8 @@ class ImageEditorApp:
         # --- NEW: Divert click to border tracer if active ---
         if self.border_manager.is_tracing:
             self.border_manager.add_trace_point(event)
-            return
+            # Return "break" to prevent this click from being interpreted as a component press/drag
+            return "break"
 
         # Find the component tag from the canvas item clicked
         item_id = self.canvas.find_closest(event.x, event.y)[0]

@@ -27,7 +27,9 @@ class BorderManager:
         self.is_tracing = False
         self.traced_points = []
         self.trace_preview_id = None
+        self.last_trace_point = None # NEW: For freehand drag-tracing
         self.trace_button = None # Will be set by UIManager
+        self.magic_trace_button = None # Will be set by UIManager
         self.magic_wand_button = None # Will be set by UIManager
         self.finish_button = None # Will be set by UIManager
 
@@ -194,6 +196,7 @@ class BorderManager:
             self.canvas.config(cursor="crosshair")
             messagebox.showinfo("Tracing Started", "Click on the canvas to place points for your border path. Right-click to remove the last point. Press 'Finish & Save' when done.")
         else: # Tracing was cancelled
+            self.canvas.unbind("<B1-Motion>") # Unbind the drag event
             self.trace_button.config(text="Start Tracing", bg="#d97706")
             self.finish_button.config(state='disabled')
             self.canvas.config(cursor="")
@@ -203,6 +206,10 @@ class BorderManager:
         # Ensure magic wand is off
         if self.is_magic_wand_active:
             self.toggle_magic_wand()
+
+        # Ensure magic trace is off
+        if self.is_magic_trace_active:
+            self.toggle_magic_trace()
 
     def finish_tracing(self):
         """Finalizes the tracing and saves the new preset."""
@@ -230,12 +237,136 @@ class BorderManager:
         print(f"New border preset '{preset_name}' saved with {len(self.traced_points)} points.")
         self.toggle_tracing() # Reset the tracing state
 
+    def toggle_magic_trace(self):
+        """Toggles the 'magic trace' (lasso) mode."""
+        self.is_magic_trace_active = not getattr(self, 'is_magic_trace_active', False)
+
+        if self.is_magic_trace_active:
+            if self.is_tracing: self.toggle_tracing()
+            if self.is_magic_wand_active: self.toggle_magic_wand()
+
+            self.magic_trace_button.config(text="Magic Trace (Active)", bg="#14b8a6", relief='sunken')
+            self.canvas.config(cursor="crosshair")
+            messagebox.showinfo("Magic Trace Active", "Click and drag to draw a loose selection around the shape you want to create a border for. The tool will automatically snap to the detected outline.")
+            self.canvas.bind("<Button-1>", self._start_magic_trace)
+            self.canvas.bind("<B1-Motion>", self._draw_magic_trace)
+            self.canvas.bind("<ButtonRelease-1>", self._finish_magic_trace)
+        else:
+            self.magic_trace_button.config(text="Magic Trace", bg="#0d9488", relief='flat')
+            self.canvas.config(cursor="")
+            self.canvas.unbind("<Button-1>")
+            self.canvas.unbind("<B1-Motion>")
+            self.canvas.unbind("<ButtonRelease-1>")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+
+    def _start_magic_trace(self, event):
+        """Starts drawing the magic trace lasso."""
+        self.traced_points = []
+        if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+        self.add_drag_trace_point(event)
+
+    def _draw_magic_trace(self, event):
+        """Adds points to the lasso path while dragging."""
+        self.add_drag_trace_point(event)
+
+    def _finish_magic_trace(self, event):
+        """
+        On mouse release, finds the underlying component, detects contours,
+        and snaps the user's path to the best-fit contour.
+        """
+        if not self.traced_points: return
+
+        # Find the component under the drawn path
+        bounds = self.canvas.bbox(self.trace_preview_id)
+        if not bounds: return
+        
+        overlapping_ids = self.canvas.find_overlapping(*bounds)
+        target_comp = None
+        for item_id in reversed(overlapping_ids):
+            tags = self.canvas.gettags(item_id)
+            if tags and tags[0] in self.app.components:
+                comp = self.app.components[tags[0]]
+                if comp.pil_image and not comp.is_dock_asset and not tags[0].startswith("preset_border_"):
+                    target_comp = comp
+                    break
+
+        if not target_comp:
+            messagebox.showwarning("No Target Found", "Magic Trace could not find an image component within your selection.")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+            return
+
+        all_contours = self._find_all_contours(target_comp.pil_image)
+        if not all_contours:
+            messagebox.showwarning("No Contours Found", "Could not find any distinct shapes in the target image's alpha channel.")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+            return
+
+        # Find the best contour that intersects with the user's drawn path
+        user_path_poly = np.array(self.traced_points, dtype=np.int32)
+        best_contour = None
+        max_intersection = 0
+
+        for contour in all_contours:
+            # Check for intersection. A simple bounding box check is efficient.
+            contour_poly = np.array(contour, dtype=np.int32)
+            if cv2.intersectConvexConvex(user_path_poly, contour_poly)[0] > 0:
+                 # For simplicity, we'll just take the first intersecting contour.
+                 # A more advanced implementation could find the one with the largest intersection area.
+                 best_contour = contour
+                 break
+
+        if best_contour is None:
+            # If no intersection, find the contour closest to the center of the user's drawing
+            user_cx = np.mean(user_path_poly[:, 0])
+            user_cy = np.mean(user_path_poly[:, 1])
+            min_dist = float('inf')
+            for contour in all_contours:
+                M = cv2.moments(np.array(contour))
+                if M["m00"] == 0: continue
+                cx = int(M["m10"] / M["m00"])
+                cy = int(M["m01"] / M["m00"])
+                dist = np.sqrt((cx - user_cx)**2 + (cy - user_cy)**2)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_contour = contour
+
+        # Convert the chosen local contour points to absolute world coordinates
+        self.traced_points = [(target_comp.world_x1 + x, target_comp.world_y1 + y) for x, y in best_contour]
+        self._update_trace_preview() # Update preview to show the snapped path
+        
+        # Now that the path is refined, the user can click "Finish & Save"
+        self.finish_button.config(state='normal')
+        self.toggle_magic_trace() # Exit the mode
+
     def add_trace_point(self, event):
         """Adds a point to the current trace path."""
         if not self.is_tracing: return
+        
+        # --- NEW: Logic for freehand drag-tracing ---
+        # On the initial click, clear previous points and bind the drag event.
+        self.traced_points = []
+        if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+        
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        self.last_trace_point = (world_x, world_y)
         self.traced_points.append((int(world_x), int(world_y)))
-        self._update_trace_preview()
+        
+        # Bind the motion event to a new handler for continuous drawing
+        self.canvas.bind("<B1-Motion>", self.add_drag_trace_point)
+
+    def add_drag_trace_point(self, event):
+        """Continuously adds points to the path while dragging."""
+        if not (self.is_tracing or getattr(self, 'is_magic_trace_active', False)) or not self.last_trace_point: return
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+        
+        # Only add a new point if the cursor has moved a minimum distance to avoid overly dense paths
+        if abs(world_x - self.last_trace_point[0]) > 2 or abs(world_y - self.last_trace_point[1]) > 2:
+            self.traced_points.append((int(world_x), int(world_y)))
+            self.last_trace_point = (world_x, world_y)
+            self._update_trace_preview()
 
     def remove_last_trace_point(self, event):
         """Removes the last added point from the trace."""
@@ -251,6 +382,10 @@ class BorderManager:
             # Deactivate manual tracing if it's on
             if self.is_tracing:
                 self.toggle_tracing()
+
+            # Deactivate magic trace if it's on
+            if getattr(self, 'is_magic_trace_active', False):
+                self.toggle_magic_trace()
 
             self.magic_wand_button.config(text="Magic Wand (Active)", bg="#a78bfa", relief='sunken')
             self.canvas.config(cursor="spraycan")
@@ -309,6 +444,35 @@ class BorderManager:
         finally:
             # Deactivate the tool after use
             self.toggle_magic_wand()
+
+    def _find_all_contours(self, image):
+        """Finds all external contours in an image's alpha channel."""
+        try:
+            global cv2
+            import cv2
+            import numpy as np
+        except ImportError:
+            messagebox.showerror("Dependency Missing", "This feature requires OpenCV and NumPy.\nPlease install them via: pip install opencv-python numpy")
+            return []
+
+        if 'A' not in image.getbands():
+            return []
+
+        alpha = image.getchannel('A')
+        alpha_np = np.array(alpha)
+
+        # Find all external contours
+        contours, _ = cv2.findContours(alpha_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return []
+
+        # Convert contours to the expected format (list of lists of tuples)
+        all_points = []
+        for contour in contours:
+            points = contour.reshape(-1, 2)
+            all_points.append([tuple(point) for point in points])
+        return all_points
 
     def _find_contour(self, image):
         """
