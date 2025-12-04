@@ -55,7 +55,7 @@ class BorderManager:
                 "target_tile": "humanuitile06", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
             },
             "HP Frame": { # Spans from humanuitile01 to humanuitile02
-                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.0957, 0.8887, 0.7441, 0.0469]
+                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.8398, 0.8887, 0.2559, 0.0469]
             },
             "Mana Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
