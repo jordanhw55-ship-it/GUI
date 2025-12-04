@@ -79,6 +79,32 @@ class BorderManager:
             "Time Indicator Border": {
                 "target_tile": "humanuitile-timeindicatorframe", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
             }
+            ,
+            "Button 1": {
+                "target_tile": "humanuitile01",
+                "shape_type": "relative_rect",
+                "shape_data": [0.6035, 0.4375, 0.0898, 0.0801]
+            },
+            "Button 2": {
+                "target_tile": "humanuitile01",
+                "shape_type": "relative_rect",
+                "shape_data": [0.6035, 0.5234, 0.0898, 0.0781]
+            },
+            "Button 3": {
+                "target_tile": "humanuitile01",
+                "shape_type": "relative_rect",
+                "shape_data": [0.6035, 0.6094, 0.0898, 0.0781]
+            },
+            "Button 4": {
+                "target_tile": "humanuitile01",
+                "shape_type": "relative_rect",
+                "shape_data": [0.6035, 0.6953, 0.0898, 0.0781]
+            },
+            "Button 5 (Circle)": {
+                "target_tile": "humanuitile01",
+                "shape_type": "relative_rect",
+                "shape_data": [0.6055, 0.8027, 0.0859, 0.0801]
+            }
         }
         # --- Texture Loading ---
         self.border_textures = {}
