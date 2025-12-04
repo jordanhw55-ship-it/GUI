@@ -119,7 +119,7 @@ class BorderManager:
             "Side Frame": {
                 "shape_type": "multi_span_path",
                 "segments": [
-                    { "type": "path", "target_tile": "humanuitile05", "path_coords": [(479, 511), (479, 186), (512, 186)] }
+                    { "type": "path", "path_coords": [(479, 511), (479, 186), (512, 186)] }
                 ]
             },
             "Minimap Buttons": {
@@ -291,12 +291,15 @@ class BorderManager:
                 elif segment_type == "path":
                     path_coords = shape["path_coords"]
                     path_tile = self.app.components.get(shape["target_tile"])
-                    if not path_tile or not path_coords: continue
+                    if not path_coords: continue
 
-                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in path_coords]
+                    # If a target tile is specified, treat coords as relative. Otherwise, treat as absolute world coords.
+                    offset_x = path_tile.world_x1 if path_tile else 0
+                    offset_y = path_tile.world_y1 if path_tile else 0
+                    world_path = [(offset_x + x, offset_y + y) for x, y in path_coords]
+
                     min_x = min(p[0] for p in world_path)
                     max_x = max(p[0] for p in world_path)
-                    min_y = min(p[1] for p in world_path)
                     max_y = max(p[1] for p in world_path)
 
                     border_x, border_y = min_x, min_y
@@ -323,7 +326,7 @@ class BorderManager:
             self.next_border_id += 1
             border_comp = DraggableComponent(self.app, border_tag, border_x, border_y, border_x + render_w, border_y + render_h, "blue", "BORDER")
             border_comp.is_draggable = False
-            border_comp.parent_tag = target_comp.tag # Assign parent
+            if target_comp: border_comp.parent_tag = target_comp.tag # Assign parent if one exists
 
             # --- FIX: Use the determined shape_form, not the one from the shape dictionary ---
             border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape_form)
@@ -386,8 +389,12 @@ class BorderManager:
                     })
                 elif segment["type"] == "path":
                     path_tile = self.app.components.get(segment["target_tile"])
-                    if not path_tile: continue
-                    world_path = [(path_tile.world_x1 + x, path_tile.world_y1 + y) for x, y in segment["path_coords"]]
+                    if not segment.get("path_coords"): continue
+
+                    # If a target tile is specified, treat coords as relative. Otherwise, treat as absolute world coords.
+                    offset_x = path_tile.world_x1 if path_tile else 0
+                    offset_y = path_tile.world_y1 if path_tile else 0
+                    world_path = [(offset_x + x, offset_y + y) for x, y in segment["path_coords"]]
                     
                     min_x, max_x = min(p[0] for p in world_path), max(p[0] for p in world_path)
                     min_y, max_y = min(p[1] for p in world_path), max(p[1] for p in world_path)
