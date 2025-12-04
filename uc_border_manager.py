@@ -488,30 +488,30 @@ class BorderManager:
         Returns a list of (x, y) points.
         """
         try:
-        # Use the alpha channel as the basis for contour detection
-        if 'A' not in image.getbands():
-            return None # No alpha channel to trace
+            # Use the alpha channel as the basis for contour detection
+            if 'A' not in image.getbands():
+                return None # No alpha channel to trace
 
-        alpha = image.getchannel('A')
-        # Convert to numpy array for OpenCV
-        alpha_np = np.array(alpha)
+            alpha = image.getchannel('A')
+            # Convert to numpy array for OpenCV
+            alpha_np = np.array(alpha)
 
-        # Find contours
-        # RETR_EXTERNAL finds only the outermost contours.
-        # CHAIN_APPROX_SIMPLE compresses horizontal, vertical, and diagonal segments, leaving only their end points.
-        contours, _ = cv2.findContours(alpha_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Find contours
+            # RETR_EXTERNAL finds only the outermost contours.
+            # CHAIN_APPROX_SIMPLE compresses horizontal, vertical, and diagonal segments, leaving only their end points.
+            contours, _ = cv2.findContours(alpha_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        if not contours:
-            return None
+            if not contours:
+                return None
 
-        # We are interested in the largest contour
-        largest_contour = max(contours, key=cv2.contourArea)
+            # We are interested in the largest contour
+            largest_contour = max(contours, key=cv2.contourArea)
 
-        # The contour is a numpy array of shape (N, 1, 2). We need to reshape it to (N, 2).
-        points = largest_contour.reshape(-1, 2)
+            # The contour is a numpy array of shape (N, 1, 2). We need to reshape it to (N, 2).
+            points = largest_contour.reshape(-1, 2)
 
-        # Convert numpy points to a list of python tuples
-        return [tuple(point) for point in points]
+            # Convert numpy points to a list of python tuples
+            return [tuple(point) for point in points]
 
     def _load_border_textures(self):
         """Loads default border textures into memory from the images directory."""
