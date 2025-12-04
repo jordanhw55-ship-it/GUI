@@ -127,8 +127,6 @@ class ImageEditorApp:
         # Bind camera pan events directly to the canvas
         self.canvas.bind("<Control-Button-1>", self.camera.on_pan_press)
         self.canvas.bind("<Control-B1-Motion>", self.camera.on_pan_drag)
-        # --- NEW: Bind right-click for tracing ---
-        self.canvas.bind("<Button-3>", self.on_canvas_right_click)
 
 
         # Bind canvas events now that all managers are initialized
@@ -140,9 +138,6 @@ class ImageEditorApp:
 
     def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
-            # If border tracing is active, it has its own drag handler, so we do nothing here.
-            if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False) or self.border_manager.is_magic_wand_active:
-                return
 
             # Otherwise, delegate to the paint and eraser managers.
             if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active:
@@ -348,21 +343,6 @@ class ImageEditorApp:
 
     def on_component_press(self, event):
         """Handles press events on any component."""
-        # --- NEW: Divert click to border tracer if active ---
-        # --- DEFINITIVE FIX: Explicitly delegate the event to the active tool ---
-        # This is the core fix. Instead of just blocking, we now actively hand off
-        # the event to the correct manager if a special tool is active.
-        if getattr(self.border_manager, 'is_magic_trace_active', False):
-            self.border_manager._start_magic_trace(event)
-            return "break"
-        
-        if self.border_manager.is_tracing:
-            self.border_manager.add_trace_point(event)
-            return "break"
-
-        if self.border_manager.is_magic_wand_active:
-            self.border_manager.run_magic_wand(event)
-            return
 
         # Find the component tag from the canvas item clicked
         item_id = self.canvas.find_closest(event.x, event.y)[0]
@@ -458,11 +438,6 @@ class ImageEditorApp:
             self.pre_move_state = {} # Clear the temporary state
 
         self._keep_docks_on_top()
-
-    def on_canvas_right_click(self, event):
-        """Handles right-click events on the canvas, primarily for border tracing."""
-        if self.border_manager.is_tracing:
-            self.border_manager.remove_last_trace_point(event)
 
     def move_all_main_tiles(self, dx_world, dy_world):
         """Moves all primary component tiles by a delta in world coordinates."""
