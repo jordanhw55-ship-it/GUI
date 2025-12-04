@@ -75,7 +75,8 @@ class BorderManager:
         }
         # --- Texture Loading ---
         self.border_textures = {}
-        self._load_border_tex
+        self._load_border_textures()
+        self._create_procedural_textures()
 
         # Set default selections for the UI
         if self.border_presets:
