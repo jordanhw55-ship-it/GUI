@@ -312,16 +312,33 @@ class BorderManager:
         bounds = self.canvas.bbox(self.trace_preview_id)
         if not bounds: return
         
+        # --- DEFINITIVE FIX: Find the component closest to the center of the user's drawing ---
+        # 1. Find all potential components overlapping the drawn area.
         overlapping_ids = self.canvas.find_overlapping(*bounds)
-        target_comp = None
+        candidate_comps = []
         for item_id in reversed(overlapping_ids):
             tags = self.canvas.gettags(item_id)
             if tags and tags[0] in self.app.components:
                 comp = self.app.components[tags[0]]
                 if comp.pil_image and not comp.is_dock_asset and not tags[0].startswith("preset_border_"):
-                    target_comp = comp
-                    break
+                    candidate_comps.append(comp)
 
+        if not candidate_comps:
+            messagebox.showwarning("No Target Found", "Magic Trace could not find an image component within your selection.")
+            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
+            self.traced_points = []
+            return
+
+        # 2. Calculate the center of the user's drawn path.
+        user_path_poly = np.array(self.traced_points, dtype=np.int32)
+        user_cx = np.mean(user_path_poly[:, 0])
+        user_cy = np.mean(user_path_poly[:, 1])
+
+        # 3. Find the candidate component whose center is closest to the user's path center.
+        target_comp = min(candidate_comps, key=lambda comp: np.sqrt(
+            (((comp.world_x1 + comp.world_x2) / 2) - user_cx)**2 +
+            (((comp.world_y1 + comp.world_y2) / 2) - user_cy)**2
+        ))
         if not target_comp:
             messagebox.showwarning("No Target Found", "Magic Trace could not find an image component within your selection.")
             if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
