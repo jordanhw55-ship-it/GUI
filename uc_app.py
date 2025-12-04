@@ -88,11 +88,11 @@ class ImageEditorApp:
 
         # --- NEW: Define base paths for UI Creator resources ---
         self.base_path = get_base_path()
-        self.contents_path = os.path.join(self.base_path, "contents")
-        self.image_base_dir = os.path.join(self.contents_path, "images")
-        self.tools_dir = os.path.join(self.contents_path, "tools")
-        self.output_dir = os.path.join(self.contents_path, "output")
-        self.layouts_dir = os.path.join(self.contents_path, "layouts")
+        self.ui_creator_contents_path = os.path.join(self.base_path, "contents", "ui creator")
+        self.image_base_dir = os.path.join(self.ui_creator_contents_path, "images")
+        self.tools_dir = os.path.join(self.ui_creator_contents_path, "tools")
+        self.output_dir = os.path.join(self.ui_creator_contents_path, "output")
+        self.layouts_dir = os.path.join(self.ui_creator_contents_path, "layouts")
         print(f"[DEBUG] Base path: {self.base_path}")
         print(f"[DEBUG] Image dir: {self.image_base_dir}")
         print(f"[DEBUG] Output dir: {self.output_dir}")
