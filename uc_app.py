@@ -414,7 +414,7 @@ class ImageEditorApp:
             self.redraw_all_zoomable()
 
         # --- FIX: If a border preview is active, update it when its parent moves ---
-        if self.border_manager.preview_rect_id:
+        if self.border_manager.preview_rect_ids:
             self.border_manager.show_preset_preview()
 
     def on_component_release(self, event):
@@ -842,7 +842,7 @@ class ImageEditorApp:
 
         # --- FIX: Redraw the border preview last to ensure it's on top ---
         # Only redraw the preview if the border tab is the one being displayed.
-        if self.border_manager.preview_rect_id and self.is_border_tab_active():
+        if self.border_manager.preview_rect_ids and self.is_border_tab_active():
             self.border_manager.show_preset_preview()
 
         # --- NEW: Redraw the selection highlight ---
