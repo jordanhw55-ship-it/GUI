@@ -225,10 +225,13 @@ class BorderManager:
                 continue
 
             # Determine the target component
-            target_comp = self.app.components.get(preset.get("target_tile") or shape.get("target_tile"))
+            # --- FIX: Correctly determine the target tile for error messages and parenting ---
+            target_tile_name = preset.get("target_tile") or shape.get("target_tile") or shape.get("start_tile")
+            target_comp = self.app.components.get(target_tile_name)
+
             if not target_comp:
-                messagebox.showerror("Error", f"Target tile '{preset['target_tile']}' for preset not found on canvas.")
-                return
+                messagebox.showerror("Error", f"Target tile '{target_tile_name}' for preset not found on canvas.")
+                continue # Use continue to skip the problematic segment instead of stopping the whole process
 
             parent_w = target_comp.world_x2 - target_comp.world_x1
             parent_h = target_comp.world_y2 - target_comp.world_y1
