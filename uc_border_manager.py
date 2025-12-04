@@ -394,7 +394,7 @@ class BorderManager:
             if target_comp: border_comp.parent_tag = target_comp.tag # Assign parent if one exists
 
             # --- FIX: Use the determined shape_form, not the one from the shape dictionary ---
-            border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape_form)
+            border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape_form, path_data=world_path if shape_form == 'path' else None)
             if not border_image: continue
 
             border_comp.set_image(border_image)
