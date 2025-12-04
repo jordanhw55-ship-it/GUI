@@ -43,9 +43,9 @@ class BorderManager:
             "Top Border": {
                 "target_tile": "humanuitile05",
                 "shape_type": "relative_rect",
-                # Using relative coordinates based on a 512x512 tile.
-                # x=1/512, y=44/512, w=510/512, h=thickness (handled by renderer)
-                "shape_data": [0.00195, 0.0859, 0.996, 0.02] 
+                # Using relative coordinates. y=44/512.
+                # A relative height of 0 tells the system to use the thickness slider value.
+                "shape_data": [0.00195, 0.0859, 0.996, 0] 
             },
             # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
             # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
@@ -244,7 +244,8 @@ class BorderManager:
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
                 width_multiplier = self.border_width.get() / 100.0
                 border_w = (parent_w * rel_w) * width_multiplier
-                border_h = (parent_h * rel_h) * width_multiplier
+                # --- DEFINITIVE FIX: Use thickness slider if relative height is 0 ---
+                border_h = (parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
                 border_x = target_comp.world_x1 + (parent_w * rel_x)
                 border_y = target_comp.world_y1 + (parent_h * rel_y)
                 render_w, render_h = border_w, border_h
@@ -401,7 +402,8 @@ class BorderManager:
 
             width_multiplier = self.border_width.get() / 100.0
             border_w = (parent_w * rel_w) * width_multiplier
-            border_h = (parent_h * rel_h) * width_multiplier
+            # --- DEFINITIVE FIX: Use thickness slider if relative height is 0 for preview ---
+            border_h = (parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
 
             border_x1 = target_comp.world_x1 + (parent_w * rel_x)
             border_y1 = target_comp.world_y1 + (parent_h * rel_y)
