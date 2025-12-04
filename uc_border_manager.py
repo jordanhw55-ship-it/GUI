@@ -65,7 +65,9 @@ class BorderManager:
                     },
                     { 
                         "target_tile": "humanuitile04", "shape_form": "rect", 
-                        "shape_data": [0.00195, 0.0859, 0.121, 0] # 1,44 to 63,44
+                        # DEFINITIVE FIX: Correct relative width for the narrow tile04.
+                        # The border (1 to 63) is wider than the tile (width 30).
+                        "shape_data": [0.0333, 0.0859, 2.0667, 0] # x=1/30, w=(63-1)/30
                     },
                     { 
                         "target_tile": "humanuitile06", "shape_form": "rect", 
