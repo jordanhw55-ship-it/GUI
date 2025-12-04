@@ -116,6 +116,12 @@ class BorderManager:
                     }
                 ]
             },
+            "Side Frame": {
+                "shape_type": "multi_span_path",
+                "segments": [
+                    { "type": "path", "target_tile": "humanuitile05", "path_coords": [(479, 511), (479, 186), (512, 186)] }
+                ]
+            },
             "Minimap Buttons": {
                 "target_tile": "humanuitile01",
                 "shape_type": "multi_rect",
