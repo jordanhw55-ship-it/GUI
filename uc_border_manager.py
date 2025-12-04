@@ -312,67 +312,53 @@ class BorderManager:
         bounds = self.canvas.bbox(self.trace_preview_id)
         if not bounds: return
         
-        # --- DEFINITIVE FIX: Find the component closest to the center of the user's drawing ---
-        # 1. Find all potential components overlapping the drawn area.
+        # --- DEFINITIVE REWRITE: Find the best contour from ALL overlapping tiles, not just one. ---
+        # This is the core fix. Instead of picking a tile first, we find the best shape first.
+
+        # 1. Find all candidate components and their contours.
         overlapping_ids = self.canvas.find_overlapping(*bounds)
-        candidate_comps = []
+        all_contours_with_parents = []
         for item_id in reversed(overlapping_ids):
             tags = self.canvas.gettags(item_id)
             if tags and tags[0] in self.app.components:
                 comp = self.app.components[tags[0]]
                 if comp.pil_image and not comp.is_dock_asset and not tags[0].startswith("preset_border_"):
-                    candidate_comps.append(comp)
+                    contours = self._find_all_contours(comp.pil_image)
+                    for contour in contours:
+                        # Store the contour along with a reference to its parent component.
+                        all_contours_with_parents.append({'contour': contour, 'parent': comp})
 
-        if not candidate_comps:
-            messagebox.showwarning("No Target Found", "Magic Trace could not find an image component within your selection.")
+        if not all_contours_with_parents:
+            messagebox.showwarning("No Shapes Found", "Magic Trace could not find any distinct shapes within your selection.")
             if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
             self.traced_points = []
             return
 
-        # 2. Calculate the center of the user's drawn path.
+        # 2. Find the center of the user's drawn path to determine their point of interest.
         user_path_poly = np.array(self.traced_points, dtype=np.int32)
         user_cx = np.mean(user_path_poly[:, 0])
         user_cy = np.mean(user_path_poly[:, 1])
 
-        # 3. Find the candidate component whose center is closest to the user's path center.
-        target_comp = min(candidate_comps, key=lambda comp: np.sqrt(
-            (((comp.world_x1 + comp.world_x2) / 2) - user_cx)**2 +
-            (((comp.world_y1 + comp.world_y2) / 2) - user_cy)**2
-        ))
-        if not target_comp:
-            messagebox.showwarning("No Target Found", "Magic Trace could not find an image component within your selection.")
-            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
-            self.traced_points = []
-            return
-
-        all_contours = self._find_all_contours(target_comp.pil_image)
-        if not all_contours:
-            messagebox.showwarning("No Contours Found", "Could not find any distinct shapes in the target image's alpha channel.")
-            if self.trace_preview_id: self.canvas.delete(self.trace_preview_id)
-            self.traced_points = []
-            return
-
-        # Find the best contour that intersects with the user's drawn path
-        user_path_poly = np.array(self.traced_points, dtype=np.int32)
+        # 3. Find the contour whose center is closest to the user's drawing center.
         best_contour = None
-        max_intersection = 0
+        target_comp = None
+        min_dist = float('inf')
 
-        # --- DEFINITIVE FIX: Use a more robust intersection check for non-convex shapes ---
-        # The previous `intersectConvexConvex` was failing because the user's path is never convex.
-        # We will now check if any point of the user's path is inside any of the detected contours.
-        
-        for contour in all_contours:
-            contour_poly = np.array(contour, dtype=np.int32)
-            # Iterate through the points of the user's drawn path
-            for point in self.traced_points:
-                # `pointPolygonTest` returns > 0 if the point is inside, 0 if on the edge, and < 0 if outside.
-                # We need to convert the world-coordinate point to the contour's local space.
-                local_point = (point[0] - target_comp.world_x1, point[1] - target_comp.world_y1)
-                if cv2.pointPolygonTest(contour_poly, local_point, False) >= 0:
-                    best_contour = contour
-                    break # Found an intersecting contour, no need to check other points for this contour
-            if best_contour:
-                break # Found a contour, no need to check other contours
+        for item in all_contours_with_parents:
+            contour = item['contour']
+            parent = item['parent']
+            M = cv2.moments(np.array(contour))
+            if M["m00"] == 0: continue
+            
+            # Calculate the contour's center in WORLD coordinates
+            contour_cx_world = parent.world_x1 + int(M["m10"] / M["m00"])
+            contour_cy_world = parent.world_y1 + int(M["m01"] / M["m00"])
+            
+            dist = np.sqrt((contour_cx_world - user_cx)**2 + (contour_cy_world - user_cy)**2)
+            if dist < min_dist:
+                min_dist = dist
+                best_contour = contour
+                target_comp = parent # Keep track of which tile this best contour belongs to
 
         if best_contour is None:
             # If no intersection, find the contour closest to the center of the user's drawing
