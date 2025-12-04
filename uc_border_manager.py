@@ -39,44 +39,43 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
-            # --- DEFINITIVE FIX: Correctly define the full top border path ---
+            # --- DEFINITIVE FIX: Redefine Top Border as fragmented straight lines ---
             "Top Border": {
                 "shape_type": "multi_span_path",
                 "segments": [
-                    # Segment 1: Straight line across humanuitile05
                     {
                         "type": "line",
-                        "start_tile": "humanuitile05", "start_coords": [0, 44],
+                        "start_tile": "humanuitile05", "start_coords": [1, 44],
                         "end_tile": "humanuitile05", "end_coords": [511, 44]
                     },
-                    # Segment 2: Straight line across humanuitile01
                     {
                         "type": "line",
-                        "start_tile": "humanuitile01", "start_coords": [0, 44],
+                        "start_tile": "humanuitile01", "start_coords": [1, 44],
                         "end_tile": "humanuitile01", "end_coords": [511, 44]
                     },
-                    # Segment 3: Line on humanuitile02 leading to the arc
                     {
                         "type": "line",
-                        "start_tile": "humanuitile02", "start_coords": [0, 44],
-                        "end_tile": "humanuitile02", "end_coords": [229, 44]
+                        "start_tile": "humanuitile02", "start_coords": [1, 44],
+                        "end_tile": "humanuitile02", "end_coords": [217, 44]
                     },
-                    # Segment 4: The semi-circular arc over the clock on humanuitile02
-                    {
-                        "type": "path",
-                        "target_tile": "humanuitile02",
-                        "path_coords": [
-                            [229, 44], [231, 46], [233, 48], [235, 50], [237, 53], [240, 56], [243, 59], [246, 62],
-                            [249, 65], [253, 68], [257, 71], [261, 74], [265, 77], [270, 80], [275, 83], [280, 86],
-                            [285, 88], [291, 88], [296, 87], [301, 85], [306, 83], [311, 80], [316, 77], [320, 74],
-                            [324, 71], [328, 68], [332, 65], [335, 62], [338, 59], [341, 56], [343, 53], [345, 50],
-                            [347, 48], [347, 44]
-                        ]
-                    },
-                    # Segment 5: Line on humanuitile02 after the arc
                     {
                         "type": "line",
-                        "start_tile": "humanuitile02", "start_coords": [347, 44],
+                        "start_tile": "humanuitile02", "start_coords": [359, 44],
+                        "end_tile": "humanuitile02", "end_coords": [511, 44]
+                    },
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile03", "start_coords": [1, 44],
+                        "end_tile": "humanuitile03", "end_coords": [511, 44]
+                    },
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile04", "start_coords": [1, 44],
+                        "end_tile": "humanuitile04", "end_coords": [63, 44]
+                    },
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile06", "start_coords": [1, 44],
                         "end_tile": "humanuitile06", "end_coords": [511, 44]
                     }
                 ]
