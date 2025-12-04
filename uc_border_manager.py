@@ -340,14 +340,22 @@ class BorderManager:
         best_contour = None
         max_intersection = 0
 
+        # --- DEFINITIVE FIX: Use a more robust intersection check for non-convex shapes ---
+        # The previous `intersectConvexConvex` was failing because the user's path is never convex.
+        # We will now check if any point of the user's path is inside any of the detected contours.
+        
         for contour in all_contours:
-            # Check for intersection. A simple bounding box check is efficient.
             contour_poly = np.array(contour, dtype=np.int32)
-            if cv2.intersectConvexConvex(user_path_poly, contour_poly)[0] > 0:
-                 # For simplicity, we'll just take the first intersecting contour.
-                 # A more advanced implementation could find the one with the largest intersection area.
-                 best_contour = contour
-                 break
+            # Iterate through the points of the user's drawn path
+            for point in self.traced_points:
+                # `pointPolygonTest` returns > 0 if the point is inside, 0 if on the edge, and < 0 if outside.
+                # We need to convert the world-coordinate point to the contour's local space.
+                local_point = (point[0] - target_comp.world_x1, point[1] - target_comp.world_y1)
+                if cv2.pointPolygonTest(contour_poly, local_point, False) >= 0:
+                    best_contour = contour
+                    break # Found an intersecting contour, no need to check other points for this contour
+            if best_contour:
+                break # Found a contour, no need to check other contours
 
         if best_contour is None:
             # If no intersection, find the contour closest to the center of the user's drawing
