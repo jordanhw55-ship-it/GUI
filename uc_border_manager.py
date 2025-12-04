@@ -39,26 +39,41 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
+            # --- DEFINITIVE FIX: Correctly define the full top border path ---
             "Top Border": {
                 "shape_type": "multi_span_path",
                 "segments": [
+                    # Segment 1: Straight line across humanuitile05
                     {
                         "type": "line",
-                        "start_tile": "humanuitile05", "start_coords": [1, 44],
+                        "start_tile": "humanuitile05", "start_coords": [0, 44],
+                        "end_tile": "humanuitile05", "end_coords": [511, 44]
+                    },
+                    # Segment 2: Straight line across humanuitile01
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile01", "start_coords": [0, 44],
+                        "end_tile": "humanuitile01", "end_coords": [511, 44]
+                    },
+                    # Segment 3: Line on humanuitile02 leading to the arc
+                    {
+                        "type": "line",
+                        "start_tile": "humanuitile02", "start_coords": [0, 44],
                         "end_tile": "humanuitile02", "end_coords": [229, 44]
                     },
+                    # Segment 4: The semi-circular arc over the clock on humanuitile02
                     {
                         "type": "path",
                         "target_tile": "humanuitile02",
                         "path_coords": [
-                            [229, 44], [231, 46], [233, 48], [235, 50], [237, 53], [240, 56],
-                            [243, 59], [246, 62], [249, 65], [253, 68], [257, 71], [261, 74],
-                            [265, 77], [270, 80], [275, 83], [280, 86], [285, 88], [291, 88],
-                            [296, 87], [301, 85], [306, 83], [311, 80], [316, 77], [320, 74],
-                            [324, 71], [328, 68], [332, 65], [335, 62], [338, 59], [341, 56],
-                            [343, 53], [345, 50], [347, 48], [347, 44]
+                            [229, 44], [231, 46], [233, 48], [235, 50], [237, 53], [240, 56], [243, 59], [246, 62],
+                            [249, 65], [253, 68], [257, 71], [261, 74], [265, 77], [270, 80], [275, 83], [280, 86],
+                            [285, 88], [291, 88], [296, 87], [301, 85], [306, 83], [311, 80], [316, 77], [320, 74],
+                            [324, 71], [328, 68], [332, 65], [335, 62], [338, 59], [341, 56], [343, 53], [345, 50],
+                            [347, 48], [347, 44]
                         ]
                     },
+                    # Segment 5: Line on humanuitile02 after the arc
                     {
                         "type": "line",
                         "start_tile": "humanuitile02", "start_coords": [347, 44],
@@ -66,9 +81,15 @@ class BorderManager:
                     }
                 ]
             },
-            "Top Border": {
-                "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 0.08]
-            },
+            # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
+            # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
+            # versions are the correct ones to use.
+            # "Top Border": {
+            #     "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 0.08]
+            # },
+            # "HP Frame": { # Spans from humanuitile01 to humanuitile02
+            #     "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.83984375, 0.888671875, 1.255859375, 0.046875]
+            # },
             "Bottom Border": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.92, 1.0, 0.08]
             },
@@ -88,9 +109,6 @@ class BorderManager:
             },
             "Character Hub Frame": {
                 "target_tile": "humanuitile06", "shape_type": "relative_rect", "shape_data": [0.0, 0.0, 1.0, 1.0]
-            },
-            "HP Frame": { # Spans from humanuitile01 to humanuitile02
-                "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.83984375, 0.888671875, 1.255859375, 0.046875]
             },
             "HP Frame": {
                 "shape_type": "span_rect",
@@ -271,7 +289,8 @@ class BorderManager:
             border_comp.is_draggable = False
             border_comp.parent_tag = target_comp.tag # Assign parent
 
-            border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape.get("shape_form", "rect"))
+            # --- FIX: Use the determined shape_form, not the one from the shape dictionary ---
+            border_image = self._render_border_image((border_w, border_h), (render_w, render_h), shape_form)
             if not border_image: continue
 
             border_comp.set_image(border_image)
