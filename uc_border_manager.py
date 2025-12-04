@@ -76,32 +76,6 @@ class BorderManager:
                     }
                 ]
             },
-            "Side Frames": {
-                "shape_type": "multi_rect",
-                "shapes": [
-                    {
-                        "target_tile": "humanuitile05", "shape_form": "rect",
-                        "shape_data": [0.9355, 0.3808, 0, 0.6172] # x=479, y=195, w=0 (thickness), h=316
-                    },
-                    {
-                        "target_tile": "humanuitile01", "shape_form": "rect",
-                        "shape_data": [0.7773, 0.3808, 0, 0.1055] # x=398, y=195, w=0 (thickness), h=54
-                    },
-                    {
-                        "target_tile": "humanuitile02", "shape_form": "rect",
-                        # DEFINITIVE FIX: Define diagonal as a line with 0 width and height
-                        "shape_data": [0.9726, 0.4843, 0, 0] # x=498, y=249, w=0, h=0
-                    },
-                    {
-                        "target_tile": "humanuitile03", "shape_form": "rect",
-                        "shape_data": [0.3339, 0.4004, 0, 0.0605] # x=171, y=205, w=0 (thickness), h=31
-                    },
-                    {
-                        "target_tile": "humanuitile06", "shape_form": "rect",
-                        "shape_data": [0.0605, 0.4004, 0, 0.6055] # x=31, y=205, w=0 (thickness), h=310
-                    }
-                ]
-            },
             # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
             # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
             # versions are the correct ones to use.
@@ -112,7 +86,35 @@ class BorderManager:
             #     "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.83984375, 0.888671875, 1.255859375, 0.046875]
             # },
             "Bottom Border": {
-                "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.0, 0.92, 1.0, 0.08]
+                "shape_type": "multi_rect",
+                "shapes": [
+                    # --- Side Frame components ---
+                    {
+                        "target_tile": "humanuitile05", "shape_form": "rect",
+                        "shape_data": [0.9355, 0.3808, 0, 0.6172] # x=479, y=195, w=0 (thickness), h=316
+                    },
+                    {
+                        "target_tile": "humanuitile01", "shape_form": "rect",
+                        "shape_data": [0.7773, 0.3808, 0, 0.1055] # x=398, y=195, w=0 (thickness), h=54
+                    },
+                    {
+                        "target_tile": "humanuitile02", "shape_form": "rect",
+                        "shape_data": [0.9726, 0.4843, 0, 0] # x=498, y=249, w=0, h=0 (diagonal)
+                    },
+                    {
+                        "target_tile": "humanuitile03", "shape_form": "rect",
+                        "shape_data": [0.3339, 0.4004, 0, 0.0605] # x=171, y=205, w=0 (thickness), h=31
+                    },
+                    {
+                        "target_tile": "humanuitile06", "shape_form": "rect",
+                        "shape_data": [0.0605, 0.4004, 0, 0.6055] # x=31, y=205, w=0 (thickness), h=310
+                    },
+                    # --- Original Bottom Border component ---
+                    {
+                        "target_tile": "humanuitile05", "shape_form": "rect",
+                        "shape_data": [0.0, 0.92, 1.0, 0.08]
+                    }
+                ]
             },
             "Minimap Buttons": {
                 "target_tile": "humanuitile01",
