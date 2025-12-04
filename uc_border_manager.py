@@ -239,23 +239,23 @@ class BorderManager:
             border_h = height_px * scale_factor
             border_y2 = border_y1 + border_h
         else: # Handle the original "relative_rect"
-        target_comp = self.app.components.get(preset["target_tile"])
-        if not target_comp:
-            return
+            target_comp = self.app.components.get(preset["target_tile"])
+            if not target_comp:
+                return
 
-        # Calculate absolute coordinates from relative data
-        parent_w = target_comp.world_x2 - target_comp.world_x1
-        parent_h = target_comp.world_y2 - target_comp.world_y1
-        rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
+            # Calculate absolute coordinates from relative data
+            parent_w = target_comp.world_x2 - target_comp.world_x1
+            parent_h = target_comp.world_y2 - target_comp.world_y1
+            rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
 
-        width_multiplier = self.border_width.get() / 100.0
-        border_w = (parent_w * rel_w) * width_multiplier
-        border_h = (parent_h * rel_h) * width_multiplier
+            width_multiplier = self.border_width.get() / 100.0
+            border_w = (parent_w * rel_w) * width_multiplier
+            border_h = (parent_h * rel_h) * width_multiplier
 
-        border_x1 = target_comp.world_x1 + (parent_w * rel_x)
-        border_y1 = target_comp.world_y1 + (parent_h * rel_y)
-        border_x2 = border_x1 + border_w
-        border_y2 = border_y1 + border_h
+            border_x1 = target_comp.world_x1 + (parent_w * rel_x)
+            border_y1 = target_comp.world_y1 + (parent_h * rel_y)
+            border_x2 = border_x1 + border_w
+            border_y2 = border_y1 + border_h
 
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
         growth_direction = self.border_growth_direction.get()
