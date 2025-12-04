@@ -76,6 +76,31 @@ class BorderManager:
                     }
                 ]
             },
+            "Side Frames": {
+                "shape_type": "multi_rect",
+                "shapes": [
+                    {
+                        "target_tile": "humanuitile05", "shape_form": "rect",
+                        "shape_data": [0.9355, 0.3808, 0, 0.6172] # x=479, y=195, w=thickness, h=316
+                    },
+                    {
+                        "target_tile": "humanuitile01", "shape_form": "rect",
+                        "shape_data": [0.7773, 0.3808, 0, 0.1055] # x=398, y=195, w=thickness, h=54
+                    },
+                    {
+                        "target_tile": "humanuitile02", "shape_form": "rect",
+                        "shape_data": [0.9726, 0.4609, 0.0117, 0.0254] # Approximated diagonal
+                    },
+                    {
+                        "target_tile": "humanuitile03", "shape_form": "rect",
+                        "shape_data": [0.3339, 0.4004, 0, 0.0605] # x=171, y=205, w=thickness, h=31
+                    },
+                    {
+                        "target_tile": "humanuitile06", "shape_form": "rect",
+                        "shape_data": [0.0605, 0.4004, 0, 0.6055] # x=31, y=205, w=thickness, h=310
+                    }
+                ]
+            },
             # --- FIX: I'm removing the duplicate "Top Border" and "HP Frame" definitions
             # to avoid conflicts and keep the preset list clean. The multi-span and span_rect
             # versions are the correct ones to use.
