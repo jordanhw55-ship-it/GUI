@@ -39,43 +39,13 @@ class BorderManager:
                 "shape_type": "relative_rect",
                 "shape_data": [0.0, 0.0, 1.0, 0.05] # Thin bar across the top
             },
-            # --- DEFINITIVE FIX: Redefine Top Border as fragmented straight lines ---
+            # --- DEFINITIVE FIX: Simplify "Top Border" for debugging ---
             "Top Border": {
                 "shape_type": "multi_span_path",
                 "segments": [
                     {
                         "type": "line",
                         "start_tile": "humanuitile05", "start_coords": [1, 44],
-                        "end_tile": "humanuitile05", "end_coords": [511, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile01", "start_coords": [1, 44],
-                        "end_tile": "humanuitile01", "end_coords": [511, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile02", "start_coords": [1, 44],
-                        "end_tile": "humanuitile02", "end_coords": [217, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile02", "start_coords": [359, 44],
-                        "end_tile": "humanuitile02", "end_coords": [511, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile03", "start_coords": [1, 44],
-                        "end_tile": "humanuitile03", "end_coords": [511, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile04", "start_coords": [1, 44],
-                        "end_tile": "humanuitile04", "end_coords": [63, 44]
-                    },
-                    {
-                        "type": "line",
-                        "start_tile": "humanuitile06", "start_coords": [1, 44],
                         "end_tile": "humanuitile06", "end_coords": [511, 44]
                     }
                 ]
@@ -250,8 +220,9 @@ class BorderManager:
                     end_x_world = end_tile.world_x1 + shape["end_coords"][0]
                     end_y_world = end_tile.world_y1 + shape["end_coords"][1]
 
+                    # --- DEFINITIVE FIX: Correctly calculate the world Y position ---
                     border_x = min(start_x_world, end_x_world)
-                    border_y = shape["start_coords"][1] # Use the absolute Y coordinate from the preset
+                    border_y = min(start_y_world, end_y_world) # Use the calculated world Y
                     border_w = abs(end_x_world - start_x_world)
                     border_h = abs(end_y_world - start_y_world) if abs(end_y_world - start_y_world) > 0 else thickness
                     render_w, render_h = border_w, border_h
@@ -345,8 +316,9 @@ class BorderManager:
                     end_x_world = end_tile.world_x1 + segment["end_coords"][0]
                     end_y_world = end_tile.world_y1 + segment["end_coords"][1]
 
+                    # --- DEFINITIVE FIX: Correctly calculate the world Y position for the preview ---
                     shapes_to_preview.append({
-                        'x': min(start_x_world, end_x_world), 'y': segment["start_coords"][1],
+                        'x': min(start_x_world, end_x_world), 'y': min(start_y_world, end_y_world),
                         'w': abs(end_x_world - start_x_world), 'h': abs(end_y_world - start_y_world) if abs(end_y_world - start_y_world) > 0 else thickness,
                         'form': 'rect'
                     })
