@@ -349,7 +349,7 @@ class ImageEditorApp:
     def on_component_press(self, event):
         """Handles press events on any component."""
         # --- NEW: Divert click to border tracer if active ---
-        # --- FIX: Check all interactive border modes ---
+        # --- DEFINITIVE FIX: Check all interactive border modes ---
         if self.border_manager.is_tracing or getattr(self.border_manager, 'is_magic_trace_active', False):
             # This mode has its own bindings, so we just stop propagation.
             return "break"
