@@ -60,7 +60,7 @@ class BorderManager:
             "HP Frame": {
                 "shape_type": "span_rect",
                 "start_tile": "humanuitile01", "end_tile": "humanuitile02",
-                "shape_data": [430, 455, 49, 24] # [start_x_offset, start_y_offset, end_x_offset, height]
+                "shape_data": [421, 265, 33, 14] # [start_x_offset, start_y_offset, end_x_offset, height]
             },
             "Mana Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
