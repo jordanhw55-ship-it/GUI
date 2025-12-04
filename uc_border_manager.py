@@ -263,11 +263,18 @@ class BorderManager:
         """Finds the component under the click and runs the contour detection."""
         if not self.is_magic_wand_active: return
 
-        item_id = self.canvas.find_closest(event.x, event.y)[0]
-        tags = self.canvas.gettags(item_id)
-        if not tags: return
+        # --- DEFINITIVE FIX: Find the correct component, ignoring temporary layers ---
+        # Find all items under the cursor, then iterate to find the first valid component.
+        item_ids = self.canvas.find_overlapping(event.x - 1, event.y - 1, event.x + 1, event.y + 1)
+        comp_tag = None
+        for item_id in reversed(item_ids): # Search from top to bottom
+            tags = self.canvas.gettags(item_id)
+            if tags and tags[0] in self.app.components:
+                # Ignore temporary or non-image components
+                if not tags[0].startswith(("paint_layer", "border_preview", "selection_highlight", "clone_", "border_")):
+                    comp_tag = tags[0]
+                    break # Found the first valid component
 
-        comp_tag = tags[0]
         comp = self.app.components.get(comp_tag)
 
         if not comp or not comp.pil_image:
