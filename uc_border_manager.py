@@ -81,23 +81,24 @@ class BorderManager:
                 "shapes": [
                     {
                         "target_tile": "humanuitile05", "shape_form": "rect",
-                        "shape_data": [0.9355, 0.3808, 0, 0.6172] # x=479, y=195, w=thickness, h=316
+                        "shape_data": [0.9355, 0.3808, 0, 0.6172] # x=479, y=195, w=0 (thickness), h=316
                     },
                     {
                         "target_tile": "humanuitile01", "shape_form": "rect",
-                        "shape_data": [0.7773, 0.3808, 0, 0.1055] # x=398, y=195, w=thickness, h=54
+                        "shape_data": [0.7773, 0.3808, 0, 0.1055] # x=398, y=195, w=0 (thickness), h=54
                     },
                     {
                         "target_tile": "humanuitile02", "shape_form": "rect",
-                        "shape_data": [0.9726, 0.4609, 0.0117, 0.0254] # Approximated diagonal
+                        # DEFINITIVE FIX: Define diagonal as a line with 0 width and height
+                        "shape_data": [0.9726, 0.4843, 0, 0] # x=498, y=249, w=0, h=0
                     },
                     {
                         "target_tile": "humanuitile03", "shape_form": "rect",
-                        "shape_data": [0.3339, 0.4004, 0, 0.0605] # x=171, y=205, w=thickness, h=31
+                        "shape_data": [0.3339, 0.4004, 0, 0.0605] # x=171, y=205, w=0 (thickness), h=31
                     },
                     {
                         "target_tile": "humanuitile06", "shape_form": "rect",
-                        "shape_data": [0.0605, 0.4004, 0, 0.6055] # x=31, y=205, w=thickness, h=310
+                        "shape_data": [0.0605, 0.4004, 0, 0.6055] # x=31, y=205, w=0 (thickness), h=310
                     }
                 ]
             },
@@ -297,7 +298,8 @@ class BorderManager:
             else: # Existing rect/circle logic for multi_rect and relative_rect
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
                 width_multiplier = self.border_width.get() / 100.0
-                border_w = (parent_w * rel_w) * width_multiplier
+                # --- DEFINITIVE FIX: Use thickness slider if relative width is 0 ---
+                border_w = (parent_w * rel_w) * width_multiplier if rel_w > 0 else self.border_thickness.get()
                 # --- DEFINITIVE FIX: Use thickness slider if relative height is 0 ---
                 border_h = (parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
                 border_x = target_comp.world_x1 + (parent_w * rel_x)
@@ -439,6 +441,8 @@ class BorderManager:
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
 
                 border_w = (shape_parent_w * rel_w) * width_multiplier
+                # --- DEFINITIVE FIX: Use thickness for width/height if relative value is 0 ---
+                border_w = (shape_parent_w * rel_w) * width_multiplier if rel_w > 0 else self.border_thickness.get()
                 border_h = (shape_parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
                 border_x1 = shape_target_comp.world_x1 + (shape_parent_w * rel_x)
                 border_y1 = shape_target_comp.world_y1 + (shape_parent_h * rel_y)
@@ -462,7 +466,8 @@ class BorderManager:
             rel_x, rel_y, rel_w, rel_h = preset["shape_data"]
 
             width_multiplier = self.border_width.get() / 100.0
-            border_w = (parent_w * rel_w) * width_multiplier
+            # --- DEFINITIVE FIX: Use thickness for width if relative value is 0 ---
+            border_w = (parent_w * rel_w) * width_multiplier if rel_w > 0 else self.border_thickness.get()
             # --- DEFINITIVE FIX: Use thickness slider if relative height is 0 for preview ---
             border_h = (parent_h * rel_h) if rel_h > 0 else self.border_thickness.get()
 
@@ -521,7 +526,7 @@ class BorderManager:
         style = self.selected_style.get()
         texture = self.border_textures.get(style)
 
-        if not texture or logical_w <= 0 or logical_h <= 0:
+        if not texture or (logical_w <= 0 and logical_h <= 0):
             messagebox.showwarning("Render Error", f"Could not render border. Style '{style}' not found or size is invalid.")
             return None
 
