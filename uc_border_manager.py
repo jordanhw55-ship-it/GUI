@@ -317,17 +317,6 @@ class BorderManager:
             elif not shape_data:
                 continue
 
-            # Determine the target component
-            # --- FIX: Correctly determine the target tile for error messages and parenting ---
-            target_tile_name = shape.get("target_tile") or preset.get("target_tile") or shape.get("start_tile")
-            target_comp = self.app.components.get(target_tile_name)
-
-            if not target_comp:
-                messagebox.showerror("Error", f"Target tile '{target_tile_name}' for preset not found on canvas.")
-                continue # Use continue to skip the problematic segment instead of stopping the whole process
-
-            parent_w = target_comp.world_x2 - target_comp.world_x1
-            parent_h = target_comp.world_y2 - target_comp.world_y1
             thickness = self.border_thickness.get()
             growth_direction = self.border_growth_direction.get()
 
@@ -354,7 +343,7 @@ class BorderManager:
 
                 elif segment_type == "path":
                     path_coords = shape["path_coords"]
-                    path_tile = self.app.components.get(shape["target_tile"])
+                    path_tile = self.app.components.get(shape.get("target_tile"))
                     if not path_coords: continue
 
                     # If a target tile is specified, treat coords as relative. Otherwise, treat as absolute world coords.
@@ -365,13 +354,25 @@ class BorderManager:
                     min_x = min(p[0] for p in world_path)
                     max_x = max(p[0] for p in world_path)
                     max_y = max(p[1] for p in world_path)
+                    min_y = min(p[1] for p in world_path)
 
                     border_x, border_y = min_x, min_y
                     border_w, border_h = max_x - min_x, max_y - min_y
                     render_w, render_h = border_w, border_h
                     shape_form = "path"
+                    target_comp = path_tile # Can be None, which is correct
             else: # Existing rect/circle logic for multi_rect and relative_rect
+                # --- NEW: Target validation moved here, as it's only relevant for relative presets ---
+                target_tile_name = shape.get("target_tile") or preset.get("target_tile")
+                target_comp = self.app.components.get(target_tile_name)
+
+                if not target_comp:
+                    messagebox.showerror("Error", f"Target tile '{target_tile_name}' for preset not found on canvas.")
+                    continue
+
                 rel_x, rel_y, rel_w, rel_h = shape["shape_data"]
+                parent_w = target_comp.world_x2 - target_comp.world_x1
+                parent_h = target_comp.world_y2 - target_comp.world_y1
                 width_multiplier = self.border_width.get() / 100.0
                 # --- DEFINITIVE FIX: Use thickness slider if relative width is 0 ---
                 border_w = (parent_w * rel_w) * width_multiplier if rel_w > 0 else self.border_thickness.get()
