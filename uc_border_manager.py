@@ -512,6 +512,8 @@ class BorderManager:
 
             # Convert numpy points to a list of python tuples
             return [tuple(point) for point in points]
+        finally:
+            pass
 
     def _load_border_textures(self):
         """Loads default border textures into memory from the images directory."""
