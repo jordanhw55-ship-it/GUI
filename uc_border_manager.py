@@ -57,6 +57,11 @@ class BorderManager:
             "HP Frame": { # Spans from humanuitile01 to humanuitile02
                 "target_tile": "humanuitile01", "shape_type": "relative_rect", "shape_data": [0.83984375, 0.888671875, 1.255859375, 0.046875]
             },
+            "HP Frame": {
+                "shape_type": "span_rect",
+                "start_tile": "humanuitile01", "end_tile": "humanuitile02",
+                "shape_data": [430, 455, 49, 24] # [start_x_offset, start_y_offset, end_x_offset, height]
+            },
             "Mana Frame": {
                 "target_tile": "humanuitile05", "shape_type": "relative_rect", "shape_data": [0.15, 0.4, 0.7, 0.08]
             },
@@ -209,6 +214,31 @@ class BorderManager:
         if not preset:
             return
 
+        # --- DEFINITIVE FIX: Handle the new "span_rect" shape type ---
+        if preset.get("shape_type") == "span_rect":
+            start_tile = self.app.components.get(preset["start_tile"])
+            end_tile = self.app.components.get(preset["end_tile"])
+            if not start_tile or not end_tile: return
+
+            start_x_offset, start_y_offset, end_x_offset, height_px = preset["shape_data"]
+
+            # Calculate world coordinates based on the two tiles
+            # Convert pixel offsets to world scale based on the start tile's original size (assuming 512)
+            start_tile_world_w = start_tile.world_x2 - start_tile.world_x1
+            scale_factor = start_tile_world_w / 512.0
+
+            border_x1 = start_tile.world_x1 + (start_x_offset * scale_factor)
+            border_y1 = start_tile.world_y1 + (start_y_offset * scale_factor)
+            
+            # The right edge is relative to the end tile's origin
+            end_tile_world_w = end_tile.world_x2 - end_tile.world_x1
+            end_scale_factor = end_tile_world_w / 512.0
+            border_x2 = end_tile.world_x1 + (end_x_offset * end_scale_factor)
+
+            border_w = border_x2 - border_x1
+            border_h = height_px * scale_factor
+            border_y2 = border_y1 + border_h
+        else: # Handle the original "relative_rect"
         target_comp = self.app.components.get(preset["target_tile"])
         if not target_comp:
             return
@@ -226,7 +256,7 @@ class BorderManager:
         border_y1 = target_comp.world_y1 + (parent_h * rel_y)
         border_x2 = border_x1 + border_w
         border_y2 = border_y1 + border_h
-        
+
         # --- DEFINITIVE FIX: Render the actual border for the preview ---
         growth_direction = self.border_growth_direction.get()
         thickness = self.border_thickness.get()
