@@ -46,7 +46,7 @@ class BorderManager:
                     {
                         "type": "line",
                         "start_tile": "humanuitile05", "start_coords": [1, 44],
-                        "end_tile": "humanuitile06", "end_coords": [511, 44]
+                        "end_tile": "humanuitile05", "end_coords": [511, 44]
                     }
                 ]
             },
