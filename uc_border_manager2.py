@@ -148,10 +148,12 @@ class SmartBorderManager:
             self.composite_y_offset = 0
 
             if self.highlight_layer_id:
+                # --- FIX: Explicitly clear image references before hiding the canvas item ---
+                # This prevents a TclError if the PhotoImage has been garbage collected.
+                self.canvas.itemconfig(self.highlight_layer_id, image="")
                 self.canvas.itemconfig(self.highlight_layer_id, state='hidden')
-            
-            self.highlight_layer_image = None
-            self.highlight_layer_tk = None
+                self.highlight_layer_image = None
+                self.highlight_layer_tk = None
 
             # --- FIX: Restore the generic drag handler to prevent lingering bindings ---
             self.app.bind_generic_drag_handler()
