@@ -692,6 +692,10 @@ class BorderManager:
         for item_id in reversed(items_under_cursor):
             tags = self.canvas.gettags(item_id)
             if not tags: continue
+            # --- DEFINITIVE FIX: Ignore the highlight layer itself during detection ---
+            if "smart_border_highlight_layer" in tags:
+                continue
+
             comp = self.app.components.get(tags[0])
             if comp and comp.original_pil_image and not comp.is_decal and not comp.is_dock_asset:
                 return comp # Found a valid component under the mouse, use it.
