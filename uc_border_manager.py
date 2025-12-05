@@ -616,12 +616,18 @@ class BorderManager:
                 if logical_w > thickness * 2 and logical_h > thickness * 2:
                     draw.rectangle([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
             elif shape_form == "path" and path_data:
-                # For smart borders, path_data is a list of points. We draw them individually.
-                # The path_data is in world coordinates. We need to make it relative to the render box.
-                min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
-
-                for p_x, p_y in path_data: # Draw points relative to their own bounding box
-                    draw.point((p_x - min_x, p_y - min_y), fill=255)
+                # --- DEFINITIVE FIX: Draw lines for a solid border ---
+                if is_segmented:
+                    # Draw each segment as a line
+                    for segment in path_data:
+                        if len(segment) > 1:
+                            # Adjust points to be relative to the component's top-left corner
+                            relative_segment = [(p[0] - relative_to[0], p[1] - relative_to[1]) for p in segment]
+                            draw.line(relative_segment, fill=255, width=1, joint='curve')
+                else: # Original point-drawing logic for presets
+                    min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
+                    for p_x, p_y in path_data: # Draw points relative to their own bounding box
+                        draw.point((p_x - min_x, p_y - min_y), fill=255)
 
         else: # 'out'
             if shape_form == "circle":
@@ -636,11 +642,17 @@ class BorderManager:
                     if render_w > thickness * 2 and render_h > thickness * 2:
                         draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
                 elif shape_form == "path" and path_data:
-                    # For outward growth, the points are drawn with an offset equal to the thickness
-                    # inside the larger mask to create the padded effect.
-                    min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
-                    for p_x, p_y in path_data:
-                        draw.point((p_x - min_x + thickness, p_y - min_y + thickness), fill=255)
+                    if is_segmented:
+                        for segment in path_data:
+                            if len(segment) > 1:
+                                relative_segment = [(p[0] - relative_to[0], p[1] - relative_to[1]) for p in segment]
+                                draw.line(relative_segment, fill=255, width=1, joint='curve')
+                    else:
+                        # For outward growth, the points are drawn with an offset equal to the thickness
+                        # inside the larger mask to create the padded effect.
+                        min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
+                        for p_x, p_y in path_data:
+                            draw.point((p_x - min_x + thickness, p_y - min_y + thickness), fill=255)
 
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
@@ -1233,12 +1245,39 @@ class BorderManager:
             render_w += thickness * 2
             render_h += thickness * 2
         
-        # 3. Adjust points to be relative to the new component's top-left corner for rendering
-        relative_points = [(p[0] - comp_x, p[1] - comp_y) for p in points_list]
-        
-        # 4. Render the image using the same function as presets, passing the relative points
-        # The logical size is now the render size because the points are already relative.
-        border_image = self._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=relative_points)
+        # --- DEFINITIVE FIX: Connect the dots to create a solid line ---
+        # 1. Group the unordered points into a sequence of line segments.
+        # This is more performant than trying to find one single continuous path.
+        point_segments = []
+        remaining_points = set(points_list)
+        while remaining_points:
+            current_segment = [remaining_points.pop()]
+            while True:
+                last_point = current_segment[-1]
+                # Find the nearest neighbor to the last point in the segment.
+                # A small search radius (e.g., 4 pixels) is efficient and effective.
+                search_radius_sq = 4**2 
+                nearest_neighbor = None
+                min_dist_sq = float('inf')
+
+                # Create a small bounding box to search in, which is much faster than checking all points.
+                candidates = {p for p in remaining_points if last_point[0]-4 <= p[0] <= last_point[0]+4 and last_point[1]-4 <= p[1] <= last_point[1]+4}
+
+                for p in candidates:
+                    dist_sq = (p[0] - last_point[0])**2 + (p[1] - last_point[1])**2
+                    if dist_sq < min_dist_sq and dist_sq <= search_radius_sq:
+                        min_dist_sq = dist_sq
+                        nearest_neighbor = p
+                
+                if nearest_neighbor:
+                    current_segment.append(nearest_neighbor)
+                    remaining_points.remove(nearest_neighbor)
+                else:
+                    break # No more points close enough to continue the segment.
+            point_segments.append(current_segment)
+
+        # 2. Render the image using the new segments.
+        border_image = self._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=point_segments, is_segmented=True, relative_to=(comp_x, comp_y))
         if not border_image: return
 
         # 5. Create the new component with the correct world coordinates
@@ -1262,7 +1301,7 @@ class BorderManager:
 
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
 
-    def finalize_border(self):
+    def _render_border_image(self, logical_size, render_size, shape_form="rect", path_data=None, is_segmented=False, relative_to=(0,0)):
         """Creates a new component from the detected border points."""
         if not self.raw_border_points:
             messagebox.showwarning("No Points", "No border points have been detected to finalize.")
@@ -1300,6 +1339,21 @@ class BorderManager:
         # 4. Render the image using the same function as presets, passing the relative points
         # The logical size is now the render size because the points are already relative.
         border_image = self._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=relative_points)
+        if not border_image: return
+
+        # 5. Create the new component with the correct world coordinates
+        border_tag = f"smart_border_{self.next_border_id}"
+        self.next_border_id += 1
+        border_comp = DraggableComponent(self.app, border_tag, comp_x, comp_y, comp_x + render_w, comp_y + render_h, "blue", "BORDER")
+        border_comp.is_draggable = True # Make it draggable
+        border_comp.set_image(border_image)
+
+        self.app.components[border_tag] = border_comp
+        self.app._bind_component_events(border_tag)
+        self.app.canvas.tag_raise(border_tag)
+        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+
+    def _render_border_image(self, logical_size, render_size, shape_form="rect", path_data=None, is_segmented=False, relative_to=(0,0)):
         if not border_image: return
 
         # 5. Create the new component with the correct world coordinates
