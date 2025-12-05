@@ -739,7 +739,9 @@ class BorderManager:
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
         else:
             self.active_detection_image = None
-            self.clear_detected_points()
+            # --- DEFINITIVE FIX: Do not clear points when toggling the tool off ---
+            # The user expects the drawn border to remain visible. The "Clear Points"
+            # button should be used for explicit clearing.
             self.active_detection_component = None # Clear the component reference
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
