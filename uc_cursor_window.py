@@ -67,9 +67,7 @@ class CursorWindow:
 
     def _make_click_through(self):
         """
-        [ULTIMATE FIX ATTEMPT] Relies purely on Tkinter for visual transparency 
-        and only sets WS_EX_TRANSPARENT via Win32 to enforce event pass-through.
-        We remove the conflicting SetLayeredWindowAttributes call.
+        [ULTIMATE FIX ATTEMPT] Reintroducing LWA_ALPHA to restore visibility while maintaining WS_EX_TRANSPARENT.
         """
         if not self.window.winfo_exists(): return
 
@@ -80,7 +78,7 @@ class CursorWindow:
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             print(f"[DEBUG] Initial EXSTYLE: {hex(styles)}")
             
-            # 1. Add WS_EX_LAYERED (required for certain Toplevel settings) AND WS_EX_TRANSPARENT (for click-through)
+            # 1. Add WS_EX_LAYERED (required for LWA flags) AND WS_EX_TRANSPARENT (for click-through)
             TARGET_STYLES = win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
             styles |= TARGET_STYLES
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
@@ -90,12 +88,15 @@ class CursorWindow:
             print(f"[DEBUG] New EXSTYLE: {hex(new_styles)}")
             if (new_styles & TARGET_STYLES) == TARGET_STYLES:
                 print(f"[DEBUG] Successfully set WS_EX_LAYERED and WS_EX_TRANSPARENT.")
-                print("[INFO] Custom cursor window is now purely click-through via WS_EX_TRANSPARENT.")
             else:
                 print(f"[ERROR] Failed to set all target styles! Missing: {hex(TARGET_STYLES & ~new_styles)}")
 
-            # CRITICAL: Removed win32gui.SetLayeredWindowAttributes call to prevent conflict with 
-            # WS_EX_TRANSPARENT. Visual transparency is handled by Tkinter's -transparentcolor attribute.
+            # 2. RE-ADDED: Set LWA_ALPHA to 255 (fully opaque). This is often necessary for 
+            # the window to render its contents (the cursor image) while the WS_EX_TRANSPARENT 
+            # style handles the click-through functionality.
+            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA)
+
+            print("[INFO] Custom cursor window is now click-through (WS_EX_TRANSPARENT) and visually opaque (LWA_ALPHA).")
             
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
