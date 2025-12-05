@@ -144,11 +144,11 @@ class ImageEditorApp:
             if self.paint_manager.universal_eraser_mode_active:
                 self.paint_manager.erase_on_components(event)
             
-            # --- DEFINITIVE FIX for cursor lag during drag ---
+            # --- FIX: Delegate to the smart_manager for drawing state ---
             # Delegate to the border manager if it's in a drawing state.
             # This consolidates drag handling and prevents conflicting bindings.
-            if self.border_manager.is_drawing:
-                self.border_manager.on_mouse_drag(event)
+            if self.border_manager.smart_manager.is_drawing:
+                self.border_manager.smart_manager.on_mouse_drag(event)
         self.canvas.bind("<B1-Motion>", on_drag)
 
         # --- PREVIEW LAYOUT COORDINATES ---
