@@ -3,7 +3,13 @@ from tkinter import colorchooser, messagebox, simpledialog
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
 import math
 import os
-
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    print("[WARNING] NumPy not found. Smart Border tool performance will be significantly degraded.")
+    
 
 from uc_component import DraggableComponent
 
@@ -16,7 +22,7 @@ class BorderManager:
 
         self.is_drawing = False # Flag for active mouse drag
         self.is_erasing_points = tk.BooleanVar(value=False)
-        self.raw_border_points = [] # Stores (x, y) tuples in original image coordinates
+        self.raw_border_points = set() # DEFINITIVE FIX: Use a set for faster lookups and automatic duplicate removal
         self.highlight_oval_ids = [] # Stores canvas IDs for the highlight points
         self.last_drawn_x = -1
         self.last_drawn_y = -1
@@ -651,6 +657,11 @@ class BorderManager:
 
     def toggle_smart_border_mode(self):
         """Activates or deactivates the smart border detection tool."""
+        if not NUMPY_AVAILABLE:
+            messagebox.showerror("Dependency Missing", "The Smart Border tool requires the 'numpy' library for performance. Please install it by running:\npip install numpy")
+            self.app.smart_border_mode_active = False # Ensure it's off
+            return
+
         self.app.smart_border_mode_active = not self.app.smart_border_mode_active
 
         if self.app.smart_border_mode_active:
@@ -834,38 +845,43 @@ class BorderManager:
         # The composite image is 1:1 with world units, so no scaling is needed.
         # We just need to offset by the composite's top-left corner.
         img_x_center = int(world_x - self.composite_x_offset)
-        img_y_center = int(world_y - self.composite_y_offset)
+        img_y_center = int(world_y - self.composite_y_offset) # type: ignore
 
-        newly_detected_raw_coords = set()
-        for dx in range(-brush_radius, brush_radius + 1):
-            for dy in range(-brush_radius, brush_radius + 1):
-                x, y = img_x_center + dx, img_y_center + dy
+        # --- DEFINITIVE REWRITE: Use NumPy for high-performance edge detection ---
+        # 1. Define the bounding box for the brush area in image coordinates.
+        x1, y1 = img_x_center - brush_radius, img_y_center - brush_radius
+        x2, y2 = img_x_center + brush_radius, img_y_center + brush_radius
 
-                if 0 <= x < img.width and 0 <= y < img.height:
-                    try:
-                        current_pixel = img.getpixel((x, y))
-                        is_edge = False
-                        for nx in [-1, 0, 1]:
-                            for ny in [-1, 0, 1]:
-                                if nx == 0 and ny == 0: continue
-                                neighbor_x, neighbor_y = x + nx, y + ny
-                                if 0 <= neighbor_x < img.width and 0 <= neighbor_y < img.height:
-                                    neighbor_pixel = img.getpixel((neighbor_x, neighbor_y))
-                                    alpha_diff = abs(current_pixel[3] - neighbor_pixel[3])
-                                    if alpha_diff > 200: # Strong alpha change is a definite edge
-                                        is_edge = True
-                                        break
-                            if is_edge: break
-                        if is_edge:
-                            # The detected point (x, y) is in the composite image's coordinate space.
-                            # Convert it back to WORLD coordinates for storage.
-                            newly_detected_raw_coords.add((x + self.composite_x_offset, y + self.composite_y_offset))
-                    except IndexError:
-                        continue
+        # 2. Ensure the box is within the image bounds.
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(img.width, x2), min(img.height, y2)
+        if x1 >= x2 or y1 >= y2: return
 
-        for point in newly_detected_raw_coords:
-            if point not in self.raw_border_points:
-                self.raw_border_points.append(point)
+        # 3. Crop the brush area and convert to a NumPy array for fast processing.
+        brush_area_img = img.crop((x1, y1, x2, y2))
+        # We only need the alpha channel for edge detection.
+        alpha_channel = np.array(brush_area_img.getchannel('A'))
+
+        # 4. Perform edge detection using array slicing (much faster than loops).
+        # Calculate horizontal and vertical gradients.
+        grad_x = np.abs(alpha_channel[:, 1:] - alpha_channel[:, :-1])
+        grad_y = np.abs(alpha_channel[1:, :] - alpha_channel[:-1, :])
+
+        # Find pixels where the gradient exceeds the threshold.
+        edge_mask = np.zeros_like(alpha_channel, dtype=bool)
+        edge_mask[:, :-1] |= (grad_x > diff_threshold)
+        edge_mask[:-1, :] |= (grad_y > diff_threshold)
+
+        # 5. Get the coordinates of the edge pixels within the brush area.
+        edge_y_coords, edge_x_coords = np.where(edge_mask)
+
+        # 6. Convert local brush coordinates back to world coordinates and add to the set.
+        # This is a bulk operation, which is very fast.
+        world_x_coords = edge_x_coords + x1 + self.composite_x_offset
+        world_y_coords = edge_y_coords + y1 + self.composite_y_offset
+        
+        new_points = set(zip(world_x_coords, world_y_coords))
+        self.raw_border_points.update(new_points)
 
         if not defer_redraw:
             self._update_highlights()
@@ -878,12 +894,10 @@ class BorderManager:
         erase_cx, erase_cy = self.app.camera.screen_to_world(event.x, event.y)
 
         new_points = []
-        for p_x, p_y in self.raw_border_points:
-            dist_sq = (p_x - erase_cx)**2 + (p_y - erase_cy)**2
-            if dist_sq > brush_radius_world**2:
-                new_points.append((p_x, p_y))
+        # Use a copy of the set to iterate over while modifying it
+        points_to_remove = {p for p in self.raw_border_points if ((p[0] - erase_cx)**2 + (p[1] - erase_cy)**2) <= brush_radius_world**2}
         
-        self.raw_border_points = new_points
+        self.raw_border_points.difference_update(points_to_remove)
 
         if not defer_redraw:
             self._update_highlights()
@@ -1033,13 +1047,14 @@ class BorderManager:
         growth_direction = self.border_growth_direction.get()
 
         # 1. Get the logical bounding box of the detected points in WORLD coordinates
-        min_x = int(min(p[0] for p in self.raw_border_points))
-        min_y = int(min(p[1] for p in self.raw_border_points))
-        max_x = int(max(p[0] for p in self.raw_border_points))
-        max_y = int(max(p[1] for p in self.raw_border_points))
+        points_list = list(self.raw_border_points) # Convert set to list for indexing
+        min_x = int(min(p[0] for p in points_list))
+        min_y = int(min(p[1] for p in points_list))
+        max_x = int(max(p[0] for p in points_list))
+        max_y = int(max(p[1] for p in points_list))
 
         logical_w = max_x - min_x + 1
-        logical_h = max_y - min_y + 1
+        logical_h = max_y - min_y + 1 # type: ignore
 
         if logical_w <= 0 or logical_h <= 0:
             messagebox.showerror("Error", "Could not create border from points (invalid size).")
@@ -1055,7 +1070,7 @@ class BorderManager:
             render_h += thickness * 2
         
         # 3. Adjust points to be relative to the new component's top-left corner for rendering
-        relative_points = [(p[0] - comp_x, p[1] - comp_y) for p in self.raw_border_points]
+        relative_points = [(p[0] - comp_x, p[1] - comp_y) for p in points_list]
         
         # 4. Render the image using the same function as presets, passing the relative points
         # The logical size is now the render size because the points are already relative.
