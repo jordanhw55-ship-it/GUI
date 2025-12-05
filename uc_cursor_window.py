@@ -44,19 +44,22 @@ class CursorWindow:
 
     def _make_click_through(self):
         """
-        Uses the win32gui library to set the WS_EX_TRANSPARENT style,
-        which makes the window ignore mouse events, passing them to the window below.
+        Uses the win32gui library to set the WS_EX_LAYERED style and LWA_COLORKEY.
+        The LWA_COLORKEY setting makes the transparent regions automatically click-through.
         """
+        if not self.window.winfo_exists(): return
+
         try:
             hwnd = self.window.winfo_id()
             # Get the current window style
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            # Add the layered and transparent styles
-            styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+            # Only add the WS_EX_LAYERED style.
+            # We omit WS_EX_TRANSPARENT to avoid conflicts and enable click-through.
+            styles |= win32con.WS_EX_LAYERED
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
-            # --- DEFINITIVE FIX: Use the defined R,G,B components with the win32api.RGB macro ---
-            # The RGB macro correctly constructs the BGR COLORREF value expected by the API.
-            win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(self.R, self.G, self.B), 0, win32con.LWA_COLORKEY)
+            # Use LWA_COLORKEY with the defined R,G,B components.
+            color_key = win32api.RGB(self.R, self.G, self.B)
+            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
             print("[INFO] Custom cursor window is now click-through.")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
