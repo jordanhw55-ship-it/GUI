@@ -577,17 +577,9 @@ class BorderManager:
         draw = ImageDraw.Draw(mask)
 
         # --- NEW: Handle path drawing ---
-        if shape_form == "path" and path_data:
-            # The path_data is in world coordinates. We need to make it relative to the render box.
-            min_x = min(p[0] for p in path_data)
-            min_y = min(p[1] for p in path_data)
-            relative_path = [(p[0] - min_x, p[1] - min_y) for p in path_data]
-            
-            # Draw the path as a series of lines with the specified thickness
-            draw.line(relative_path, fill=255, width=thickness, joint="curve")
 
         # --- NEW: Adjust mask based on growth direction ---
-        elif growth_direction == 'in':
+        if growth_direction == 'in':
             if shape_form == "circle":
                 draw.ellipse([0, 0, logical_w, logical_h], fill=255)
                 if logical_w > thickness * 2 and logical_h > thickness * 2:
@@ -596,8 +588,17 @@ class BorderManager:
                 draw.rectangle([0, 0, logical_w, logical_h], fill=255)
                 if logical_w > thickness * 2 and logical_h > thickness * 2:
                     draw.rectangle([thickness, thickness, logical_w - thickness, logical_h - thickness], fill=0)
-            # Path with 'in' growth is complex and not fully supported in this simplified render.
-            # The line drawing above serves as the primary shape.
+            elif shape_form == "path" and path_data:
+                # For smart borders, path_data is a list of points. We draw them individually.
+                # The path_data is in world coordinates. We need to make it relative to the render box.
+                min_x = min(p[0] for p in path_data)
+                min_y = min(p[1] for p in path_data)
+                
+                # The offset is based on the growth direction.
+                offset_x = thickness if self.border_growth_direction.get() == 'out' else 0
+                offset_y = thickness if self.border_growth_direction.get() == 'out' else 0
+                for p_x, p_y in path_data:
+                    draw.point((p_x - min_x + offset_x, p_y - min_y + offset_y), fill=255)
 
         else: # 'out'
             if shape_form == "circle":
@@ -607,11 +608,18 @@ class BorderManager:
                     draw.ellipse([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
             else: # Default to rectangle
                 # Only draw the rectangle if it's not a path, to avoid overwriting the path mask
-                if shape_form != "path":
+                if shape_form == "rect":
                     draw.rectangle([0, 0, render_w, render_h], fill=255)
                     if render_w > thickness * 2 and render_h > thickness * 2:
                         draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
-                        
+                elif shape_form == "path" and path_data:
+                    # Same logic as 'in' growth, but with the offset applied.
+                    min_x = min(p[0] for p in path_data)
+                    min_y = min(p[1] for p in path_data)
+                    offset_x, offset_y = thickness, thickness
+                    for p_x, p_y in path_data:
+                        draw.point((p_x - min_x + offset_x, p_y - min_y + offset_y), fill=255)
+
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
         if feather_amount > 0:
@@ -979,45 +987,40 @@ class BorderManager:
             messagebox.showwarning("No Points", "No border points have been detected to finalize.")
             return
 
-        # Find the bounding box of the points
+        # --- FIX: Use the shared border renderer to incorporate thickness, style, and feathering ---
+        thickness = self.border_thickness.get()
+        growth_direction = self.border_growth_direction.get()
+
+        # 1. Get the logical bounding box of the detected points
         min_x = int(min(p[0] for p in self.raw_border_points))
         min_y = int(min(p[1] for p in self.raw_border_points))
         max_x = int(max(p[0] for p in self.raw_border_points))
         max_y = int(max(p[1] for p in self.raw_border_points))
 
-        width = max_x - min_x + 1
-        height = max_y - min_y + 1
+        logical_w = max_x - min_x + 1
+        logical_h = max_y - min_y + 1
 
-        if width <= 0 or height <= 0:
+        if logical_w <= 0 or logical_h <= 0:
             messagebox.showerror("Error", "Could not create border from points (invalid size).")
             return
 
-        # Create a new PIL image for the border
-        border_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        
-        # Get the selected texture
-        style = self.selected_style.get()
-        texture = self.border_textures.get(style)
-        if not texture:
-            messagebox.showerror("Error", f"Texture '{style}' not found.")
-            return
+        # 2. Calculate the final render size and position based on growth
+        render_w, render_h = logical_w, logical_h
+        comp_x, comp_y = min_x, min_y
+        if growth_direction == 'out':
+            comp_x -= thickness
+            comp_y -= thickness
+            render_w += thickness * 2
+            render_h += thickness * 2
 
-        # Draw each point onto the new image, sampling from the texture
-        for p_x, p_y in self.raw_border_points:
-            # Translate point to be relative to the new image's top-left
-            img_x, img_y = p_x - min_x, p_y - min_y
-            # Get color from tiled texture
-            tex_x = img_x % texture.width
-            tex_y = img_y % texture.height
-            color = texture.getpixel((tex_x, tex_y))
-            border_image.putpixel((img_x, img_y), color)
+        # 3. Render the image using the same function as presets
+        border_image = self._render_border_image((logical_w, logical_h), (render_w, render_h), shape_form="path", path_data=self.raw_border_points)
+        if not border_image: return
 
-        # Create a new DraggableComponent for the border
+        # 4. Create the new component with the correct world coordinates
         border_tag = f"smart_border_{self.next_border_id}"
         self.next_border_id += 1
-        
-        # The component's world coordinates are the bounding box of the points
-        border_comp = DraggableComponent(self.app, border_tag, min_x, min_y, max_x, max_y, "blue", "BORDER")
+        border_comp = DraggableComponent(self.app, border_tag, comp_x, comp_y, comp_x + render_w, comp_y + render_h, "blue", "BORDER")
         border_comp.is_draggable = True # Make it draggable
         border_comp.set_image(border_image)
 
