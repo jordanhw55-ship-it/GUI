@@ -34,11 +34,6 @@ class UIManager:
         self.app.canvas.bind("<Configure>", self.app.on_canvas_resize)
         return self.app.canvas
 
-    def bind_canvas_events(self):
-        """Binds events that depend on other managers being initialized."""
-        self.app.canvas.bind("<B1-Motion>", self.app.paint_manager.paint_on_canvas)
-        self.app.canvas.bind("<ButtonRelease-1>", self.app.paint_manager.reset_paint_line)
-
     def create_ui(self):
         """Creates the rest of the UI that might depend on other components."""
         self.create_status_box()
@@ -283,6 +278,7 @@ class UIManager:
     def _populate_border_tab(self, tab):
         # --- FIX: Clear existing widgets before repopulating to prevent duplicates ---
         for widget in tab.winfo_children():
+            print("[DEBUG] Clearing and repopulating Border Tab UI.")
             widget.destroy()
 
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}

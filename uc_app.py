@@ -123,8 +123,7 @@ class ImageEditorApp:
         self.camera = Camera(self, canvas)
         self.image_manager = ImageManager(self)
         # --- Initialize Components BEFORE UI that might use them ---
-        # This resolves the AttributeError by ensuring self.components exists
-        # before any callbacks (like on_image_set_changed) can be triggered.
+        # This ensures self.components exists before any callbacks can be triggered.
         self._initialize_components()
         
         # Bind camera pan events directly to the canvas
@@ -132,8 +131,8 @@ class ImageEditorApp:
         self.canvas.bind("<Control-B1-Motion>", self.camera.on_pan_drag)
 
 
-        # Bind canvas events now that all managers are initialized
-        self.ui_manager.bind_canvas_events() # Binds paint events
+        # Bind mouse release for paint tool
+        self.canvas.bind("<ButtonRelease-1>", self.paint_manager.reset_paint_line)
         # --- NEW: Bind the universal eraser event ---
         self.bind_generic_drag_handler()
         self.ui_manager.create_ui()
@@ -387,6 +386,7 @@ class ImageEditorApp:
             # Dock asset logic is handled by the dock canvas, not here.
             return
 
+    print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
         self.dragged_item_tag = comp_tag
         self.last_drag_x = event.x
         self.last_drag_y = event.y
@@ -696,6 +696,12 @@ class ImageEditorApp:
         - For paint actions, `undo_data` is the PIL image of the paint layer *before* the change.
         - For component changes, `undo_data` is a dictionary mapping component tags to their PIL images *before* the change.
         """
+        # --- DEBUG: Log what is being saved ---
+        if isinstance(undo_data, dict) and 'type' in undo_data:
+            print(f"[DEBUG] Saving undo state for action: '{undo_data['type']}'.")
+        elif isinstance(undo_data, Image.Image):
+            print("[DEBUG] Saving undo state for: Paint Layer.")
+        
         self.undo_stack.append(undo_data)
         # Limit the stack size to save memory
         if len(self.undo_stack) > self.MAX_UNDO_STATES:
@@ -713,11 +719,13 @@ class ImageEditorApp:
         last_state = self.undo_stack.pop()
 
         if isinstance(last_state, Image.Image): # It's a paint layer state
-             self.paint_manager.paint_layer_image = last_state
-             self.redraw_all_zoomable()
+            print("[DEBUG] Undoing paint layer change.")
+            self.paint_manager.paint_layer_image = last_state
+            self.redraw_all_zoomable()
         elif isinstance(last_state, dict): # It's a component image state
             action_type = last_state.get('type')
 
+            print(f"[DEBUG] Undoing action of type: '{action_type}'.")
             if action_type == 'move':
                 for move_tag, pos in last_state.get('positions', {}).items():
                     if move_tag in self.components:

@@ -151,6 +151,7 @@ class PaintManager:
                     # --- Save state for Undo ---
                     # If this is the first time we're hitting this component in this drag, save its state.
                     if comp.tag not in self.modified_in_drag:
+                        print(f"[DEBUG] Universal Eraser: Saving undo state for '{comp.tag}'.")
                         undo_data = {comp.tag: comp.pil_image.copy()}
                         self.app._save_undo_state(undo_data)
                         self.modified_in_drag.add(comp.tag)
@@ -168,6 +169,7 @@ class PaintManager:
                     local_x2 = (world_x - comp.world_x1) * scale_x
                     local_y2 = (world_y - comp.world_y1) * scale_y
 
+                    print(f"[DEBUG] Universal Eraser: Erasing on component '{comp.tag}'.")
                     # Draw a transparent line on the component's image
                     draw = ImageDraw.Draw(comp.pil_image)
                     draw.line((local_x1, local_y1, local_x2, local_y2),
