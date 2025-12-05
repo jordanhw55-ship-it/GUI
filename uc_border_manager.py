@@ -1050,18 +1050,21 @@ class BorderManager:
         center_x = (wx1 + wx2) / 2
         center_y = (wy1 + wy2) / 2
 
+        # --- DEFINITIVE FIX: Filter points to only those inside the selected area ---
+        # The previous implementation iterated over all points. This new logic ensures
+        # that only the points within the user-defined selection box are processed and drawn.
         for raw_x, raw_y in self.raw_border_points:
-            # 1. Translate point relative to the new world center (the mouse position)
-            rel_x = raw_x - center_x
-            rel_y = raw_y - center_y
+            if not (wx1 <= raw_x <= wx2 and wy1 <= raw_y <= wy2):
+                continue # Skip any point that is outside the selection box.
 
-            # 2. Apply zoom scale
-            zoom_x = rel_x * scale
-            zoom_y = rel_y * scale
+            # 1. Translate the valid point relative to the center of the selection box.
+            rel_x = raw_x - center_x; rel_y = raw_y - center_y
 
-            # 3. Translate point to preview canvas center
-            preview_x = zoom_x + preview_w / 2
-            preview_y = zoom_y + preview_h / 2
+            # 2. Apply the preview zoom scale.
+            zoom_x = rel_x * scale; zoom_y = rel_y * scale
+
+            # 3. Translate the point to the center of the preview canvas.
+            preview_x = zoom_x + preview_w / 2; preview_y = zoom_y + preview_h / 2
 
             # Draw point
             preview_canvas.create_oval(
