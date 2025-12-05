@@ -34,6 +34,7 @@ class SmartBorderManager:
         self.last_drawn_x = -1
         self.last_drawn_y = -1
         self.redraw_scheduled = False
+        self.after_id = None # NEW: To store the ID returned by app.master.after
         self.smart_brush_radius = tk.IntVar(value=15)
         self.smart_diff_threshold = tk.IntVar(value=50)
         self.smart_draw_skip = tk.IntVar(value=5)
@@ -195,7 +196,7 @@ class SmartBorderManager:
         self.is_drawing = False
         print("[DEBUG] Smart Border: Mouse Up")
         if self.redraw_scheduled:
-            self.app.master.after_cancel(self._deferred_redraw)
+            self.app.master.after_cancel(self.after_id)
         self._perform_throttled_redraw()
 
     def on_preview_down(self, event):
@@ -213,8 +214,8 @@ class SmartBorderManager:
 
     def on_preview_up(self, event):
         """Ensures final state is immediately drawn after preview dragging stops."""
-        if self.redraw_scheduled:
-            self.app.master.after_cancel(self._deferred_redraw)
+        if self.redraw_scheduled and self.after_id:
+            self.app.master.after_cancel(self.after_id)
         self._perform_throttled_redraw()
 
     def on_preview_leave(self, event):
@@ -231,13 +232,14 @@ class SmartBorderManager:
         if self.redraw_scheduled:
             return
         self.redraw_scheduled = True
-        self.app.master.after(self.REDRAW_THROTTLE_MS, self._perform_throttled_redraw)
+        self.after_id = self.app.master.after(self.REDRAW_THROTTLE_MS, self._perform_throttled_redraw)
 
     def _perform_throttled_redraw(self):
         """Redraws the highlight points after a throttle delay."""
         if not self.app.master.winfo_exists(): return
         if self.is_drawing:
             self._update_highlights()
+        self.after_id = None # Reset the ID after the redraw is performed
         self.redraw_scheduled = False # Allow the next redraw to be scheduled
 
     def _process_detection_at_point(self, event, defer_redraw=False):
