@@ -408,6 +408,13 @@ class ImageEditorApp:
             # Dock asset logic is handled by the dock canvas, not here.
             return
 
+    # --- DEFINITIVE FIX: Prevent component drag logic from setting last_drag_x/y when painting ---
+    # If any paint tool is active, we must stop here. Otherwise, on_component_drag will
+    # execute and update the last_drag coordinates, preventing the paint tool from
+    # detecting mouse movement and drawing a line.
+    if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+        return
+
         print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
         self.dragged_item_tag = comp_tag
         
