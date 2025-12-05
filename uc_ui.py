@@ -253,61 +253,6 @@ class UIManager:
             indicatorcolor=[('selected', '#3b82f6')]
         )
 
-        # --- Preset Selection ---
-        tk.Label(tab, text="BORDER PRESETS", **label_style).pack(fill='x')
-        
-        controls_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
-        controls_frame.pack(fill='x')
-        controls_frame.grid_columnconfigure(1, weight=1)
-
-        # Preset Dropdown
-        tk.Label(controls_frame, text="Preset:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
-        # --- FIX: Add "None" to the list of presets and set it as the default ---
-        preset_names = ["None"] + list(manager.preset_manager.border_presets.keys())
-        if preset_names:
-            preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, "None", *preset_names)
-            preset_menu.grid(row=0, column=1, sticky='ew', padx=5)
-            # --- NEW: Bind an event to show the preview when a preset is selected ---
-            preset_menu.bind("<<OptionMenuChanged>>", manager.show_preset_preview)
-
-        # Style Dropdown
-        tk.Label(controls_frame, text="Style:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
-        style_names = list(manager.border_textures.keys())
-        if style_names:
-            style_menu = ttk.OptionMenu(controls_frame, manager.selected_style, style_names[0], *style_names)
-            style_menu.grid(row=1, column=1, sticky='ew', padx=5)
-
-        # Thickness Slider
-        tk.Label(controls_frame, text="Thickness:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
-        thickness_slider = tk.Scale(controls_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=manager.border_thickness, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
-        thickness_slider.grid(row=2, column=1, sticky='ew', padx=5)
-        thickness_slider.config(command=manager.show_preset_preview)
-
-        # NEW: Border Width Slider
-        tk.Label(controls_frame, text="Width (%):", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
-        width_slider = tk.Scale(controls_frame, from_=1, to=200, orient=tk.HORIZONTAL, variable=manager.border_width, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
-        width_slider.grid(row=3, column=1, sticky='ew', padx=5)
-        # --- NEW: Update the preview when the width slider is moved ---
-        width_slider.config(command=manager.show_preset_preview) # type: ignore
-
-        # --- NEW: Feather Slider ---
-        tk.Label(controls_frame, text="Feather:", bg="#374151", fg="white").grid(row=4, column=0, sticky='w', pady=2)
-        feather_slider = tk.Scale(controls_frame, from_=0, to=20, orient=tk.HORIZONTAL, variable=manager.border_feather, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0)
-        feather_slider.grid(row=4, column=1, sticky='ew', padx=5)
-        feather_slider.config(command=manager.show_preset_preview) # type: ignore
-
-        # --- NEW: Growth Direction Toggle ---
-        tk.Label(controls_frame, text="Growth:", bg="#374151", fg="white").grid(row=5, column=0, sticky='w', pady=2)
-        growth_radio_frame = tk.Frame(controls_frame, bg="#374151")
-        growth_radio_frame.grid(row=5, column=1, sticky='w')
-        radio_in = ttk.Radiobutton(growth_radio_frame, text="Inward", variable=manager.border_growth_direction, value="in", command=manager.show_preset_preview, style='Dark.TRadiobutton')
-        radio_out = ttk.Radiobutton(growth_radio_frame, text="Outward", variable=manager.border_growth_direction, value="out", command=manager.show_preset_preview, style='Dark.TRadiobutton')
-        radio_in.pack(side=tk.LEFT, padx=(0, 10))
-        radio_out.pack(side=tk.LEFT)
-
-        # Apply Button
-        tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
-
         # --- NEW: Border Preview Canvas ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
         tk.Label(tab, text="BORDER PREVIEW", **label_style).pack(fill='x')
