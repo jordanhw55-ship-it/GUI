@@ -141,17 +141,21 @@ class ImageEditorApp:
 
     def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
+            # --- DEBUG: Announce which tool is handling the drag ---
             if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active:
+                print("[DEBUG] Drag event routed to Paint/Eraser.")
                 self.paint_manager.paint_on_canvas(event)
-            if self.paint_manager.universal_eraser_mode_active:
+            elif self.paint_manager.universal_eraser_mode_active:
+                print("[DEBUG] Drag event routed to Universal Eraser.")
                 self.paint_manager.erase_on_components(event)
-            
-            # --- FIX: Delegate to the smart_manager for drawing state ---
-            # Delegate to the border manager if it's in a drawing state.
-            # This consolidates drag handling and prevents conflicting bindings.
-            if self.border_manager.smart_manager.is_drawing:
+            elif self.border_manager.smart_manager.is_drawing:
+                print("[DEBUG] Drag event routed to Smart Border tool.")
                 self.border_manager.smart_manager.on_mouse_drag(event)
+            else:
+                # This case is for standard component dragging, which is handled by on_component_drag
+                pass
         self.canvas.bind("<B1-Motion>", on_drag)
+        print("[DEBUG] Generic drag handler (<B1-Motion>) has been bound.")
 
         # --- PREVIEW LAYOUT COORDINATES ---
         self.preview_layout = {
@@ -921,16 +925,21 @@ class ImageEditorApp:
 
     def on_tab_changed(self, event):
         """Handles the event when the user clicks a different main tab."""
+        selected_tab_text = self.ui_manager.notebook.tab(self.ui_manager.notebook.select(), "text")
+        print(f"\n[DEBUG] Tab changed to: '{selected_tab_text}'. Deactivating context-specific tools.")
+
         # --- FIX: Deactivate all context-specific tools when changing tabs ---
         # This prevents tools like Paint or Smart Border from staying active
         # when the user navigates to a different part of the UI.
 
         # Deactivate Paint/Eraser tools
         if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            print("[DEBUG] Deactivating Paint/Eraser tools due to tab change.")
             self.paint_manager.toggle_paint_mode('off')
 
         # Deactivate Smart Border tool
         if self.smart_border_mode_active:
+            print("[DEBUG] Deactivating Smart Border tool due to tab change.")
             self.border_manager.toggle_smart_border_mode()
 
         # --- FIX: Deactivate the Tile Eraser tool if it's active ---

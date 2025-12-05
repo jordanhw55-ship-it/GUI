@@ -112,6 +112,7 @@ class SmartBorderManager:
             if self.active_detection_image:
                 self.active_detection_alpha_numpy = np.array(self.active_detection_image.getchannel('A'))
 
+            print("[DEBUG] Smart Border: Binding <ButtonRelease-1>, <Motion>, <Button-1>.")
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
@@ -126,6 +127,7 @@ class SmartBorderManager:
             self.active_detection_component = None
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
+            print("[DEBUG] Smart Border: Cleaning up bindings.")
 
             self._cleanup_drawing_bindings()
 
@@ -133,8 +135,10 @@ class SmartBorderManager:
                 self.canvas.delete(self.cursor_canvas_id)
                 self.cursor_canvas_id = None
             if self.on_mouse_move_binding_id:
+                print("[DEBUG] Smart Border: Unbinding <Motion>.")
                 self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
             if self.on_mouse_down_binding_id:
+                print("[DEBUG] Smart Border: Unbinding <Button-1>.")
                 self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
             self.composite_x_offset = 0
             self.composite_y_offset = 0
@@ -153,9 +157,11 @@ class SmartBorderManager:
     def _cleanup_drawing_bindings(self):
         """Removes all temporary event bindings used by the smart border tool."""
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
+            print("[DEBUG] Smart Border: Unbinding <ButtonRelease-1>.")
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
         # --- FIX: Unbind the drag event to prevent lingering handlers ---
         self.canvas.unbind("<B1-Motion>")
+        print("[DEBUG] Smart Border: Unbinding <B1-Motion>.")
 
     def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -489,13 +495,14 @@ class SmartBorderManager:
         self.canvas.config(cursor="crosshair")
 
         # Unbind the generic drag handler to prevent conflicts
+        print("[DEBUG] Preview Selection: Unbinding <B1-Motion> to prevent conflicts.")
         self.canvas.unbind("<B1-Motion>")
 
         # Bind the specific selection events
+        print("[DEBUG] Preview Selection: Binding <Button-1>, <B1-Motion>, <ButtonRelease-1> for selection.")
         self.canvas.bind("<Button-1>", self._on_preview_selection_press)
         self.canvas.bind("<B1-Motion>", self._on_preview_selection_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_preview_selection_release)
-        print("[DEBUG] Preview selection mode ACTIVATED.")
 
     def _on_preview_selection_press(self, event):
         """Handles the start of dragging a selection box on the main canvas."""
@@ -534,6 +541,7 @@ class SmartBorderManager:
         self.canvas.config(cursor="none") # Revert to the smart border cursor
 
         # Re-bind the generic drag handler and the initial click handler
+        print("[DEBUG] Preview Selection: Restoring generic drag handler and <Button-1> binding.")
         self.app.bind_generic_drag_handler()
         self.canvas.bind("<Button-1>", self.start_drawing_stroke)
 
