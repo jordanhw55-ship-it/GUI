@@ -45,18 +45,11 @@ class DraggableComponent:
 
         # If this is the first time an image is set, replace the placeholder
         if self.pil_image and self.text_id:
-            # --- DEFINITIVE FIX: Use the component's world coordinates for initial placement ---
-            # 1. Delete the old placeholder items.
             self.app.canvas.delete(self.rect_id)
             self.app.canvas.delete(self.text_id)
+            self.rect_id = None
             self.text_id = None
-
-            # 2. Get the correct initial screen position from the camera.
-            sx, sy = self.app.camera.world_to_screen(self.world_x1, self.world_y1)
-
-            # 3. Create the new image item at the correct screen position.
-            self.rect_id = self.app.canvas.create_image(sx, sy, anchor=tk.NW, tags=(self.tag, "draggable", "zoom_target"))
-            self.tk_image = None # Force a redraw to populate the image data.
+            self.tk_image = None # Force redraw to create a new image item
 
         # --- DEFINITIVE FIX: Reset the cache to force a visual update ---
         # This ensures that even if the component's size hasn't changed, the new image data will be rendered.

@@ -74,10 +74,6 @@ class ImageEditorApp:
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
 
-        # --- NEW: Dedicated layer for preset borders to improve performance ---
-        self.border_layer_image = None
-        self.border_layer_tk = None
-
         self.is_group_dragging = False # Flag to prevent single-drag during group-pan
         
         # --- NEW: Composition Area Bounds ---
@@ -806,16 +802,13 @@ class ImageEditorApp:
         view_wx1, view_wy1 = self.camera.screen_to_world(0, 0)
         view_wx2, view_wy2 = self.camera.screen_to_world(canvas_w, canvas_h)
 
-        # 1. Draw the main components (tiles, decals), excluding preset borders which are handled separately.
+        # 1. Draw the main components (tiles, decals)
         self._draw_components(use_fast_preview, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
 
-        # 2. Draw all preset borders onto a single dedicated layer for performance.
-        self._draw_preset_borders(view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
-
-        # 3. Draw other overlays (smart border highlights, tool previews) on top.
+        # 2. Draw overlays (highlights, tool previews) on top
         self._draw_overlays(zoom_scale, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
 
-        # 4. Ensure UI elements like docks are always on top
+        # 3. Ensure UI elements like docks are always on top
         self._keep_docks_on_top()
         
         # 4. Cache the zoom level to optimize future redraws
@@ -827,10 +820,6 @@ class ImageEditorApp:
         objects, including culling, resizing, and image caching.
         """
         for comp in self.components.values():
-            # --- NEW: Skip preset borders, as they are now drawn on a separate layer ---
-            if comp.tag.startswith("preset_border_"):
-                continue
-
             sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
             sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
 
@@ -884,116 +873,47 @@ class ImageEditorApp:
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
 
-    def _draw_preset_borders(self, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h):
-        """
-        Helper for `redraw_all_zoomable`. Draws all preset borders onto a single
-        transparent layer for significantly better performance.
-        """
-        # 1. Initialize or clear the border layer image.
-        if self.border_layer_image is None or self.border_layer_image.size != (canvas_w, canvas_h):
-            self.border_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-        else:
-            # Fast clear of the existing image
-            self.border_layer_image.paste((0, 0, 0, 0), [0, 0, canvas_w, canvas_h])
-
-        # 2. Find all visible preset border components.
-        visible_borders = [
-            comp for comp in self.components.values()
-            if comp.tag.startswith("preset_border_") and
-               comp.world_x1 < view_wx2 and comp.world_x2 > view_wx1 and
-               comp.world_y1 < view_wy2 and comp.world_y2 > view_wy1
-        ]
-
-        if not visible_borders:
-            # If no borders are visible, ensure any old image is cleared from the canvas.
-            # --- DEFINITIVE FIX: Use a new PhotoImage to reliably clear the canvas item ---
-            # The .paste() method can have unintended side effects on the canvas item's state.
-            # Creating a new, blank PhotoImage is the most reliable way to clear it.
-            if self.border_layer_tk is not None:
-                self.border_layer_tk = ImageTk.PhotoImage(self.border_layer_image)
-                self.canvas.itemconfigure("preset_border_layer", image=self.border_layer_tk)
-            return
-
-        # 3. Draw each visible border onto the single PIL image layer.
-        for comp in visible_borders:
-            if not comp.pil_image:
-                continue
-
-            sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
-            sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
-            screen_w, screen_h = sx2 - sx1, sy2 - sy1
-
-            if screen_w > 0 and screen_h > 0:
-                resized_border = comp.pil_image.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
-                self.border_layer_image.paste(resized_border, (sx1, sy1), resized_border)
-
-        # 4. Update the single Tkinter PhotoImage on the canvas.
-        if self.border_layer_tk is None:
-            self.border_layer_tk = ImageTk.PhotoImage(self.border_layer_image)
-            self.canvas.create_image(0, 0, image=self.border_layer_tk, anchor=tk.NW, tags="preset_border_layer")
-        else:
-            self.border_layer_tk.paste(self.border_layer_image)
-
     def _draw_overlays(self, zoom_scale, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h):
         """
         Helper for `redraw_all_zoomable`. Handles drawing all non-component visual
         aids like selection highlights and tool previews.
         """
         self._update_selection_highlight()
-
-        # --- OPTIMIZATION: Redraw smart border highlights using a cached world-space image ---
+            
         if self.smart_border_mode_active and self.border_manager.smart_manager.highlight_layer_id:
             bm = self.border_manager.smart_manager
-            zoom_changed = bm.last_known_zoom != zoom_scale
 
-            # 1. Re-render the world-space cache if points were added/removed or zoom changed.
-            if bm.highlights_are_dirty or zoom_changed:
-                if bm.raw_border_points:
-                    # Find the bounding box of all points in world coordinates
-                    min_x = min(p[0] for p in bm.raw_border_points)
-                    min_y = min(p[1] for p in bm.raw_border_points)
-                    max_x = max(p[0] for p in bm.raw_border_points)
-                    max_y = max(p[1] for p in bm.raw_border_points)
-                    bm.highlight_world_bounds = (min_x, min_y, max_x, max_y)
-
-                    # Create the world image, scaled by the current zoom
-                    world_img_w = int((max_x - min_x) * zoom_scale)
-                    world_img_h = int((max_y - min_y) * zoom_scale)
-
-                    if world_img_w > 0 and world_img_h > 0:
-                        bm.highlight_world_image = Image.new("RGBA", (world_img_w, world_img_h), (0,0,0,0))
-                        draw = ImageDraw.Draw(bm.highlight_world_image)
-                        # Translate each point from world space to local image space and draw it
-                        points_to_draw = [
-                            (int((p[0] - min_x) * zoom_scale), int((p[1] - min_y) * zoom_scale))
-                            for p in bm.raw_border_points
-                        ]
-                        draw.point(points_to_draw, fill=bm.highlight_color)
-                else:
-                    bm.highlight_world_image = None
-                    bm.highlight_world_bounds = None
-
-                bm.highlights_are_dirty = False
-                bm.last_known_zoom = zoom_scale
-
-            # 2. Draw the (now cached) world image onto the canvas.
-            if bm.highlight_world_image and bm.highlight_world_bounds:
-                # Find the top-left screen coordinate of the cached world image
-                sx, sy = self.camera.world_to_screen(bm.highlight_world_bounds[0], bm.highlight_world_bounds[1])
-
-                # Create or update the PhotoImage and canvas item
-                if bm.highlight_layer_tk is None:
-                    bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_world_image)
-                    self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk, state='normal')
-                else:
-                    # The 'paste' method is much faster than creating a new PhotoImage object
-                    bm.highlight_layer_tk.paste(bm.highlight_world_image)
-
-                self.canvas.coords(bm.highlight_layer_id, sx, sy)
+            if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
+                bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
             else:
-                # If there are no points, hide the canvas item
-                self.canvas.itemconfigure(bm.highlight_layer_id, state='hidden')
+                bm.highlight_layer_image.paste((0,0,0,0), [0,0,canvas_w,canvas_h])
 
+            if bm.highlight_layer_tk is None:
+                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
+                self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk)
+
+            if bm.raw_border_points:
+                # --- OPTIMIZATION: Use the Quadtree to get visible points ---
+                visible_points = []
+                query_range = (view_wx1, view_wy1, view_wx2 - view_wx1, view_wy2 - view_wy1)
+                if bm.points_quadtree:
+                    bm.points_quadtree.query(query_range, visible_points)
+                else: # Fallback for safety
+                    visible_points = [p for p in bm.raw_border_points if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2]
+
+                if visible_points:
+                    screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_points]
+                    if NUMPY_AVAILABLE:
+                        highlight_array = np.array(bm.highlight_layer_image)
+                        screen_y, screen_x = zip(*[(int(y), int(x)) for x, y in screen_points if 0 <= x < canvas_w and 0 <= y < canvas_h])
+                        if screen_x:
+                            highlight_array[screen_y, screen_x] = bm.highlight_color
+                            bm.highlight_layer_image = Image.fromarray(highlight_array)
+                    else:
+                        ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
+
+            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
+            self.canvas.coords(bm.highlight_layer_id, 0, 0)
             self.canvas.tag_raise(bm.highlight_layer_id)
 
     def on_tab_changed(self, event):

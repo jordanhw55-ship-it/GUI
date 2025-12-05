@@ -253,6 +253,11 @@ class UIManager:
             indicatorcolor=[('selected', '#3b82f6')]
         )
 
+        # --- NEW: Add a spacer frame to push content down ---
+        # This frame will expand and take up the top half of the available space.
+        spacer_frame = tk.Frame(tab, bg="#374151")
+        spacer_frame.pack(fill="both", expand=True)
+
         # --- NEW: Border Preview Canvas ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
         tk.Label(tab, text="BORDER PREVIEW", **label_style).pack(fill='x')
