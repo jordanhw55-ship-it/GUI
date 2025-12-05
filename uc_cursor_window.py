@@ -24,13 +24,14 @@ class CursorWindow:
         self.window.overrideredirect(True) # No title bar, borders, etc.
         self.window.wm_attributes("-topmost", True) # Always on top
 
-        # --- Transparency & Click-Through Setup ---
-        # We use a specific color that we will make transparent via the win32 API.
-        # This is more reliable than Tkinter's built-in transparency for this use case.
-        self.transparent_color = '#abcdef'
-        # --- FIX: Remove the conflicting Tkinter transparency attribute ---
-        # self.window.wm_attributes("-transparentcolor", self.transparent_color)
-        self.window.config(bg=self.transparent_color)
+        # --- DEFINITIVE FIX: Define color components once to ensure consistency ---
+        # We define the R, G, B components and use them to build the hex string for Tkinter
+        # and the COLORREF for the Windows API.
+        self.R, self.G, self.B = (171, 205, 239) # Corresponds to #abcdef
+        self.transparent_color_hex = f'#{self.R:02x}{self.G:02x}{self.B:02x}'
+
+        # Set the background color of the window that we will make transparent.
+        self.window.config(bg=self.transparent_color_hex)
 
         # --- Click-Through (Windows only) ---
         if WIN32_AVAILABLE:
@@ -53,9 +54,9 @@ class CursorWindow:
             # Add the layered and transparent styles
             styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
-            # --- FIX: Use LWA_COLORKEY to make our specific background color transparent ---
-            # This ensures the window is truly see-through and click-through.
-            win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(0xab, 0xcd, 0xef), 0, win32con.LWA_COLORKEY)
+            # --- DEFINITIVE FIX: Use the defined R,G,B components with the win32api.RGB macro ---
+            # The RGB macro correctly constructs the BGR COLORREF value expected by the API.
+            win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(self.R, self.G, self.B), 0, win32con.LWA_COLORKEY)
             print("[INFO] Custom cursor window is now click-through.")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
