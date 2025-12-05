@@ -390,7 +390,7 @@ class SmartBorderManager:
                 screen_y = relative_y + preview_h / 2
                 points_to_draw.append((screen_x, screen_y))
         if points_to_draw:
-            ImageDraw.Draw(self.app.border_manager.preset_manager.preview_pil_image).point(points_to_draw, fill="cyan")
+            ImageDraw.Draw(self.highlight_layer_image).point(points_to_draw, fill="cyan")
 
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
