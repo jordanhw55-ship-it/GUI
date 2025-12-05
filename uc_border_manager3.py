@@ -38,6 +38,7 @@ class SmartBorderManager:
         self.smart_diff_threshold = tk.IntVar(value=50)
         self.smart_draw_skip = tk.IntVar(value=5)
         self.active_detection_image = None
+        self.active_detection_alpha_numpy = None # NEW: To store the NumPy array
         self.active_detection_component = None
         self.composite_x_offset = 0
         self.composite_y_offset = 0
@@ -104,6 +105,10 @@ class SmartBorderManager:
                 paste_y = int(comp.world_y1 - self.composite_y_offset)
                 self.active_detection_image.paste(resized_img, (paste_x, paste_y), resized_img)
 
+            # --- OPTIMIZATION: Convert to NumPy array ONCE on activation ---
+            if self.active_detection_image:
+                self.active_detection_alpha_numpy = np.array(self.active_detection_image.getchannel('A'))
+
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
@@ -114,6 +119,7 @@ class SmartBorderManager:
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
         else:
             self.active_detection_image = None
+            self.active_detection_alpha_numpy = None # Clear the NumPy array
             self.active_detection_component = None
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
@@ -232,7 +238,7 @@ class SmartBorderManager:
 
         brush_radius = self.smart_brush_radius.get()
         diff_threshold = self.smart_diff_threshold.get()
-        img = self.active_detection_image
+        img = self.active_detection_alpha_numpy # Use the pre-converted NumPy array
         if not img: return
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
@@ -244,11 +250,11 @@ class SmartBorderManager:
         x2, y2 = img_x_center + brush_radius, img_y_center + brush_radius
 
         x1, y1 = max(0, x1), max(0, y1)
-        x2, y2 = min(img.width, x2), min(img.height, y2)
+        x2, y2 = min(img.shape[1], x2), min(img.shape[0], y2)
         if x1 >= x2 or y1 >= y2: return
 
-        brush_area_img = img.crop((x1, y1, x2, y2))
-        alpha_channel = np.array(brush_area_img.getchannel('A'))
+        # --- OPTIMIZATION: Slice the existing NumPy array instead of cropping and converting ---
+        alpha_channel = img[y1:y2, x1:x2]
 
         grad_x = np.abs(alpha_channel[:, 1:] - alpha_channel[:, :-1])
         grad_y = np.abs(alpha_channel[1:, :] - alpha_channel[:-1, :])
