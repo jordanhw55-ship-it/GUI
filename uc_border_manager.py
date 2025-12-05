@@ -840,6 +840,11 @@ class BorderManager:
 
     def _process_detection_at_point(self, event, defer_redraw=False):
         """The core logic to detect border points under the brush."""
+        # --- DEFINITIVE FIX: Add a guard clause to prevent crashes ---
+        # This is the single most important crash prevention line.
+        if not self.app.smart_border_mode_active or not self.active_detection_image:
+            return # Exit immediately if not in the right mode or image is cleared
+
         brush_radius = self.smart_brush_radius.get()
         diff_threshold = self.smart_diff_threshold.get()
         img = self.active_detection_image
@@ -1095,7 +1100,10 @@ class BorderManager:
         self.app.canvas.tag_raise(border_tag)
         self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
-        # --- DEFINITIVE FIX: Clean up and exit smart mode BEFORE showing the success message ---
-        # This ensures the state is fully reset before the user can interact with the UI again.
+        # --- DEFINITIVE FIX for CRASH PREVENTION ---
+        # Immediately clean up and exit smart mode BEFORE showing the success message.
+        # This ensures the state is fully reset before the user can interact with the UI again,
+        # preventing dangling references and crashes on subsequent actions.
         self.toggle_smart_border_mode()
+
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
