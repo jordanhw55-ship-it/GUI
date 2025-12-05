@@ -388,8 +388,6 @@ class ImageEditorApp:
 
         print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
         self.dragged_item_tag = comp_tag
-        self.last_drag_x = event.x
-        self.last_drag_y = event.y
         
         world_x, world_y = self.camera.screen_to_world(event.x, event.y)
         print(f"[DEBUG] Pressed '{comp.tag}' | Screen: ({event.x}, {event.y}) | World: ({int(world_x)}, {int(world_y)})")

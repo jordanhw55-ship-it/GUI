@@ -101,25 +101,32 @@ class PaintManager:
         if not is_painting or not self.paint_layer_image:
             return
     
+        draw = ImageDraw.Draw(self.paint_layer_image)
+        brush_size = self.brush_size.get()
+        paint_color = (0, 0, 0, 0) if self.eraser_mode_active else self.paint_color
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
 
+        # --- FIX: Correctly handle the start and continuation of a paint stroke ---
         if self.last_paint_x is None and self.last_paint_y is None:
+            # This is the first point of the stroke. Save state and draw a dot.
             self.app._save_undo_state(self.paint_layer_image.copy())
-
-        if self.last_paint_x and self.last_paint_y:
+            radius = brush_size / 2
+            draw.ellipse(
+                (world_x - radius, world_y - radius, world_x + radius, world_y + radius),
+                fill=paint_color
+            )
+        else:
+            # This is a continuation of the stroke. Draw a line.
             last_world_x, last_world_y = self.app.camera.screen_to_world(self.last_paint_x, self.last_paint_y)
-            paint_color = (0, 0, 0, 0) if self.eraser_mode_active else self.paint_color
-
-            draw = ImageDraw.Draw(self.paint_layer_image)
             draw.line(
                 (last_world_x, last_world_y, world_x, world_y),
                 fill=paint_color,
-                width=self.brush_size.get(),
+                width=brush_size,
                 joint='curve'
             )
-            self.app.redraw_all_zoomable()
     
         self.last_paint_x, self.last_paint_y = event.x, event.y
+        self.app.redraw_all_zoomable()
 
     def reset_paint_line(self, event):
         """Resets the start of the line when the mouse is released."""
