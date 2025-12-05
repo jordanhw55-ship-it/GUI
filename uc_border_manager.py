@@ -797,6 +797,15 @@ class BorderManager:
         # Explicitly update the canvas-drawn cursor's position during the drag event.
         self._update_canvas_brush_position(event)
 
+        # --- FIX for missing highlight layer during drag ---
+        # If the highlight layer doesn't exist for some reason (e.g., it was cleaned up
+        # or never created), create it now. This ensures that points drawn during a
+        # drag will always have a canvas object to be rendered onto.
+        if not self.highlight_layer_id:
+            self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
+            self.canvas.tag_lower(self.highlight_layer_id) # Keep it below other UI
+
+
         if not self.is_drawing: return
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
