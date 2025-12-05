@@ -210,6 +210,8 @@ class ImageEditorApp:
     def save_on_exit(self):
         """Saves settings and closes the application."""
         self.save_settings()
+        # --- NEW: Explicitly destroy the cursor window on exit ---
+        self.border_manager.smart_manager.cursor_window.destroy()
         self.master.destroy()
 
     def _reload_dock_assets(self):

@@ -11,6 +11,7 @@ except ImportError:
     print("[WARNING] NumPy not found. Smart Border tool performance will be significantly degraded.")
 
 from uc_component import DraggableComponent
+from uc_cursor_window import CursorWindow
 
 class SmartBorderManager:
     """Manages the interactive 'Smart Border' tool."""
@@ -19,6 +20,9 @@ class SmartBorderManager:
         self.canvas = app.canvas
         self.border_manager = border_manager
         self.on_mouse_down_binding_id = None
+
+        # --- NEW: Instantiate the custom cursor window ---
+        self.cursor_window = CursorWindow(app.master)
 
         self.is_drawing = False
         self.is_erasing_points = tk.BooleanVar(value=False)
@@ -51,9 +55,7 @@ class SmartBorderManager:
         self.highlight_layer_image = None
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
-        self.highlight_color = (0, 255, 255, 255)
-        self.cursor_pil_image = None
-        self.cursor_tk_image = None
+        self.highlight_color = (0, 255, 255, 255) # This is for the detected points, not the cursor
         self.cursor_canvas_id = None # NEW: Replaces brush_cursor_oval_id
         self.on_mouse_move_binding_id = None
         self.REDRAW_THROTTLE_MS = 20 # Reduced for better responsiveness
@@ -114,7 +116,7 @@ class SmartBorderManager:
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
             self.canvas.config(cursor="none")
-            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke)
+            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke) # This might be redundant with app-level binding
             self._create_canvas_brush_cursor()
 
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
@@ -128,9 +130,8 @@ class SmartBorderManager:
 
             self._cleanup_drawing_bindings()
 
-            if self.cursor_canvas_id:
-                self.canvas.delete(self.cursor_canvas_id)
-                self.cursor_canvas_id = None
+            # --- NEW: Hide the cursor window ---
+            self.cursor_window.hide()
             if self.on_mouse_move_binding_id:
                 print("[DEBUG] Smart Border: Unbinding <Motion>.")
                 self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
@@ -418,80 +419,49 @@ class SmartBorderManager:
         
     def _create_canvas_brush_cursor(self):
         """Creates the canvas image used as the brush cursor (replacing the slow oval)."""
-        if self.cursor_canvas_id:
-            self.canvas.delete(self.cursor_canvas_id)
-
-        # --- DEFINITIVE FIX: Calculate size based on radius ---
-        # The image must be large enough to contain the circle at max radius.
-        # Add a small buffer (e.g., 4 pixels) to ensure the outline isn't clipped.
-        size = (self.smart_brush_radius.get() * 2) + 4
-        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image) # This will be updated in _redraw_cursor_image_style
-
-        self.cursor_canvas_id = self.canvas.create_image(
-            0, 0, 
-            image=self.cursor_tk_image, 
-            anchor=tk.NW, 
-            tags=('brush_cursor',), 
-            state='hidden'
-        )
+        # This function now just needs to trigger the initial drawing of the cursor style
+        # and show the window.
         self._redraw_cursor_image_style()
+        self.cursor_window.show()
 
     def _redraw_cursor_image_style(self):
-        """Performs the expensive PIL/PhotoImage update for the cursor's visual style/size."""
-        if not self.cursor_canvas_id: return
-
+        """Generates the PIL image for the cursor and updates the cursor window."""
         radius = self.smart_brush_radius.get()
-        # --- DEFINITIVE FIX: Dynamically resize the cursor image ---
-        # The new size must be large enough for the current radius.
         size = (radius * 2) + 4
         offset = size // 2
 
-        # 1. Recreate the PIL and Tkinter image objects if the size has changed.
-        if not self.cursor_pil_image or self.cursor_pil_image.size != (size, size):
-            self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-            self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image)
-            self.canvas.itemconfig(self.cursor_canvas_id, image=self.cursor_tk_image)
-
-        # 2. Redraw the circle onto the correctly-sized PIL layer.
-        self.cursor_pil_image.paste((0,0,0,0), (0,0,size,size)) # Clear previous drawing
-        draw = ImageDraw.Draw(self.cursor_pil_image)
+        # 1. Create a new PIL image for the cursor.
+        cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(cursor_pil_image)
         color = "red" if self.is_erasing_points.get() else "cyan"
         draw.ellipse((offset - radius, offset - radius, offset + radius, offset + radius), outline=color, width=2)
 
-        # 3. Update the PhotoImage on the canvas
-        self.cursor_tk_image.paste(self.cursor_pil_image)
-        self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
-        self.canvas.tag_raise(self.cursor_canvas_id)
-        
-        # Ensure the cursor is placed correctly on screen
-        # Since we don't have the event, we just move it to the current pointer location
-        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-        # --- FIX: Ensure the cursor is visible and positioned correctly after a style redraw ---
-        # This prevents it from staying hidden if the mouse is not moving.
-        self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
-        self.canvas.coords(self.cursor_canvas_id, x - offset, y - offset)
+        # 2. Update the cursor window with the new image.
+        self.cursor_window.set_image(cursor_pil_image)
+
+        # 3. Immediately update its position to the current mouse location.
+        # This prevents the cursor from appearing at (0,0) or an old position.
+        root_x = self.app.master.winfo_pointerx()
+        root_y = self.app.master.winfo_pointery()
+        self.cursor_window.move(root_x - offset, root_y - offset)
 
     def _update_canvas_brush_position(self, event):
-        """Moves the image-drawn cursor immediately (cheap operation)."""
-        if not self.cursor_canvas_id: return
+        """Moves the custom cursor window to follow the mouse."""
+        # The cursor window needs absolute screen coordinates.
+        # We get these from the event's root_x and root_y attributes.
+        # If they don't exist, we calculate them.
+        try:
+            root_x, root_y = event.x_root, event.y_root
+        except AttributeError:
+            root_x = self.canvas.winfo_rootx() + event.x
+            root_y = self.canvas.winfo_rooty() + event.y
 
-        # 1. Perform the immediate, cheap move.
-        # The size of the image is now dynamic, so we get it from the PIL object.
-        size = self.cursor_pil_image.width if self.cursor_pil_image else 50
-        offset = size // 2
-        self.canvas.coords(self.cursor_canvas_id, event.x - offset, event.y - offset)
-        
-        # NOTE: The expensive style/color update is now handled only when radius/color changes, 
-        # via calls to _update_canvas_brush_color or _update_canvas_brush_size.
-        # This function no longer needs to schedule a redraw.
+        radius = self.smart_brush_radius.get()
+        offset = radius + 2 # Half of the image size ((radius*2)+4)/2
+        self.cursor_window.move(root_x - offset, root_y - offset)
 
     def _update_canvas_brush_color(self):
-        """Updates the color of the image-drawn cursor by forcing a redraw."""
-        if not self.cursor_canvas_id: return
-        
-        # Just call the style redraw function
+        """Updates the color of the cursor by forcing a style redraw."""
         self._redraw_cursor_image_style()
 
     def toggle_preview_selection_mode(self):
