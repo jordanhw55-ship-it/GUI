@@ -591,8 +591,7 @@ class BorderManager:
             elif shape_form == "path" and path_data:
                 # For smart borders, path_data is a list of points. We draw them individually.
                 # The path_data is in world coordinates. We need to make it relative to the render box.
-                min_x = min(p[0] for p in path_data)
-                min_y = min(p[1] for p in path_data)
+                min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
 
                 for p_x, p_y in path_data:
                     draw.point((p_x - min_x, p_y - min_y), fill=255)
@@ -610,10 +609,11 @@ class BorderManager:
                     if render_w > thickness * 2 and render_h > thickness * 2:
                         draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
                 elif shape_form == "path" and path_data:
-                    # Same logic as 'in' growth, but with the offset applied.
+                    # For outward growth, the points are drawn with an offset equal to the thickness
+                    # inside the larger mask to create the padded effect.
                     min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
                     for p_x, p_y in path_data:
-                        draw.point((p_x - min_x, p_y - min_y), fill=255)
+                        draw.point((p_x - min_x + thickness, p_y - min_y + thickness), fill=255)
 
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
