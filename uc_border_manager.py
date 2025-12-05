@@ -684,24 +684,22 @@ class BorderManager:
 
     def _find_image_for_detection(self):
         """Finds a suitable component to use for border detection."""
-        # For simplicity, we'll use the currently selected component.
-        if self.app.selected_component_tag:
-            comp = self.app.components.get(self.app.selected_component_tag)
-            if comp and comp.original_pil_image:
-                return comp
-        
-        # --- DEFINITIVE FIX: Find the component directly under the mouse cursor ---
-        # 1. Get current mouse position on canvas.
+        # --- DEFINITIVE FIX: Prioritize the component under the mouse cursor ---
         x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
         
-        # 2. Find items under the cursor.
         items_under_cursor = self.canvas.find_overlapping(x-1, y-1, x+1, y+1)
         for item_id in reversed(items_under_cursor):
             tags = self.canvas.gettags(item_id)
             if not tags: continue
             comp = self.app.components.get(tags[0])
             if comp and comp.original_pil_image and not comp.is_decal and not comp.is_dock_asset:
+                return comp # Found a valid component under the mouse, use it.
+
+        # Fallback: If no component was found under the mouse, use the currently selected one.
+        if self.app.selected_component_tag:
+            comp = self.app.components.get(self.app.selected_component_tag)
+            if comp and comp.original_pil_image:
                 return comp
         return None
 
