@@ -139,12 +139,14 @@ class ImageEditorApp:
 
     def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
-
-            # Otherwise, delegate to the paint and eraser managers.
             if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active:
                 self.paint_manager.paint_on_canvas(event)
             if self.paint_manager.universal_eraser_mode_active:
                 self.paint_manager.erase_on_components(event)
+            
+            # --- DEFINITIVE FIX for cursor lag during drag ---
+            # Delegate to the border manager if it's in a drawing state.
+            # This consolidates drag handling and prevents conflicting bindings.
             if self.border_manager.is_drawing:
                 self.border_manager.on_mouse_drag(event)
         self.canvas.bind("<B1-Motion>", on_drag)
