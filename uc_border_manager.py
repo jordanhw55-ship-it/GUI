@@ -25,6 +25,13 @@ class BorderManager:
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = set() # DEFINITIVE FIX: Use a set for faster lookups and automatic duplicate removal
         self.brush_cursor_oval_id = None # NEW: To hold the ID of the canvas-drawn cursor
+
+        # --- NEW: State for Preview Area Selection ---
+        self.is_selecting_preview_area = False
+        self.preview_selection_rect_id = None
+        self.preview_selection_start_x = 0
+        self.preview_selection_start_y = 0
+        self.preview_area_world_coords = None # Stores (x1, y1, x2, y2) of the selected area
         self.highlight_oval_ids = [] # Stores canvas IDs for the highlight points
         self.last_drawn_x = -1
         self.last_drawn_y = -1
@@ -881,8 +888,10 @@ class BorderManager:
     def _deferred_redraw(self):
         """Redraws the highlight points after a throttle delay."""
         if not self.app.master.winfo_exists(): return
-        self._update_highlights()
-        self.update_preview_canvas() # Also update the preview canvas
+        # --- OPTIMIZATION: Only update the main canvas highlights during drawing ---
+        # The preview canvas is now updated on-demand by the user.
+        self._update_highlights() 
+        # self.update_preview_canvas() # REMOVED: This was causing the lag.
         self.redraw_scheduled = False
 
     def _process_detection_at_point(self, event, defer_redraw=False):
@@ -1025,21 +1034,21 @@ class BorderManager:
         preview_canvas = self.app.ui_manager.border_preview_canvas
         if not preview_canvas: return
 
-        preview_canvas.delete("preview_dot")
+        preview_canvas.delete("all") # Clear everything, including the old cursor
+        self.preview_cursor_circle_id = None # Reset cursor ID
 
-        # --- FIX: The preview no longer depends on a single active component ---
-        if not self.raw_border_points:
+        # --- REWRITE: Only draw if a preview area has been selected by the user ---
+        if not self.raw_border_points or not self.preview_area_world_coords:
             return
 
         scale = self.preview_scale_var.get()
         preview_w = preview_canvas.winfo_width()
         preview_h = preview_canvas.winfo_height()
 
-        # --- DEFINITIVE FIX: Center the preview on the current mouse position in world coordinates ---
-        # 1. Get the last known mouse position on the main canvas.
-        main_canvas_x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-        main_canvas_y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-        center_x, center_y = self.app.camera.screen_to_world(main_canvas_x, main_canvas_y)
+        # --- NEW: Center the preview on the selected area ---
+        wx1, wy1, wx2, wy2 = self.preview_area_world_coords
+        center_x = (wx1 + wx2) / 2
+        center_y = (wy1 + wy2) / 2
 
         for raw_x, raw_y in self.raw_border_points:
             # 1. Translate point relative to the new world center (the mouse position)
@@ -1125,6 +1134,67 @@ class BorderManager:
         is_erasing = self.is_erasing_points.get()
         color = "red" if is_erasing else "cyan"
         self.canvas.itemconfig(self.brush_cursor_oval_id, outline=color)
+
+    # --- NEW: Preview Area Selection Methods ---
+    def toggle_preview_selection_mode(self):
+        """Activates the mode to select an area on the main canvas for previewing."""
+        if not self.app.smart_border_mode_active:
+            messagebox.showwarning("Tool Inactive", "The Smart Border tool must be active to select a preview area.")
+            return
+
+        self.is_selecting_preview_area = True
+        self.canvas.config(cursor="crosshair")
+
+        # Temporarily override the main drawing bindings
+        self.canvas.bind("<Button-1>", self._on_preview_selection_press)
+        self.canvas.bind("<B1-Motion>", self._on_preview_selection_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_preview_selection_release)
+        print("[DEBUG] Preview selection mode ACTIVATED.")
+
+    def _on_preview_selection_press(self, event):
+        """Handles the start of dragging a selection box on the main canvas."""
+        if not self.is_selecting_preview_area: return
+
+        self.preview_selection_start_x = event.x
+        self.preview_selection_start_y = event.y
+
+        if self.preview_selection_rect_id:
+            self.canvas.delete(self.preview_selection_rect_id)
+
+        self.preview_selection_rect_id = self.canvas.create_rectangle(
+            event.x, event.y, event.x, event.y,
+            outline="yellow", dash=(5, 3), width=2
+        )
+
+    def _on_preview_selection_drag(self, event):
+        """Updates the selection box as the user drags the mouse."""
+        if not self.is_selecting_preview_area or not self.preview_selection_rect_id: return
+        self.canvas.coords(self.preview_selection_rect_id, self.preview_selection_start_x, self.preview_selection_start_y, event.x, event.y)
+
+    def _on_preview_selection_release(self, event):
+        """Finalizes the selection, captures the area, and updates the preview."""
+        if not self.is_selecting_preview_area: return
+
+        # 1. Get the final screen coordinates and convert to world coordinates.
+        sx1, sy1 = self.preview_selection_start_x, self.preview_selection_start_y
+        sx2, sy2 = event.x, event.y
+        wx1, wy1 = self.app.camera.screen_to_world(sx1, sy1)
+        wx2, wy2 = self.app.camera.screen_to_world(sx2, sy2)
+
+        # 2. Store the selected world area.
+        self.preview_area_world_coords = (min(wx1, wx2), min(wy1, wy2), max(wx1, wx2), max(wy1, wy2))
+
+        # 3. Clean up the selection UI.
+        self.canvas.delete(self.preview_selection_rect_id)
+        self.preview_selection_rect_id = None
+        self.is_selecting_preview_area = False
+        self.canvas.config(cursor="none") # Revert to the hidden cursor for the smart border tool
+        self.app.bind_generic_drag_handler() # Re-bind the generic drag handler
+        self.canvas.bind("<Button-1>", self.start_drawing_stroke) # Re-bind the main drawing press
+
+        # 4. Update the preview canvas with the newly selected area.
+        self.update_preview_canvas()
+        print(f"[DEBUG] Preview selection mode DEACTIVATED. Area captured: {self.preview_area_world_coords}")
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
