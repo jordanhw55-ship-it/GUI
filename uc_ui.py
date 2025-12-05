@@ -372,7 +372,7 @@ class UIManager:
         tk.Button(preview_frame, text="Select Area to Preview", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'),
                   command=manager.toggle_preview_selection_mode).pack(fill='x', expand=True, pady=(5,0))
 
-        tk.Scale(preview_frame, from_=0.5, to=5.0, resolution=0.1, orient=tk.HORIZONTAL, variable=manager.preview_scale_var, command=manager.update_preview_canvas, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(fill='x', expand=True)
+        tk.Scale(preview_frame, from_=0.5, to=5.0, resolution=0.1, orient=tk.HORIZONTAL, variable=manager.smart_manager.preview_scale_var, command=manager.update_preview_canvas, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(fill='x', expand=True)
 
         # --- NEW: Smart Border Tool Section ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
