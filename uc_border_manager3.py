@@ -34,9 +34,6 @@ class SmartBorderManager:
         self.last_drawn_y = -1
         self.redraw_scheduled = False
         self.after_id = None # NEW: To store the ID returned by app.master.after
-        self.cursor_redraw_scheduled = False # NEW: For cursor throttling
-        self.cursor_after_id = None # NEW: For cursor throttling
-        self.last_cursor_event = None # NEW: To store the latest mouse event for the cursor
 
         self.smart_brush_radius = tk.IntVar(value=15)
         self.smart_diff_threshold = tk.IntVar(value=50)
@@ -155,11 +152,6 @@ class SmartBorderManager:
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
 
-        # NEW: Cancel any pending cursor redraws when mode is toggled off
-        if self.cursor_after_id:
-            self.app.master.after_cancel(self.cursor_after_id)
-            self.cursor_after_id = None
-
     def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
         if not self.app.smart_border_mode_active or not self.active_detection_image:
@@ -181,6 +173,9 @@ class SmartBorderManager:
             self.canvas.tag_lower(self.highlight_layer_id)
 
         if not self.is_drawing: return
+
+        # --- FIX: Schedule a cursor update during drag to make it follow the mouse ---
+        self._update_canvas_brush_position(event)
 
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
@@ -393,31 +388,18 @@ class SmartBorderManager:
 
     def _update_canvas_brush_size(self, event=None):
         """Updates the size of the canvas-drawn cursor."""
-        # This function now just needs to trigger a redraw of the cursor image.
-        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-        
-        # Create a mock event object to pass to the update function
-        mock_event = type('Event', (), {'x': x, 'y': y})
-        self._update_canvas_brush_position(mock_event)
-        
-        if self.is_drawing:
-            self.on_mouse_drag(mock_event)
-        else:
-            self._process_detection_at_point(mock_event)
+        # This function now just needs to trigger a redraw of the cursor image.        
+        self._redraw_cursor_image_style()
         
     def _create_canvas_brush_cursor(self):
         """Creates the canvas image used as the brush cursor (replacing the slow oval)."""
         if self.cursor_canvas_id:
             self.canvas.delete(self.cursor_canvas_id)
         
-        # 1. Initialize the small transparent PIL image
         size = self.cursor_image_size
         self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image)
 
-        # 2. Create a single canvas image item to hold the cursor
-        # The anchor is NW (top-left) to make moving it simple
         self.cursor_canvas_id = self.canvas.create_image(
             0, 0, 
             image=self.cursor_tk_image, 
@@ -425,54 +407,49 @@ class SmartBorderManager:
             tags=('brush_cursor',), 
             state='hidden'
         )
+        self._redraw_cursor_image_style()
 
-    def _schedule_cursor_redraw(self):
-        """Schedules a cursor redraw only if one isn't already pending."""
-        if self.cursor_redraw_scheduled:
-            return
-        self.cursor_redraw_scheduled = True
-        # Use a shorter throttle for the cursor to feel responsive (e.g., ~60fps)
-        self.cursor_after_id = self.app.master.after(16, self._perform_throttled_cursor_update)
-
-    def _perform_throttled_cursor_update(self):
-        """Redraws the cursor image based on the last known mouse event."""
-        if not self.app.master.winfo_exists() or not self.last_cursor_event or not self.cursor_canvas_id:
-            self.cursor_redraw_scheduled = False
-            return
+    def _redraw_cursor_image_style(self):
+        """Performs the expensive PIL/PhotoImage update for the cursor's visual style/size."""
+        if not self.cursor_canvas_id: return
 
         radius = self.smart_brush_radius.get()
         size = self.cursor_image_size
         offset = size // 2
 
-        # 1. Move the image item
-        self.canvas.coords(self.cursor_canvas_id, self.last_cursor_event.x - offset, self.last_cursor_event.y - offset)
-
-        # 2. Redraw the circle onto the PIL layer
+        # 1. Redraw the circle onto the PIL layer (The expensive step)
         self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(self.cursor_pil_image)
         color = "red" if self.is_erasing_points.get() else "cyan"
         draw.ellipse((offset - radius, offset - radius, offset + radius, offset + radius), outline=color, width=2)
 
-        # 3. Update the PhotoImage on the canvas
+        # 2. Update the PhotoImage on the canvas
         self.cursor_tk_image.paste(self.cursor_pil_image)
         self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
         self.canvas.tag_raise(self.cursor_canvas_id)
-
-        self.cursor_redraw_scheduled = False
-        self.cursor_after_id = None
+        
+        # Ensure the cursor is placed correctly on screen
+        # Since we don't have the event, we just move it to the current pointer location
+        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        self.canvas.coords(self.cursor_canvas_id, x - offset, y - offset)
 
     def _update_canvas_brush_position(self, event):
-        """Schedules an update for the image-drawn cursor instead of redrawing it immediately."""
-        self.last_cursor_event = event
-        self._schedule_cursor_redraw()
+        """Moves the image-drawn cursor immediately (cheap operation)."""
+        if not self.cursor_canvas_id: return
+
+        # 1. Perform the immediate, cheap move
+        size = self.cursor_image_size
+        offset = size // 2
+        self.canvas.coords(self.cursor_canvas_id, event.x - offset, event.y - offset)
+        
+        # NOTE: The expensive style/color update is now handled only when radius/color changes, 
+        # via calls to _update_canvas_brush_color or _update_canvas_brush_size.
+        # This function no longer needs to schedule a redraw.
 
     def _update_canvas_brush_color(self):
         """Updates the color of the image-drawn cursor by forcing a redraw."""
         if not self.cursor_canvas_id: return
         
-        # Get current mouse position (approximate) to trigger a full update
-        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-        
-        # Force a redraw of the cursor image at the current position
-        self._update_canvas_brush_position(type('Event', (), {'x': x, 'y': y}))
+        # Just call the style redraw function
+        self._redraw_cursor_image_style()
