@@ -136,6 +136,11 @@ class ImageEditorApp:
         self.ui_manager.create_ui()
         self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
 
+        # --- NEW: Bind focus events to handle cursor visibility ---
+        # This ensures the custom cursor hides when the app loses focus.
+        self.master.bind("<FocusIn>", self.on_app_focus_in)
+        self.master.bind("<FocusOut>", self.on_app_focus_out)
+
     def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
             # --- DEBUG: Announce which tool is handling the drag ---
@@ -1233,6 +1238,20 @@ class ImageEditorApp:
         """Updates the world coordinate display based on mouse position."""
         world_x, world_y = self.camera.screen_to_world(event.x, event.y)
         self.mouse_coords_var.set(f"World: ({int(world_x)}, {int(world_y)})")
+
+    def on_app_focus_in(self, event):
+        """Handles the application window gaining focus."""
+        # If the smart border tool is active when we regain focus, show the cursor.
+        if self.smart_border_mode_active:
+            print("[DEBUG] App gained focus, showing smart border cursor.")
+            self.border_manager.smart_manager.cursor_window.show()
+
+    def on_app_focus_out(self, event):
+        """Handles the application window losing focus."""
+        # If the smart border tool is active when we lose focus, hide the cursor.
+        if self.smart_border_mode_active:
+            print("[DEBUG] App lost focus, hiding smart border cursor.")
+            self.border_manager.smart_manager.cursor_window.hide()
 
 
 # --- EXECUTION ---
