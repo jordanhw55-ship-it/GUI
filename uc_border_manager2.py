@@ -12,6 +12,7 @@ except ImportError:
 
 from uc_component import DraggableComponent
 from uc_cursor_window import CursorWindow
+from uc_quadtree import Quadtree # NEW: Import the Quadtree
 
 class SmartBorderManager:
     """Manages the interactive 'Smart Border' tool."""
@@ -27,6 +28,7 @@ class SmartBorderManager:
         self.is_drawing = False
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = set()
+        self.points_quadtree = None # NEW: To hold the Quadtree instance
 
         self.is_selecting_preview_area = False
         self.preview_selection_rect_id = None
@@ -111,6 +113,14 @@ class SmartBorderManager:
             if self.active_detection_image:
                 self.active_detection_alpha_numpy = np.array(self.active_detection_image.getchannel('A'))
 
+            # --- NEW: Initialize the Quadtree ---
+            # The Quadtree's boundary should encompass the entire composite image area.
+            qtree_boundary = (self.composite_x_offset, self.composite_y_offset, composite_width, composite_height)
+            self.points_quadtree = Quadtree(qtree_boundary)
+            # We don't populate it here; it gets populated as points are detected.
+            # If we were loading points, we would populate it here.
+            print(f"[INFO] Initialized Quadtree with boundary: {qtree_boundary}")
+
             print("[DEBUG] Smart Border: Binding <ButtonRelease-1>, <Motion>, <Button-1>.")
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
@@ -126,6 +136,7 @@ class SmartBorderManager:
         else:
             self.active_detection_image = None
             self.active_detection_alpha_numpy = None # Clear the NumPy array
+            self.points_quadtree = None # NEW: Clear the Quadtree
             self.active_detection_component = None
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
@@ -307,7 +318,13 @@ class SmartBorderManager:
         # --- REFACTOR: Use more direct vectorized operations for coordinate conversion ---
         world_coords = np.column_stack((edge_x_coords + x1 + self.composite_x_offset, edge_y_coords + y1 + self.composite_y_offset))
         new_points = set(map(tuple, world_coords))
-        self.raw_border_points.update(new_points)
+        
+        # --- OPTIMIZATION: Add new points to both the set and the Quadtree ---
+        for p in new_points:
+            if p not in self.raw_border_points:
+                self.raw_border_points.add(p)
+                if self.points_quadtree:
+                    self.points_quadtree.insert(p)
 
         if not defer_redraw:
             self._update_highlights()
@@ -321,7 +338,11 @@ class SmartBorderManager:
 
         points_to_remove = {p for p in self.raw_border_points if ((p[0] - erase_cx)**2 + (p[1] - erase_cy)**2) <= brush_radius_world**2}
         
-        self.raw_border_points.difference_update(points_to_remove)
+        if points_to_remove:
+            self.raw_border_points.difference_update(points_to_remove)
+            # Rebuild the Quadtree after a significant removal for simplicity and performance.
+            # This is faster than trying to remove individual points from the tree.
+            self._rebuild_quadtree()
 
         if not defer_redraw:
             self._update_highlights()
@@ -353,6 +374,9 @@ class SmartBorderManager:
         
         if points_to_remove:
             self.raw_border_points.difference_update(points_to_remove)
+            # Rebuild the Quadtree after erasure
+            self._rebuild_quadtree()
+
             if not defer_redraw:
                 self._deferred_redraw()
 
@@ -416,9 +440,23 @@ class SmartBorderManager:
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
         self.raw_border_points.clear()
+        # --- NEW: Also clear the Quadtree ---
+        if self.points_quadtree:
+            qtree_boundary = self.points_quadtree.boundary
+            self.points_quadtree = Quadtree(qtree_boundary) # Re-initialize it
+
         self._update_highlights()
         self.update_preview_canvas()
         print("Cleared all detected border points.")
+
+    def _rebuild_quadtree(self):
+        """Re-initializes and populates the Quadtree from the current raw_border_points."""
+        if not self.points_quadtree: return
+        qtree_boundary = self.points_quadtree.boundary
+        self.points_quadtree = Quadtree(qtree_boundary)
+        for p in self.raw_border_points:
+            self.points_quadtree.insert(p)
+        print(f"[INFO] Quadtree rebuilt with {len(self.raw_border_points)} points.")
 
     def on_erase_mode_toggle(self):
         """Handles UI update when 'Erase Points' is toggled."""

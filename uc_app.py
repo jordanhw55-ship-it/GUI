@@ -441,6 +441,13 @@ class ImageEditorApp:
         # The transform function now handles its own redraw, ensuring no race conditions.
         if comp.is_decal:
             self.image_manager._update_active_decal_transform()
+        elif not comp.is_dock_asset:
+            # --- DEFINITIVE FIX: Move child components (borders) along with the parent tile ---
+            for child_comp in self.components.values():
+                if child_comp.parent_tag == self.dragged_item_tag:
+                    child_comp.world_x1 += dx_world; child_comp.world_y1 += dy_world
+                    child_comp.world_x2 += dx_world; child_comp.world_y2 += dy_world
+            self.redraw_all_zoomable()
         else:
             self.redraw_all_zoomable()
 
@@ -470,6 +477,12 @@ class ImageEditorApp:
             if not comp.is_dock_asset and not comp.is_decal:
                 comp.world_x1 += dx_world; comp.world_y1 += dy_world
                 comp.world_x2 += dx_world; comp.world_y2 += dy_world
+
+                # --- DEFINITIVE FIX: Also move any borders attached to this tile ---
+                for child_comp in self.components.values():
+                    if child_comp.parent_tag == comp.tag:
+                        child_comp.world_x1 += dx_world; child_comp.world_y1 += dy_world
+                        child_comp.world_x2 += dx_world; child_comp.world_y2 += dy_world
 
     def _save_pre_move_state(self, tags_to_save=None):
         """Saves the world coordinates of specified components before a move operation."""
@@ -875,7 +888,14 @@ class ImageEditorApp:
                 self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk)
 
             if bm.raw_border_points:
-                visible_points = [p for p in bm.raw_border_points if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2]
+                # --- OPTIMIZATION: Use the Quadtree to get visible points ---
+                visible_points = []
+                query_range = (view_wx1, view_wy1, view_wx2 - view_wx1, view_wy2 - view_wy1)
+                if bm.points_quadtree:
+                    bm.points_quadtree.query(query_range, visible_points)
+                else: # Fallback for safety
+                    visible_points = [p for p in bm.raw_border_points if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2]
+
                 if visible_points:
                     screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_points]
                     if NUMPY_AVAILABLE:
