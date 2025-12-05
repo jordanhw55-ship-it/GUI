@@ -52,8 +52,6 @@ class SmartBorderManager:
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
         self.highlight_color = (0, 255, 255, 255)
-        
-        self.cursor_image_size = 50 # Size for the dynamic brush layer
         self.cursor_pil_image = None
         self.cursor_tk_image = None
         self.cursor_canvas_id = None # NEW: Replaces brush_cursor_oval_id
@@ -422,10 +420,13 @@ class SmartBorderManager:
         """Creates the canvas image used as the brush cursor (replacing the slow oval)."""
         if self.cursor_canvas_id:
             self.canvas.delete(self.cursor_canvas_id)
-        
-        size = self.cursor_image_size
+
+        # --- DEFINITIVE FIX: Calculate size based on radius ---
+        # The image must be large enough to contain the circle at max radius.
+        # Add a small buffer (e.g., 4 pixels) to ensure the outline isn't clipped.
+        size = (self.smart_brush_radius.get() * 2) + 4
         self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image)
+        self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image) # This will be updated in _redraw_cursor_image_style
 
         self.cursor_canvas_id = self.canvas.create_image(
             0, 0, 
@@ -441,16 +442,24 @@ class SmartBorderManager:
         if not self.cursor_canvas_id: return
 
         radius = self.smart_brush_radius.get()
-        size = self.cursor_image_size
+        # --- DEFINITIVE FIX: Dynamically resize the cursor image ---
+        # The new size must be large enough for the current radius.
+        size = (radius * 2) + 4
         offset = size // 2
 
-        # 1. Redraw the circle onto the PIL layer (The expensive step)
-        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        # 1. Recreate the PIL and Tkinter image objects if the size has changed.
+        if not self.cursor_pil_image or self.cursor_pil_image.size != (size, size):
+            self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+            self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image)
+            self.canvas.itemconfig(self.cursor_canvas_id, image=self.cursor_tk_image)
+
+        # 2. Redraw the circle onto the correctly-sized PIL layer.
+        self.cursor_pil_image.paste((0,0,0,0), (0,0,size,size)) # Clear previous drawing
         draw = ImageDraw.Draw(self.cursor_pil_image)
         color = "red" if self.is_erasing_points.get() else "cyan"
         draw.ellipse((offset - radius, offset - radius, offset + radius, offset + radius), outline=color, width=2)
 
-        # 2. Update the PhotoImage on the canvas
+        # 3. Update the PhotoImage on the canvas
         self.cursor_tk_image.paste(self.cursor_pil_image)
         self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
         self.canvas.tag_raise(self.cursor_canvas_id)
@@ -468,8 +477,9 @@ class SmartBorderManager:
         """Moves the image-drawn cursor immediately (cheap operation)."""
         if not self.cursor_canvas_id: return
 
-        # 1. Perform the immediate, cheap move
-        size = self.cursor_image_size
+        # 1. Perform the immediate, cheap move.
+        # The size of the image is now dynamic, so we get it from the PIL object.
+        size = self.cursor_pil_image.width if self.cursor_pil_image else 50
         offset = size // 2
         self.canvas.coords(self.cursor_canvas_id, event.x - offset, event.y - offset)
         
