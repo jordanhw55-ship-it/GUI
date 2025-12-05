@@ -906,8 +906,12 @@ class ImageEditorApp:
 
         if not visible_borders:
             # If no borders are visible, ensure any old image is cleared from the canvas.
-            if self.border_layer_tk:
-                self.border_layer_tk.paste(self.border_layer_image)
+            # --- DEFINITIVE FIX: Use a new PhotoImage to reliably clear the canvas item ---
+            # The .paste() method can have unintended side effects on the canvas item's state.
+            # Creating a new, blank PhotoImage is the most reliable way to clear it.
+            if self.border_layer_tk is not None:
+                self.border_layer_tk = ImageTk.PhotoImage(self.border_layer_image)
+                self.canvas.itemconfigure("preset_border_layer", image=self.border_layer_tk)
             return
 
         # 3. Draw each visible border onto the single PIL image layer.
