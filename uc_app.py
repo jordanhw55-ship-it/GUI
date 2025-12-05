@@ -365,7 +365,9 @@ class ImageEditorApp:
 
         # --- FIX: Prevent component drag logic from running when a paint tool is active ---
         if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            # Let the generic drag handler route this to the paint manager instead.
+            # --- DEFINITIVE FIX: Route the initial press event to the correct paint handler ---
+            # This ensures the first dot of a paint stroke is drawn correctly.
+            self.paint_manager.paint_on_canvas(event)
             return
 
         # --- NEW: Handle Tile Eraser ---
