@@ -917,54 +917,8 @@ class BorderManager:
             self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
 
     def _update_highlights(self):
-        """
-        OPTIMIZED: Redraws all highlight points onto a single transparent layer for performance.
-        """
-        canvas_w = self.canvas.winfo_width()
-        canvas_h = self.canvas.winfo_height()
-        if canvas_w <= 0 or canvas_h <= 0: return
-
-        # 1. Ensure the highlight layer exists and matches the canvas size.
-        if self.highlight_layer_image is None or self.highlight_layer_image.size != (canvas_w, canvas_h):
-            self.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-            if self.highlight_layer_id:
-                self.canvas.delete(self.highlight_layer_id)
-            self.highlight_layer_tk = ImageTk.PhotoImage(self.highlight_layer_image)
-            self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.highlight_layer_tk, tags="smart_border_highlight_layer")
-        else:
-            # If it exists, just clear it by drawing a transparent rectangle over it.
-            draw = ImageDraw.Draw(self.highlight_layer_image)
-            draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
-
-        # 2. Draw all points onto the PIL image layer.
-        if self.raw_border_points:
-            draw = ImageDraw.Draw(self.highlight_layer_image)
-            for raw_x, raw_y in self.raw_border_points:
-                sx, sy = self.app.camera.world_to_screen(raw_x, raw_y)
-                # Draw a 2x2 point for visibility
-                if 0 <= sx < canvas_w and 0 <= sy < canvas_h:
-                    draw.point((sx, sy), fill=self.highlight_color)
-                if 0 <= sx + 1 < canvas_w and 0 <= sy < canvas_h:
-                    draw.point((sx + 1, sy), fill=self.highlight_color)
-                if 0 <= sx < canvas_w and 0 <= sy + 1 < canvas_h:
-                    draw.point((sx, sy + 1), fill=self.highlight_color)
-                if 0 <= sx + 1 < canvas_w and 0 <= sy + 1 < canvas_h:
-                    draw.point((sx + 1, sy + 1), fill=self.highlight_color)
-
-        # 3. Update the PhotoImage and configure the canvas item.
-        self.highlight_layer_tk.paste(self.highlight_layer_image)
-        self.canvas.tag_raise("smart_border_highlight_layer")
-
-    def _update_highlights(self):
-        """Redraws all highlight ovals on the main canvas."""
-        for oval_id in self.highlight_oval_ids:
-            self.canvas.delete(oval_id)
-        self.highlight_oval_ids.clear()
-
-        for raw_x, raw_y in self.raw_border_points:
-            sx, sy = self.app.camera.world_to_screen(raw_x, raw_y)
-            oval_id = self.canvas.create_oval(sx, sy, sx + 2, sy + 2, fill="cyan", outline="", tags="smart_border_highlight")
-            self.highlight_oval_ids.append(oval_id)
+        """Requests a full canvas redraw, which now includes the highlight layer."""
+        self.app.redraw_all_zoomable()
 
     def update_preview_canvas(self, *args):
         """Redraws the stored border points on the preview canvas with the current zoom scale."""

@@ -868,6 +868,30 @@ class ImageEditorApp:
         # --- NEW: Redraw the selection highlight ---
         self._update_selection_highlight()
             
+        # --- NEW: Redraw the smart border highlight layer ---
+        if self.smart_border_mode_active and self.border_manager.highlight_layer_id:
+            bm = self.border_manager
+            # Ensure the layer image matches the canvas size
+            if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
+                bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
+                self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
+            else:
+                # Clear the existing image
+                draw = ImageDraw.Draw(bm.highlight_layer_image)
+                draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
+
+            # Draw all points onto the layer
+            if bm.raw_border_points:
+                draw = ImageDraw.Draw(bm.highlight_layer_image)
+                for raw_x, raw_y in bm.raw_border_points:
+                    sx, sy = self.camera.world_to_screen(raw_x, raw_y)
+                    if 0 <= sx < canvas_w and 0 <= sy < canvas_h:
+                        draw.point((sx, sy), fill=bm.highlight_color)
+            
+            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
+            self.canvas.coords(bm.highlight_layer_id, 0, 0) # The points are already in screen space
+
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()
