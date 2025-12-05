@@ -709,9 +709,6 @@ class BorderManager:
                 self.active_detection_image.paste(resized_img, (paste_x, paste_y), resized_img)
 
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
-
-            # --- DEFINITIVE FIX: Bind mouse events only when the tool is activated ---
-            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.on_mouse_down)
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             # --- REWIND: Use a canvas-drawn cursor instead of a native one ---
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
@@ -777,18 +774,14 @@ class BorderManager:
 
     def _cleanup_drawing_bindings(self):
         """Removes all temporary event bindings used by the smart border tool."""
-        # --- DEFINITIVE FIX: Check for binding ID existence before unbinding ---
-        # This prevents errors if the bindings were never created.
-        if hasattr(self, 'on_mouse_down_binding_id') and self.on_mouse_down_binding_id:
-            self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
 
-    def on_mouse_down(self, event):
+    def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
         if not self.app.smart_border_mode_active or not self.active_detection_image:
             return
-
+        
         self.is_drawing = True
         print("[DEBUG] Smart Border: Mouse Down")
         self.last_drawn_x, self.last_drawn_y = event.x, event.y

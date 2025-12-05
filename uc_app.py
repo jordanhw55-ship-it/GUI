@@ -369,7 +369,10 @@ class ImageEditorApp:
         
         # --- NEW: Handle Smart Border Tool ---
         if self.smart_border_mode_active:
-            self.border_manager.on_mouse_down(event)
+            # --- FIX: Directly call the drawing logic from the generic press handler ---
+            # This ensures the is_drawing flag is set, allowing the generic drag
+            # handler (<B1-Motion>) to correctly delegate to the border manager.
+            self.border_manager.start_drawing_stroke(event)
             return # Stop further processing
 
         if comp.is_dock_asset:
