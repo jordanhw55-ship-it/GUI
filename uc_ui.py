@@ -371,17 +371,6 @@ class UIManager:
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
 
-        # --- NEW: Debugging Tools ---
-        tk.Label(tab, text="COORDINATE DEBUGGING", **label_style).pack(fill='x')
-
-        tk.Button(tab, text="Dot on Tile 01 (430, 455)", bg='#d97706', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.app.image_manager.draw_debug_dot('humanuitile01', 430, 455)).pack(fill='x', padx=10, pady=5)
-
-        tk.Button(tab, text="Dot on Tile 02 (49, 455)", bg='#d97706', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.app.image_manager.draw_debug_dot('humanuitile02', 49, 455)).pack(fill='x', padx=10, pady=5)
-
-        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=15)
-
         tk.Label(tab, text="IMAGE FILTERS", **label_style).pack(fill='x')
         tk.Label(tab, text="Controls for brightness, contrast, etc.\nwill go here.", bg="#374151", fg="#9ca3af", justify=tk.LEFT, padx=10).pack(fill='x', pady=10)
 

@@ -509,28 +509,3 @@ class ImageManager:
         # 4. Final setup and redraw.
         self.app._keep_docks_on_top()
         self.app.redraw_all_zoomable()
-
-    def draw_debug_dot(self, target_tile_tag: str, x: int, y: int):
-        """
-        Draws a small, visible dot on a target component's PIL image for debugging purposes.
-        """
-        target_comp = self.app.components.get(target_tile_tag)
-        if not target_comp:
-            messagebox.showerror("Debug Error", f"Could not find the target tile: {target_tile_tag}")
-            return
-
-        if not target_comp.pil_image:
-            messagebox.showwarning("Debug Info", f"The target tile '{target_tile_tag}' does not have an image loaded to draw on.")
-            return
-
-        # Draw a 5x5 red dot on the component's PIL image
-        # We use the original image to avoid drawing over previous dots
-        image_to_draw_on = target_comp.original_pil_image.copy() if target_comp.original_pil_image else target_comp.pil_image.copy()
-        
-        draw = ImageDraw.Draw(image_to_draw_on)
-        dot_radius = 3
-        draw.ellipse([(x - dot_radius, y - dot_radius), (x + dot_radius, y + dot_radius)], fill="red", outline="white")
-
-        # Update the component's image to show the new dot
-        target_comp.set_image(image_to_draw_on)
-        print(f"Drew debug dot on '{target_tile_tag}' at local coordinates ({x}, {y}).")
