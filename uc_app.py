@@ -876,8 +876,8 @@ class ImageEditorApp:
         # --- REVERT: Restore smart border drawing to the main redraw loop ---
         # This brings back the original drawing logic that was confirmed to be working visually.
         # The BorderManager's _update_highlights will now just be a trigger for this.
-        if self.smart_border_mode_active and self.border_manager.highlight_layer_id:
-            bm = self.border_manager
+        if self.smart_border_mode_active and self.border_manager.smart_manager.highlight_layer_id:
+            bm = self.border_manager.smart_manager
 
             # 1. Ensure the backing PIL image and the Tk PhotoImage exist and match the canvas size.
             if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
