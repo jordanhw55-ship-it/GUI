@@ -1057,6 +1057,19 @@ class BorderManager:
         self._update_highlights() # This will redraw the canvas
         self._update_canvas_brush_color() # Update the cursor color
 
+    def _update_canvas_brush_size(self, event=None):
+        """Updates the size of the canvas-drawn cursor, called by the brush size slider."""
+        if not self.brush_cursor_oval_id: return
+
+        # Get the current mouse position relative to the canvas
+        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+
+        radius = self.smart_brush_radius.get()
+        x1, y1 = (x - radius), (y - radius)
+        x2, y2 = (x + radius), (y + radius)
+        self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
+
     def _create_canvas_brush_cursor(self):
         """Creates the canvas oval used as the brush cursor."""
         if self.brush_cursor_oval_id:
