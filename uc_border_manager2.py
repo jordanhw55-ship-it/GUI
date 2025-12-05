@@ -123,9 +123,14 @@ class SmartBorderManager:
             # The Quadtree's boundary should encompass the entire composite image area.
             qtree_boundary = (self.composite_x_offset, self.composite_y_offset, composite_width, composite_height)
             self.points_quadtree = Quadtree(qtree_boundary)
-            # We don't populate it here; it gets populated as points are detected.
-            # If we were loading points, we would populate it here.
             print(f"[INFO] Initialized Quadtree with boundary: {qtree_boundary}")
+
+            # --- FIX: Create the highlight layer item ONCE upon activation ---
+            if not self.highlight_layer_id:
+                self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
+                self.canvas.tag_lower(self.highlight_layer_id)
+                print(f"[DEBUG] Created highlight layer with ID: {self.highlight_layer_id}")
+
 
             print("[DEBUG] Smart Border: Binding <ButtonRelease-1>, <Motion>, <Button-1>.")
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
@@ -133,9 +138,8 @@ class SmartBorderManager:
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
             self.canvas.config(cursor="none")
             # --- FIX: Explicitly bind B1-Motion to the smart manager's drag handler ---
-            # This ensures that dragging to draw works correctly with the transparent cursor window.
             self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
-            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke) # This might be redundant with app-level binding
+            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke) 
             self._create_canvas_brush_cursor()
 
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
@@ -178,7 +182,6 @@ class SmartBorderManager:
             self.app.bind_generic_drag_handler()
 
             # --- DEFINITIVE FIX: Reset binding IDs to None after unbinding ---
-            # This ensures that the next time the tool is activated, it doesn't carry over stale binding IDs.
             self.on_mouse_up_binding_id = None
             self.on_mouse_move_binding_id = None
             self.on_mouse_down_binding_id = None
@@ -196,6 +199,14 @@ class SmartBorderManager:
         if not self.app.smart_border_mode_active or not self.active_detection_image:
             return
         
+        # --- FIX: Ensure highlight layer is present before drawing starts ---
+        if not self.highlight_layer_id:
+             # Should be created in toggle_smart_border_mode, but as a safeguard:
+            print("[WARNING] Highlight layer missing during Button-1 press. Recreating.")
+            self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
+            self.canvas.tag_lower(self.highlight_layer_id)
+
+
         self.is_drawing = True
         print("[DEBUG] Smart Border: Mouse Down")
         self.last_drawn_x, self.last_drawn_y = event.x, event.y
@@ -207,9 +218,10 @@ class SmartBorderManager:
 
     def on_mouse_drag(self, event):
         """Handles continuous drawing or erasing."""
-        if not self.highlight_layer_id:
-            self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
-            self.canvas.tag_lower(self.highlight_layer_id)
+        # --- REMOVED FIX: Highlight layer is now created in toggle_smart_border_mode ---
+        # if not self.highlight_layer_id:
+        #     self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
+        #     self.canvas.tag_lower(self.highlight_layer_id)
 
         if not self.is_drawing: return
 
@@ -277,8 +289,13 @@ class SmartBorderManager:
 
     def _perform_throttled_redraw(self):
         """Redraws the highlight points after a throttle delay."""
+        # --- FIX: Only trigger a full redraw if we are actually drawing/erasing to ensure efficiency ---
         if self.is_drawing:
             self.app.redraw_all_zoomable()
+        else:
+            # If drawing has stopped (mouse up), make sure the final state is drawn once.
+            if self.highlights_are_dirty:
+                self.app.redraw_all_zoomable()
         self.redraw_scheduled = False
 
     def _process_detection_at_point(self, event, defer_redraw=False):
@@ -312,7 +329,7 @@ class SmartBorderManager:
         grad_y = np.abs(np.diff(alpha_channel.astype(np.int16), axis=0)) > diff_threshold
 
         # 2. Combine gradients into a single mask. We pad the smaller gradient arrays
-        #    to match the original alpha_channel shape for the 'where' operation.
+        #    to match the original alpha_channel shape for the 'where' operation.
         edge_mask = np.zeros_like(alpha_channel, dtype=bool)
         edge_mask[:, :-1] |= grad_x
         edge_mask[:-1, :] |= grad_y
@@ -343,7 +360,6 @@ class SmartBorderManager:
         if points_to_remove:
             self.raw_border_points.difference_update(points_to_remove)
             # Rebuild the Quadtree after a significant removal for simplicity and performance.
-            # This is faster than trying to remove individual points from the tree.
             self.highlights_are_dirty = True # Mark cache as dirty
             self._rebuild_quadtree()
 
@@ -424,7 +440,6 @@ class SmartBorderManager:
         center_y = (wy1 + wy2) / 2
         
         # --- FIX: Restore the drawing logic for the preview canvas ---
-        # This logic was incorrectly removed in a previous refactor.
         points_to_draw = []
         for p_x, p_y in self.raw_border_points:
             # Check if the point is within the selected world coordinates
@@ -470,13 +485,10 @@ class SmartBorderManager:
 
     def _update_canvas_brush_size(self, event=None):
         """Updates the size of the canvas-drawn cursor."""
-        # This function now just needs to trigger a redraw of the cursor image.        
         self._redraw_cursor_image_style()
         
     def _create_canvas_brush_cursor(self):
         """Creates the canvas image used as the brush cursor (replacing the slow oval)."""
-        # This function now just needs to trigger the initial drawing of the cursor style
-        # and show the window.
         self._redraw_cursor_image_style()
         self.cursor_window.show()
 
@@ -496,7 +508,6 @@ class SmartBorderManager:
         self.cursor_window.set_image(cursor_pil_image)
 
         # 3. Immediately update its position to the current mouse location.
-        # This prevents the cursor from appearing at (0,0) or an old position.
         root_x = self.app.master.winfo_pointerx()
         root_y = self.app.master.winfo_pointery()
         self.cursor_window.move(root_x - offset, root_y - offset)
@@ -504,8 +515,6 @@ class SmartBorderManager:
     def _update_canvas_brush_position(self, event):
         """Moves the custom cursor window to follow the mouse."""
         # The cursor window needs absolute screen coordinates.
-        # We get these from the event's root_x and root_y attributes.
-        # If they don't exist, we calculate them.
         try:
             root_x, root_y = event.x_root, event.y_root
         except AttributeError:
