@@ -31,8 +31,6 @@ class CursorWindow:
         
         # --- Transparency & Click-Through Setup (Tkinter Part) ---
         # 1. CRITICAL VISUAL FIX: Use Tkinter's transparency attribute for the key color.
-        # Note: This is now mostly redundant/conflicting with the Win32 call below, but left 
-        # for maximum compatibility.
         self.window.wm_attributes("-transparentcolor", self.transparent_color_hex)
         
         # 2. Set the background color of the window to the key color.
@@ -50,8 +48,6 @@ class CursorWindow:
             # The canvas background MUST be the key color for visual transparency.
             bg=self.transparent_color_hex, 
             highlightthickness=0,
-            # CRITICAL CHANGE: Removing state='disabled' to allow mouse events 
-            # to pass through to the OS correctly, preventing internal Tkinter conflicts.
         )
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
@@ -62,22 +58,23 @@ class CursorWindow:
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
         
-        # NEW FIX: Explicitly block motion and drag events on the custom canvas
+        # Explicitly block motion and drag events on the custom canvas
         self.canvas.bind("<Motion>", lambda e: "break")
         self.canvas.bind("<B1-Motion>", lambda e: "break")
         
         self.window.bind("<Button>", lambda e: "break")
         self.window.bind("<ButtonRelease>", lambda e: "break")
         
-        # NEW FIX: Explicitly block motion and drag events on the custom window
+        # Explicitly block motion and drag events on the custom window
         self.window.bind("<Motion>", lambda e: "break")
         self.window.bind("<B1-Motion>", lambda e: "break")
 
 
     def _make_click_through(self):
         """
-        [FINAL FIX STRATEGY] Using the most robust combination: WS_EX_TRANSPARENT for click-through, 
-        and LWA_COLORKEY + LWA_ALPHA for shape and rendering visibility.
+        [FINAL-FINAL FIX STRATEGY] Removing LWA flags entirely. Relying purely on: 
+        1. Tkinter's -transparentcolor for visual shape. 
+        2. WS_EX_TRANSPARENT for event pass-through (click/motion-through).
         """
         if not self.window.winfo_exists(): return
 
@@ -88,25 +85,27 @@ class CursorWindow:
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             print(f"[DEBUG] Initial EXSTYLE: {hex(styles)}")
             
-            # 1. Add WS_EX_LAYERED (required for LWA flags) AND WS_EX_TRANSPARENT (for click-through)
-            TARGET_STYLES = win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+            # 1. Add WS_EX_TRANSPARENT (for click-through)
+            TARGET_STYLES = win32con.WS_EX_TRANSPARENT
             styles |= TARGET_STYLES
+            
+            # We explicitly REMOVE WS_EX_LAYERED here if it exists, as it's only needed for LWA calls, 
+            # which we are ditching to avoid conflicts.
+            styles &= ~win32con.WS_EX_LAYERED
+            
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
             
             # --- DEBUG STEP 2: Log style after setting ---
             new_styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             print(f"[DEBUG] New EXSTYLE: {hex(new_styles)}")
-            if (new_styles & TARGET_STYLES) == TARGET_STYLES:
-                print(f"[DEBUG] Successfully set WS_EX_LAYERED and WS_EX_TRANSPARENT.")
+            if (new_styles & TARGET_STYLES) == TARGET_STYLES and not (new_styles & win32con.WS_EX_LAYERED):
+                print(f"[DEBUG] Successfully set WS_EX_TRANSPARENT and removed WS_EX_LAYERED.")
             else:
-                print(f"[ERROR] Failed to set all target styles! Missing: {hex(TARGET_STYLES & ~new_styles)}")
+                print(f"[ERROR] Failed to set all target styles! Current: {hex(new_styles)}")
 
-            # 2. RE-ADDED: Set LWA_COLORKEY and LWA_ALPHA. This is crucial for *visual* transparency
-            # (hiding the background color) and ensuring the opaque parts (the cursor image) render correctly.
-            color_key = win32api.RGB(self.R, self.G, self.B)
-            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
+            # CRITICAL: Removed all win32gui.SetLayeredWindowAttributes calls.
 
-            print("[INFO] Custom cursor window is now click-through (WS_EX_TRANSPARENT) and visually transparent/shaped (LWA_COLORKEY + LWA_ALPHA).")
+            print("[INFO] Custom cursor window is now purely click/motion-through via WS_EX_TRANSPARENT.")
             
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
