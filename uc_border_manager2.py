@@ -277,8 +277,9 @@ class SmartBorderManager:
 
     def _perform_throttled_redraw(self):
         """Redraws the highlight points after a throttle delay."""
-        self._update_highlights()
-        self.redraw_scheduled = False # Allow the next redraw to be scheduled
+        if self.is_drawing:
+            self.app.redraw_all_zoomable()
+        self.redraw_scheduled = False
 
     def _process_detection_at_point(self, event, defer_redraw=False):
         """The core logic to detect border points under the brush."""
@@ -329,9 +330,6 @@ class SmartBorderManager:
                 if self.points_quadtree:
                     self.points_quadtree.insert(p)
         self.highlights_are_dirty = True # Mark cache as dirty
-
-        if not defer_redraw:
-            self._update_highlights()
 
     def _process_erasure_at_point(self, event, defer_redraw=False):
         """Erases detected points under the brush."""
