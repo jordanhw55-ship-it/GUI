@@ -382,6 +382,9 @@ class ImageEditorApp:
             # --- FIX: Directly call the drawing logic from the generic press handler ---
             # This ensures the is_drawing flag is set, allowing the generic drag
             # handler (<B1-Motion>) to correctly delegate to the border manager.
+            # --- FIX 2: Add a guard to prevent this from firing when paint is active ---
+            if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+                return
             self.border_manager.start_drawing_stroke(event)
             return # Stop further processing
 
