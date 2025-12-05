@@ -190,7 +190,6 @@ class ImageEditorApp:
     def initial_draw(self):
         """Performs the first layout application and redraw after the UI is ready."""
         self.apply_preview_layout()
-        self.border_manager.show_preset_preview()
 
     def save_settings(self):
         """Saves the current application settings to the settings file."""
@@ -435,10 +434,6 @@ class ImageEditorApp:
             self.image_manager._update_active_decal_transform()
         else:
             self.redraw_all_zoomable()
-
-        # --- FIX: If a border preview is active, update it when its parent moves ---
-        if self.border_manager.preview_rect_ids:
-            self.border_manager.show_preset_preview()
 
     def on_component_release(self, event):
         """Handles release events, finalizing the drag."""
@@ -916,9 +911,7 @@ class ImageEditorApp:
 
         # --- NEW: Clear any active border previews when switching context ---
         # Also, if the user is switching *to* the border tab, show the preview.
-        if self.is_border_tab_active():
-            self.master.after(10, lambda: self.border_manager.show_preset_preview()) # Use 'after' to ensure tab has changed
-        else:
+        if not self.is_border_tab_active():
             self.border_manager.clear_preset_preview()
 
         # --- NEW: Update the selection highlight when changing tabs ---
