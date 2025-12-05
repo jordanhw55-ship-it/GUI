@@ -38,7 +38,7 @@ class CursorWindow:
             self.window.after(10, self._make_click_through) # Delay to ensure window handle exists
 
         # --- Content ---
-        self.label = tk.Label(self.window, bg=self.transparent_color)
+        self.label = tk.Label(self.window, bg=self.transparent_color_hex)
         self.label.pack()
         self.tk_image = None # To hold a reference to the PhotoImage
 
