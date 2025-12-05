@@ -593,12 +593,9 @@ class BorderManager:
                 # The path_data is in world coordinates. We need to make it relative to the render box.
                 min_x = min(p[0] for p in path_data)
                 min_y = min(p[1] for p in path_data)
-                
-                # The offset is based on the growth direction.
-                offset_x = thickness if self.border_growth_direction.get() == 'out' else 0
-                offset_y = thickness if self.border_growth_direction.get() == 'out' else 0
+
                 for p_x, p_y in path_data:
-                    draw.point((p_x - min_x + offset_x, p_y - min_y + offset_y), fill=255)
+                    draw.point((p_x - min_x, p_y - min_y), fill=255)
 
         else: # 'out'
             if shape_form == "circle":
@@ -616,9 +613,9 @@ class BorderManager:
                     # Same logic as 'in' growth, but with the offset applied.
                     min_x = min(p[0] for p in path_data)
                     min_y = min(p[1] for p in path_data)
-                    offset_x, offset_y = thickness, thickness
+
                     for p_x, p_y in path_data:
-                        draw.point((p_x - min_x + offset_x, p_y - min_y + offset_y), fill=255)
+                        draw.point((p_x - min_x + thickness, p_y - min_y + thickness), fill=255)
 
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
