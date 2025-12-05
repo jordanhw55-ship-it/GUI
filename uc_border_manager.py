@@ -1070,6 +1070,12 @@ class BorderManager:
         x2, y2 = (x + radius), (y + radius)
         self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
 
+        # --- FIX for brush size not drawing ---
+        # Also trigger the detection logic to draw points for the new brush size.
+        # We create a mock event object with the current mouse coordinates.
+        mock_event = type('Event', (), {'x': x, 'y': y})
+        self._process_detection_at_point(mock_event)
+        
     def _create_canvas_brush_cursor(self):
         """Creates the canvas oval used as the brush cursor."""
         if self.brush_cursor_oval_id:
