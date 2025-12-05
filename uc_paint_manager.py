@@ -52,8 +52,8 @@ class PaintManager:
         else:
             print("Paint and Eraser modes DISABLED.")
 
-        is_any_paint_tool_active = self.paint_mode_active or self.eraser_mode_active
-        if is_any_paint_tool_active:
+        # --- FIX: Ensure the paint layer is created if ANY paint/erase tool is active ---
+        if self.paint_mode_active or self.eraser_mode_active or self.universal_eraser_mode_active:
             if not self.paint_layer_image:
                 canvas_w = self.canvas.winfo_width()
                 canvas_h = self.canvas.winfo_height()
@@ -97,7 +97,7 @@ class PaintManager:
 
     def paint_on_canvas(self, event):
         """Draws on the dedicated paint layer image."""
-        is_painting = self.paint_mode_active or self.eraser_mode_active
+        is_painting = self.paint_mode_active or self.eraser_mode_active or self.universal_eraser_mode_active
         if not is_painting or not self.paint_layer_image:
             return
     
