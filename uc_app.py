@@ -130,6 +130,7 @@ class ImageEditorApp:
         self.canvas.bind("<Control-Button-1>", self.camera.on_pan_press)
         self.canvas.bind("<Control-B1-Motion>", self.camera.on_pan_drag)
 
+        self.canvas.bind("<Button-1>", self.on_canvas_press) # NEW: Generic canvas press handler
 
         # Bind mouse release for paint tool
         self.canvas.bind("<ButtonRelease-1>", self.paint_manager.reset_paint_line)
@@ -350,6 +351,17 @@ class ImageEditorApp:
         self.components['humanuitile-timeindicatorframe'] = comp
         self._draw_placeholder(comp)
         self._bind_component_events(comp.tag) # type: ignore
+
+    def on_canvas_press(self, event):
+        """
+        Handles a click directly on the canvas, which is crucial for initiating
+        actions like painting that don't start on a specific component.
+        """
+        # If any paint tool is active, route the event to the paint manager.
+        # This ensures that the first dot of a stroke is drawn even on an empty canvas area.
+        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            self.paint_manager.paint_on_canvas(event)
+            return
 
     def on_component_press(self, event):
         """Handles press events on any component."""
