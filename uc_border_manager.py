@@ -1089,7 +1089,16 @@ class BorderManager:
         cursor_img.save(self.cursor_file_path, "xbm")
         mask_img.save(self.mask_file_path, "xbm")
 
-        self.canvas.config(cursor=f"@{self.cursor_file_path} {self.mask_file_path} {color}")
+        # --- DEFINITIVE FIX for TclError: bad cursor spec ---
+        # 1. Convert Windows backslashes to Tcl-compatible forward slashes.
+        cursor_path_tcl = self.cursor_file_path.replace('\\', '/')
+        mask_path_tcl = self.mask_file_path.replace('\\', '/')
+
+        # 2. Build the cursor specification string using curly braces {} to handle
+        #    paths with spaces or special characters correctly.
+        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {color}"
+
+        self.canvas.config(cursor=cursor_spec)
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
