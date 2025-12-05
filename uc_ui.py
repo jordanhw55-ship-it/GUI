@@ -390,7 +390,9 @@ class UIManager:
 
         # Brush Size
         tk.Label(smart_controls_frame, text="Brush Size:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
-        tk.Scale(smart_controls_frame, from_=5, to=50, orient=tk.HORIZONTAL, variable=manager.smart_brush_radius, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=1, column=1, sticky='ew', padx=5)
+        # --- DEFINITIVE FIX for cursor lag: Update the native cursor when the slider changes ---
+        tk.Scale(smart_controls_frame, from_=5, to=50, orient=tk.HORIZONTAL, variable=manager.smart_brush_radius, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0,
+                 command=lambda e: manager._update_brush_cursor_file()).grid(row=1, column=1, sticky='ew', padx=5)
 
         # Sensitivity
         tk.Label(smart_controls_frame, text="Sensitivity:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
