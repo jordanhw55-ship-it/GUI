@@ -768,12 +768,6 @@ class BorderManager:
         self.update_preview_canvas() # Also update the preview canvas
         self.redraw_scheduled = False
 
-    def _deferred_redraw(self):
-        """Redraws the highlight points after a throttle delay."""
-        if not self.app.master.winfo_exists(): return
-        self._update_highlights()
-        self.redraw_scheduled = False
-
     def _process_detection_at_point(self, event, defer_redraw=False):
         """The core logic to detect border points under the brush."""
         brush_radius = self.smart_brush_radius.get()
