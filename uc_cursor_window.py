@@ -38,7 +38,8 @@ class CursorWindow:
 
         # --- Click-Through (Windows only) ---
         if WIN32_AVAILABLE:
-            self.window.after(10, self._make_click_through) 
+            # INCREASED DELAY to ensure window is fully mapped before setting styles
+            self.window.after(50, self._make_click_through) 
 
         # --- Content ---
         # Use a Canvas for image display control.
@@ -57,17 +58,16 @@ class CursorWindow:
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
         
-        # NEW: Stop internal Toplevel window events as a final safety measure
+        # Stop internal Toplevel window events as a final safety measure
         self.window.bind("<Button>", lambda e: "break")
         self.window.bind("<ButtonRelease>", lambda e: "break")
 
 
     def _make_click_through(self):
         """
-        [DEFINITIVE FIX] Uses Color Key + WS_EX_TRANSPARENT.
-        LWA_COLORKEY handles visual transparency of the background.
+        [DEFINITIVE FIX] Uses Color Key + LWA_ALPHA + WS_EX_TRANSPARENT.
+        LWA_COLORKEY & LWA_ALPHA handles visual transparency/layering.
         WS_EX_TRANSPARENT ensures the visible (opaque) cursor circle is click-through.
-        Includes logging for debugging the style change.
         """
         if not self.window.winfo_exists(): return
 
@@ -78,7 +78,7 @@ class CursorWindow:
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             print(f"[DEBUG] Initial EXSTYLE: {hex(styles)}")
             
-            # 1. Add WS_EX_LAYERED (required for LWA_COLORKEY) AND WS_EX_TRANSPARENT (for click-through)
+            # 1. Add WS_EX_LAYERED (required for LWA flags) AND WS_EX_TRANSPARENT (for click-through)
             TARGET_STYLES = win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
             styles |= TARGET_STYLES
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
@@ -91,11 +91,12 @@ class CursorWindow:
             else:
                 print(f"[ERROR] Failed to set all target styles! Missing: {hex(TARGET_STYLES & ~new_styles)}")
 
-            # 2. Apply LWA_COLORKEY. This makes the background color (#abcdef) visually transparent.
+            # 2. Apply LWA_COLORKEY and LWA_ALPHA (255 = fully opaque). 
+            # Combining these two flags often forces correct event handling with WS_EX_TRANSPARENT.
             color_key = win32api.RGB(self.R, self.G, self.B)
-            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
+            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
             
-            print("[INFO] Custom cursor window is now fully click-through (Color Key + WS_EX_TRANSPARENT).")
+            print("[INFO] Custom cursor window is now fully click-through (Color Key + LWA_ALPHA + WS_EX_TRANSPARENT).")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
 
