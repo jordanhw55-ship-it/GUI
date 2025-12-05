@@ -1354,6 +1354,7 @@ class BorderManager:
         self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
     def _render_border_image(self, logical_size, render_size, shape_form="rect", path_data=None, is_segmented=False, relative_to=(0,0)):
+        border_image = None # Initialize border_image
         if not border_image: return
 
         # 5. Create the new component with the correct world coordinates
