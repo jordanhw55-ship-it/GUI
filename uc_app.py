@@ -53,6 +53,7 @@ class ImageEditorApp:
         self.selected_component_tag = None
         self.tile_eraser_mode_active = False # NEW: For the tile eraser tool
         self.pre_move_state = {} # NEW: To store component positions before a move
+        self.smart_border_mode_active = False # NEW: For the smart border tool
         
         self.resize_selector_buttons = {} # NEW: To hold references to the resize tab buttons
         # --- NEW: Painting Feature State ---
@@ -144,6 +145,8 @@ class ImageEditorApp:
                 self.paint_manager.paint_on_canvas(event)
             if self.paint_manager.universal_eraser_mode_active:
                 self.paint_manager.erase_on_components(event)
+            if self.border_manager.is_drawing:
+                self.border_manager.on_mouse_drag(event)
         self.canvas.bind("<B1-Motion>", on_drag)
 
         # --- PREVIEW LAYOUT COORDINATES ---
@@ -361,6 +364,11 @@ class ImageEditorApp:
                 return
             self.delete_component(comp.tag)
             return # Stop further processing
+        
+        # --- NEW: Handle Smart Border Tool ---
+        if self.smart_border_mode_active:
+            self.border_manager.on_mouse_down(event)
+            return # Stop further processing
 
         if comp.is_dock_asset:
             # This is a click on a dock asset, which creates a clone.
@@ -430,6 +438,11 @@ class ImageEditorApp:
             comp = self.components.get(self.dragged_item_tag)
             if comp:
                 print(f"[DEBUG] Released '{comp.tag}' | Screen: ({event.x}, {event.y}) | New World TL: ({int(comp.world_x1)}, {int(comp.world_y1)})")
+        
+        # --- NEW: Handle Smart Border Tool ---
+        if self.smart_border_mode_active:
+            self.border_manager.on_mouse_up(event)
+
         self.dragged_item_tag = None
 
         # --- NEW: Finalize move operation for undo ---

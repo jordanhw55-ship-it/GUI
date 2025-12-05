@@ -13,6 +13,7 @@ class UIManager:
         self.paint_toggle_btn = None
         self.eraser_toggle_btn = None
         self.border_tab = None # NEW: To hold a reference to the border tab widget
+        self.smart_border_btn = None # NEW: For the smart border tool
         self.notebook = None # NEW: To hold a reference to the main notebook
 
     def create_canvas(self):
@@ -349,6 +350,39 @@ class UIManager:
 
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
+
+        # --- NEW: Smart Border Tool Section ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="SMART BORDER TOOL", **label_style).pack(fill='x')
+
+        self.smart_border_btn = tk.Button(tab, text="Smart Border Tool", bg='#0e7490', fg='white', relief='flat', font=button_font, command=manager.toggle_smart_border_mode)
+        self.smart_border_btn.pack(fill='x', padx=10, pady=5)
+
+        smart_controls_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        smart_controls_frame.pack(fill='x')
+        smart_controls_frame.grid_columnconfigure(1, weight=1)
+
+        # Draw/Erase Toggle
+        tk.Checkbutton(smart_controls_frame, text="Erase Points", variable=manager.is_erasing_points,
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
+                        ).grid(row=0, column=0, columnspan=2, sticky='w', pady=2)
+
+        # Brush Size
+        tk.Label(smart_controls_frame, text="Brush Size:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
+        tk.Scale(smart_controls_frame, from_=5, to=50, orient=tk.HORIZONTAL, variable=manager.smart_brush_radius, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=1, column=1, sticky='ew', padx=5)
+
+        # Sensitivity
+        tk.Label(smart_controls_frame, text="Sensitivity:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
+        tk.Scale(smart_controls_frame, from_=10, to=100, orient=tk.HORIZONTAL, variable=manager.smart_diff_threshold, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
+
+        # Draw Skip
+        tk.Label(smart_controls_frame, text="Draw Skip:", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
+        tk.Scale(smart_controls_frame, from_=1, to=15, orient=tk.HORIZONTAL, variable=manager.smart_draw_skip, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=3, column=1, sticky='ew', padx=5)
+
+        smart_action_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        smart_action_frame.pack(fill='x')
+        tk.Button(smart_action_frame, text="Finalize Border", bg='#10b981', fg='white', relief='flat', font=button_font, command=manager.finalize_border).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(smart_action_frame, text="Clear Points", bg='#ef4444', fg='white', relief='flat', font=button_font, command=manager.clear_detected_points).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}

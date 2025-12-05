@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import colorchooser, messagebox, simpledialog
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
-import numpy as np
+import math
 import os
 
 
@@ -13,6 +13,20 @@ class BorderManager:
         self.app = app
         self.canvas = app.canvas
         self.next_border_id = 0
+
+        # --- NEW: Smart Border Tool State ---
+        self.is_drawing = False # Flag for active mouse drag
+        self.is_erasing_points = tk.BooleanVar(value=False)
+        self.raw_border_points = [] # Stores (x, y) tuples in original image coordinates
+        self.highlight_oval_ids = [] # Stores canvas IDs for the highlight points
+        self.last_drawn_x = -1
+        self.last_drawn_y = -1
+        self.redraw_scheduled = False
+        self.smart_brush_radius = tk.IntVar(value=15)
+        self.smart_diff_threshold = tk.IntVar(value=50)
+        self.smart_draw_skip = tk.IntVar(value=5)
+        self.active_detection_image = None # The PIL image being processed
+
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
         # --- UI-related state variables ---
@@ -23,6 +37,7 @@ class BorderManager:
         self.border_feather = tk.IntVar(value=0)
         self.preview_tk_images = [] # DEFINITIVE FIX: Hold multiple PhotoImage objects
         self.border_growth_direction = tk.StringVar(value="in") # NEW: 'in' or 'out'
+        self.REDRAW_THROTTLE_MS = 50 # For smart border tool
 
         # --- Preset Definitions ---
         # A dictionary where each key is a preset name.
@@ -615,3 +630,228 @@ class BorderManager:
             self.canvas.delete("border_preview")
             self.preview_rect_ids.clear()
             self.preview_tk_images.clear()
+
+    # --- NEW: Smart Border Tool Methods ---
+
+    def toggle_smart_border_mode(self):
+        """Activates or deactivates the smart border detection tool."""
+        self.app.smart_border_mode_active = not self.app.smart_border_mode_active
+
+        if self.app.smart_border_mode_active:
+            # Find the top-most, non-decal, non-dock image under the mouse or in the center of the view
+            target_comp = self._find_image_for_detection()
+            if not target_comp or not target_comp.original_pil_image:
+                messagebox.showwarning("No Image", "Could not find a suitable image layer to analyze. Make sure an image is visible.")
+                self.app.smart_border_mode_active = False
+                return
+
+            self.active_detection_image = target_comp.original_pil_image.copy()
+            self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
+            self.canvas.config(cursor="crosshair")
+            print(f"Smart Border mode ENABLED. Analyzing image from '{target_comp.tag}'.")
+        else:
+            self.active_detection_image = None
+            self.clear_detected_points()
+            self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
+            self.canvas.config(cursor="")
+            print("Smart Border mode DISABLED.")
+
+    def _find_image_for_detection(self):
+        """Finds a suitable component to use for border detection."""
+        # For simplicity, we'll use the currently selected component.
+        if self.app.selected_component_tag:
+            comp = self.app.components.get(self.app.selected_component_tag)
+            if comp and comp.original_pil_image:
+                return comp
+        
+        # Fallback: find the top-most visible component with an image
+        for item_id in reversed(self.canvas.find_all()):
+            tags = self.canvas.gettags(item_id)
+            if not tags: continue
+            comp = self.app.components.get(tags[0])
+            if comp and comp.original_pil_image and not comp.is_decal and not comp.is_dock_asset:
+                return comp
+        return None
+
+    def on_mouse_down(self, event):
+        """Handles the start of a drawing or erasing stroke."""
+        if not self.app.smart_border_mode_active or not self.active_detection_image:
+            return
+
+        self.is_drawing = True
+        self.last_drawn_x, self.last_drawn_y = event.x, event.y
+
+        if self.is_erasing_points.get():
+            self._process_erasure_at_point(event)
+        else:
+            self._process_detection_at_point(event)
+
+    def on_mouse_drag(self, event):
+        """Handles continuous drawing or erasing."""
+        if not self.is_drawing: return
+
+        draw_skip = self.smart_draw_skip.get()
+        distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
+        if distance < draw_skip:
+            return
+
+        self.last_drawn_x, self.last_drawn_y = event.x, event.y
+
+        if self.is_erasing_points.get():
+            self._process_erasure_at_point(event, defer_redraw=True)
+        else:
+            self._process_detection_at_point(event, defer_redraw=True)
+
+        if not self.redraw_scheduled:
+            self.redraw_scheduled = True
+            self.app.master.after(self.REDRAW_THROTTLE_MS, self._deferred_redraw)
+
+    def on_mouse_up(self, event):
+        """Finalizes a drawing or erasing stroke."""
+        self.is_drawing = False
+        if self.redraw_scheduled:
+            self.app.master.after_cancel(self._deferred_redraw)
+        self._deferred_redraw()
+
+    def _deferred_redraw(self):
+        """Redraws the highlight points after a throttle delay."""
+        if not self.app.winfo_exists(): return
+        self._update_highlights()
+        self.redraw_scheduled = False
+
+    def _process_detection_at_point(self, event, defer_redraw=False):
+        """The core logic to detect border points under the brush."""
+        brush_radius = self.smart_brush_radius.get()
+        diff_threshold = self.smart_diff_threshold.get()
+        img = self.active_detection_image
+        if not img: return
+
+        world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
+
+        # For this tool, we assume the image is at world coordinates (0,0) for analysis
+        # This is a simplification. A more robust solution would map world->image coords.
+        img_x_center, img_y_center = int(world_x), int(world_y)
+
+        newly_detected_raw_coords = set()
+        for dx in range(-brush_radius, brush_radius + 1):
+            for dy in range(-brush_radius, brush_radius + 1):
+                x, y = img_x_center + dx, img_y_center + dy
+
+                if 0 <= x < img.width and 0 <= y < img.height:
+                    try:
+                        current_pixel = img.getpixel((x, y))
+                        is_edge = False
+                        for nx in [-1, 0, 1]:
+                            for ny in [-1, 0, 1]:
+                                if nx == 0 and ny == 0: continue
+                                neighbor_x, neighbor_y = x + nx, y + ny
+                                if 0 <= neighbor_x < img.width and 0 <= neighbor_y < img.height:
+                                    neighbor_pixel = img.getpixel((neighbor_x, neighbor_y))
+                                    alpha_diff = abs(current_pixel[3] - neighbor_pixel[3])
+                                    if alpha_diff > 200: # Strong alpha change is a definite edge
+                                        is_edge = True
+                                        break
+                            if is_edge: break
+                        if is_edge:
+                            newly_detected_raw_coords.add((x, y))
+                    except IndexError:
+                        continue
+
+        for point in newly_detected_raw_coords:
+            if point not in self.raw_border_points:
+                self.raw_border_points.append(point)
+
+        if not defer_redraw:
+            self._update_highlights()
+
+    def _process_erasure_at_point(self, event, defer_redraw=False):
+        """Erases detected points under the brush."""
+        if not self.raw_border_points: return
+
+        brush_radius_world = self.smart_brush_radius.get() / self.app.camera.zoom_scale
+        erase_cx, erase_cy = self.app.camera.screen_to_world(event.x, event.y)
+
+        new_points = []
+        for p_x, p_y in self.raw_border_points:
+            dist_sq = (p_x - erase_cx)**2 + (p_y - erase_cy)**2
+            if dist_sq > brush_radius_world**2:
+                new_points.append((p_x, p_y))
+        
+        self.raw_border_points = new_points
+
+        if not defer_redraw:
+            self._update_highlights()
+
+    def _update_highlights(self):
+        """Redraws all highlight ovals on the main canvas."""
+        for oval_id in self.highlight_oval_ids:
+            self.canvas.delete(oval_id)
+        self.highlight_oval_ids.clear()
+
+        for raw_x, raw_y in self.raw_border_points:
+            sx, sy = self.app.camera.world_to_screen(raw_x, raw_y)
+            oval_id = self.canvas.create_oval(sx, sy, sx + 2, sy + 2, fill="cyan", outline="", tags="smart_border_highlight")
+            self.highlight_oval_ids.append(oval_id)
+
+    def clear_detected_points(self):
+        """Clears all detected points and their highlights."""
+        self.raw_border_points.clear()
+        self._update_highlights()
+        print("Cleared all detected border points.")
+
+    def finalize_border(self):
+        """Creates a new component from the detected border points."""
+        if not self.raw_border_points:
+            messagebox.showwarning("No Points", "No border points have been detected to finalize.")
+            return
+
+        # Find the bounding box of the points
+        min_x = min(p[0] for p in self.raw_border_points)
+        min_y = min(p[1] for p in self.raw_border_points)
+        max_x = max(p[0] for p in self.raw_border_points)
+        max_y = max(p[1] for p in self.raw_border_points)
+
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+
+        if width <= 0 or height <= 0:
+            messagebox.showerror("Error", "Could not create border from points (invalid size).")
+            return
+
+        # Create a new PIL image for the border
+        border_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        
+        # Get the selected texture
+        style = self.selected_style.get()
+        texture = self.border_textures.get(style)
+        if not texture:
+            messagebox.showerror("Error", f"Texture '{style}' not found.")
+            return
+
+        # Draw each point onto the new image, sampling from the texture
+        for p_x, p_y in self.raw_border_points:
+            # Translate point to be relative to the new image's top-left
+            img_x, img_y = p_x - min_x, p_y - min_y
+            # Get color from tiled texture
+            tex_x = img_x % texture.width
+            tex_y = img_y % texture.height
+            color = texture.getpixel((tex_x, tex_y))
+            border_image.putpixel((img_x, img_y), color)
+
+        # Create a new DraggableComponent for the border
+        border_tag = f"smart_border_{self.next_border_id}"
+        self.next_border_id += 1
+        
+        # The component's world coordinates are the bounding box of the points
+        border_comp = DraggableComponent(self.app, border_tag, min_x, min_y, max_x, max_y, "blue", "BORDER")
+        border_comp.is_draggable = True # Make it draggable
+        border_comp.set_image(border_image)
+
+        self.app.components[border_tag] = border_comp
+        self.app._bind_component_events(border_tag)
+        self.app.canvas.tag_raise(border_tag)
+        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+
+        # Clean up and exit smart mode
+        self.toggle_smart_border_mode()
+        messagebox.showinfo("Success", f"Created new border component: {border_tag}")
