@@ -165,19 +165,19 @@ class SmartBorderManager:
 
     def on_mouse_drag(self, event):
         """Handles continuous drawing or erasing."""
-        self._update_canvas_brush_position(event)
-
         if not self.highlight_layer_id:
             self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, tags=("smart_border_highlight_layer",))
             self.canvas.tag_lower(self.highlight_layer_id)
 
         if not self.is_drawing: return
+
+        # 1. Update the simple brush cursor (FAST)
+        self._update_canvas_brush_position(event)
+
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
         if distance < draw_skip:
-            return
-
-        self.last_drawn_x, self.last_drawn_y = event.x, event.y
+            return # Skip processing if the mouse hasn't moved enough
 
         if self.is_erasing_points.get():
             self._process_erasure_at_point(event, defer_redraw=True)
@@ -185,8 +185,10 @@ class SmartBorderManager:
             self._process_detection_at_point(event, defer_redraw=True)
 
         if not self.redraw_scheduled:
-            self.redraw_scheduled = True
-            self.app.master.after(self.REDRAW_THROTTLE_MS, self._deferred_redraw)
+            self._schedule_redraw()
+
+        # Update the last drawn position *after* processing
+        self.last_drawn_x, self.last_drawn_y = event.x, event.y
 
     def on_mouse_up(self, event):
         """Finalizes a drawing or erasing stroke."""
@@ -194,7 +196,7 @@ class SmartBorderManager:
         print("[DEBUG] Smart Border: Mouse Up")
         if self.redraw_scheduled:
             self.app.master.after_cancel(self._deferred_redraw)
-        self._deferred_redraw()
+        self._perform_throttled_redraw()
 
     def on_preview_down(self, event):
         """Starts erasure in the zoomed preview."""
@@ -207,14 +209,13 @@ class SmartBorderManager:
         self._process_preview_erasure(event, defer_redraw=True)
 
         if not self.redraw_scheduled:
-            self.redraw_scheduled = True
-            self.app.master.after(self.REDRAW_THROTTLE_MS, self._deferred_redraw)
+            self._schedule_redraw()
 
     def on_preview_up(self, event):
         """Ensures final state is immediately drawn after preview dragging stops."""
         if self.redraw_scheduled:
             self.app.master.after_cancel(self._deferred_redraw)
-        self._deferred_redraw()
+        self._perform_throttled_redraw()
 
     def on_preview_leave(self, event):
         """Hides the cursor when the mouse leaves the preview canvas."""
@@ -225,11 +226,19 @@ class SmartBorderManager:
         """Updates the preview cursor position."""
         self._update_preview_cursor(event)
 
-    def _deferred_redraw(self):
+    def _schedule_redraw(self):
+        """Schedules a redraw only if one isn't already pending."""
+        if self.redraw_scheduled:
+            return
+        self.redraw_scheduled = True
+        self.app.master.after(self.REDRAW_THROTTLE_MS, self._perform_throttled_redraw)
+
+    def _perform_throttled_redraw(self):
         """Redraws the highlight points after a throttle delay."""
         if not self.app.master.winfo_exists(): return
-        self._update_highlights() 
-        self.redraw_scheduled = False
+        if self.is_drawing:
+            self._update_highlights()
+        self.redraw_scheduled = False # Allow the next redraw to be scheduled
 
     def _process_detection_at_point(self, event, defer_redraw=False):
         """The core logic to detect border points under the brush."""
