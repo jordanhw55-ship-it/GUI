@@ -773,9 +773,20 @@ class BorderManager:
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
 
-        # --- FIX: Translate world coordinates to the component's local image coordinates ---
-        img_x_center = int(world_x - comp.world_x1)
-        img_y_center = int(world_y - comp.world_y1)
+        # --- DEFINITIVE FIX for non-uniform scaling ---
+        # 1. Calculate the component's size in world units.
+        world_w = comp.world_x2 - comp.world_x1
+        world_h = comp.world_y2 - comp.world_y1
+        if world_w <= 0 or world_h <= 0: return
+
+        # 2. Calculate the scaling factor between the world size and the original image's pixel size.
+        # This tells us how many pixels are in each world unit.
+        scale_x = img.width / world_w
+        scale_y = img.height / world_h
+
+        # 3. Convert the mouse's world position to the component's local image coordinates.
+        img_x_center = int((world_x - comp.world_x1) * scale_x)
+        img_y_center = int((world_y - comp.world_y1) * scale_y)
 
         newly_detected_raw_coords = set()
         for dx in range(-brush_radius, brush_radius + 1):
@@ -798,8 +809,10 @@ class BorderManager:
                                         break
                             if is_edge: break
                         if is_edge:
-                            # Store points in WORLD coordinates
-                            newly_detected_raw_coords.add((x + comp.world_x1, y + comp.world_y1))
+                            # 4. Convert the detected local image coordinate (x, y) back to WORLD coordinates for storage.
+                            point_world_x = (x / scale_x) + comp.world_x1
+                            point_world_y = (y / scale_y) + comp.world_y1
+                            newly_detected_raw_coords.add((point_world_x, point_world_y))
                     except IndexError:
                         continue
 
