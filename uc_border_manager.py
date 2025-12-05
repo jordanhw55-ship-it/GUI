@@ -1066,12 +1066,18 @@ class BorderManager:
         # This resolves issues where Tcl holds a lock even after 'unconfig'.
         # This is CRITICAL for Tkinter/Tcl to correctly parse the file path.
         self._delete_brush_cursor_files()
+
+        # --- FIX for NameError: 'radius' is not defined ---
+        # Get the current brush radius from the UI control.
+        radius = self.smart_brush_radius.get()
+        is_erasing = self.is_erasing_points.get()
+        # Use the provided color, or determine it from the erase mode.
+        final_color = color if color is not None else ("red" if is_erasing else "cyan")
         
         # The size of the cursor bitmap, with padding
         size = radius * 2 + 2
         
         # 2. GENERATE AND CONVERT CURSOR IMAGE
-        # Create a new blank, transparent RGBA image to draw on.
         cursor_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(cursor_img)
         # Draw a white circle for the cursor shape.
@@ -1080,6 +1086,10 @@ class BorderManager:
         # 3. CRITICAL: CONVERT TO MODE '1' FOR XBM SAVING
         # XBM format requires a binary (1-bit per pixel) image mode.
         cursor_bitmap = cursor_img.convert('1')
+        
+        # Define file paths for the temporary cursor files
+        self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
+        self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
         
         # 4. SAVE THE FILES
         try:
@@ -1105,7 +1115,7 @@ class BorderManager:
         cursor_path_tcl = cursor_path.replace('\\', '/')
         mask_path_tcl = mask_path.replace('\\', '/')
 
-        cursor_spec = f"@{'{'}{cursor_path_tcl}{'}'} {'{'}{mask_path_tcl}{'}'} {color}"
+        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {final_color}"
         
         # This should now succeed if the file is correctly generated and the lock released
         self.canvas.config(cursor=cursor_spec)
