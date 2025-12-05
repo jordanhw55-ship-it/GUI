@@ -431,6 +431,13 @@ class ImageEditorApp:
         """Handles drag events for the currently pressed component."""
         if not self.dragged_item_tag: return
 
+        # --- DEFINITIVE FIX: Prevent component drag logic from running during a paint stroke ---
+        # If any paint tool is active, the generic drag handler is responsible for routing
+        # the event to the paint manager. We must exit here to prevent this function from
+        # interfering with the paint tool's coordinate tracking.
+        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            return
+
         comp = self.components.get(self.dragged_item_tag)
         if not comp or not comp.is_draggable or (self.is_group_dragging and not comp.is_decal) or comp.is_dock_asset:
             return
