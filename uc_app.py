@@ -386,7 +386,7 @@ class ImageEditorApp:
             # Dock asset logic is handled by the dock canvas, not here.
             return
 
-    print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
+        print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
         self.dragged_item_tag = comp_tag
         self.last_drag_x = event.x
         self.last_drag_y = event.y
