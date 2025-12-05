@@ -116,6 +116,9 @@ class SmartBorderManager:
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
             self.canvas.config(cursor="none")
+            # --- FIX: Explicitly bind B1-Motion to the smart manager's drag handler ---
+            # This ensures that dragging to draw works correctly with the transparent cursor window.
+            self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
             self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke) # This might be redundant with app-level binding
             self._create_canvas_brush_cursor()
 
@@ -135,6 +138,9 @@ class SmartBorderManager:
             if self.on_mouse_move_binding_id:
                 print("[DEBUG] Smart Border: Unbinding <Motion>.")
                 self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
+            # --- FIX: Unbind the specific drag handler for this tool ---
+            print("[DEBUG] Smart Border: Unbinding <B1-Motion>.")
+            self.canvas.unbind("<B1-Motion>")
             if self.on_mouse_down_binding_id:
                 print("[DEBUG] Smart Border: Unbinding <Button-1>.")
                 self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
@@ -157,9 +163,6 @@ class SmartBorderManager:
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             print("[DEBUG] Smart Border: Unbinding <ButtonRelease-1>.")
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
-        # --- FIX: Unbind the drag event to prevent lingering handlers ---
-        self.canvas.unbind("<B1-Motion>")
-        print("[DEBUG] Smart Border: Unbinding <B1-Motion>.")
 
     def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
