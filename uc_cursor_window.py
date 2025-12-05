@@ -52,9 +52,14 @@ class CursorWindow:
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
         self.tk_image = None
         
-        # 3. CRITICAL CLICK-THROUGH FIX: Bindings to stop the Canvas from capturing mouse events.
+        # 3. CRITICAL CLICK-THROUGH FIX: Bindings to stop the Canvas/Window from capturing mouse events.
+        # Stop internal Canvas events
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
+        
+        # NEW: Stop internal Toplevel window events as a final safety measure
+        self.window.bind("<Button>", lambda e: "break")
+        self.window.bind("<ButtonRelease>", lambda e: "break")
 
 
     def _make_click_through(self):
@@ -62,17 +67,30 @@ class CursorWindow:
         [DEFINITIVE FIX] Uses Color Key + WS_EX_TRANSPARENT.
         LWA_COLORKEY handles visual transparency of the background.
         WS_EX_TRANSPARENT ensures the visible (opaque) cursor circle is click-through.
+        Includes logging for debugging the style change.
         """
         if not self.window.winfo_exists(): return
 
         try:
             hwnd = self.window.winfo_id()
+            
+            # --- DEBUG STEP 1: Log initial style ---
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            print(f"[DEBUG] Initial EXSTYLE: {hex(styles)}")
             
             # 1. Add WS_EX_LAYERED (required for LWA_COLORKEY) AND WS_EX_TRANSPARENT (for click-through)
-            styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT 
+            TARGET_STYLES = win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+            styles |= TARGET_STYLES
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
             
+            # --- DEBUG STEP 2: Log style after setting ---
+            new_styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            print(f"[DEBUG] New EXSTYLE: {hex(new_styles)}")
+            if (new_styles & TARGET_STYLES) == TARGET_STYLES:
+                print(f"[DEBUG] Successfully set WS_EX_LAYERED and WS_EX_TRANSPARENT.")
+            else:
+                print(f"[ERROR] Failed to set all target styles! Missing: {hex(TARGET_STYLES & ~new_styles)}")
+
             # 2. Apply LWA_COLORKEY. This makes the background color (#abcdef) visually transparent.
             color_key = win32api.RGB(self.R, self.G, self.B)
             win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
