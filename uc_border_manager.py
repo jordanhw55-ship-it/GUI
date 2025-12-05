@@ -707,6 +707,10 @@ class BorderManager:
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.canvas.config(cursor="crosshair")
             
+            # --- DEFINITIVE FIX: Bind mouse events only when the tool is activated ---
+            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.on_mouse_down)
+            self.on_mouse_drag_binding_id = self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+            self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
             if self.highlight_layer_id is None:
                 self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, state='normal', tags="smart_border_highlight_layer")
 
@@ -716,11 +720,10 @@ class BorderManager:
             self.clear_detected_points()
             self.active_detection_component = None # Clear the component reference
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
-            self.canvas.config(cursor="")
-            print("Smart Border mode DISABLED.")
-            # Reset offsets
+            self.canvas.config(cursor="") # type: ignore
 
             # --- DEFINITIVE FIX: Unbind mouse events when the tool is turned off ---
+            # This is the crucial step to allow the tool to be re-enabled correctly.
             self._cleanup_drawing_bindings()
 
             self.composite_x_offset = 0
@@ -735,6 +738,7 @@ class BorderManager:
             self.highlight_layer_image = None
             self.highlight_layer_tk = None
 
+            print("Smart Border mode DISABLED and all states reset.")
 
             self._hide_brush_cursor() # NEW: Hide the cursor when disabling
 
@@ -765,9 +769,14 @@ class BorderManager:
 
     def _cleanup_drawing_bindings(self):
         """Removes all temporary event bindings used by the smart border tool."""
-        self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
-        self.canvas.unbind("<B1-Motion>", self.on_mouse_drag_binding_id)
-        self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
+        # --- DEFINITIVE FIX: Check for binding ID existence before unbinding ---
+        # This prevents errors if the bindings were never created.
+        if hasattr(self, 'on_mouse_down_binding_id') and self.on_mouse_down_binding_id:
+            self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
+        if hasattr(self, 'on_mouse_drag_binding_id') and self.on_mouse_drag_binding_id:
+            self.canvas.unbind("<B1-Motion>", self.on_mouse_drag_binding_id)
+        if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
+            self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
 
     def on_mouse_down(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -775,6 +784,7 @@ class BorderManager:
             return
 
         self.is_drawing = True
+        print("[DEBUG] Smart Border: Mouse Down")
         self.last_drawn_x, self.last_drawn_y = event.x, event.y
         self._update_brush_cursor(event) # NEW: Update cursor on mouse down
 
@@ -807,6 +817,7 @@ class BorderManager:
     def on_mouse_up(self, event):
         """Finalizes a drawing or erasing stroke."""
         self.is_drawing = False
+        print("[DEBUG] Smart Border: Mouse Up")
         if self.redraw_scheduled:
             self.app.master.after_cancel(self._deferred_redraw)
         self._deferred_redraw()
@@ -1110,29 +1121,11 @@ class BorderManager:
         self.app.canvas.tag_raise(border_tag)
         self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
-        # ----------------------------------------------------------------------
-        # >>> DEFINITIVE CRASH & HANG PREVENTION FIX BLOCK <<<
-        # ----------------------------------------------------------------------
-        # This block performs a full and immediate cleanup of all temporary state,
-        # canvas objects, and event bindings to prevent the tool from failing on
-        # subsequent uses.
-
-        # 1. Clean up temporary canvas elements (CRITICAL)
-        self._hide_brush_cursor()
-        if self.highlight_layer_id:
-            self.canvas.itemconfig(self.highlight_layer_id, state='hidden')
-
-        # 2. Clean up state variables and bindings
-        self.active_detection_image = None
-        self.active_detection_component = None
-        self.raw_border_points.clear()
-        self.highlight_layer_image = None
-        self.highlight_layer_tk = None
-
-        # 3. Clean up event bindings and mode flag (CRITICAL)
-        self._cleanup_drawing_bindings()
-        self.app.smart_border_mode_active = False
-        self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
-        self.app.canvas.config(cursor="") # Revert cursor
+        # --- DEFINITIVE FIX for CRASH & HANG PREVENTION ---
+        # Call the centralized toggle_smart_border_mode function to perform a full
+        # and immediate cleanup of all temporary state, canvas objects, and event bindings.
+        # This ensures the state is fully reset before the user can interact with the UI again.
+        print("[DEBUG] Finalizing border, initiating cleanup...")
+        self.toggle_smart_border_mode()
 
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
