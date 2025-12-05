@@ -462,3 +462,64 @@ class SmartBorderManager:
         
         # Just call the style redraw function
         self._redraw_cursor_image_style()
+
+    def toggle_preview_selection_mode(self):
+        """Activates the mode to select an area on the main canvas for previewing."""
+        if not self.app.smart_border_mode_active:
+            messagebox.showwarning("Tool Inactive", "The Smart Border tool must be active to select a preview area.")
+            return
+
+        self.is_selecting_preview_area = True
+        self.canvas.config(cursor="crosshair")
+
+        # Unbind the generic drag handler to prevent conflicts
+        self.canvas.unbind("<B1-Motion>")
+
+        # Bind the specific selection events
+        self.canvas.bind("<Button-1>", self._on_preview_selection_press)
+        self.canvas.bind("<B1-Motion>", self._on_preview_selection_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_preview_selection_release)
+        print("[DEBUG] Preview selection mode ACTIVATED.")
+
+    def _on_preview_selection_press(self, event):
+        """Handles the start of dragging a selection box on the main canvas."""
+        if not self.is_selecting_preview_area: return
+
+        self.preview_selection_start_x = event.x
+        self.preview_selection_start_y = event.y
+
+        if self.preview_selection_rect_id:
+            self.canvas.delete(self.preview_selection_rect_id)
+
+        self.preview_selection_rect_id = self.canvas.create_rectangle(
+            event.x, event.y, event.x, event.y,
+            outline="yellow", dash=(5, 3), width=2
+        )
+
+    def _on_preview_selection_drag(self, event):
+        """Updates the selection box as the user drags the mouse."""
+        if not self.is_selecting_preview_area or not self.preview_selection_rect_id: return
+        self.canvas.coords(self.preview_selection_rect_id, self.preview_selection_start_x, self.preview_selection_start_y, event.x, event.y)
+
+    def _on_preview_selection_release(self, event):
+        """Finalizes the selection, captures the area, and updates the preview."""
+        if not self.is_selecting_preview_area: return
+
+        sx1, sy1 = self.preview_selection_start_x, self.preview_selection_start_y
+        sx2, sy2 = event.x, event.y
+        wx1, wy1 = self.app.camera.screen_to_world(sx1, sy1)
+        wx2, wy2 = self.app.camera.screen_to_world(sx2, sy2)
+
+        self.preview_area_world_coords = (min(wx1, wx2), min(wy1, wy2), max(wx1, wx2), max(wy1, wy2))
+
+        self.canvas.delete(self.preview_selection_rect_id)
+        self.preview_selection_rect_id = None
+        self.is_selecting_preview_area = False
+        self.canvas.config(cursor="none") # Revert to the smart border cursor
+
+        # Re-bind the generic drag handler and the initial click handler
+        self.app.bind_generic_drag_handler()
+        self.canvas.bind("<Button-1>", self.start_drawing_stroke)
+
+        self.update_preview_canvas()
+        print(f"[DEBUG] Preview selection mode DEACTIVATED. Area captured: {self.preview_area_world_coords}")
