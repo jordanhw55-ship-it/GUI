@@ -936,40 +936,61 @@ class ImageEditorApp:
         aids like selection highlights and tool previews.
         """
         self._update_selection_highlight()
-            
+
+        # --- OPTIMIZATION: Redraw smart border highlights using a cached world-space image ---
         if self.smart_border_mode_active and self.border_manager.smart_manager.highlight_layer_id:
             bm = self.border_manager.smart_manager
+            zoom_changed = bm.last_known_zoom != zoom_scale
 
-            if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
-                bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+            # 1. Re-render the world-space cache if points were added/removed or zoom changed.
+            if bm.highlights_are_dirty or zoom_changed:
+                if bm.raw_border_points:
+                    # Find the bounding box of all points in world coordinates
+                    min_x = min(p[0] for p in bm.raw_border_points)
+                    min_y = min(p[1] for p in bm.raw_border_points)
+                    max_x = max(p[0] for p in bm.raw_border_points)
+                    max_y = max(p[1] for p in bm.raw_border_points)
+                    bm.highlight_world_bounds = (min_x, min_y, max_x, max_y)
+
+                    # Create the world image, scaled by the current zoom
+                    world_img_w = int((max_x - min_x) * zoom_scale)
+                    world_img_h = int((max_y - min_y) * zoom_scale)
+
+                    if world_img_w > 0 and world_img_h > 0:
+                        bm.highlight_world_image = Image.new("RGBA", (world_img_w, world_img_h), (0,0,0,0))
+                        draw = ImageDraw.Draw(bm.highlight_world_image)
+                        # Translate each point from world space to local image space and draw it
+                        points_to_draw = [
+                            (int((p[0] - min_x) * zoom_scale), int((p[1] - min_y) * zoom_scale))
+                            for p in bm.raw_border_points
+                        ]
+                        draw.point(points_to_draw, fill=bm.highlight_color)
+                else:
+                    bm.highlight_world_image = None
+                    bm.highlight_world_bounds = None
+
+                bm.highlights_are_dirty = False
+                bm.last_known_zoom = zoom_scale
+
+            # 2. Draw the (now cached) world image onto the canvas.
+            if bm.highlight_world_image and bm.highlight_world_bounds:
+                # Find the top-left screen coordinate of the cached world image
+                sx, sy = self.camera.world_to_screen(bm.highlight_world_bounds[0], bm.highlight_world_bounds[1])
+
+                # Create or update the PhotoImage and canvas item
+                if bm.highlight_layer_tk is None:
+                    bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_world_image)
+                    self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk, state='normal')
+                else:
+                    # The 'paste' method is much faster than creating a new PhotoImage object
+                    bm.highlight_layer_tk.paste(bm.highlight_world_image)
+
+                self.canvas.coords(bm.highlight_layer_id, sx, sy)
             else:
-                bm.highlight_layer_image.paste((0,0,0,0), [0,0,canvas_w,canvas_h])
+                # If there are no points, hide the canvas item
+                self.canvas.itemconfigure(bm.highlight_layer_id, state='hidden')
 
-            if bm.highlight_layer_tk is None:
-                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
-                self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk)
-
-            if bm.raw_border_points:
-                # --- OPTIMIZATION: Use the Quadtree to get visible points ---
-                visible_points = []
-                query_range = (view_wx1, view_wy1, view_wx2 - view_wx1, view_wy2 - view_wy1)
-                if bm.points_quadtree:
-                    bm.points_quadtree.query(query_range, visible_points)
-                else: # Fallback for safety
-                    visible_points = [p for p in bm.raw_border_points if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2]
-
-                if visible_points:
-                    screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_points]
-                    if NUMPY_AVAILABLE:
-                        highlight_array = np.array(bm.highlight_layer_image)
-                        screen_y, screen_x = zip(*[(int(y), int(x)) for x, y in screen_points if 0 <= x < canvas_w and 0 <= y < canvas_h])
-                        if screen_x:
-                            highlight_array[screen_y, screen_x] = bm.highlight_color
-                            bm.highlight_layer_image = Image.fromarray(highlight_array)
-                    else:
-                        ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
-
-            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
+            # Ensure the layer is positioned correctly
             self.canvas.coords(bm.highlight_layer_id, 0, 0)
             self.canvas.tag_raise(bm.highlight_layer_id)
 

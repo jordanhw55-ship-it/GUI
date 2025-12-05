@@ -325,6 +325,7 @@ class SmartBorderManager:
                 self.raw_border_points.add(p)
                 if self.points_quadtree:
                     self.points_quadtree.insert(p)
+        self.highlights_are_dirty = True # Mark cache as dirty
 
         if not defer_redraw:
             self._update_highlights()
@@ -342,6 +343,7 @@ class SmartBorderManager:
             self.raw_border_points.difference_update(points_to_remove)
             # Rebuild the Quadtree after a significant removal for simplicity and performance.
             # This is faster than trying to remove individual points from the tree.
+            self.highlights_are_dirty = True # Mark cache as dirty
             self._rebuild_quadtree()
 
         if not defer_redraw:
@@ -374,6 +376,7 @@ class SmartBorderManager:
         
         if points_to_remove:
             self.raw_border_points.difference_update(points_to_remove)
+            self.highlights_are_dirty = True # Mark cache as dirty
             # Rebuild the Quadtree after erasure
             self._rebuild_quadtree()
 
@@ -444,6 +447,7 @@ class SmartBorderManager:
         if self.points_quadtree:
             qtree_boundary = self.points_quadtree.boundary
             self.points_quadtree = Quadtree(qtree_boundary) # Re-initialize it
+        self.highlights_are_dirty = True # Mark cache as dirty
 
         self._update_highlights()
         self.update_preview_canvas()
