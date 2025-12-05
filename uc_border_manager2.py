@@ -58,6 +58,12 @@ class SmartBorderManager:
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
         self.highlight_color = (0, 255, 255, 255) # This is for the detected points, not the cursor
+        # --- FIX: Initialize caching attributes for highlight layer optimization ---
+        self.highlight_world_image = None
+        self.highlight_world_bounds = None
+        self.highlights_are_dirty = True
+        self.last_known_zoom = -1
+
         self.cursor_canvas_id = None # NEW: Replaces brush_cursor_oval_id
         self.on_mouse_move_binding_id = None
         self.REDRAW_THROTTLE_MS = 20 # Reduced for better responsiveness
