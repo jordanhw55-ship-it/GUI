@@ -11,6 +11,7 @@ class UIManager:
         self.border_dock_canvas = None
         self.paint_color_button = None
         self.border_tab = None # NEW: To hold a reference to the border tab widget
+        self.saved_borders_dropdown = None # NEW: To hold the saved borders dropdown
         self.smart_border_btn = None # NEW: For the smart border tool
         self.notebook = None # NEW: To hold a reference to the main notebook
 
@@ -258,6 +259,21 @@ class UIManager:
         spacer_frame = tk.Frame(tab, bg="#374151")
         spacer_frame.pack(fill="both", expand=True)
 
+        # --- NEW: Saved Borders Dropdown ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="SAVED BORDERS", **label_style).pack(fill='x')
+
+        saved_border_frame = tk.Frame(tab, bg="#374151")
+        saved_border_frame.pack(fill='x', padx=10, pady=5)
+
+        self.saved_borders_dropdown = ttk.OptionMenu(
+            saved_border_frame,
+            manager.selected_finalized_border,
+            manager.finalized_border_names[0],
+            *manager.finalized_border_names)
+        self.saved_borders_dropdown.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        tk.Button(saved_border_frame, text="Place Border", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.place_saved_border).pack(side=tk.RIGHT)
+
         # --- NEW: Border Preview Canvas ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
         tk.Label(tab, text="BORDER PREVIEW", **label_style).pack(fill='x')
@@ -316,6 +332,17 @@ class UIManager:
         smart_action_frame.pack(fill='x')
         tk.Button(smart_action_frame, text="Finalize Border", bg='#10b981', fg='white', relief='flat', font=button_font, command=manager.finalize_border).pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
         tk.Button(smart_action_frame, text="Clear Points", bg='#ef4444', fg='white', relief='flat', font=button_font, command=manager.clear_detected_points).pack(side=tk.RIGHT, fill='x', expand=True, padx=(5, 0))
+
+    def update_saved_borders_dropdown(self):
+        """Clears and repopulates the saved borders dropdown menu."""
+        if not self.saved_borders_dropdown:
+            return
+
+        menu = self.saved_borders_dropdown["menu"]
+        menu.delete(0, "end")
+
+        for border_name in self.app.border_manager.finalized_border_names:
+            menu.add_command(label=border_name, command=lambda value=border_name: self.app.border_manager.selected_finalized_border.set(value))
 
     def _populate_filters_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}

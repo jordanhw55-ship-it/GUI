@@ -26,6 +26,11 @@ class BorderManager:
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
         self.preview_tk_images = [] # DEFINITIVE FIX: Hold multiple PhotoImage objects
 
+        # --- NEW: State for finalized smart borders ---
+        self.finalized_borders = {} # Stores tag -> DraggableComponent mapping
+        self.finalized_border_names = ["No saved borders"]
+        self.selected_finalized_border = tk.StringVar(value=self.finalized_border_names[0])
+
         # --- Texture Loading ---
         self.border_textures = {}
         self._load_border_textures()
@@ -173,3 +178,41 @@ class BorderManager:
 
     def finalize_border(self):
         self.smart_manager.finalize_border()
+
+    def add_finalized_border(self, border_component):
+        """Adds a newly created smart border to the manager and updates the UI dropdown."""
+        border_tag = border_component.tag
+        self.finalized_borders[border_tag] = border_component
+
+        # If this is the first border, remove the placeholder text
+        if self.finalized_border_names == ["No saved borders"]:
+            self.finalized_border_names.clear()
+
+        self.finalized_border_names.append(border_tag)
+        self.selected_finalized_border.set(border_tag)
+
+        # Update the OptionMenu in the UI
+        self.app.ui_manager.update_saved_borders_dropdown()
+
+    def place_saved_border(self):
+        """Creates a new clone of the selected saved border and places it on the canvas."""
+        selected_tag = self.selected_finalized_border.get()
+        if not selected_tag or selected_tag == "No saved borders":
+            messagebox.showwarning("No Selection", "Please select a saved border from the dropdown to place.")
+            return
+
+        original_border_comp = self.finalized_borders.get(selected_tag)
+        if not original_border_comp:
+            messagebox.showerror("Error", f"Could not find the original component for '{selected_tag}'.")
+            return
+
+        # Use the ImageManager's cloning logic to create a new instance
+        # We can simulate a click event at the center of the canvas
+        center_x = self.app.canvas.winfo_width() / 2
+        center_y = self.app.canvas.winfo_height() / 2
+        
+        mock_event = tk.Event()
+        mock_event.x, mock_event.y = center_x, center_y
+        
+        self.app.image_manager.create_clone_from_asset(original_border_comp, mock_event)
+        print(f"Placed a new instance of saved border '{selected_tag}'.")

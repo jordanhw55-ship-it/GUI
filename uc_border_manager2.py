@@ -631,4 +631,7 @@ class SmartBorderManager:
         self.clear_detected_points()
         self.toggle_smart_border_mode() # This will clean up bindings and cursors
 
+        # --- NEW: Add the finalized border to the manager and the dropdown ---
+        self.border_manager.add_finalized_border(new_border_comp)
+
         messagebox.showinfo("Border Finalized", f"New border component '{border_tag}' has been created.")
