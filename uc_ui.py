@@ -328,11 +328,9 @@ class UIManager:
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
         button_font = ('Inter', 11, 'bold')
         tk.Label(tab, text="EXPORT CONTROLS", **label_style).pack(fill='x')
-        tk.Button(tab, text="Save Modified PNGs", bg='#10b981', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.app._export_modified_images('png')).pack(fill='x', padx=10, pady=5)
+        tk.Button(tab, text="Save Modified PNGs", bg='#10b981', fg='white', relief='flat', font=button_font, command=lambda: self.app.export_manager.export_images('png')).pack(fill='x', padx=10, pady=5)
         
-        tk.Button(tab, text="Save Modified as DDS", bg='#3b82f6', fg='white', relief='flat', font=button_font,
-                  command=lambda: self.app._export_modified_images('dds')).pack(fill='x', padx=10, pady=(5, 10))
+        tk.Button(tab, text="Save Modified as DDS", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=lambda: self.app.export_manager.export_images('dds')).pack(fill='x', padx=10, pady=(5, 10))
 
         # --- NEW: Checkbox to control export behavior ---
         tk.Checkbutton(tab, text="Export all tiles (not just modified)", variable=self.app.export_all_tiles,
