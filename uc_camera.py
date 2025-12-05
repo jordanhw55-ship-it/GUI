@@ -36,9 +36,6 @@ class Camera:
 
     def on_zoom(self, event):
         """Handles zooming the canvas with Ctrl+MouseWheel."""
-        if self.app.paint_manager.paint_mode_active or self.app.paint_manager.eraser_mode_active:
-            self.app.paint_manager.toggle_paint_mode(tool='off')
-
         if self.zoom_job:
             self.app.master.after_cancel(self.zoom_job)
         self.zoom_job = self.app.master.after(300, lambda: self.app.redraw_all_zoomable(use_fast_preview=False))
@@ -131,9 +128,6 @@ class Camera:
 
     def on_pan_press(self, event):
         """Records the starting position for panning."""
-        if self.app.paint_manager.paint_mode_active or self.app.paint_manager.eraser_mode_active:
-            self.app.paint_manager.toggle_paint_mode(tool='off')
-        
         self.pan_start_x = event.x
         self.pan_start_y = event.y
         self.app.is_group_dragging = True

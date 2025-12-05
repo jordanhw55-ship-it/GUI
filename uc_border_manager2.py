@@ -70,7 +70,6 @@ class SmartBorderManager:
         self.app.smart_border_mode_active = not self.app.smart_border_mode_active
 
         if self.app.smart_border_mode_active:
-            self.app.paint_manager.toggle_paint_mode('off')
             if self.app.tile_eraser_mode_active:
                 self.app.toggle_tile_eraser_mode()
 
