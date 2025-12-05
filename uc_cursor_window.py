@@ -31,6 +31,8 @@ class CursorWindow:
         
         # --- Transparency & Click-Through Setup (Tkinter Part) ---
         # 1. CRITICAL VISUAL FIX: Use Tkinter's transparency attribute for the key color.
+        # Note: This is now mostly redundant/conflicting with the Win32 call below, but left 
+        # for maximum compatibility.
         self.window.wm_attributes("-transparentcolor", self.transparent_color_hex)
         
         # 2. Set the background color of the window to the key color.
@@ -48,26 +50,26 @@ class CursorWindow:
             # The canvas background MUST be the key color for visual transparency.
             bg=self.transparent_color_hex, 
             highlightthickness=0,
-            # AGGRESSIVE FIX: Explicitly disable the canvas to prevent event capturing
-            state='disabled' 
+            # CRITICAL CHANGE: Removing state='disabled' to allow mouse events 
+            # to pass through to the OS correctly, preventing internal Tkinter conflicts.
         )
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
         self.tk_image = None
         
         # 3. CRITICAL CLICK-THROUGH FIX: Bindings to stop the Canvas/Window from capturing mouse events.
-        # Stop internal Canvas events (May be redundant with state='disabled', but safer to keep)
+        # This is primarily for non-Windows platforms or as a fallback.
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
         
-        # Stop internal Toplevel window events as a final safety measure
         self.window.bind("<Button>", lambda e: "break")
         self.window.bind("<ButtonRelease>", lambda e: "break")
 
 
     def _make_click_through(self):
         """
-        [ULTIMATE FIX ATTEMPT] Reintroducing LWA_ALPHA to restore visibility while maintaining WS_EX_TRANSPARENT.
+        [FINAL FIX STRATEGY] Using the most robust combination: WS_EX_TRANSPARENT for click-through, 
+        and LWA_COLORKEY + LWA_ALPHA for shape and rendering visibility.
         """
         if not self.window.winfo_exists(): return
 
@@ -91,12 +93,12 @@ class CursorWindow:
             else:
                 print(f"[ERROR] Failed to set all target styles! Missing: {hex(TARGET_STYLES & ~new_styles)}")
 
-            # 2. RE-ADDED: Set LWA_ALPHA to 255 (fully opaque). This is often necessary for 
-            # the window to render its contents (the cursor image) while the WS_EX_TRANSPARENT 
-            # style handles the click-through functionality.
-            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA)
+            # 2. RE-ADDED: Set LWA_COLORKEY and LWA_ALPHA. This is crucial for *visual* transparency
+            # (hiding the background color) and ensuring the opaque parts (the cursor image) render correctly.
+            color_key = win32api.RGB(self.R, self.G, self.B)
+            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
 
-            print("[INFO] Custom cursor window is now click-through (WS_EX_TRANSPARENT) and visually opaque (LWA_ALPHA).")
+            print("[INFO] Custom cursor window is now click-through (WS_EX_TRANSPARENT) and visually transparent/shaped (LWA_COLORKEY + LWA_ALPHA).")
             
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
@@ -112,18 +114,10 @@ class CursorWindow:
             self.window.geometry(f"{w}x{h}+{self.window.winfo_x()}+{self.window.winfo_y()}")
 
             # 2. Update and center the image on the Canvas
-            # We must temporarily enable the canvas to update the image before setting it back to disabled.
-            current_state = self.canvas.cget('state')
-            if current_state == 'disabled':
-                self.canvas.config(state='normal')
-
+            # We no longer need to check/change state since we removed state='disabled'
             self.canvas.config(width=w, height=h) # Also resize the canvas
             self.canvas.coords(self.image_id, w // 2, h // 2)
             self.canvas.itemconfig(self.image_id, image=self.tk_image, anchor=tk.CENTER, state='normal')
-
-            # Revert state to disabled to prevent interaction
-            if current_state == 'disabled':
-                self.canvas.config(state='disabled')
         else:
             self.canvas.itemconfig(self.image_id, state='hidden')
             self.tk_image = None
