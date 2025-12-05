@@ -662,6 +662,11 @@ class BorderManager:
             self.active_detection_image = target_comp.original_pil_image.copy()
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.canvas.config(cursor="crosshair")
+            
+            # --- FIX: Create the highlight layer when the tool is activated ---
+            if self.highlight_layer_id is None:
+                self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, state='normal', tags="smart_border_highlight_layer")
+
             print(f"Smart Border mode ENABLED. Analyzing image from '{target_comp.tag}'.")
         else:
             self.active_detection_image = None
@@ -670,6 +675,11 @@ class BorderManager:
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
             print("Smart Border mode DISABLED.")
+
+            # --- FIX: Hide the highlight layer when the tool is deactivated ---
+            if self.highlight_layer_id:
+                self.canvas.itemconfig(self.highlight_layer_id, state='hidden')
+
             self._hide_brush_cursor() # NEW: Hide the cursor when disabling
 
     def _find_image_for_detection(self):
@@ -680,8 +690,14 @@ class BorderManager:
             if comp and comp.original_pil_image:
                 return comp
         
-        # Fallback: find the top-most visible component with an image
-        for item_id in reversed(self.canvas.find_all()):
+        # --- DEFINITIVE FIX: Find the component directly under the mouse cursor ---
+        # 1. Get current mouse position on canvas.
+        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        
+        # 2. Find items under the cursor.
+        items_under_cursor = self.canvas.find_overlapping(x-1, y-1, x+1, y+1)
+        for item_id in reversed(items_under_cursor):
             tags = self.canvas.gettags(item_id)
             if not tags: continue
             comp = self.app.components.get(tags[0])

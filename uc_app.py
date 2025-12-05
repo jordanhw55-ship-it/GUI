@@ -869,6 +869,7 @@ class ImageEditorApp:
         self._update_selection_highlight()
             
         # --- NEW: Redraw the smart border highlight layer ---
+        # --- FIX: Check for the existence of the layer ID before trying to draw on it ---
         if self.smart_border_mode_active and self.border_manager.highlight_layer_id:
             bm = self.border_manager
             # Ensure the layer image matches the canvas size
@@ -890,7 +891,8 @@ class ImageEditorApp:
                         draw.point((sx, sy), fill=bm.highlight_color)
             
             bm.highlight_layer_tk.paste(bm.highlight_layer_image)
-            self.canvas.coords(bm.highlight_layer_id, 0, 0) # The points are already in screen space
+            self.canvas.coords(bm.highlight_layer_id, 0, 0) # The layer is drawn at the canvas origin
+            self.canvas.tag_raise(bm.highlight_layer_id) # Ensure it's on top of components
 
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
