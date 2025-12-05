@@ -375,10 +375,22 @@ class SmartBorderManager:
         wx1, wy1, wx2, wy2 = self.preview_area_world_coords
         center_x = (wx1 + wx2) / 2
         center_y = (wy1 + wy2) / 2
-
-        # The drawing logic for the preview canvas was moved into the main
-        # app's `redraw_all_zoomable` function for optimization. This function
-        # is now only responsible for setting up the preview area coordinates.
+        
+        # --- FIX: Restore the drawing logic for the preview canvas ---
+        # This logic was incorrectly removed in a previous refactor.
+        points_to_draw = []
+        for p_x, p_y in self.raw_border_points:
+            # Check if the point is within the selected world coordinates
+            if wx1 <= p_x <= wx2 and wy1 <= p_y <= wy2:
+                # Translate world point to be relative to the center of the preview area
+                relative_x = (p_x - center_x) * scale
+                relative_y = (p_y - center_y) * scale
+                # Translate to canvas coordinates (center of preview canvas)
+                screen_x = relative_x + preview_w / 2
+                screen_y = relative_y + preview_h / 2
+                points_to_draw.append((screen_x, screen_y))
+        if points_to_draw:
+            ImageDraw.Draw(self.app.border_manager.preset_manager.preview_pil_image).point(points_to_draw, fill="cyan")
 
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
@@ -520,6 +532,9 @@ class SmartBorderManager:
         # Re-bind the generic drag handler and the initial click handler
         self.app.bind_generic_drag_handler()
         self.canvas.bind("<Button-1>", self.start_drawing_stroke)
+
+        # --- FIX: Trigger a redraw to show the points in the preview canvas ---
+        self.app.redraw_all_zoomable()
 
         self.update_preview_canvas()
         print(f"[DEBUG] Preview selection mode DEACTIVATED. Area captured: {self.preview_area_world_coords}")
