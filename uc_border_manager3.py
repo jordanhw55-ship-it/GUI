@@ -145,6 +145,9 @@ class SmartBorderManager:
             self.highlight_layer_image = None
             self.highlight_layer_tk = None
 
+            # --- FIX: Restore the generic drag handler to prevent lingering bindings ---
+            self.app.bind_generic_drag_handler()
+
             print("Smart Border mode DISABLED and all states reset.")
 
     def _cleanup_drawing_bindings(self):
