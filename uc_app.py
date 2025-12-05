@@ -1305,6 +1305,12 @@ class ImageEditorApp:
                 crop_box = (int(comp.world_x1), int(comp.world_y1), int(comp.world_x2), int(comp.world_y2))
                 paint_crop = paint_layer.crop(crop_box)
 
+                # --- DEFINITIVE FIX: Resize the paint crop to match the tile's image size ---
+                # The `paint_crop` has the dimensions of the tile on the canvas, but `final_image`
+                # has the dimensions of the source file. They must be the same size to composite.
+                if paint_crop.size != final_image.size:
+                    paint_crop = paint_crop.resize(final_image.size, Image.Resampling.LANCZOS)
+
                 # 2. Alpha composite the cropped paint over the tile's image.
                 # This correctly blends the paint, respecting transparency.
                 final_image = Image.alpha_composite(final_image, paint_crop)
