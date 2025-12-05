@@ -725,6 +725,12 @@ class BorderManager:
             # --- FIX: Hide the highlight layer when the tool is deactivated ---
             if self.highlight_layer_id:
                 self.canvas.itemconfig(self.highlight_layer_id, state='hidden')
+            
+            # --- DEFINITIVE FIX for crash on finalize ---
+            # Explicitly clear references to the large image objects to allow garbage collection.
+            self.highlight_layer_image = None
+            self.highlight_layer_tk = None
+
 
             self._hide_brush_cursor() # NEW: Hide the cursor when disabling
 
@@ -1089,6 +1095,7 @@ class BorderManager:
         self.app.canvas.tag_raise(border_tag)
         self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
-        # Clean up and exit smart mode
+        # --- DEFINITIVE FIX: Clean up and exit smart mode BEFORE showing the success message ---
+        # This ensures the state is fully reset before the user can interact with the UI again.
         self.toggle_smart_border_mode()
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
