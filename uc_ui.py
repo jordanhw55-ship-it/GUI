@@ -10,6 +10,7 @@ class UIManager:
         self.image_dock_canvas = None
         self.border_dock_canvas = None
         self.paint_color_button = None
+        self.border_preview_canvas = None # NEW: For smart border preview
         self.paint_toggle_btn = None
         self.eraser_toggle_btn = None
         self.border_tab = None # NEW: To hold a reference to the border tab widget
@@ -306,9 +307,10 @@ class UIManager:
 
         # Preset Dropdown
         tk.Label(controls_frame, text="Preset:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
-        preset_names = list(manager.border_presets.keys())
+        # --- FIX: Add "None" to the list of presets and set it as the default ---
+        preset_names = ["None"] + list(manager.border_presets.keys())
         if preset_names:
-            preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, preset_names[0], *preset_names)
+            preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, "None", *preset_names)
             preset_menu.grid(row=0, column=1, sticky='ew', padx=5)
             # --- NEW: Bind an event to show the preview when a preset is selected ---
             preset_menu.bind("<<OptionMenuChanged>>", manager.show_preset_preview)
@@ -350,6 +352,23 @@ class UIManager:
 
         # Apply Button
         tk.Button(tab, text="Apply Preset Border", bg='#3b82f6', fg='white', relief='flat', font=button_font, command=manager.apply_preset_border).pack(fill='x', padx=10, pady=10)
+
+        # --- NEW: Border Preview Canvas ---
+        tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
+        tk.Label(tab, text="BORDER PREVIEW", **label_style).pack(fill='x')
+        
+        preview_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        preview_frame.pack(fill='x')
+        
+        self.border_preview_canvas = tk.Canvas(preview_frame, bg="#2d3748", height=150, highlightthickness=0)
+        self.border_preview_canvas.pack(fill='x', expand=True, pady=(0, 5))
+        self.border_preview_canvas.bind("<Button-1>", manager.on_preview_down)
+        self.border_preview_canvas.bind("<B1-Motion>", manager.on_preview_drag)
+        self.border_preview_canvas.bind("<ButtonRelease-1>", manager.on_preview_up)
+        self.border_preview_canvas.bind("<Leave>", manager.on_preview_leave)
+        self.border_preview_canvas.bind("<Motion>", manager.on_preview_move)
+
+        tk.Scale(preview_frame, from_=0.5, to=5.0, resolution=0.1, orient=tk.HORIZONTAL, variable=manager.preview_scale_var, command=manager.update_preview_canvas, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(fill='x', expand=True)
 
         # --- NEW: Smart Border Tool Section ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)

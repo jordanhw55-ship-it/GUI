@@ -28,6 +28,8 @@ class BorderManager:
         self.active_detection_image = None # The PIL image being processed
         self.active_detection_component = None # NEW: The component being analyzed
         self.cursor_circle_id = None # NEW: For the brush preview cursor
+        self.preview_scale_var = tk.DoubleVar(value=1.0) # NEW: For preview zoom
+        self.preview_cursor_circle_id = None # NEW: For preview canvas cursor
 
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
@@ -186,8 +188,8 @@ class BorderManager:
         self._create_procedural_textures()
 
         # Set default selections for the UI
-        if self.border_presets:
-            self.selected_preset.set(list(self.border_presets.keys())[0])
+        # --- FIX: Default to "None" to prevent an initial preview ---
+        self.selected_preset.set("None")
         if self.border_textures:
             self.selected_style.set(list(self.border_textures.keys())[0])
 
@@ -647,6 +649,8 @@ class BorderManager:
                 self.app.smart_border_mode_active = False
                 return
 
+            # --- FIX: Store the component being analyzed, not just its image ---
+            self.active_detection_component = target_comp
             self.active_detection_image = target_comp.original_pil_image.copy()
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.canvas.config(cursor="crosshair")
@@ -654,6 +658,7 @@ class BorderManager:
         else:
             self.active_detection_image = None
             self.clear_detected_points()
+            self.active_detection_component = None # Clear the component reference
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
             print("Smart Border mode DISABLED.")
@@ -717,6 +722,43 @@ class BorderManager:
         if self.redraw_scheduled:
             self.app.master.after_cancel(self._deferred_redraw)
         self._deferred_redraw()
+
+    # --- NEW: Preview Canvas Event Handlers ---
+    def on_preview_down(self, event):
+        """Starts erasure in the zoomed preview."""
+        self._update_preview_cursor(event)
+        self._process_preview_erasure(event)
+
+    def on_preview_drag(self, event):
+        """Allows continuous erasure in the zoomed preview, with throttling."""
+        self._update_preview_cursor(event)
+        self._process_preview_erasure(event, defer_redraw=True)
+
+        if not self.redraw_scheduled:
+            self.redraw_scheduled = True
+            self.app.master.after(self.REDRAW_THROTTLE_MS, self._deferred_redraw)
+
+    def on_preview_up(self, event):
+        """Ensures final state is immediately drawn after preview dragging stops."""
+        if self.redraw_scheduled:
+            self.app.master.after_cancel(self._deferred_redraw)
+        self._deferred_redraw()
+
+    def on_preview_leave(self, event):
+        """Hides the cursor when the mouse leaves the preview canvas."""
+        if self.preview_cursor_circle_id:
+            self.app.ui_manager.border_preview_canvas.itemconfig(self.preview_cursor_circle_id, state='hidden')
+
+    def on_preview_move(self, event):
+        """Updates the preview cursor position."""
+        self._update_preview_cursor(event)
+
+    def _deferred_redraw(self):
+        """Redraws the highlight points after a throttle delay."""
+        if not self.app.master.winfo_exists(): return
+        self._update_highlights()
+        self.update_preview_canvas() # Also update the preview canvas
+        self.redraw_scheduled = False
 
     def _deferred_redraw(self):
         """Redraws the highlight points after a throttle delay."""
@@ -789,6 +831,51 @@ class BorderManager:
         if not defer_redraw:
             self._update_highlights()
 
+    def _process_preview_erasure(self, event, defer_redraw=False):
+        """Erases points from the raw_border_points list based on the zoomed preview brush."""
+        if not self.raw_border_points or not self.active_detection_component: return
+
+        scale = self.preview_scale_var.get()
+        if scale == 0: return
+
+        preview_canvas = self.app.ui_manager.border_preview_canvas
+        preview_w = preview_canvas.winfo_width()
+        preview_h = preview_canvas.winfo_height()
+
+        # The preview is centered on the component's center
+        comp = self.active_detection_component
+        center_x = (comp.world_x1 + comp.world_x2) / 2
+        center_y = (comp.world_y1 + comp.world_y2) / 2
+
+        # 1. Determine center of erasure in WORLD coordinates from preview canvas click
+        zoom_x = event.x - preview_w / 2
+        zoom_y = event.y - preview_h / 2
+        world_x_center = (zoom_x / scale) + center_x
+        world_y_center = (zoom_y / scale) + center_y
+
+        # 2. Determine erasure radius in WORLD coordinates
+        # Fixed preview eraser size (10 preview canvas pixels) divided by the zoom scale.
+        world_eraser_radius = 10 / scale
+
+        # 3. Find and remove points from raw_border_points
+        new_raw_border_points = []
+        erased_count = 0
+
+        for p_x, p_y in self.raw_border_points:
+            dist_sq = (p_x - world_x_center)**2 + (p_y - world_y_center)**2
+            if dist_sq > world_eraser_radius**2:
+                new_raw_border_points.append((p_x, p_y))
+            else:
+                erased_count += 1
+
+        if erased_count > 0:
+            self.raw_border_points = new_raw_border_points
+            if not defer_redraw:
+                self._deferred_redraw()
+            else:
+                self.status_message.set(f"Preview Eraser: Removed {erased_count} points. Redraw pending.")
+
+
     def _create_brush_cursor(self):
         """Creates the circular brush preview on the main canvas if it doesn't exist."""
         if self.cursor_circle_id is None:
@@ -814,6 +901,22 @@ class BorderManager:
         if self.cursor_circle_id:
             self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
 
+    def _update_preview_cursor(self, event):
+        """Updates the position and appearance of the preview brush cursor."""
+        preview_canvas = self.app.ui_manager.border_preview_canvas
+        if not preview_canvas: return
+
+        if self.preview_cursor_circle_id is None:
+            self.preview_cursor_circle_id = preview_canvas.create_oval(0, 0, 0, 0, outline="red", width=2, state='hidden')
+
+        radius = 10 # Fixed radius for preview eraser
+        x1, y1 = event.x - radius, event.y - radius
+        x2, y2 = event.x + radius, event.y + radius
+
+        if self.preview_cursor_circle_id:
+            preview_canvas.coords(self.preview_cursor_circle_id, x1, y1, x2, y2)
+            preview_canvas.itemconfig(self.preview_cursor_circle_id, state='normal')
+
     def _update_highlights(self):
         """Redraws all highlight ovals on the main canvas."""
         for oval_id in self.highlight_oval_ids:
@@ -825,10 +928,49 @@ class BorderManager:
             oval_id = self.canvas.create_oval(sx, sy, sx + 2, sy + 2, fill="cyan", outline="", tags="smart_border_highlight")
             self.highlight_oval_ids.append(oval_id)
 
+    def update_preview_canvas(self, *args):
+        """Redraws the stored border points on the preview canvas with the current zoom scale."""
+        preview_canvas = self.app.ui_manager.border_preview_canvas
+        if not preview_canvas: return
+
+        preview_canvas.delete("preview_dot")
+
+        if not self.raw_border_points or not self.active_detection_component:
+            return
+
+        scale = self.preview_scale_var.get()
+        preview_w = preview_canvas.winfo_width()
+        preview_h = preview_canvas.winfo_height()
+
+        # Center the preview on the component being analyzed
+        comp = self.active_detection_component
+        center_x = (comp.world_x1 + comp.world_x2) / 2
+        center_y = (comp.world_y1 + comp.world_y2) / 2
+
+        for raw_x, raw_y in self.raw_border_points:
+            # 1. Translate point relative to component's world center
+            rel_x = raw_x - center_x
+            rel_y = raw_y - center_y
+
+            # 2. Apply zoom scale
+            zoom_x = rel_x * scale
+            zoom_y = rel_y * scale
+
+            # 3. Translate point to preview canvas center
+            preview_x = zoom_x + preview_w / 2
+            preview_y = zoom_y + preview_h / 2
+
+            # Draw point
+            preview_canvas.create_oval(
+                preview_x, preview_y, preview_x + 2, preview_y + 2,
+                fill="cyan", outline="", tags="preview_dot"
+            )
+
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
         self.raw_border_points.clear()
         self._update_highlights()
+        self.update_preview_canvas()
         print("Cleared all detected border points.")
 
     def finalize_border(self):
