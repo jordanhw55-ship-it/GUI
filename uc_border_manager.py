@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
 import math
 import os
@@ -207,16 +207,94 @@ class BorderManager:
             messagebox.showerror("Error", f"Could not find the original component for '{selected_tag}'.")
             return
 
-        # Use the ImageManager's cloning logic to create a new instance
-        # We can simulate a click event at the center of the canvas
-        center_x = self.app.canvas.winfo_width() / 2
-        center_y = self.app.canvas.winfo_height() / 2
-        
-        mock_event = tk.Event()
-        mock_event.x, mock_event.y = center_x, center_y
-        
-        self.app.image_manager.create_clone_from_asset(original_border_comp, mock_event)
-        print(f"Placed a new instance of saved border '{selected_tag}'.")
+        # --- NEW: Create a new component at the original saved position ---
+        # 1. Generate a unique tag for the new instance.
+        new_tag = f"{selected_tag}_instance_{self.app.image_manager.next_dynamic_id}"
+        self.app.image_manager.next_dynamic_id += 1
+
+        # 2. Create a new DraggableComponent using the original's coordinates and image.
+        new_comp = DraggableComponent(
+            self.app,
+            new_tag,
+            original_border_comp.world_x1,
+            original_border_comp.world_y1,
+            original_border_comp.world_x2,
+            original_border_comp.world_y2,
+            "green",
+            new_tag
+        )
+        new_comp.is_decal = True
+        new_comp.original_pil_image = original_border_comp.original_pil_image.copy()
+        new_comp.image_path = original_border_comp.image_path
+
+        # 3. Add the new component to the application and draw it.
+        self.app.components[new_tag] = new_comp
+        self.app._bind_component_events(new_tag)
+        new_comp.set_image(new_comp.original_pil_image) # This will handle the initial draw
+        print(f"Placed a new instance of saved border '{selected_tag}' at its original position.")
+
+    def rename_saved_border(self):
+        """Renames the currently selected saved border."""
+        selected_tag = self.selected_finalized_border.get()
+        if not selected_tag or selected_tag == "No saved borders":
+            messagebox.showwarning("No Selection", "Please select a saved border from the dropdown to rename.")
+            return
+
+        new_name = simpledialog.askstring("Rename Border", "Enter the new name for the border:", initialvalue=selected_tag)
+
+        if not new_name or new_name.strip() == "":
+            return # User cancelled or entered empty name
+
+        new_name = new_name.strip()
+
+        if new_name == selected_tag:
+            return # Name is unchanged
+
+        # Check for invalid characters or if the name is already in use by another component
+        if new_name in self.app.components and new_name != selected_tag:
+            messagebox.showerror("Name In Use", f"The name '{new_name}' is already in use. Please choose a different name.")
+            return
+
+        border_to_rename = self.finalized_borders.get(selected_tag)
+        if not border_to_rename:
+            messagebox.showerror("Error", f"Could not find the component data for '{selected_tag}'.")
+            return
+
+        # 1. Rename the image file
+        old_path = border_to_rename.image_path
+        if old_path and os.path.exists(old_path):
+            dir_name = os.path.dirname(old_path)
+            new_filename = f"{new_name}.png"
+            new_path = os.path.join(dir_name, new_filename)
+            try:
+                os.rename(old_path, new_path)
+                print(f"Renamed border file from '{os.path.basename(old_path)}' to '{new_filename}'")
+            except OSError as e:
+                messagebox.showerror("File Error", f"Could not rename the border file:\n{e}")
+                return
+        else:
+            new_path = None
+
+        # 2. Update the component object itself
+        border_to_rename.tag = new_name
+        border_to_rename.image_path = new_path
+
+        # 3. Update the main application's component dictionary
+        del self.app.components[selected_tag]
+        self.app.components[new_name] = border_to_rename
+
+        # 4. Update the BorderManager's state
+        del self.finalized_borders[selected_tag]
+        self.finalized_borders[new_name] = border_to_rename
+
+        # 5. Update the list of names for the dropdown
+        idx = self.finalized_border_names.index(selected_tag)
+        self.finalized_border_names[idx] = new_name
+
+        # 6. Update the UI
+        self.selected_finalized_border.set(new_name)
+        self.app.ui_manager.update_saved_borders_dropdown()
+        messagebox.showinfo("Rename Successful", f"Border '{selected_tag}' has been renamed to '{new_name}'.")
 
     def delete_saved_border(self):
         """Deletes the currently selected saved border from the dropdown and the filesystem."""

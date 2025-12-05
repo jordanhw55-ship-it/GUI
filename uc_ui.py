@@ -276,8 +276,9 @@ class UIManager:
         # --- NEW: Frame for action buttons ---
         action_button_frame = tk.Frame(saved_border_frame, bg="#374151")
         action_button_frame.pack(side=tk.LEFT, padx=(5,0))
-        tk.Button(action_button_frame, text="Place", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.place_saved_border).pack(side=tk.LEFT, padx=(0, 2))
-        tk.Button(action_button_frame, text="Delete", bg='#ef4444', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.delete_saved_border).pack(side=tk.LEFT, padx=(2, 0))
+        tk.Button(action_button_frame, text="Place", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.place_saved_border).pack(side=tk.LEFT, padx=(0, 1))
+        tk.Button(action_button_frame, text="Rename", bg='#f97316', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.rename_saved_border).pack(side=tk.LEFT, padx=1)
+        tk.Button(action_button_frame, text="Delete", bg='#ef4444', fg='white', relief='flat', font=('Inter', 10, 'bold'), command=manager.delete_saved_border).pack(side=tk.LEFT, padx=(1, 0))
 
         # --- NEW: Border Preview Canvas ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
