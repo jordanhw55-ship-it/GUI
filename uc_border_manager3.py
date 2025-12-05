@@ -34,6 +34,10 @@ class SmartBorderManager:
         self.last_drawn_y = -1
         self.redraw_scheduled = False
         self.after_id = None # NEW: To store the ID returned by app.master.after
+        self.cursor_redraw_scheduled = False # NEW: For cursor throttling
+        self.cursor_after_id = None # NEW: For cursor throttling
+        self.last_cursor_event = None # NEW: To store the latest mouse event for the cursor
+
         self.smart_brush_radius = tk.IntVar(value=15)
         self.smart_diff_threshold = tk.IntVar(value=50)
         self.smart_draw_skip = tk.IntVar(value=5)
@@ -57,7 +61,7 @@ class SmartBorderManager:
         self.cursor_tk_image = None
         self.cursor_canvas_id = None # NEW: Replaces brush_cursor_oval_id
         self.on_mouse_move_binding_id = None
-        self.REDRAW_THROTTLE_MS = 50
+        self.REDRAW_THROTTLE_MS = 20 # Reduced for better responsiveness
 
     def toggle_smart_border_mode(self):
         """Activates or deactivates the smart border detection tool."""
@@ -151,6 +155,11 @@ class SmartBorderManager:
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
 
+        # NEW: Cancel any pending cursor redraws when mode is toggled off
+        if self.cursor_after_id:
+            self.app.master.after_cancel(self.cursor_after_id)
+            self.cursor_after_id = None
+
     def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
         if not self.app.smart_border_mode_active or not self.active_detection_image:
@@ -172,9 +181,6 @@ class SmartBorderManager:
             self.canvas.tag_lower(self.highlight_layer_id)
 
         if not self.is_drawing: return
-
-        # 1. Update the simple brush cursor (FAST)
-        self._update_canvas_brush_position(event)
 
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
@@ -420,32 +426,45 @@ class SmartBorderManager:
             state='hidden'
         )
 
-    def _update_canvas_brush_position(self, event):
-        """Moves the image-drawn cursor to follow the mouse and redraws the circle."""
-        if not self.cursor_canvas_id: return
+    def _schedule_cursor_redraw(self):
+        """Schedules a cursor redraw only if one isn't already pending."""
+        if self.cursor_redraw_scheduled:
+            return
+        self.cursor_redraw_scheduled = True
+        # Use a shorter throttle for the cursor to feel responsive (e.g., ~60fps)
+        self.cursor_after_id = self.app.master.after(16, self._perform_throttled_cursor_update)
+
+    def _perform_throttled_cursor_update(self):
+        """Redraws the cursor image based on the last known mouse event."""
+        if not self.app.master.winfo_exists() or not self.last_cursor_event or not self.cursor_canvas_id:
+            self.cursor_redraw_scheduled = False
+            return
 
         radius = self.smart_brush_radius.get()
         size = self.cursor_image_size
-        offset = size // 2 # Center of the image
+        offset = size // 2
 
-        # 1. Move the image item (FAST operation)
-        self.canvas.coords(self.cursor_canvas_id, event.x - offset, event.y - offset)
+        # 1. Move the image item
+        self.canvas.coords(self.cursor_canvas_id, self.last_cursor_event.x - offset, self.last_cursor_event.y - offset)
 
-        # 2. Redraw the circle onto the PIL layer (The performance gain: internal image work)
-        # Use Image.new instead of ImageDraw to clear the old circle instantly
-        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0)) 
+        # 2. Redraw the circle onto the PIL layer
+        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(self.cursor_pil_image)
-        
-        is_erasing = self.is_erasing_points.get()
-        color = "red" if is_erasing else "cyan"
-        
-        # Draw the outline onto the small image
+        color = "red" if self.is_erasing_points.get() else "cyan"
         draw.ellipse((offset - radius, offset - radius, offset + radius, offset + radius), outline=color, width=2)
 
-        # 3. Update the PhotoImage on the canvas item
+        # 3. Update the PhotoImage on the canvas
         self.cursor_tk_image.paste(self.cursor_pil_image)
         self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
         self.canvas.tag_raise(self.cursor_canvas_id)
+
+        self.cursor_redraw_scheduled = False
+        self.cursor_after_id = None
+
+    def _update_canvas_brush_position(self, event):
+        """Schedules an update for the image-drawn cursor instead of redrawing it immediately."""
+        self.last_cursor_event = event
+        self._schedule_cursor_redraw()
 
     def _update_canvas_brush_color(self):
         """Updates the color of the image-drawn cursor by forcing a redraw."""
