@@ -32,8 +32,6 @@ class BorderManager:
         self.smart_draw_skip = tk.IntVar(value=5)
         self.active_detection_image = None # The PIL image being processed
         self.active_detection_component = None # NEW: The component being analyzed
-        self.cursor_circle_id = None # NEW: For the brush preview cursor
-        # --- NEW: For composite image detection ---
         self.composite_x_offset = 0
         self.composite_y_offset = 0
 
@@ -45,6 +43,11 @@ class BorderManager:
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
         self.highlight_color = (0, 255, 255, 255) # Cyan with full alpha
+
+        # --- DEFINITIVE FIX for cursor lag: Use a native OS cursor ---
+        self.cursor_file_path = None
+        self.mask_file_path = None
+        self.on_mouse_move_binding_id = None # To track the motion binding
 
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
@@ -705,14 +708,12 @@ class BorderManager:
                 self.active_detection_image.paste(resized_img, (paste_x, paste_y), resized_img)
 
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
-            self.canvas.config(cursor="crosshair")
             
             # --- DEFINITIVE FIX: Bind mouse events only when the tool is activated ---
             self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.on_mouse_down)
-            self.on_mouse_drag_binding_id = self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
-            if self.highlight_layer_id is None:
-                self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, state='normal', tags="smart_border_highlight_layer")
+            # The <B1-Motion> event is now handled by the generic drag handler in uc_app.py
+            self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_brush_cursor)
 
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
         else:
@@ -720,12 +721,12 @@ class BorderManager:
             self.clear_detected_points()
             self.active_detection_component = None # Clear the component reference
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
-            self.canvas.config(cursor="") # type: ignore
+            self.canvas.config(cursor="")
 
             # --- DEFINITIVE FIX: Unbind mouse events when the tool is turned off ---
             # This is the crucial step to allow the tool to be re-enabled correctly.
             self._cleanup_drawing_bindings()
-
+            
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 
@@ -739,8 +740,6 @@ class BorderManager:
             self.highlight_layer_tk = None
 
             print("Smart Border mode DISABLED and all states reset.")
-
-            self._hide_brush_cursor() # NEW: Hide the cursor when disabling
 
     def _find_image_for_detection(self):
         """Finds a suitable component to use for border detection."""
@@ -773,11 +772,9 @@ class BorderManager:
         # This prevents errors if the bindings were never created.
         if hasattr(self, 'on_mouse_down_binding_id') and self.on_mouse_down_binding_id:
             self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
-        if hasattr(self, 'on_mouse_drag_binding_id') and self.on_mouse_drag_binding_id:
-            self.canvas.unbind("<B1-Motion>", self.on_mouse_drag_binding_id)
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
-        if hasattr(self, 'on_mouse_move_binding_id') and self.on_mouse_move_binding_id:
+        if self.on_mouse_move_binding_id:
             self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
 
     def on_mouse_down(self, event):
@@ -788,7 +785,6 @@ class BorderManager:
         self.is_drawing = True
         print("[DEBUG] Smart Border: Mouse Down")
         self.last_drawn_x, self.last_drawn_y = event.x, event.y
-        self._update_brush_cursor(event) # NEW: Update cursor on mouse down
 
         if self.is_erasing_points.get():
             self._process_erasure_at_point(event)
@@ -974,31 +970,6 @@ class BorderManager:
                 self._deferred_redraw()
 
 
-    def _create_brush_cursor(self):
-        """Creates the circular brush preview on the main canvas if it doesn't exist."""
-        if self.cursor_circle_id is None:
-            self.cursor_circle_id = self.canvas.create_oval(0, 0, 0, 0, outline="cyan", width=1, state='hidden')
-
-    def _update_brush_cursor(self, event):
-        """Updates the position and appearance of the brush cursor."""
-        self._create_brush_cursor()
-        if not self.cursor_circle_id: return
-
-        radius = self.smart_brush_radius.get()
-        color = "red" if self.is_erasing_points.get() else "cyan"
-        width = 2 if self.is_erasing_points.get() else 1
-
-        x1, y1 = event.x - radius, event.y - radius
-        x2, y2 = event.x + radius, event.y + radius
-        
-        self.canvas.coords(self.cursor_circle_id, x1, y1, x2, y2)
-        self.canvas.itemconfig(self.cursor_circle_id, outline=color, width=width, state='normal')
-
-    def _hide_brush_cursor(self):
-        """Hides the brush cursor."""
-        if self.cursor_circle_id:
-            self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
-
     def _update_preview_cursor(self, event):
         """Updates the position and appearance of the preview brush cursor."""
         preview_canvas = self.app.ui_manager.border_preview_canvas
@@ -1074,12 +1045,36 @@ class BorderManager:
         # Redraw the main highlight layer to ensure it remains visible.
         self._update_highlights()
 
-        # Synthesize a fake event at the current mouse position to update the cursor's color.
-        class FakeEvent:
-            x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
-            y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        # --- DEFINITIVE FIX for cursor lag: Update the native cursor file ---
+        self._update_brush_cursor_file()
+
+    def _update_brush_cursor_file(self):
+        """Generates a cursor file on the fly and updates the canvas cursor."""
+        radius = self.smart_brush_radius.get()
+        is_erasing = self.is_erasing_points.get()
+        color = "red" if is_erasing else "cyan"
         
-        self._update_brush_cursor(FakeEvent())
+        # The size of the cursor bitmap
+        size = radius * 2 + 3
+        
+        # Create a black and white bitmap for the cursor shape
+        cursor_img = Image.new('1', (size, size), 0)
+        draw = ImageDraw.Draw(cursor_img)
+        draw.ellipse((1, 1, size-2, size-2), fill=1, outline=1)
+        
+        # Create a mask for the color
+        mask_img = Image.new('1', (size, size), 0)
+        draw_mask = ImageDraw.Draw(mask_img)
+        draw_mask.ellipse((1, 1, size-2, size-2), fill=1, outline=1)
+
+        # Define file paths for the temporary cursor files
+        self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
+        self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
+        
+        cursor_img.save(self.cursor_file_path, "xbm")
+        mask_img.save(self.mask_file_path, "xbm")
+
+        self.canvas.config(cursor=f"@{self.cursor_file_path} {self.mask_file_path} {color}")
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
