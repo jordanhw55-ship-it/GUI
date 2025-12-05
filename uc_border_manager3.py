@@ -23,7 +23,6 @@ class SmartBorderManager:
         self.is_drawing = False
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = set()
-        self.brush_cursor_oval_id = None
 
         self.is_selecting_preview_area = False
         self.preview_selection_rect_id = None
@@ -52,9 +51,11 @@ class SmartBorderManager:
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
         self.highlight_color = (0, 255, 255, 255)
-
-        self.cursor_file_path = None
-        self.mask_file_path = None
+        
+        self.cursor_image_size = 50 # Size for the dynamic brush layer
+        self.cursor_pil_image = None
+        self.cursor_tk_image = None
+        self.cursor_canvas_id = None # NEW: Replaces brush_cursor_oval_id
         self.on_mouse_move_binding_id = None
         self.REDRAW_THROTTLE_MS = 50
 
@@ -126,10 +127,10 @@ class SmartBorderManager:
             self.canvas.config(cursor="")
 
             self._cleanup_drawing_bindings()
-            
-            if self.brush_cursor_oval_id:
-                self.canvas.delete(self.brush_cursor_oval_id)
-                self.brush_cursor_oval_id = None
+
+            if self.cursor_canvas_id:
+                self.canvas.delete(self.cursor_canvas_id)
+                self.cursor_canvas_id = None
             if self.on_mouse_move_binding_id:
                 self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
             if self.on_mouse_down_binding_id:
@@ -386,33 +387,241 @@ class SmartBorderManager:
 
     def _update_canvas_brush_size(self, event=None):
         """Updates the size of the canvas-drawn cursor."""
-        if not self.brush_cursor_oval_id: return
-
+        # This function now just needs to trigger a redraw of the cursor image.
         x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
-
-        radius = self.smart_brush_radius.get()
-        x1, y1 = (x - radius), (y - radius)
-        x2, y2 = (x + radius), (y + radius)
-        self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
-
+        
+        # Create a mock event object to pass to the update function
+        mock_event = type('Event', (), {'x': x, 'y': y})
+        self._update_canvas_brush_position(mock_event)
+        
         if self.is_drawing:
-            self.on_mouse_drag(type('Event', (), {'x': x, 'y': y}))
+            self.on_mouse_drag(mock_event)
         else:
-            self._process_detection_at_point(type('Event', (), {'x': x, 'y': y}))
+            self._process_detection_at_point(mock_event)
         
     def _create_canvas_brush_cursor(self):
-        """Creates the canvas oval used as the brush cursor."""
-        if self.brush_cursor_oval_id:
-            self.canvas.delete(self.brush_cursor_oval_id)
+        """Creates the canvas image used as the brush cursor (replacing the slow oval)."""
+        if self.cursor_canvas_id:
+            self.canvas.delete(self.cursor_canvas_id)
         
-        color = "red" if self.is_erasing_points.get() else "cyan"
-        self.brush_cursor_oval_id = self.canvas.create_oval(0, 0, 0, 0, outline=color, width=2, state='hidden')
+        # 1. Initialize the small transparent PIL image
+        size = self.cursor_image_size
+        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+        self.cursor_tk_image = ImageTk.PhotoImage(self.cursor_pil_image)
+
+        # 2. Create a single canvas image item to hold the cursor
+        # The anchor is NW (top-left) to make moving it simple
+        self.cursor_canvas_id = self.canvas.create_image(
+            0, 0, 
+            image=self.cursor_tk_image, 
+            anchor=tk.NW, 
+            tags=('brush_cursor',), 
+            state='hidden'
+        )
 
     def _update_canvas_brush_position(self, event):
-        """Moves the canvas-drawn cursor to follow the mouse."""
-        if not self.brush_cursor_oval_id: return
+        """Moves the image-drawn cursor to follow the mouse and redraws the circle."""
+        if not self.cursor_canvas_id: return
 
+        radius = self.smart_brush_radius.get()
+        size = self.cursor_image_size
+        offset = size // 2 # Center of the image
+
+        # 1. Move the image item (FAST operation)
+        self.canvas.coords(self.cursor_canvas_id, event.x - offset, event.y - offset)
+
+        # 2. Redraw the circle onto the PIL layer (The performance gain: internal image work)
+        # Use Image.new instead of ImageDraw to clear the old circle instantly
+        self.cursor_pil_image = Image.new('RGBA', (size, size), (0, 0, 0, 0)) 
+        draw = ImageDraw.Draw(self.cursor_pil_image)
+        
+        is_erasing = self.is_erasing_points.get()
+        color = "red" if is_erasing else "cyan"
+        
+        # Draw the outline onto the small image
+        draw.ellipse((offset - radius, offset - radius, offset + radius, offset + radius), outline=color, width=2)
+
+        # 3. Update the PhotoImage on the canvas item
+        self.cursor_tk_image.paste(self.cursor_pil_image)
+        self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
+        self.canvas.tag_raise(self.cursor_canvas_id)
+
+    def _update_canvas_brush_color(self):
+        """Updates the color of the image-drawn cursor by forcing a redraw."""
+        if not self.cursor_canvas_id: return
+        
+        # Get current mouse position (approximate) to trigger a full update
+        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        
+        # Force a redraw of the cursor image at the current position
+        self._update_canvas_brush_position(type('Event', (), {'x': x, 'y': y}))
+
+    def toggle_preview_selection_mode(self):
+        """Activates the mode to select an area on the main canvas for previewing."""
+        if not self.app.smart_border_mode_active:
+            messagebox.showwarning("Tool Inactive", "The Smart Border tool must be active to select a preview area.")
+            return
+
+        self.is_selecting_preview_area = True
+        self.canvas.config(cursor="crosshair")
+
+        self.canvas.bind("<Button-1>", self._on_preview_selection_press)
+        self.canvas.bind("<B1-Motion>", self._on_preview_selection_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_preview_selection_release)
+        print("[DEBUG] Preview selection mode ACTIVATED.")
+
+    def _on_preview_selection_press(self, event):
+        """Handles the start of dragging a selection box on the main canvas."""
+        if not self.is_selecting_preview_area: return
+
+        self.preview_selection_start_x = event.x
+        self.preview_selection_start_y = event.y
+
+        if self.preview_selection_rect_id:
+            self.canvas.delete(self.preview_selection_rect_id)
+
+        self.preview_selection_rect_id = self.canvas.create_rectangle(
+            event.x, event.y, event.x, event.y,
+            outline="yellow", dash=(5, 3), width=2
+        )
+
+    def _on_preview_selection_drag(self, event):
+        """Updates the selection box as the user drags the mouse."""
+        if not self.is_selecting_preview_area or not self.preview_selection_rect_id: return
+        self.canvas.coords(self.preview_selection_rect_id, self.preview_selection_start_x, self.preview_selection_start_y, event.x, event.y)
+
+    def _on_preview_selection_release(self, event):
+        """Finalizes the selection, captures the area, and updates the preview."""
+        if not self.is_selecting_preview_area: return
+
+        sx1, sy1 = self.preview_selection_start_x, self.preview_selection_start_y
+        sx2, sy2 = event.x, event.y
+        wx1, wy1 = self.app.camera.screen_to_world(sx1, sy1)
+        wx2, wy2 = self.app.camera.screen_to_world(sx2, sy2)
+
+        self.preview_area_world_coords = (min(wx1, wx2), min(wy1, wy2), max(wx1, wx2), max(wy1, wy2))
+
+        self.canvas.delete(self.preview_selection_rect_id)
+        self.preview_selection_rect_id = None
+        self.is_selecting_preview_area = False
+        self.canvas.config(cursor="none")
+        self.app.bind_generic_drag_handler()
+        self.canvas.bind("<Button-1>", self.start_drawing_stroke)
+
+        self.update_preview_canvas()
+        print(f"[DEBUG] Preview selection mode DEACTIVATED. Area captured: {self.preview_area_world_coords}")
+
+    def finalize_border(self):
+        """Creates a new component from the detected border points."""
+        if not self.raw_border_points:
+            messagebox.showwarning("No Points", "No border points have been detected to finalize.")
+            return
+        
+        thickness = self.border_manager.border_thickness.get()
+        growth_direction = self.border_manager.border_growth_direction.get()
+
+        points_list = list(self.raw_border_points)
+        
+        # --- O(N^2) FIX: Optimized path segmentation using Spatial Hash ---
+        point_segments = []
+        remaining_points_set = self.raw_border_points.copy()
+        
+        # 1. Build the spatial hash (Grid)
+        grid = {}
+        cell_size = 10 # Search radius of 5 pixels + margin
+        for p in remaining_points_set:
+            grid_key = (p[0] // cell_size, p[1] // cell_size)
+            if grid_key not in grid:
+                grid[grid_key] = []
+            grid[grid_key].append(p)
+            
+        search_radius_sq = 5**2 # 5 pixels squared
+        
+        while remaining_points_set:
+            # Start a new segment with an arbitrary point (O(1) removal)
+            current_segment = [remaining_points_set.pop()]
+            
+            while True:
+                last_point = current_segment[-1]
+                nearest_neighbor = None
+                min_dist_sq = float('inf')
+                
+                # 2. Search only in the neighboring cells of the spatial hash (Fast Local Search)
+                last_point_grid_key = (last_point[0] // cell_size, last_point[1] // cell_size)
+                
+                # Check the current cell and the 8 surrounding cells (3x3 grid)
+                for i in range(-1, 2):
+                    for j in range(-1, 2):
+                        check_key = (last_point_grid_key[0] + i, last_point_grid_key[1] + j)
+                        
+                        if check_key in grid:
+                            # Iterate over a copy as we remove points from the list during iteration
+                            for p in list(grid[check_key]):
+                                # We only care about points that haven't been claimed yet
+                                if p not in remaining_points_set: 
+                                    continue
+                                    
+                                dist_sq = (p[0] - last_point[0])**2 + (p[1] - last_point[1])**2
+                                
+                                if dist_sq < min_dist_sq and dist_sq <= search_radius_sq:
+                                    min_dist_sq = dist_sq
+                                    nearest_neighbor = p
+                
+                if nearest_neighbor:
+                    # Found a close point, add it to the segment
+                    current_segment.append(nearest_neighbor)
+                    
+                    # Remove it from the main set (O(1) removal) and the grid's list (O(1) removal)
+                    remaining_points_set.remove(nearest_neighbor)
+                    neighbor_key = (nearest_neighbor[0] // cell_size, nearest_neighbor[1] // cell_size)
+                    grid[neighbor_key].remove(nearest_neighbor)
+                else:
+                    break # No more points found within the radius, end the segment
+                    
+            point_segments.append(current_segment)
+        # --- END OF O(N^2) FIX ---
+        
+        # Calculate bounding box for rendering (based on final segmented points)
+        min_x = int(min(p[0] for segment in point_segments for p in segment))
+        min_y = int(min(p[1] for segment in point_segments for p in segment))
+        max_x = int(max(p[0] for segment in point_segments for p in segment))
+        max_y = int(max(p[1] for segment in point_segments for p in segment))
+
+        logical_w = max_x - min_x + 1
+        logical_h = max_y - min_y + 1
+
+        if logical_w <= 0 or logical_h <= 0:
+            messagebox.showerror("Error", "Could not create border from points (invalid size after segmentation).")
+            return
+
+        render_w, render_h = logical_w, logical_h
+        comp_x, comp_y = min_x, min_y
+        if growth_direction == 'out':
+            comp_x -= thickness
+            comp_y -= thickness
+            render_w += thickness * 2
+            render_h += thickness * 2
+            
+        border_image = self.border_manager._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=point_segments, is_segmented=True, relative_to=(comp_x, comp_y))
+        if not border_image: return
+
+        border_tag = f"smart_border_{self.border_manager.next_border_id}"
+        self.border_manager.next_border_id += 1
+        border_comp = DraggableComponent(self.app, border_tag, comp_x, comp_y, comp_x + render_w, comp_y + render_h, "blue", "BORDER")
+        border_comp.is_draggable = True
+        border_comp.set_image(border_image)
+
+        self.app.components[border_tag] = border_comp
+        self.app._bind_component_events(border_tag)
+        self.app.canvas.tag_raise(border_tag)
+        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+
+        print("[DEBUG] Finalizing border, initiating cleanup...")
+        self.toggle_smart_border_mode()
+
+        messagebox.showinfo("Success", f"Created new border component: {border_tag}")
         radius = self.smart_brush_radius.get()
         x1, y1 = (event.x - radius), (event.y - radius)
         x2, y2 = (event.x + radius), (event.y + radius)
