@@ -351,18 +351,9 @@ class SmartBorderManager:
         center_x = (wx1 + wx2) / 2
         center_y = (wy1 + wy2) / 2
 
-        for raw_x, raw_y in self.raw_border_points:
-            if not (wx1 <= raw_x <= wx2 and wy1 <= raw_y <= wy2):
-                continue
-
-            rel_x = raw_x - center_x; rel_y = raw_y - center_y
-            zoom_x = rel_x * scale; zoom_y = rel_y * scale
-            preview_x = zoom_x + preview_w / 2; preview_y = zoom_y + preview_h / 2
-
-            preview_canvas.create_oval(
-                preview_x, preview_y, preview_x + 2, preview_y + 2,
-                fill="cyan", outline="", tags="preview_dot"
-            )
+        # The drawing logic for the preview canvas was moved into the main
+        # app's `redraw_all_zoomable` function for optimization. This function
+        # is now only responsible for setting up the preview area coordinates.
 
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
