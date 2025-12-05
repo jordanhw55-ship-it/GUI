@@ -873,35 +873,12 @@ class ImageEditorApp:
         # --- NEW: Redraw the selection highlight ---
         self._update_selection_highlight()
             
-        # --- NEW: Redraw the smart border highlight layer ---
-        # --- FIX: Check for the existence of the layer ID before trying to draw on it ---
+        # --- DEFINITIVE FIX: Remove smart border drawing from the main redraw loop ---
+        # The BorderManager is now solely responsible for updating its own highlight layer
+        # through its `_update_highlights` method. This prevents conflicts, stops this
+        # function from overriding the optimized drawing, and fixes the lag.
         if self.smart_border_mode_active and self.border_manager.highlight_layer_id:
-            bm = self.border_manager
-
-            # --- DEFINITIVE FIX for 'put' AttributeError and Freezing ---
-            # Revert to using a backing PIL image, but optimize the drawing process.
-            # Instead of drawing thousands of ovals, we draw all points in a single operation.
-
-            # 1. Ensure the backing PIL image and the Tk PhotoImage exist and match the canvas size.
-            if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
-                bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
-                self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
-            else:
-                # If it exists, just clear it by drawing a transparent rectangle over it.
-                draw = ImageDraw.Draw(bm.highlight_layer_image)
-                draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
-
-            # 2. Collect all screen-space points to be drawn.
-            if bm.raw_border_points:
-                screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in bm.raw_border_points]
-                # 3. Draw all points in a single, efficient operation.
-                ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
-
-            # 4. Update the PhotoImage on the canvas with the new drawing.
-            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
-            self.canvas.coords(bm.highlight_layer_id, 0, 0) # The layer is drawn at the canvas origin
-            self.canvas.tag_raise(bm.highlight_layer_id) # Ensure it's on top of components
+            self.canvas.tag_raise(self.border_manager.highlight_layer_id)
 
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
