@@ -715,7 +715,7 @@ class BorderManager:
 
     def _deferred_redraw(self):
         """Redraws the highlight points after a throttle delay."""
-        if not self.app.winfo_exists(): return
+        if not self.app.master.winfo_exists(): return
         self._update_highlights()
         self.redraw_scheduled = False
 
