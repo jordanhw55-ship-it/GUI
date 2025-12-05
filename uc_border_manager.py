@@ -1064,12 +1064,8 @@ class BorderManager:
         """Generates a cursor file on the fly and updates the canvas cursor."""
         # 1. IMMEDIATE CLEANUP: Attempt to delete previous files immediately.
         # This resolves issues where Tcl holds a lock even after 'unconfig'.
+        # This is CRITICAL for Tkinter/Tcl to correctly parse the file path.
         self._delete_brush_cursor_files()
-
-        radius = self.smart_brush_radius.get()
-        is_erasing = self.is_erasing_points.get()
-        # Use the provided color, or determine it from the erase mode.
-        final_color = color if color is not None else ("red" if is_erasing else "cyan")
         
         # The size of the cursor bitmap, with padding
         size = radius * 2 + 2
@@ -1085,7 +1081,96 @@ class BorderManager:
         # XBM format requires a binary (1-bit per pixel) image mode.
         cursor_bitmap = cursor_img.convert('1')
         
-        # Define file paths for the temporary cursor files
+        # 4. SAVE THE FILES
+        try:
+            # Use os.path.join for robust path construction
+            cursor_path = self.cursor_file_path # Use your existing attribute path
+            mask_path = self.mask_file_path # Use your existing attribute path
+            
+            # Save the converted binary image as the cursor file
+            cursor_bitmap.save(cursor_path, format="XBM")
+            
+            # For the mask, you can often use the same image, or invert it if needed.
+            # A common mask practice is to save an inverted image.
+            # Here, we'll assume cursor_bitmap works for the mask too.
+            cursor_bitmap.save(mask_path, format="XBM") 
+            
+        except Exception as e:
+            # If the save fails, print the error and return cleanly
+            print(f"[ERROR] Failed to save XBM cursor files: {e}")
+            self.canvas.config(cursor="arrow") # Revert to a safe cursor
+            return
+            
+        # 5. CONFIGURE THE CURSOR (Use the correct Tcl/Tk formatting)
+        cursor_path_tcl = cursor_path.replace('\\', '/')
+        mask_path_tcl = mask_path.replace('\\', '/')
+
+        cursor_spec = f"@{'{'}{cursor_path_tcl}{'}'} {'{'}{mask_path_tcl}{'}'} {color}"
+        
+        # This should now succeed if the file is correctly generated and the lock released
+        self.canvas.config(cursor=cursor_spec)
+
+    def finalize_border(self):
+        """Creates a new component from the detected border points."""
+        if not self.raw_border_points:
+            messagebox.showwarning("No Points", "No border points have been detected to finalize.")
+            return
+        
+        thickness = self.border_thickness.get()
+        growth_direction = self.border_growth_direction.get()
+
+        # 1. Get the logical bounding box of the detected points in WORLD coordinates
+        points_list = list(self.raw_border_points) # Convert set to list for indexing
+        min_x = int(min(p[0] for p in points_list))
+        min_y = int(min(p[1] for p in points_list))
+        max_x = int(max(p[0] for p in points_list))
+        max_y = int(max(p[1] for p in points_list))
+
+        logical_w = max_x - min_x + 1
+        logical_h = max_y - min_y + 1 # type: ignore
+
+        if logical_w <= 0 or logical_h <= 0:
+            messagebox.showerror("Error", "Could not create border from points (invalid size).")
+            return
+
+        # 2. Calculate the final render size and component position based on growth
+        render_w, render_h = logical_w, logical_h
+        comp_x, comp_y = min_x, min_y
+        if growth_direction == 'out':
+            comp_x -= thickness
+            comp_y -= thickness
+            render_w += thickness * 2
+            render_h += thickness * 2
+        
+        # 3. Adjust points to be relative to the new component's top-left corner for rendering
+        relative_points = [(p[0] - comp_x, p[1] - comp_y) for p in points_list]
+        
+        # 4. Render the image using the same function as presets, passing the relative points
+        # The logical size is now the render size because the points are already relative.
+        border_image = self._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=relative_points)
+        if not border_image: return
+
+        # 5. Create the new component with the correct world coordinates
+        border_tag = f"smart_border_{self.next_border_id}"
+        self.next_border_id += 1
+        border_comp = DraggableComponent(self.app, border_tag, comp_x, comp_y, comp_x + render_w, comp_y + render_h, "blue", "BORDER")
+        border_comp.is_draggable = True # Make it draggable
+        border_comp.set_image(border_image)
+
+        self.app.components[border_tag] = border_comp
+        self.app._bind_component_events(border_tag)
+        self.app.canvas.tag_raise(border_tag)
+        self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
+
+        # --- DEFINITIVE FIX for CRASH & HANG PREVENTION ---
+        # Call the centralized toggle_smart_border_mode function to perform a full
+        # and immediate cleanup of all temporary state, canvas objects, and event bindings.
+        # This ensures the state is fully reset before the user can interact with the UI again.
+        print("[DEBUG] Finalizing border, initiating cleanup...")
+        self.toggle_smart_border_mode()
+
+        messagebox.showinfo("Success", f"Created new border component: {border_tag}")
+
         self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
         self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
         
