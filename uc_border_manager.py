@@ -26,6 +26,8 @@ class BorderManager:
         self.smart_diff_threshold = tk.IntVar(value=50)
         self.smart_draw_skip = tk.IntVar(value=5)
         self.active_detection_image = None # The PIL image being processed
+        self.active_detection_component = None # NEW: The component being analyzed
+        self.cursor_circle_id = None # NEW: For the brush preview cursor
 
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
@@ -655,6 +657,7 @@ class BorderManager:
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
             print("Smart Border mode DISABLED.")
+            self._hide_brush_cursor() # NEW: Hide the cursor when disabling
 
     def _find_image_for_detection(self):
         """Finds a suitable component to use for border detection."""
@@ -680,6 +683,7 @@ class BorderManager:
 
         self.is_drawing = True
         self.last_drawn_x, self.last_drawn_y = event.x, event.y
+        self._update_brush_cursor(event) # NEW: Update cursor on mouse down
 
         if self.is_erasing_points.get():
             self._process_erasure_at_point(event)
@@ -689,6 +693,7 @@ class BorderManager:
     def on_mouse_drag(self, event):
         """Handles continuous drawing or erasing."""
         if not self.is_drawing: return
+        self._update_brush_cursor(event) # NEW: Update cursor on drag
 
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
@@ -723,14 +728,15 @@ class BorderManager:
         """The core logic to detect border points under the brush."""
         brush_radius = self.smart_brush_radius.get()
         diff_threshold = self.smart_diff_threshold.get()
-        img = self.active_detection_image
-        if not img: return
+        comp = self.active_detection_component
+        if not comp or not comp.original_pil_image: return
+        img = comp.original_pil_image
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
 
-        # For this tool, we assume the image is at world coordinates (0,0) for analysis
-        # This is a simplification. A more robust solution would map world->image coords.
-        img_x_center, img_y_center = int(world_x), int(world_y)
+        # --- FIX: Translate world coordinates to the component's local image coordinates ---
+        img_x_center = int(world_x - comp.world_x1)
+        img_y_center = int(world_y - comp.world_y1)
 
         newly_detected_raw_coords = set()
         for dx in range(-brush_radius, brush_radius + 1):
@@ -753,7 +759,8 @@ class BorderManager:
                                         break
                             if is_edge: break
                         if is_edge:
-                            newly_detected_raw_coords.add((x, y))
+                            # Store points in WORLD coordinates
+                            newly_detected_raw_coords.add((x + comp.world_x1, y + comp.world_y1))
                     except IndexError:
                         continue
 
@@ -782,6 +789,31 @@ class BorderManager:
         if not defer_redraw:
             self._update_highlights()
 
+    def _create_brush_cursor(self):
+        """Creates the circular brush preview on the main canvas if it doesn't exist."""
+        if self.cursor_circle_id is None:
+            self.cursor_circle_id = self.canvas.create_oval(0, 0, 0, 0, outline="cyan", width=1, state='hidden')
+
+    def _update_brush_cursor(self, event):
+        """Updates the position and appearance of the brush cursor."""
+        self._create_brush_cursor()
+        if not self.cursor_circle_id: return
+
+        radius = self.smart_brush_radius.get()
+        color = "red" if self.is_erasing_points.get() else "cyan"
+        width = 2 if self.is_erasing_points.get() else 1
+
+        x1, y1 = event.x - radius, event.y - radius
+        x2, y2 = event.x + radius, event.y + radius
+        
+        self.canvas.coords(self.cursor_circle_id, x1, y1, x2, y2)
+        self.canvas.itemconfig(self.cursor_circle_id, outline=color, width=width, state='normal')
+
+    def _hide_brush_cursor(self):
+        """Hides the brush cursor."""
+        if self.cursor_circle_id:
+            self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
+
     def _update_highlights(self):
         """Redraws all highlight ovals on the main canvas."""
         for oval_id in self.highlight_oval_ids:
@@ -806,10 +838,10 @@ class BorderManager:
             return
 
         # Find the bounding box of the points
-        min_x = min(p[0] for p in self.raw_border_points)
-        min_y = min(p[1] for p in self.raw_border_points)
-        max_x = max(p[0] for p in self.raw_border_points)
-        max_y = max(p[1] for p in self.raw_border_points)
+        min_x = int(min(p[0] for p in self.raw_border_points))
+        min_y = int(min(p[1] for p in self.raw_border_points))
+        max_x = int(max(p[0] for p in self.raw_border_points))
+        max_y = int(max(p[1] for p in self.raw_border_points))
 
         width = max_x - min_x + 1
         height = max_y - min_y + 1
