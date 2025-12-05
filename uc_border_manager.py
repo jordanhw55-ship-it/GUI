@@ -593,7 +593,7 @@ class BorderManager:
                 # The path_data is in world coordinates. We need to make it relative to the render box.
                 min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
 
-                for p_x, p_y in path_data:
+                for p_x, p_y in path_data: # Draw points relative to their own bounding box
                     draw.point((p_x - min_x, p_y - min_y), fill=255)
 
         else: # 'out'
