@@ -669,6 +669,16 @@ class BorderManager:
         self.app.smart_border_mode_active = not self.app.smart_border_mode_active
 
         if self.app.smart_border_mode_active:
+            # --- FIX for Paint Tool Conflict ---
+            # 1. Deactivate any active paint/eraser tools to release their control.
+            self.app.paint_manager.toggle_paint_mode('off')
+            self.app.toggle_tile_eraser_mode() if self.app.tile_eraser_mode_active else None
+
+            # 2. Explicitly re-enable component dragging, as the paint tools disable it.
+            # This ensures the main canvas press/drag events for the Smart Border tool will fire.
+            for comp in self.app.components.values():
+                comp.is_draggable = True
+
             # --- DEFINITIVE REWRITE: Create a composite image from all main tiles ---
             # 1. Find all main tile components with images.
             tile_components = [
