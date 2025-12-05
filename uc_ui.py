@@ -395,7 +395,7 @@ class UIManager:
         # Brush Size
         tk.Label(smart_controls_frame, text="Brush Size:", bg="#374151", fg="white").grid(row=1, column=0, sticky='w', pady=2)
         # --- FIX for AttributeError: Point to the new canvas cursor resize function ---
-        tk.Scale(smart_controls_frame, from_=5, to=50, orient=tk.HORIZONTAL, variable=manager.smart_brush_radius,
+        tk.Scale(smart_controls_frame, from_=5, to=50, orient=tk.HORIZONTAL, variable=manager.smart_manager.smart_brush_radius,
                  bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0,
                  command=manager._update_canvas_brush_size).grid(row=1, column=1, sticky='ew', padx=5)
 
