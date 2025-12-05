@@ -154,6 +154,8 @@ class SmartBorderManager:
         """Removes all temporary event bindings used by the smart border tool."""
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
+        # --- FIX: Unbind the drag event to prevent lingering handlers ---
+        self.canvas.unbind("<B1-Motion>")
 
     def start_drawing_stroke(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -390,7 +392,9 @@ class SmartBorderManager:
                 screen_y = relative_y + preview_h / 2
                 points_to_draw.append((screen_x, screen_y))
         if points_to_draw:
-            ImageDraw.Draw(self.highlight_layer_image).point(points_to_draw, fill="cyan")
+            # --- FIX: Draw points directly onto the preview canvas widget ---
+            for x, y in points_to_draw:
+                preview_canvas.create_oval(x-1, y-1, x+1, y+1, fill="cyan", outline="cyan")
 
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
