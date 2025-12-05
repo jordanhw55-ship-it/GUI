@@ -570,7 +570,7 @@ class ImageEditorApp:
     def toggle_tile_eraser_mode(self):
         """Toggles the tile eraser mode on or off."""
         self.tile_eraser_mode_active = not self.tile_eraser_mode_active
-            
+        if self.tile_eraser_mode_active:
             self.ui_manager.tile_eraser_btn.config(text="Tile Eraser (Active)", bg='#ef4444', relief='sunken')
             self.canvas.config(cursor="X_cursor")
             print("Tile Eraser mode ENABLED.")
