@@ -709,11 +709,8 @@ class BorderManager:
             
             # --- DEFINITIVE FIX: Bind mouse events only when the tool is activated ---
             self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.on_mouse_down)
+            self.on_mouse_drag_binding_id = self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
-            # The <B1-Motion> event is now handled by the generic drag handler in uc_app.py
-            # to prevent conflicting bindings. We only need to handle mouse move for the cursor.
-            # --- DEFINITIVE FIX for cursor lag: Bind to <Motion> for smooth cursor updates ---
-            self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_brush_cursor)
             if self.highlight_layer_id is None:
                 self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, state='normal', tags="smart_border_highlight_layer")
 
@@ -776,8 +773,12 @@ class BorderManager:
         # This prevents errors if the bindings were never created.
         if hasattr(self, 'on_mouse_down_binding_id') and self.on_mouse_down_binding_id:
             self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
+        if hasattr(self, 'on_mouse_drag_binding_id') and self.on_mouse_drag_binding_id:
+            self.canvas.unbind("<B1-Motion>", self.on_mouse_drag_binding_id)
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
+        if hasattr(self, 'on_mouse_move_binding_id') and self.on_mouse_move_binding_id:
+            self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
 
     def on_mouse_down(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -797,6 +798,7 @@ class BorderManager:
     def on_mouse_drag(self, event):
         """Handles continuous drawing or erasing."""
         if not self.is_drawing: return
+        self._update_brush_cursor(event) # NEW: Update cursor on drag
 
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
