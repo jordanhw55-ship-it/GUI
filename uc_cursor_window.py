@@ -24,13 +24,16 @@ class CursorWindow:
         self.window.overrideredirect(True) # No title bar, borders, etc.
         self.window.wm_attributes("-topmost", True) # Always on top
 
-        # --- DEFINITIVE FIX: Define color components once to ensure consistency ---
-        # We define the R, G, B components and use them to build the hex string for Tkinter
-        # and the COLORREF for the Windows API.
+        # --- Color Definitions ---
+        # We define the R, G, B components once for both Tkinter and the Windows API.
         self.R, self.G, self.B = (171, 205, 239) # Corresponds to #abcdef
         self.transparent_color_hex = f'#{self.R:02x}{self.G:02x}{self.B:02x}'
 
-        # Set the background color of the window that we will make transparent.
+        # --- Transparency & Click-Through Setup (Tkinter Part) ---
+        # 1. Set Tkinter's transparency attribute (necessary to prime the window handle).
+        self.window.wm_attributes("-transparentcolor", self.transparent_color_hex)
+        
+        # 2. Set the background color of the window to the key color.
         self.window.config(bg=self.transparent_color_hex)
 
         # --- Click-Through (Windows only) ---
@@ -38,7 +41,7 @@ class CursorWindow:
             self.window.after(10, self._make_click_through) # Delay to ensure window handle exists
 
         # --- Content ---
-        # Replace the Label with a Canvas for better image rendering control.
+        # Use a Canvas for image display control.
         self.canvas = tk.Canvas(
             self.window, 
             bg=self.transparent_color_hex, 
@@ -47,22 +50,34 @@ class CursorWindow:
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
         self.tk_image = None
+        
+        # 3. CRITICAL TKINTER FIX: Add a binding to the Canvas to ignore all mouse events.
+        # This prevents the Canvas widget from capturing the click before the Windows API 
+        # has a chance to pass it through.
+        self.canvas.bind("<Button>", lambda e: "break")
+        self.canvas.bind("<ButtonRelease>", lambda e: "break")
+
 
     def _make_click_through(self):
         """
         Uses the win32gui library to set both WS_EX_LAYERED and WS_EX_TRANSPARENT styles.
         WS_EX_LAYERED + LWA_COLORKEY handles visual transparency.
-        WS_EX_TRANSPARENT forces all remaining pixels (like the circle) to ignore mouse events.
+        WS_EX_TRANSPARENT forces all remaining opaque pixels (like the circle) to ignore mouse events.
         """
         if not self.window.winfo_exists(): return
 
         try:
             hwnd = self.window.winfo_id()
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            
+            # Add WS_EX_LAYERED (for transparency) AND WS_EX_TRANSPARENT (for click-through)
             styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT 
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
+            
+            # Apply the LWA_COLORKEY for visual transparency of the background.
             color_key = win32api.RGB(self.R, self.G, self.B)
             win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
+            
             print("[INFO] Custom cursor window is now click-through.")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
@@ -79,8 +94,8 @@ class CursorWindow:
 
             # 2. Update and center the image on the Canvas
             self.canvas.config(width=w, height=h) # Also resize the canvas
-            self.canvas.coords(self.image_id, 0, 0) # Move image anchor to top-left
-            self.canvas.itemconfig(self.image_id, image=self.tk_image, anchor=tk.NW, state='normal')
+            self.canvas.coords(self.image_id, w // 2, h // 2)
+            self.canvas.itemconfig(self.image_id, image=self.tk_image, anchor=tk.CENTER, state='normal')
         else:
             self.canvas.itemconfig(self.image_id, state='hidden')
             self.tk_image = None
