@@ -990,8 +990,6 @@ class ImageEditorApp:
                 # If there are no points, hide the canvas item
                 self.canvas.itemconfigure(bm.highlight_layer_id, state='hidden')
 
-            # Ensure the layer is positioned correctly
-            self.canvas.coords(bm.highlight_layer_id, 0, 0)
             self.canvas.tag_raise(bm.highlight_layer_id)
 
     def on_tab_changed(self, event):
