@@ -782,10 +782,12 @@ class ImageEditorApp:
         zoom_scale = self.camera.zoom_scale
         canvas_w = self.canvas.winfo_width()
         canvas_h = self.canvas.winfo_height()
+        view_wx1, view_wy1 = self.camera.screen_to_world(0, 0)
+        view_wx2, view_wy2 = self.camera.screen_to_world(canvas_w, canvas_h)
 
         # Redraw all components that are meant to be zoomed/panned
         for comp in self.components.values():
-            # --- DEFINITIVE FIX: Implement View Frustum Culling ---
+            # --- REFACTOR: Calculate screen coords once and reuse for culling and drawing ---
             # 1. Calculate the component's on-screen bounding box.
             sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
             sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
@@ -793,11 +795,11 @@ class ImageEditorApp:
             # 2. Check if the component is outside the visible canvas area.
             if sx2 < 0 or sx1 > canvas_w or sy2 < 0 or sy1 > canvas_h:
                 # If it's off-screen, hide it and skip all expensive processing.
-                if comp.rect_id: self.canvas.itemconfig(comp.rect_id, state='hidden')
+                if comp.rect_id: self.canvas.itemconfigure(comp.rect_id, state='hidden')
                 continue # Go to the next component
             else:
                 # If it's on-screen, ensure it's visible.
-                if comp.rect_id: self.canvas.itemconfig(comp.rect_id, state='normal')
+                if comp.rect_id: self.canvas.itemconfigure(comp.rect_id, state='normal')
 
             # --- FIX: Handle components that have not been drawn yet ---
             # If a component (like a new clone) has no rect_id, it means it's not on the canvas.
@@ -813,10 +815,8 @@ class ImageEditorApp:
 
             if comp.rect_id: # Now, proceed with updating the component on the canvas
                 # For components with an image, we need to resize the image itself
-                # and then place it at the new screen coordinates.
                 if comp.pil_image:
-                    # --- FIX: Handle transition from placeholder to image ---
-                    # If we have a PIL image but no TK image, it means we just loaded one. (tk_image is a canvas-specific attribute)
+                    # --- REFACTOR: Streamline placeholder-to-image transition ---
                     # We must delete the old rectangle and create a new image item.
                     if comp.tk_image is None:
                         self.canvas.delete(comp.rect_id) # Delete the placeholder rectangle
@@ -832,11 +832,10 @@ class ImageEditorApp:
                             self.canvas.delete(comp.text_id); comp.text_id = None
                         comp._cached_screen_w, comp._cached_screen_h = -1, -1 # Reset cache
 
-                    # --- DEFINITIVE FIX for GAPS ---
-                    # Calculate screen coordinates first, then derive width/height from them.
                     screen_w, screen_h = sx2 - sx1, sy2 - sy1
 
-                    # Only regenerate the Tkinter image if the size has actually changed.
+                    # --- REFACTOR: Simplified image caching check ---
+                    # Only regenerate the Tkinter image if the size has changed or it's the first draw.
                     if screen_w > 0 and screen_h > 0 and (int(screen_w) != comp._cached_screen_w or int(screen_h) != comp._cached_screen_h or comp.tk_image is None):
                         comp._cached_screen_w = int(screen_w); comp._cached_screen_h = int(screen_h)
                         if comp._cached_screen_w <= 0 or comp._cached_screen_h <= 0: continue
@@ -847,7 +846,7 @@ class ImageEditorApp:
                         resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
                         resized_img = source_img.resize((comp._cached_screen_w, comp._cached_screen_h), resample_quality)
                         comp.tk_image = ImageTk.PhotoImage(resized_img)
-                        self.canvas.itemconfig(comp.rect_id, image=comp.tk_image)
+                        self.canvas.itemconfigure(comp.rect_id, image=comp.tk_image)
 
                     # Always update the item's screen coordinates.
                     self.canvas.coords(comp.rect_id, sx1, sy1)
@@ -856,16 +855,20 @@ class ImageEditorApp:
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
-        # Also redraw the paint layer if it exists
+        # --- REFACTOR: Optimize paint layer redraw by caching based on zoom ---
         if self.paint_manager.paint_layer_id and self.paint_manager.paint_layer_image:
-            orig_w, orig_h = self.paint_manager.paint_layer_image.size
-            new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
-            if new_w > 0 and new_h > 0:
-                resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), resample_quality)
-                self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
-                self.canvas.itemconfig(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
-                self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
+            # Only regenerate the resized paint layer if the zoom has changed
+            if self.camera.last_redraw_zoom != zoom_scale or self.paint_manager.paint_layer_tk is None:
+                orig_w, orig_h = self.paint_manager.paint_layer_image.size
+                new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
+                if new_w > 0 and new_h > 0:
+                    resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
+                    resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), resample_quality)
+                    self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
+                    self.canvas.itemconfigure(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
+            
+            # Always update coordinates
+            self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
 
         # --- FIX: Redraw the border preview last to ensure it's on top ---
         # Only redraw the preview if the border tab is the one being displayed.
@@ -875,52 +878,36 @@ class ImageEditorApp:
         # --- NEW: Redraw the selection highlight ---
         self._update_selection_highlight()
             
-        # --- REVERT: Restore smart border drawing to the main redraw loop ---
-        # This brings back the original drawing logic that was confirmed to be working visually.
-        # The BorderManager's _update_highlights will now just be a trigger for this.
+        # --- REFACTOR: Streamline smart border highlight layer drawing ---
         if self.smart_border_mode_active and self.border_manager.smart_manager.highlight_layer_id:
             bm = self.border_manager.smart_manager
 
             # Ensure the backing PIL image and the Tk PhotoImage exist and match the canvas size.
             if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
                 bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
-                self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
             else:
-                # Clear the existing highlight layer image
-                draw = ImageDraw.Draw(bm.highlight_layer_image)
-                draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
+                # A more efficient way to clear the image
+                bm.highlight_layer_image.paste((0,0,0,0), [0,0,canvas_w,canvas_h])
 
-            # 2. Collect all screen-space points to be drawn, applying view frustum culling.
+            # Create the PhotoImage if it doesn't exist
+            if bm.highlight_layer_tk is None:
+                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
+                self.canvas.itemconfigure(bm.highlight_layer_id, image=bm.highlight_layer_tk)
+
             if bm.raw_border_points:
-                # Get current camera view in world coordinates
-                view_wx1, view_wy1 = self.camera.screen_to_world(0, 0)
-                view_wx2, view_wy2 = self.camera.screen_to_world(canvas_w, canvas_h)
-    
-                # Filter raw_border_points to only include those visible in the current view
-                visible_world_points = [
-                    p for p in bm.raw_border_points
-                    if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2
-                ]
-    
-                if visible_world_points:
-                    screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_world_points]
-    
-                    # --- OPTIMIZATION: Use vectorized NumPy indexing for massive speedup ---
-                    if NUMPY_AVAILABLE and screen_points:
+                # Filter points to only those visible in the current view
+                visible_points = [p for p in bm.raw_border_points if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2]
+                if visible_points:
+                    screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_points]
+                    if NUMPY_AVAILABLE:
                         highlight_array = np.array(bm.highlight_layer_image)
-                        
-                        # Separate the list of (x, y) tuples into two lists of coordinates
-                        screen_x_coords, screen_y_coords = zip(*screen_points)
-                        
-                        # Use NumPy's advanced indexing to set all pixel colors in a single operation
-                        highlight_array[screen_y_coords, screen_x_coords] = bm.highlight_color
-                        
-                        bm.highlight_layer_image = Image.fromarray(highlight_array)
-                    else:
+                        screen_y, screen_x = zip(*[(int(y), int(x)) for x, y in screen_points if 0 <= x < canvas_w and 0 <= y < canvas_h])
+                        if screen_x: # Check if there are any points on screen
+                            highlight_array[screen_y, screen_x] = bm.highlight_color
+                            bm.highlight_layer_image = Image.fromarray(highlight_array)
+                    else: # Fallback for when NumPy is not available
                         ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
 
-            # 4. Update the PhotoImage on the canvas with the new drawing.
             bm.highlight_layer_tk.paste(bm.highlight_layer_image) # type: ignore
             self.canvas.coords(bm.highlight_layer_id, 0, 0) # The layer is drawn at the canvas origin
             self.canvas.tag_raise(bm.highlight_layer_id) # Ensure it's on top of components
@@ -928,6 +915,9 @@ class ImageEditorApp:
         # Finally, ensure the status box is not obscured.
         self.canvas.tag_raise("status_box_frame") # This is not a real tag, but create_window items are always on top.
         self._keep_docks_on_top()
+        
+        # Cache the zoom level after a successful redraw
+        self.camera.last_redraw_zoom = zoom_scale
 
     def on_tab_changed(self, event):
         """Handles the event when the user clicks a different main tab."""
