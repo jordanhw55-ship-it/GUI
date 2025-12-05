@@ -413,6 +413,10 @@ class ImageEditorApp:
         # execute and update the last_drag coordinates, preventing the paint tool from
         # detecting mouse movement and drawing a line.
         if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            # --- DEFINITIVE FIX: Set the last_drag coordinates to prevent line drawing errors ---
+            # This ensures the component drag handler doesn't use stale coordinates from a previous action.
+            self.last_drag_x = event.x
+            self.last_drag_y = event.y
             return
 
         print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
@@ -903,15 +907,13 @@ class ImageEditorApp:
         
         # --- REFACTOR: Optimize paint layer redraw by caching based on zoom ---
         if self.paint_manager.paint_layer_id and self.paint_manager.paint_layer_image:
-            # Only regenerate the resized paint layer if the zoom has changed
-            if self.camera.last_redraw_zoom != zoom_scale or self.paint_manager.paint_layer_tk is None:
-                orig_w, orig_h = self.paint_manager.paint_layer_image.size
-                new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
-                if new_w > 0 and new_h > 0:
-                    resample_quality = Image.Resampling.NEAREST if use_fast_preview else Image.Resampling.LANCZOS
-                    resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), resample_quality)
-                    self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
-                    self.canvas.itemconfigure(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
+            # --- DEFINITIVE FIX: Always regenerate the paint layer PhotoImage to show live updates ---
+            orig_w, orig_h = self.paint_manager.paint_layer_image.size
+            new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
+            if new_w > 0 and new_h > 0:
+                resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST)
+                self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
+                self.canvas.itemconfigure(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
             
             # Always update coordinates
             self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)

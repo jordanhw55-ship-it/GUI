@@ -117,15 +117,15 @@ class PaintManager:
             )
         else:
             # This is a continuation of the stroke. Draw a line.
-            last_world_x, last_world_y = self.app.camera.screen_to_world(self.last_paint_x, self.last_paint_y)
+            # --- DEFINITIVE FIX: Use the correct last coordinates for drawing the line ---
             draw.line(
-                (last_world_x, last_world_y, world_x, world_y),
+                (self.last_paint_x, self.last_paint_y, world_x, world_y),
                 fill=paint_color,
                 width=brush_size,
                 joint='curve'
             )
     
-        self.last_paint_x, self.last_paint_y = event.x, event.y
+        self.last_paint_x, self.last_paint_y = world_x, world_y
         self.app.redraw_all_zoomable()
 
     def reset_paint_line(self, event):
