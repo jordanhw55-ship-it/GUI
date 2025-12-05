@@ -1016,8 +1016,23 @@ class BorderManager:
 
     def _update_highlights(self):
         """Requests a full canvas redraw, which now includes the highlight layer."""
-        self.app.redraw_all_zoomable()
+        # --- OPTIMIZATION: Directly update the highlight layer instead of full redraw ---
+        # This is the core performance improvement. Instead of calling redraw_all_zoomable(),
+        # which redraws every single component, we will now only update the highlight layer's
+        # backing image and paste it onto the canvas PhotoImage. This is much faster.
+        
+        # 1. Ensure the highlight layer and its backing images exist.
+        if self.highlight_layer_image is None or self.highlight_layer_tk is None:
+            canvas_w, canvas_h = self.canvas.winfo_width(), self.canvas.winfo_height()
+            self.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+            self.highlight_layer_tk = ImageTk.PhotoImage(self.highlight_layer_image)
+            if self.highlight_layer_id:
+                self.canvas.itemconfig(self.highlight_layer_id, image=self.highlight_layer_tk)
 
+        # 2. Draw the new points directly onto the backing PIL image.
+        ImageDraw.Draw(self.highlight_layer_image).point(list(self.raw_border_points), fill=self.highlight_color)
+        # 3. Update the Tkinter PhotoImage with the modified PIL image.
+        self.highlight_layer_tk.paste(self.highlight_layer_image)
     def update_preview_canvas(self, *args):
         """Redraws the stored border points on the preview canvas with the current zoom scale."""
         preview_canvas = self.app.ui_manager.border_preview_canvas
