@@ -47,14 +47,16 @@ class CursorWindow:
             self.window, 
             # The canvas background MUST be the key color for visual transparency.
             bg=self.transparent_color_hex, 
-            highlightthickness=0 
+            highlightthickness=0,
+            # NEW AGGRESSIVE FIX: Explicitly disable the canvas to prevent event capturing
+            state='disabled' 
         )
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
         self.tk_image = None
         
         # 3. CRITICAL CLICK-THROUGH FIX: Bindings to stop the Canvas/Window from capturing mouse events.
-        # Stop internal Canvas events
+        # Stop internal Canvas events (May be redundant with state='disabled', but safer to keep)
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
         
@@ -111,9 +113,18 @@ class CursorWindow:
             self.window.geometry(f"{w}x{h}+{self.window.winfo_x()}+{self.window.winfo_y()}")
 
             # 2. Update and center the image on the Canvas
+            # We must temporarily enable the canvas to update the image before setting it back to disabled.
+            current_state = self.canvas.cget('state')
+            if current_state == 'disabled':
+                self.canvas.config(state='normal')
+
             self.canvas.config(width=w, height=h) # Also resize the canvas
             self.canvas.coords(self.image_id, w // 2, h // 2)
             self.canvas.itemconfig(self.image_id, image=self.tk_image, anchor=tk.CENTER, state='normal')
+
+            # Revert state to disabled to prevent interaction
+            if current_state == 'disabled':
+                self.canvas.config(state='disabled')
         else:
             self.canvas.itemconfig(self.image_id, state='hidden')
             self.tk_image = None
