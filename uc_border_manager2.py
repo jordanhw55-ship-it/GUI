@@ -632,6 +632,12 @@ class SmartBorderManager:
         new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
         new_border_comp.original_pil_image = border_image.copy()
 
+        # --- DEFINITIVE FIX: Add an undo state for the new component ---
+        undo_data = {
+            'type': 'add_component',
+            'tag': border_tag
+        }
+        self.app._save_undo_state(undo_data)
         # 5. Add the new component to the application and bind its events.
         self.app.components[border_tag] = new_border_comp
         self.app._bind_component_events(border_tag)
