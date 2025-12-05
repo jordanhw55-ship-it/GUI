@@ -793,6 +793,10 @@ class BorderManager:
 
     def on_mouse_drag(self, event):
         """Handles continuous drawing or erasing."""
+        # --- FIX for cursor not updating during drag ---
+        # Explicitly update the canvas-drawn cursor's position during the drag event.
+        self._update_canvas_brush_position(event)
+
         if not self.is_drawing: return
         draw_skip = self.smart_draw_skip.get()
         distance = math.sqrt((event.x - self.last_drawn_x)**2 + (event.y - self.last_drawn_y)**2)
