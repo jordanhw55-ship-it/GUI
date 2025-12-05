@@ -943,6 +943,10 @@ class ImageEditorApp:
         if self.smart_border_mode_active:
             self.border_manager.toggle_smart_border_mode()
 
+        # --- FIX: Deactivate the Tile Eraser tool if it's active ---
+        if self.tile_eraser_mode_active:
+            self.toggle_tile_eraser_mode()
+
         # --- NEW: Clear any active border previews when switching context ---
         # Also, if the user is switching *to* the border tab, show the preview.
         if self.is_border_tab_active():

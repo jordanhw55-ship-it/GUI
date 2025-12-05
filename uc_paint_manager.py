@@ -73,6 +73,8 @@ class PaintManager:
         else:
             for comp in self.app.components.values():
                 comp.is_draggable = True
+            # --- FIX: Restore the generic drag handler when all paint tools are off ---
+            self.app.bind_generic_drag_handler()
             print("All tools DISABLED. Component dragging is enabled.")
 
     def choose_paint_color(self):
