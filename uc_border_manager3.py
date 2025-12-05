@@ -239,7 +239,7 @@ class SmartBorderManager:
         brush_radius = self.smart_brush_radius.get()
         diff_threshold = self.smart_diff_threshold.get()
         img = self.active_detection_alpha_numpy # Use the pre-converted NumPy array
-        if not img: return
+        if img is None: return
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
 
