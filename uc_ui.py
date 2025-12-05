@@ -308,7 +308,7 @@ class UIManager:
         # Preset Dropdown
         tk.Label(controls_frame, text="Preset:", bg="#374151", fg="white").grid(row=0, column=0, sticky='w', pady=2)
         # --- FIX: Add "None" to the list of presets and set it as the default ---
-        preset_names = ["None"] + list(manager.border_presets.keys())
+        preset_names = ["None"] + list(manager.preset_manager.border_presets.keys())
         if preset_names:
             preset_menu = ttk.OptionMenu(controls_frame, manager.selected_preset, "None", *preset_names)
             preset_menu.grid(row=0, column=1, sticky='ew', padx=5)
