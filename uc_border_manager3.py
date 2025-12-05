@@ -432,6 +432,9 @@ class SmartBorderManager:
         # Since we don't have the event, we just move it to the current pointer location
         x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
         y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        # --- FIX: Ensure the cursor is visible and positioned correctly after a style redraw ---
+        # This prevents it from staying hidden if the mouse is not moving.
+        self.canvas.itemconfig(self.cursor_canvas_id, state='normal')
         self.canvas.coords(self.cursor_canvas_id, x - offset, y - offset)
 
     def _update_canvas_brush_position(self, event):
