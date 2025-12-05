@@ -1016,35 +1016,10 @@ class BorderManager:
 
     def _update_highlights(self):
         """Requests a full canvas redraw, which now includes the highlight layer."""
-        # --- OPTIMIZATION: Directly update the highlight layer instead of full redraw ---
-        # This is the core performance improvement. Instead of calling redraw_all_zoomable(),
-        # which redraws every single component, we will now only update the highlight layer's
-        # backing image and paste it onto the canvas PhotoImage. This is much faster.
-        
-        # 1. Ensure the highlight layer and its backing images exist.
-        if self.highlight_layer_image is None or self.highlight_layer_tk is None:
-            canvas_w, canvas_h = self.canvas.winfo_width(), self.canvas.winfo_height()
-            self.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-            self.highlight_layer_tk = ImageTk.PhotoImage(self.highlight_layer_image)
-            if self.highlight_layer_id:
-                self.canvas.itemconfig(self.highlight_layer_id, image=self.highlight_layer_tk)
-
-        # --- DEFINITIVE FIX: Convert world points to screen points before drawing ---
-        # The previous optimization failed because it drew world coordinates onto a screen-space
-        # image. The correct approach is to convert all points to screen space first.
-
-        # 2. Clear the previous drawing from the backing PIL image.
-        canvas_w, canvas_h = self.canvas.winfo_width(), self.canvas.winfo_height()
-        ImageDraw.Draw(self.highlight_layer_image).rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
-
-        # 3. Convert all raw world points to screen coordinates.
-        if self.raw_border_points:
-            screen_points = [self.app.camera.world_to_screen(p[0], p[1]) for p in self.raw_border_points]
-            # 4. Draw the screen-space points onto the backing PIL image.
-            ImageDraw.Draw(self.highlight_layer_image).point(screen_points, fill=self.highlight_color)
-
-        # 5. Update the Tkinter PhotoImage with the modified PIL image.
-        self.highlight_layer_tk.paste(self.highlight_layer_image) # type: ignore
+        # --- REVERT: Go back to the original, simple redraw trigger. ---
+        # The main app's `redraw_all_zoomable` function is now responsible for
+        # drawing the smart border points, which fixes the visibility issue.
+        self.app.redraw_all_zoomable()
     def update_preview_canvas(self, *args):
         """Redraws the stored border points on the preview canvas with the current zoom scale."""
         preview_canvas = self.app.ui_manager.border_preview_canvas
