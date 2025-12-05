@@ -382,8 +382,10 @@ class UIManager:
         smart_controls_frame.grid_columnconfigure(1, weight=1)
 
         # Draw/Erase Toggle
+        # --- DEFINITIVE FIX: Add a command to update the UI when the checkbox is toggled ---
         tk.Checkbutton(smart_controls_frame, text="Erase Points", variable=manager.is_erasing_points,
-                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white"
+                        bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white",
+                        command=manager.on_erase_mode_toggle
                         ).grid(row=0, column=0, columnspan=2, sticky='w', pady=2)
 
         # Brush Size

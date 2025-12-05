@@ -1064,6 +1064,21 @@ class BorderManager:
         self.update_preview_canvas()
         print("Cleared all detected border points.")
 
+    def on_erase_mode_toggle(self):
+        """
+        Handles the UI update when the 'Erase Points' checkbox is toggled.
+        This ensures the highlight layer and brush cursor are updated immediately.
+        """
+        # Redraw the main highlight layer to ensure it remains visible.
+        self._update_highlights()
+
+        # Synthesize a fake event at the current mouse position to update the cursor's color.
+        class FakeEvent:
+            x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+            y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        
+        self._update_brush_cursor(FakeEvent())
+
     def finalize_border(self):
         """Creates a new component from the detected border points."""
         if not self.raw_border_points:
