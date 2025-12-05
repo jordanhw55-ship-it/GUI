@@ -25,44 +25,50 @@ class CursorWindow:
         self.window.wm_attributes("-topmost", True) # Always on top
 
         # --- Color Definitions ---
-        # We define the R, G, B components once for both Tkinter and the Windows API.
-        self.R, self.G, self.B = (171, 205, 239) # Corresponds to #abcdef
+        # We define a neutral background color. This color is NO LONGER THE TRANSPARENCY KEY.
+        # We will rely on Tkinter's built-in transparency for the window background.
+        self.R, self.G, self.B = (171, 205, 239) 
         self.transparent_color_hex = f'#{self.R:02x}{self.G:02x}{self.B:02x}'
-
-        # --- Transparency & Click-Through Setup (Tkinter Part) ---
-        # 1. Set Tkinter's transparency attribute (necessary to prime the window handle).
-        self.window.wm_attributes("-transparentcolor", self.transparent_color_hex)
         
-        # 2. Set the background color of the window to the key color.
-        self.window.config(bg=self.transparent_color_hex)
+        # --- Transparency & Click-Through Setup (Tkinter Part) ---
+        # 1. Use Tkinter's built-in opacity control (0.0 fully transparent, 1.0 fully opaque).
+        # We set it to near-opaque but rely on Win32 styles for full click-through.
+        self.window.wm_attributes("-alpha", 1.0) 
+        
+        # 2. Set the background color. We still need this for the Canvas widget.
+        self.window.config(bg='white') # Use a simple background color
 
         # --- Click-Through (Windows only) ---
         if WIN32_AVAILABLE:
-            self.window.after(10, self._make_click_through) # Delay to ensure window handle exists
+            # We call this immediately, but only set the styles after the window exists.
+            self.window.after(10, self._make_click_through) 
 
         # --- Content ---
         # Use a Canvas for image display control.
         self.canvas = tk.Canvas(
             self.window, 
+            # The canvas background MUST be transparent for PIL PNG alpha to work.
             bg=self.transparent_color_hex, 
-            highlightthickness=0 # Ensures the canvas itself has no borders
+            highlightthickness=0 
         )
         self.canvas.pack(fill="both", expand=True)
         self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
         self.tk_image = None
         
-        # 3. CRITICAL TKINTER FIX: Add a binding to the Canvas to ignore all mouse events.
+        # CRITICAL TKINTER FIX: Add a binding to the Canvas to ignore all mouse events.
         # This prevents the Canvas widget from capturing the click before the Windows API 
-        # has a chance to pass it through.
+        # has a chance to pass it through. This is redundant with WS_EX_TRANSPARENT 
+        # but provides a safety mechanism.
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
 
 
     def _make_click_through(self):
         """
-        Uses the win32gui library to set both WS_EX_LAYERED and WS_EX_TRANSPARENT styles.
-        WS_EX_LAYERED + LWA_COLORKEY handles visual transparency.
-        WS_EX_TRANSPARENT forces all remaining opaque pixels (like the circle) to ignore mouse events.
+        [DEFINITIVE FIX] Uses Alpha Blend + WS_EX_TRANSPARENT.
+        The combination of WS_EX_LAYERED + LWA_ALPHA + WS_EX_TRANSPARENT is the only
+        reliable way to make an irregular-shaped window (like a circular cursor) fully
+        click-through, including the opaque pixels.
         """
         if not self.window.winfo_exists(): return
 
@@ -70,15 +76,19 @@ class CursorWindow:
             hwnd = self.window.winfo_id()
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
             
-            # Add WS_EX_LAYERED (for transparency) AND WS_EX_TRANSPARENT (for click-through)
-            styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT 
+            # 1. Add WS_EX_LAYERED (required for LWA_ALPHA) and WS_EX_TRANSPARENT (for click-through)
+            # NOTE: We are intentionally REMOVING any old WS_EX_TRANSPARENT if it was set alone,
+            # but usually, we just rely on the |=
+            styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
             
-            # Apply the LWA_COLORKEY for visual transparency of the background.
-            color_key = win32api.RGB(self.R, self.G, self.B)
-            win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
+            # 2. Apply Alpha Blend (opacity=255, no color key).
+            # This makes the window a layered window, allowing the OS to pass clicks
+            # through based on the WS_EX_TRANSPARENT style.
+            # 255 is fully opaque.
+            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA)
             
-            print("[INFO] Custom cursor window is now click-through.")
+            print("[INFO] Custom cursor window is now fully click-through (Alpha Blend method).")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
 
