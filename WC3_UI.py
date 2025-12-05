@@ -66,9 +66,6 @@ class WC3UITab(QWidget):
         self.reset_default_button = QPushButton("Reset Default")
         self.apply_wc3_ui_button.setStyleSheet("background-color: #228B22; color: white;")
 
-        self.apply_dds_button = QPushButton("Apply DDS files to WC3 UI")
-        right_layout.addWidget(self.apply_dds_button)
-
         self.reset_default_button.setStyleSheet("background-color: #B22222; color: white;")
         right_layout.addWidget(self.apply_wc3_ui_button)
         right_layout.addWidget(self.reset_default_button)
@@ -110,7 +107,6 @@ class WC3UITab(QWidget):
         self.guide_button.clicked.connect(self.show_guide_prompt)
         self.reg_on_button.clicked.connect(self.run_reg_on)
         self.reg_off_button.clicked.connect(self.run_reg_off)
-        self.apply_dds_button.clicked.connect(self.apply_dds_to_ui)
         self.reset_default_button.clicked.connect(self.reset_to_default)
 
     def showEvent(self, event):
@@ -334,46 +330,6 @@ class WC3UITab(QWidget):
         """.strip()
 
         QMessageBox.information(self, "Guide", guide_text)
-
-    def apply_dds_to_ui(self):
-        """
-        Copies all .dds files from the UI Creator's DDS export folder
-        to the Warcraft III UI folder.
-        """
-        wc3_path = self.path_edit.text()
-        if not os.path.isdir(wc3_path):
-            QMessageBox.warning(self, "Invalid Path", "The specified Warcraft III path does not exist. Please set it correctly before applying changes.")
-            return
-
-        # Define source and destination paths
-        source_dir = os.path.join(get_base_path(), "Contents", "ui creator", "output", "export_dds")
-        dest_dir = os.path.join(wc3_path, "UI", "console", "human")
-
-        if not os.path.isdir(source_dir):
-            QMessageBox.warning(self, "Source Folder Not Found", f"The DDS export folder was not found.\n\nPlease export some DDS files from the UI Creator first.\n\nExpected path: {source_dir}")
-            return
-
-        # Get all .dds files from the source directory
-        try:
-            dds_files = [f for f in os.listdir(source_dir) if f.lower().endswith(".dds")]
-        except OSError as e:
-            QMessageBox.critical(self, "Error", f"Could not read source directory:\n{e}")
-            return
-
-        if not dds_files:
-            QMessageBox.information(self, "No Files Found", "No .dds files were found in the export folder to apply.")
-            return
-
-        # Create destination directory if it doesn't exist
-        os.makedirs(dest_dir, exist_ok=True)
-
-        copied_count = 0
-        for filename in dds_files:
-            if self._copy_file(filename, source_dir, dest_dir):
-                copied_count += 1
-
-        if copied_count > 0:
-            QMessageBox.information(self, "Success", f"Successfully applied {copied_count} DDS file(s) to the Warcraft III UI folder.")
 
     def browse_for_wc3_path(self):
         """Opens a dialog to select the Warcraft III directory."""
