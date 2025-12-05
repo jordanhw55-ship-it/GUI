@@ -1296,7 +1296,18 @@ class ImageEditorApp:
             has_borders = False
             if paint_layer:
                 # Composite the paint layer onto the component's image
-                final_image, has_paint = self.image_manager._composite_decal_onto_image(comp, paint_layer, 0, 0, self.CANVAS_WIDTH, self.CANVAS_HEIGHT, is_border=False)
+                # --- DEFINITIVE FIX: Use the correct compositing logic for the paint layer ---
+                # The old method was incorrect. We need to crop the section of the paint layer
+                # that corresponds to the tile's world coordinates and then composite it.
+                
+                # 1. Crop the paint layer to the component's world bounds.
+                # Ensure coordinates are integers for cropping.
+                crop_box = (int(comp.world_x1), int(comp.world_y1), int(comp.world_x2), int(comp.world_y2))
+                paint_crop = paint_layer.crop(crop_box)
+
+                # 2. Alpha composite the cropped paint over the tile's image.
+                # This correctly blends the paint, respecting transparency.
+                final_image = Image.alpha_composite(final_image, paint_crop)
 
             # --- NEW: Conditionally skip unmodified tiles based on UI checkbox ---
             if not self.export_all_tiles.get():
