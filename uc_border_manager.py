@@ -19,6 +19,7 @@ class BorderManager:
         self.app = app
         self.canvas = app.canvas
         self.next_border_id = 0
+        self.on_mouse_down_binding_id = None # NEW: To track the mouse down binding
 
         self.is_drawing = False # Flag for active mouse drag
         self.is_erasing_points = tk.BooleanVar(value=False)
@@ -723,6 +724,9 @@ class BorderManager:
             # --- REWIND: Use a canvas-drawn cursor instead of a native one ---
             self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
             self.canvas.config(cursor="none") # Hide the default system cursor
+            # --- DEFINITIVE FIX: Explicitly bind the mouse down event ---
+            # This is the crucial fix to ensure the tool can be used multiple times.
+            self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.start_drawing_stroke)
             self._create_canvas_brush_cursor()
 
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
@@ -743,6 +747,9 @@ class BorderManager:
                 self.brush_cursor_oval_id = None
             if self.on_mouse_move_binding_id:
                 self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
+            # --- DEFINITIVE FIX: Unbind the mouse down event ---
+            if self.on_mouse_down_binding_id:
+                self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 

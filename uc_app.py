@@ -909,6 +909,18 @@ class ImageEditorApp:
 
     def on_tab_changed(self, event):
         """Handles the event when the user clicks a different main tab."""
+        # --- FIX: Deactivate all context-specific tools when changing tabs ---
+        # This prevents tools like Paint or Smart Border from staying active
+        # when the user navigates to a different part of the UI.
+
+        # Deactivate Paint/Eraser tools
+        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            self.paint_manager.toggle_paint_mode('off')
+
+        # Deactivate Smart Border tool
+        if self.smart_border_mode_active:
+            self.border_manager.toggle_smart_border_mode()
+
         # --- NEW: Clear any active border previews when switching context ---
         # Also, if the user is switching *to* the border tab, show the preview.
         if self.is_border_tab_active():
