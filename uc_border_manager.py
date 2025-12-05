@@ -1029,10 +1029,22 @@ class BorderManager:
             if self.highlight_layer_id:
                 self.canvas.itemconfig(self.highlight_layer_id, image=self.highlight_layer_tk)
 
-        # 2. Draw the new points directly onto the backing PIL image.
-        ImageDraw.Draw(self.highlight_layer_image).point(list(self.raw_border_points), fill=self.highlight_color)
-        # 3. Update the Tkinter PhotoImage with the modified PIL image.
-        self.highlight_layer_tk.paste(self.highlight_layer_image)
+        # --- DEFINITIVE FIX: Convert world points to screen points before drawing ---
+        # The previous optimization failed because it drew world coordinates onto a screen-space
+        # image. The correct approach is to convert all points to screen space first.
+
+        # 2. Clear the previous drawing from the backing PIL image.
+        canvas_w, canvas_h = self.canvas.winfo_width(), self.canvas.winfo_height()
+        ImageDraw.Draw(self.highlight_layer_image).rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
+
+        # 3. Convert all raw world points to screen coordinates.
+        if self.raw_border_points:
+            screen_points = [self.app.camera.world_to_screen(p[0], p[1]) for p in self.raw_border_points]
+            # 4. Draw the screen-space points onto the backing PIL image.
+            ImageDraw.Draw(self.highlight_layer_image).point(screen_points, fill=self.highlight_color)
+
+        # 5. Update the Tkinter PhotoImage with the modified PIL image.
+        self.highlight_layer_tk.paste(self.highlight_layer_image) # type: ignore
     def update_preview_canvas(self, *args):
         """Redraws the stored border points on the preview canvas with the current zoom scale."""
         preview_canvas = self.app.ui_manager.border_preview_canvas
