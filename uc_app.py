@@ -872,25 +872,27 @@ class ImageEditorApp:
         # --- FIX: Check for the existence of the layer ID before trying to draw on it ---
         if self.smart_border_mode_active and self.border_manager.highlight_layer_id:
             bm = self.border_manager
-            # Ensure the layer image matches the canvas size
-            if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
-                bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
-                bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
-                self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
-            else:
-                # Clear the existing image
-                draw = ImageDraw.Draw(bm.highlight_layer_image)
-                draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
-
-            # Draw all points onto the layer
-            if bm.raw_border_points:
-                draw = ImageDraw.Draw(bm.highlight_layer_image)
-                for raw_x, raw_y in bm.raw_border_points:
-                    sx, sy = self.camera.world_to_screen(raw_x, raw_y)
-                    if 0 <= sx < canvas_w and 0 <= sy < canvas_h:
-                        draw.point((sx, sy), fill=bm.highlight_color)
             
-            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
+            # --- DEFINITIVE FIX for FREEZING on mouse release ---
+            # Instead of using a slow PIL ImageDraw, we will manipulate the Tkinter PhotoImage data directly.
+            # This is significantly faster for a large number of points.
+
+            # 1. Ensure the PhotoImage exists and matches the canvas size.
+            if bm.highlight_layer_tk is None or bm.highlight_layer_tk.width() != canvas_w or bm.highlight_layer_tk.height() != canvas_h:
+                bm.highlight_layer_tk = ImageTk.PhotoImage(Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0)))
+                self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
+
+            # 2. Clear the existing PhotoImage by filling it with a transparent color.
+            bm.highlight_layer_tk.put("{#00000000}" * canvas_w, to=(0, 0, canvas_w, bm.highlight_layer_tk.height()))
+
+            # 3. Draw all points directly onto the PhotoImage data buffer.
+            if bm.raw_border_points:
+                points_to_draw = []
+                for raw_x, raw_y in bm.raw_border_points: # bm.raw_border_points is a set
+                    sx, sy = self.camera.world_to_screen(raw_x, raw_y)
+                    points_to_draw.append(f"{{{bm.highlight_color[0]} {bm.highlight_color[1]} {bm.highlight_color[2]}}}" if 0 <= sx < canvas_w and 0 <= sy < canvas_h else "")
+                bm.highlight_layer_tk.put(" ".join(points_to_draw))
+
             self.canvas.coords(bm.highlight_layer_id, 0, 0) # The layer is drawn at the canvas origin
             self.canvas.tag_raise(bm.highlight_layer_id) # Ensure it's on top of components
 
