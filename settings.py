@@ -23,7 +23,8 @@ class SettingsManager:
             "volume": 100,            
             "font_family": "Segoe UI", # This is part of the PySide6 app, not the Tkinter one
             "font_size": 11,
-            "dock_assets": [] # NEW: To store paths of loaded dock images
+            "dock_assets": [], # NEW: To store paths of loaded dock images
+            "saved_borders": [] # NEW: To store paths of finalized smart borders
         }
         self.settings = self.defaults.copy()
         self.load()

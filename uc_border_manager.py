@@ -11,6 +11,7 @@ except ImportError:
     print("[WARNING] NumPy not found. Smart Border tool performance will be significantly degraded.")
     
 from uc_border_manager2 import SmartBorderManager
+from uc_component import DraggableComponent
 
 class BorderManager:
     """Manages tracing, creating, and applying borders to the canvas."""
@@ -216,3 +217,66 @@ class BorderManager:
         
         self.app.image_manager.create_clone_from_asset(original_border_comp, mock_event)
         print(f"Placed a new instance of saved border '{selected_tag}'.")
+
+    def delete_saved_border(self):
+        """Deletes the currently selected saved border from the dropdown and the filesystem."""
+        selected_tag = self.selected_finalized_border.get()
+        if not selected_tag or selected_tag == "No saved borders":
+            messagebox.showwarning("No Selection", "Please select a saved border from the dropdown to delete.")
+            return
+
+        if not messagebox.askyesno("Confirm Deletion", f"Are you sure you want to permanently delete the border '{selected_tag}'?"):
+            return
+
+        border_to_delete = self.finalized_borders.get(selected_tag)
+        if not border_to_delete:
+            messagebox.showerror("Error", f"Could not find the component data for '{selected_tag}'.")
+            return
+
+        # 1. Delete the image file from disk
+        if border_to_delete.image_path and os.path.exists(border_to_delete.image_path):
+            try:
+                os.remove(border_to_delete.image_path)
+                print(f"Deleted border file: {border_to_delete.image_path}")
+            except OSError as e:
+                messagebox.showerror("File Error", f"Could not delete the border file:\n{e}")
+                return
+
+        # 2. Remove from the application state
+        del self.finalized_borders[selected_tag]
+        self.finalized_border_names.remove(selected_tag)
+
+        # 3. Reset the dropdown if it's now empty
+        if not self.finalized_border_names:
+            self.finalized_border_names.append("No saved borders")
+        self.selected_finalized_border.set(self.finalized_border_names[0])
+
+        self.app.ui_manager.update_saved_borders_dropdown()
+
+    def load_finalized_border_from_path(self, image_path: str):
+        """
+        Recreates a finalized border component from a saved image path and adds it to the manager.
+        This is used on application startup.
+        """
+        if not image_path or not os.path.exists(image_path):
+            print(f"[WARNING] Could not reload saved border. File not found: {image_path}")
+            return
+
+        try:
+            border_image = Image.open(image_path).convert("RGBA")
+            border_tag = os.path.splitext(os.path.basename(image_path))[0]
+
+            # Create a new component. The initial coordinates don't matter much as it's a template.
+            new_border_comp = DraggableComponent(
+                self.app, border_tag, 0, 0, border_image.width, border_image.height, "green", border_tag
+            )
+            new_border_comp.is_decal = True
+            new_border_comp.original_pil_image = border_image.copy()
+            new_border_comp.image_path = image_path # Store the path for re-saving
+
+            # Add it to the manager's state and update the UI dropdown
+            self.add_finalized_border(new_border_comp)
+            print(f"[INFO] Reloaded saved border '{border_tag}' from {os.path.basename(image_path)}")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to reload saved border from path '{image_path}': {e}")

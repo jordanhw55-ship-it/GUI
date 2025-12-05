@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageDraw, ImageFilter, ImageTk
+import os
 import math
 
 try:
@@ -622,12 +623,22 @@ class SmartBorderManager:
         new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
         new_border_comp.original_pil_image = border_image.copy()
 
-        # 5. Add the new component to the application and bind its events.
+        # --- NEW: 5. Save the border image to a file for persistence ---
+        os.makedirs(self.app.saved_borders_dir, exist_ok=True)
+        save_path = os.path.join(self.app.saved_borders_dir, f"{border_tag}.png")
+        try:
+            border_image.save(save_path)
+            new_border_comp.image_path = save_path # Store the path in the component
+            print(f"Saved new border image to: {save_path}")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save the border image file: {e}")
+
+        # 6. Add the new component to the application and bind its events.
         self.app.components[border_tag] = new_border_comp
         self.app._bind_component_events(border_tag)
         new_border_comp.set_image(border_image) # This will handle the initial draw
 
-        # 6. Clear the detected points and deactivate the tool.
+        # 7. Clear the detected points and deactivate the tool.
         self.clear_detected_points()
         self.toggle_smart_border_mode() # This will clean up bindings and cursors
 

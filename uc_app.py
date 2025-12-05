@@ -91,6 +91,7 @@ class ImageEditorApp:
         self.tools_dir = os.path.join(self.ui_creator_contents_path, "tools")
         self.output_dir = os.path.join(self.ui_creator_contents_path, "output")
         self.layouts_dir = os.path.join(self.ui_creator_contents_path, "layouts")
+        self.saved_borders_dir = os.path.join(self.ui_creator_contents_path, "saved_borders") # NEW
         print(f"[DEBUG] Base path: {self.base_path}")
         print(f"[DEBUG] Image dir: {self.image_base_dir}")
         print(f"[DEBUG] Output dir: {self.output_dir}")
@@ -188,6 +189,9 @@ class ImageEditorApp:
         # --- 6. Reload saved dock assets ---
         self._reload_dock_assets()
 
+        # --- NEW: Reload saved borders ---
+        self._reload_saved_borders()
+
         # --- 7. Schedule initial draw and layout ---
         # We schedule this to run after the main loop starts, ensuring the window
         # is fully initialized and visible before we try to draw anything. This
@@ -206,8 +210,12 @@ class ImageEditorApp:
         # 2. Get the current dock assets from the UI Creator.
         dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in self.image_manager.dock_assets if asset.image_path]
         # 3. Update only the 'dock_assets' key in the loaded settings.
+        # --- NEW: Get and save the paths of finalized borders ---
+        saved_borders_to_save = [comp.image_path for comp in self.border_manager.finalized_borders.values() if comp.image_path]
         self.settings_manager.settings['dock_assets'] = dock_assets_to_save
-        # 4. Write the entire, updated settings object back to the file.
+        self.settings_manager.settings['saved_borders'] = saved_borders_to_save
+
+        # 5. Write the entire, updated settings object back to the file.
         with open(self.settings_manager.settings_path, 'w') as f:
             json.dump(self.settings_manager.settings, f, indent=4)
         print("[INFO] UI Creator settings saved.")
@@ -224,6 +232,13 @@ class ImageEditorApp:
         saved_assets = self.settings_manager.get("dock_assets", [])
         for asset_info in saved_assets:
             self.image_manager.load_asset_from_path(asset_info.get('path'), asset_info.get('is_border', False))
+
+    def _reload_saved_borders(self):
+        """Loads finalized borders from paths saved in settings."""
+        saved_border_paths = self.settings_manager.get("saved_borders", [])
+        print(f"[INFO] Found {len(saved_border_paths)} saved borders to reload.")
+        for border_path in saved_border_paths:
+            self.border_manager.load_finalized_border_from_path(border_path)
 
     def _bind_component_events(self, comp_tag):
         """Binds press, drag, and release events for a given component tag."""
