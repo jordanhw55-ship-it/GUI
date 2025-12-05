@@ -74,6 +74,10 @@ class ImageEditorApp:
         self.MAX_UNDO_STATES = 20 # Limit memory usage
         master.bind("<Control-z>", self.undo_last_action)
 
+        # --- NEW: Dedicated layer for preset borders to improve performance ---
+        self.border_layer_image = None
+        self.border_layer_tk = None
+
         self.is_group_dragging = False # Flag to prevent single-drag during group-pan
         
         # --- NEW: Composition Area Bounds ---
@@ -802,13 +806,16 @@ class ImageEditorApp:
         view_wx1, view_wy1 = self.camera.screen_to_world(0, 0)
         view_wx2, view_wy2 = self.camera.screen_to_world(canvas_w, canvas_h)
 
-        # 1. Draw the main components (tiles, decals)
+        # 1. Draw the main components (tiles, decals), excluding preset borders which are handled separately.
         self._draw_components(use_fast_preview, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
 
-        # 2. Draw overlays (highlights, tool previews) on top
+        # 2. Draw all preset borders onto a single dedicated layer for performance.
+        self._draw_preset_borders(view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
+
+        # 3. Draw other overlays (smart border highlights, tool previews) on top.
         self._draw_overlays(zoom_scale, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h)
 
-        # 3. Ensure UI elements like docks are always on top
+        # 4. Ensure UI elements like docks are always on top
         self._keep_docks_on_top()
         
         # 4. Cache the zoom level to optimize future redraws
@@ -820,6 +827,10 @@ class ImageEditorApp:
         objects, including culling, resizing, and image caching.
         """
         for comp in self.components.values():
+            # --- NEW: Skip preset borders, as they are now drawn on a separate layer ---
+            if comp.tag.startswith("preset_border_"):
+                continue
+
             sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
             sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
 
@@ -872,6 +883,52 @@ class ImageEditorApp:
                 elif comp.text_id:
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
+
+    def _draw_preset_borders(self, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h):
+        """
+        Helper for `redraw_all_zoomable`. Draws all preset borders onto a single
+        transparent layer for significantly better performance.
+        """
+        # 1. Initialize or clear the border layer image.
+        if self.border_layer_image is None or self.border_layer_image.size != (canvas_w, canvas_h):
+            self.border_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+        else:
+            # Fast clear of the existing image
+            self.border_layer_image.paste((0, 0, 0, 0), [0, 0, canvas_w, canvas_h])
+
+        # 2. Find all visible preset border components.
+        visible_borders = [
+            comp for comp in self.components.values()
+            if comp.tag.startswith("preset_border_") and
+               comp.world_x1 < view_wx2 and comp.world_x2 > view_wx1 and
+               comp.world_y1 < view_wy2 and comp.world_y2 > view_wy1
+        ]
+
+        if not visible_borders:
+            # If no borders are visible, ensure any old image is cleared from the canvas.
+            if self.border_layer_tk:
+                self.border_layer_tk.paste(self.border_layer_image)
+            return
+
+        # 3. Draw each visible border onto the single PIL image layer.
+        for comp in visible_borders:
+            if not comp.pil_image:
+                continue
+
+            sx1, sy1 = self.camera.world_to_screen(comp.world_x1, comp.world_y1)
+            sx2, sy2 = self.camera.world_to_screen(comp.world_x2, comp.world_y2)
+            screen_w, screen_h = sx2 - sx1, sy2 - sy1
+
+            if screen_w > 0 and screen_h > 0:
+                resized_border = comp.pil_image.resize((screen_w, screen_h), Image.Resampling.LANCZOS)
+                self.border_layer_image.paste(resized_border, (sx1, sy1), resized_border)
+
+        # 4. Update the single Tkinter PhotoImage on the canvas.
+        if self.border_layer_tk is None:
+            self.border_layer_tk = ImageTk.PhotoImage(self.border_layer_image)
+            self.canvas.create_image(0, 0, image=self.border_layer_tk, anchor=tk.NW, tags="preset_border_layer")
+        else:
+            self.border_layer_tk.paste(self.border_layer_image)
 
     def _draw_overlays(self, zoom_scale, view_wx1, view_wy1, view_wx2, view_wy2, canvas_w, canvas_h):
         """
