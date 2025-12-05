@@ -62,8 +62,16 @@ class CursorWindow:
         self.canvas.bind("<Button>", lambda e: "break")
         self.canvas.bind("<ButtonRelease>", lambda e: "break")
         
+        # NEW FIX: Explicitly block motion and drag events on the custom canvas
+        self.canvas.bind("<Motion>", lambda e: "break")
+        self.canvas.bind("<B1-Motion>", lambda e: "break")
+        
         self.window.bind("<Button>", lambda e: "break")
         self.window.bind("<ButtonRelease>", lambda e: "break")
+        
+        # NEW FIX: Explicitly block motion and drag events on the custom window
+        self.window.bind("<Motion>", lambda e: "break")
+        self.window.bind("<B1-Motion>", lambda e: "break")
 
 
     def _make_click_through(self):
