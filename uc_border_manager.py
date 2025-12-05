@@ -1071,10 +1071,14 @@ class BorderManager:
         self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
 
         # --- FIX for brush size not drawing ---
-        # Also trigger the detection logic to draw points for the new brush size.
-        # We create a mock event object with the current mouse coordinates.
-        mock_event = type('Event', (), {'x': x, 'y': y})
-        self._process_detection_at_point(mock_event)
+        # If the user is actively drawing while changing the brush size,
+        # continue the drawing stroke. Otherwise, just detect at the current point.
+        # This makes changing size mid-drag feel seamless.
+        if self.is_drawing:
+            self.on_mouse_drag(type('Event', (), {'x': x, 'y': y}))
+        else:
+            # We create a mock event object with the current mouse coordinates.
+            self._process_detection_at_point(type('Event', (), {'x': x, 'y': y}))
         
     def _create_canvas_brush_cursor(self):
         """Creates the canvas oval used as the brush cursor."""
