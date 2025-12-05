@@ -277,10 +277,7 @@ class SmartBorderManager:
 
     def _perform_throttled_redraw(self):
         """Redraws the highlight points after a throttle delay."""
-        if not self.app.master.winfo_exists(): return
-        if self.is_drawing:
-            self._update_highlights()
-        self.after_id = None # Reset the ID after the redraw is performed
+        self._update_highlights()
         self.redraw_scheduled = False # Allow the next redraw to be scheduled
 
     def _process_detection_at_point(self, event, defer_redraw=False):
