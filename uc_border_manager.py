@@ -10,7 +10,7 @@ except ImportError:
     NUMPY_AVAILABLE = False
     print("[WARNING] NumPy not found. Smart Border tool performance will be significantly degraded.")
     
-from uc_border_manager3 import SmartBorderManager
+from uc_border_manager2 import SmartBorderManager
 
 class BorderManager:
     """Manages tracing, creating, and applying borders to the canvas."""

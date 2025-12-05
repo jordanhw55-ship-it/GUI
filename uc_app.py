@@ -8,7 +8,7 @@ import os
 import json
 
 import numpy as np
-from uc_border_manager3 import NUMPY_AVAILABLE # Import NUMPY_AVAILABLE
+from uc_border_manager2 import NUMPY_AVAILABLE # Import NUMPY_AVAILABLE
 try:
     from wand.image import Image as WandImage
     import io
