@@ -611,11 +611,9 @@ class BorderManager:
                         draw.rectangle([thickness, thickness, render_w - thickness, render_h - thickness], fill=0)
                 elif shape_form == "path" and path_data:
                     # Same logic as 'in' growth, but with the offset applied.
-                    min_x = min(p[0] for p in path_data)
-                    min_y = min(p[1] for p in path_data)
-
+                    min_x, min_y = min(p[0] for p in path_data), min(p[1] for p in path_data)
                     for p_x, p_y in path_data:
-                        draw.point((p_x - min_x + thickness, p_y - min_y + thickness), fill=255)
+                        draw.point((p_x - min_x, p_y - min_y), fill=255)
 
         # --- NEW: Apply feathering if requested ---
         feather_amount = self.border_feather.get()
