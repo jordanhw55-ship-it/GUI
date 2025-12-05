@@ -1115,7 +1115,7 @@ class BorderManager:
         cursor_path_tcl = cursor_path.replace('\\', '/')
         mask_path_tcl = mask_path.replace('\\', '/')
 
-        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {final_color}"
+        cursor_spec = "@{" + cursor_path_tcl + "} {" + mask_path_tcl + "} " + final_color
         
         # This should now succeed if the file is correctly generated and the lock released
         self.canvas.config(cursor=cursor_spec)
@@ -1180,30 +1180,6 @@ class BorderManager:
         self.toggle_smart_border_mode()
 
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
-
-        self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
-        self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
-        
-        # 4. SAVE THE FILES
-        try:
-            cursor_bitmap.save(self.cursor_file_path, format="XBM")
-            cursor_bitmap.save(self.mask_file_path, format="XBM")
-        except Exception as e:
-            print(f"[ERROR] Failed to save XBM cursor files: {e}")
-            self.canvas.config(cursor="arrow") # Revert to a safe cursor
-            return
-
-        # --- DEFINITIVE FIX for TclError: bad cursor spec ---
-        # 1. Convert Windows backslashes to Tcl-compatible forward slashes.
-        cursor_path_tcl = self.cursor_file_path.replace('\\', '/')
-        mask_path_tcl = self.mask_file_path.replace('\\', '/')
-
-        # 2. Build the cursor specification string using curly braces {} to handle
-        #    paths with spaces or special characters correctly.
-        # DEFINITIVE FIX: Use simple string concatenation to avoid f-string parsing issues with Tcl.
-        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {final_color}"
-
-        self.canvas.config(cursor=cursor_spec)
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
