@@ -906,16 +906,18 @@ class ImageEditorApp:
                 if visible_world_points:
                     screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_world_points]
     
-                    if NUMPY_AVAILABLE:
-                        # Use NumPy for faster drawing if available
+                    # --- OPTIMIZATION: Use vectorized NumPy indexing for massive speedup ---
+                    if NUMPY_AVAILABLE and screen_points:
                         highlight_array = np.array(bm.highlight_layer_image)
-                        r, g, b, a = bm.highlight_color
-                        for sx, sy in screen_points:
-                            if 0 <= sx < canvas_w and 0 <= sy < canvas_h: # Ensure points are within canvas bounds
-                                highlight_array[sy, sx] = [r, g, b, a]
+                        
+                        # Separate the list of (x, y) tuples into two lists of coordinates
+                        screen_x_coords, screen_y_coords = zip(*screen_points)
+                        
+                        # Use NumPy's advanced indexing to set all pixel colors in a single operation
+                        highlight_array[screen_y_coords, screen_x_coords] = bm.highlight_color
+                        
                         bm.highlight_layer_image = Image.fromarray(highlight_array)
                     else:
-                        # Fallback to ImageDraw.Draw().point() if NumPy is not available
                         ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
 
             # 4. Update the PhotoImage on the canvas with the new drawing.
