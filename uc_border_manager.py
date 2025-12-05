@@ -1067,7 +1067,11 @@ class BorderManager:
         cursor_img.save(self.cursor_file_path, "xbm")
         mask_img.save(self.mask_file_path, "xbm")
 
-        self.canvas.config(cursor=f"@{self.cursor_file_path} {self.mask_file_path} {color}")
+        # --- DEFINITIVE FIX for TclError: bad cursor spec ---
+        # Tkinter on Windows requires forward slashes for cursor file paths.
+        cursor_path_tk = self.cursor_file_path.replace('\\', '/')
+        mask_path_tk = self.mask_file_path.replace('\\', '/')
+        self.canvas.config(cursor=f"@{cursor_path_tk} {mask_path_tk} {color}")
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
