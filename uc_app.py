@@ -7,6 +7,8 @@ from PIL import Image, ImageTk, ImageDraw, ImageEnhance, ImageChops
 import os
 import json
 
+import numpy as np
+from uc_border_manager3 import NUMPY_AVAILABLE # Import NUMPY_AVAILABLE
 try:
     from wand.image import Image as WandImage
     import io
@@ -879,24 +881,45 @@ class ImageEditorApp:
         if self.smart_border_mode_active and self.border_manager.smart_manager.highlight_layer_id:
             bm = self.border_manager.smart_manager
 
-            # 1. Ensure the backing PIL image and the Tk PhotoImage exist and match the canvas size.
+            # Ensure the backing PIL image and the Tk PhotoImage exist and match the canvas size.
             if bm.highlight_layer_image is None or bm.highlight_layer_image.size != (canvas_w, canvas_h):
                 bm.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
                 bm.highlight_layer_tk = ImageTk.PhotoImage(bm.highlight_layer_image)
                 self.canvas.itemconfig(bm.highlight_layer_id, image=bm.highlight_layer_tk)
             else:
-                # If it exists, just clear it by drawing a transparent rectangle over it.
+                # Clear the existing highlight layer image
                 draw = ImageDraw.Draw(bm.highlight_layer_image)
                 draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
 
-            # 2. Collect all screen-space points to be drawn.
+            # 2. Collect all screen-space points to be drawn, applying view frustum culling.
             if bm.raw_border_points:
-                screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in bm.raw_border_points]
-                # 3. Draw all points in a single, efficient operation.
-                ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
+                # Get current camera view in world coordinates
+                view_wx1, view_wy1 = self.camera.screen_to_world(0, 0)
+                view_wx2, view_wy2 = self.camera.screen_to_world(canvas_w, canvas_h)
+    
+                # Filter raw_border_points to only include those visible in the current view
+                visible_world_points = [
+                    p for p in bm.raw_border_points
+                    if view_wx1 <= p[0] <= view_wx2 and view_wy1 <= p[1] <= view_wy2
+                ]
+    
+                if visible_world_points:
+                    screen_points = [self.camera.world_to_screen(p[0], p[1]) for p in visible_world_points]
+    
+                    if NUMPY_AVAILABLE:
+                        # Use NumPy for faster drawing if available
+                        highlight_array = np.array(bm.highlight_layer_image)
+                        r, g, b, a = bm.highlight_color
+                        for sx, sy in screen_points:
+                            if 0 <= sx < canvas_w and 0 <= sy < canvas_h: # Ensure points are within canvas bounds
+                                highlight_array[sy, sx] = [r, g, b, a]
+                        bm.highlight_layer_image = Image.fromarray(highlight_array)
+                    else:
+                        # Fallback to ImageDraw.Draw().point() if NumPy is not available
+                        ImageDraw.Draw(bm.highlight_layer_image).point(screen_points, fill=bm.highlight_color)
 
             # 4. Update the PhotoImage on the canvas with the new drawing.
-            bm.highlight_layer_tk.paste(bm.highlight_layer_image)
+            bm.highlight_layer_tk.paste(bm.highlight_layer_image) # type: ignore
             self.canvas.coords(bm.highlight_layer_id, 0, 0) # The layer is drawn at the canvas origin
             self.canvas.tag_raise(bm.highlight_layer_id) # Ensure it's on top of components
 

@@ -45,6 +45,7 @@ class SmartBorderManager:
         self.preview_scale_var = tk.DoubleVar(value=1.0)
         self.preview_cursor_circle_id = None
 
+        self.preview_tk_image = None
         self.highlight_layer_image = None
         self.highlight_layer_tk = None
         self.highlight_layer_id = None
