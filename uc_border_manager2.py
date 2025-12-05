@@ -158,6 +158,12 @@ class SmartBorderManager:
             # --- FIX: Restore the generic drag handler to prevent lingering bindings ---
             self.app.bind_generic_drag_handler()
 
+            # --- DEFINITIVE FIX: Reset binding IDs to None after unbinding ---
+            # This ensures that the next time the tool is activated, it doesn't carry over stale binding IDs.
+            self.on_mouse_up_binding_id = None
+            self.on_mouse_move_binding_id = None
+            self.on_mouse_down_binding_id = None
+
             print("Smart Border mode DISABLED and all states reset.")
 
     def _cleanup_drawing_bindings(self):
