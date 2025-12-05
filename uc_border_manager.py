@@ -916,6 +916,22 @@ class BorderManager:
         if self.cursor_circle_id:
             self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
 
+    def _update_preview_cursor(self, event):
+        """Updates the position and appearance of the preview brush cursor."""
+        preview_canvas = self.app.ui_manager.border_preview_canvas
+        if not preview_canvas: return
+
+        if self.preview_cursor_circle_id is None:
+            self.preview_cursor_circle_id = preview_canvas.create_oval(0, 0, 0, 0, outline="red", width=2, state='hidden')
+
+        radius = 10 # Fixed radius for preview eraser
+        x1, y1 = event.x - radius, event.y - radius
+        x2, y2 = event.x + radius, event.y + radius
+
+        if self.preview_cursor_circle_id:
+            preview_canvas.coords(self.preview_cursor_circle_id, x1, y1, x2, y2)
+            preview_canvas.itemconfig(self.preview_cursor_circle_id, state='normal')
+
     def _update_highlights(self):
         """Requests a full canvas redraw, which now includes the highlight layer."""
         self.app.redraw_all_zoomable()
