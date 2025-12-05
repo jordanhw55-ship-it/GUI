@@ -19,7 +19,6 @@ except ImportError:
 from uc_component import DraggableComponent
 from uc_camera import Camera
 from uc_ui import UIManager
-from uc_paint_manager import PaintManager
 from uc_border_manager import BorderManager
 from uc_image_manager import ImageManager
 from settings import SettingsManager # type: ignore
@@ -119,7 +118,6 @@ class ImageEditorApp:
 
         self.border_manager = BorderManager(self)
         # --- Initialize Managers ---
-        self.paint_manager = PaintManager(self)
         self.camera = Camera(self, canvas)
         self.image_manager = ImageManager(self)
         # --- Initialize Components BEFORE UI that might use them ---
@@ -132,9 +130,6 @@ class ImageEditorApp:
 
         self.canvas.bind("<Button-1>", self.on_canvas_press) # NEW: Generic canvas press handler
 
-        # Bind mouse release for paint tool
-        self.canvas.bind("<ButtonRelease-1>", self.paint_manager.reset_paint_line)
-        # --- NEW: Bind the universal eraser event ---
         self.bind_generic_drag_handler()
         self.ui_manager.create_ui()
         self.canvas.bind("<Motion>", self._update_mouse_coords) # NEW: Bind mouse motion to update coords
@@ -142,13 +137,7 @@ class ImageEditorApp:
     def bind_generic_drag_handler(self):
         def on_drag(event): # This is the generic B1-Motion handler
             # --- DEBUG: Announce which tool is handling the drag ---
-            if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active:
-                print("[DEBUG] Drag event routed to Paint/Eraser.")
-                self.paint_manager.paint_on_canvas(event)
-            elif self.paint_manager.universal_eraser_mode_active:
-                print("[DEBUG] Drag event routed to Universal Eraser.")
-                self.paint_manager.erase_on_components(event)
-            elif self.border_manager.smart_manager.is_drawing:
+            if self.border_manager.smart_manager.is_drawing:
                 print("[DEBUG] Drag event routed to Smart Border tool.")
                 self.border_manager.smart_manager.on_mouse_drag(event)
             else:
@@ -359,9 +348,7 @@ class ImageEditorApp:
         """
         # If any paint tool is active, route the event to the paint manager.
         # This ensures that the first dot of a stroke is drawn even on an empty canvas area.
-        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            self.paint_manager.paint_on_canvas(event)
-            return
+        pass
 
     def on_component_press(self, event):
         """Handles press events on any component."""
@@ -374,13 +361,6 @@ class ImageEditorApp:
         comp_tag = tags[0]
         comp = self.components.get(comp_tag)
         if not comp: return
-
-        # --- FIX: Prevent component drag logic from running when a paint tool is active ---
-        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            # --- DEFINITIVE FIX: Route the initial press event to the correct paint handler ---
-            # This ensures the first dot of a paint stroke is drawn correctly.
-            self.paint_manager.paint_on_canvas(event)
-            return
 
         # --- NEW: Handle Tile Eraser ---
         if self.tile_eraser_mode_active:
@@ -396,9 +376,6 @@ class ImageEditorApp:
             # --- FIX: Directly call the drawing logic from the generic press handler ---
             # This ensures the is_drawing flag is set, allowing the generic drag
             # handler (<B1-Motion>) to correctly delegate to the border manager.
-            # --- FIX 2: Add a guard to prevent this from firing when paint is active ---
-            if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-                return
             self.border_manager.start_drawing_stroke(event)
             return # Stop further processing
 
@@ -406,17 +383,6 @@ class ImageEditorApp:
             # This is a click on a dock asset, which creates a clone.
             # It's not a move operation, so we don't save a move state.
             # Dock asset logic is handled by the dock canvas, not here.
-            return
-        
-        # --- DEFINITIVE FIX: Prevent component drag logic from setting last_drag_x/y when painting ---
-        # If any paint tool is active, we must stop here. Otherwise, on_component_drag will
-        # execute and update the last_drag coordinates, preventing the paint tool from
-        # detecting mouse movement and drawing a line.
-        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            # --- DEFINITIVE FIX: Set the last_drag coordinates to prevent line drawing errors ---
-            # This ensures the component drag handler doesn't use stale coordinates from a previous action.
-            self.last_drag_x = event.x
-            self.last_drag_y = event.y
             return
 
         print(f"[DEBUG] Initiating drag for component '{comp_tag}'.")
@@ -434,13 +400,6 @@ class ImageEditorApp:
     def on_component_drag(self, event):
         """Handles drag events for the currently pressed component."""
         if not self.dragged_item_tag: return
-
-        # --- DEFINITIVE FIX: Prevent component drag logic from running during a paint stroke ---
-        # If any paint tool is active, the generic drag handler is responsible for routing
-        # the event to the paint manager. We must exit here to prevent this function from
-        # interfering with the paint tool's coordinate tracking.
-        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            return
 
         comp = self.components.get(self.dragged_item_tag)
         if not comp or not comp.is_draggable or (self.is_group_dragging and not comp.is_decal) or comp.is_dock_asset:
@@ -611,10 +570,6 @@ class ImageEditorApp:
     def toggle_tile_eraser_mode(self):
         """Toggles the tile eraser mode on or off."""
         self.tile_eraser_mode_active = not self.tile_eraser_mode_active
-
-        if self.tile_eraser_mode_active:
-            # Deactivate other modes
-            self.paint_manager.toggle_paint_mode('off')
             
             self.ui_manager.tile_eraser_btn.config(text="Tile Eraser (Active)", bg='#ef4444', relief='sunken')
             self.canvas.config(cursor="X_cursor")
@@ -737,8 +692,6 @@ class ImageEditorApp:
         # --- DEBUG: Log what is being saved ---
         if isinstance(undo_data, dict) and 'type' in undo_data:
             print(f"[DEBUG] Saving undo state for action: '{undo_data['type']}'.")
-        elif isinstance(undo_data, Image.Image):
-            print("[DEBUG] Saving undo state for: Paint Layer.")
         
         self.undo_stack.append(undo_data)
         # Limit the stack size to save memory
@@ -756,11 +709,7 @@ class ImageEditorApp:
 
         last_state = self.undo_stack.pop()
 
-        if isinstance(last_state, Image.Image): # It's a paint layer state
-            print("[DEBUG] Undoing paint layer change.")
-            self.paint_manager.paint_layer_image = last_state
-            self.redraw_all_zoomable()
-        elif isinstance(last_state, dict): # It's a component image state
+        if isinstance(last_state, dict): # It's a component image state
             action_type = last_state.get('type')
 
             print(f"[DEBUG] Undoing action of type: '{action_type}'.")
@@ -816,15 +765,8 @@ class ImageEditorApp:
         new_height = event.height
 
         # Update the logical composition area to match the new canvas size
-        self.COMP_AREA_X2 = new_width
-        self.COMP_AREA_Y2 = new_height
-
-        # If the paint layer exists, it needs to be recreated to match the new size
-        if self.paint_manager.paint_layer_image:
-            # We can't just resize, as drawing is based on world coords.
-            # It's safer to clear it, but for now, we'll just recreate it blank.
-            self.paint_manager.paint_layer_image = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
-            self.redraw_all_zoomable() # Redraw to update the paint layer display
+        self.COMP_AREA_X2 = new_width # type: ignore
+        self.COMP_AREA_Y2 = new_height # type: ignore
 
     # --- NEW: Camera Transformation Functions ---
     def redraw_all_zoomable(self, use_fast_preview=False):
@@ -905,19 +847,6 @@ class ImageEditorApp:
                     self.canvas.coords(comp.rect_id, sx1, sy1, sx2, sy2)
                     self.canvas.coords(comp.text_id, (sx1 + sx2) / 2, (sy1 + sy2) / 2)
         
-        # --- REFACTOR: Optimize paint layer redraw by caching based on zoom ---
-        if self.paint_manager.paint_layer_id and self.paint_manager.paint_layer_image:
-            # --- DEFINITIVE FIX: Always regenerate the paint layer PhotoImage to show live updates ---
-            orig_w, orig_h = self.paint_manager.paint_layer_image.size
-            new_w, new_h = int(orig_w * zoom_scale), int(orig_h * zoom_scale)
-            if new_w > 0 and new_h > 0:
-                resized_paint_img = self.paint_manager.paint_layer_image.resize((new_w, new_h), Image.Resampling.NEAREST)
-                self.paint_manager.paint_layer_tk = ImageTk.PhotoImage(resized_paint_img)
-                self.canvas.itemconfigure(self.paint_manager.paint_layer_id, image=self.paint_manager.paint_layer_tk)
-            
-            # Always update coordinates
-            self.canvas.coords(self.paint_manager.paint_layer_id, self.camera.pan_offset_x, self.camera.pan_offset_y)
-
         # --- FIX: Redraw the border preview last to ensure it's on top ---
         # Only redraw the preview if the border tab is the one being displayed.
         if self.border_manager.preview_rect_ids and self.is_border_tab_active():
@@ -976,11 +905,6 @@ class ImageEditorApp:
         # This prevents tools like Paint or Smart Border from staying active
         # when the user navigates to a different part of the UI.
 
-        # Deactivate Paint/Eraser tools
-        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
-            print("[DEBUG] Deactivating Paint/Eraser tools due to tab change.")
-            self.paint_manager.toggle_paint_mode('off')
-
         # Deactivate Smart Border tool
         if self.smart_border_mode_active:
             print("[DEBUG] Deactivating Smart Border tool due to tab change.")
@@ -1016,10 +940,6 @@ class ImageEditorApp:
         elif name in self.components:
             # Hide all other components to isolate the selected one
             for tag, comp in self.components.items():
-                # Also ensure the paint layer is visible
-                if self.paint_manager.paint_layer_id:
-                    self.canvas.itemconfig(self.paint_manager.paint_layer_id, state='normal')
-
                 state_to_set = 'normal' if tag == name else 'hidden'
                 if comp.rect_id:
                     self.canvas.itemconfig(comp.rect_id, state=state_to_set)
@@ -1269,11 +1189,6 @@ class ImageEditorApp:
         save_dir = os.path.join(self.output_dir, f"export_{export_format}")
         os.makedirs(save_dir, exist_ok=True)
 
-        paint_layer = self.paint_manager.paint_layer_image
-        if paint_layer:
-            # Create a full-canvas sized paint layer to composite with.
-            paint_layer = paint_layer.resize((self.CANVAS_WIDTH, self.CANVAS_HEIGHT), Image.Resampling.LANCZOS)
-
         exported_count = 0
 
         # --- NEW: Pre-calculate which borders belong to which tiles ---
@@ -1292,28 +1207,7 @@ class ImageEditorApp:
                 continue
 
             final_image = comp.pil_image.copy()
-            has_paint = False
             has_borders = False
-            if paint_layer:
-                # Composite the paint layer onto the component's image
-                # --- DEFINITIVE FIX: Use the correct compositing logic for the paint layer ---
-                # The old method was incorrect. We need to crop the section of the paint layer
-                # that corresponds to the tile's world coordinates and then composite it.
-                
-                # 1. Crop the paint layer to the component's world bounds.
-                # Ensure coordinates are integers for cropping.
-                crop_box = (int(comp.world_x1), int(comp.world_y1), int(comp.world_x2), int(comp.world_y2))
-                paint_crop = paint_layer.crop(crop_box)
-
-                # --- DEFINITIVE FIX: Resize the paint crop to match the tile's image size ---
-                # The `paint_crop` has the dimensions of the tile on the canvas, but `final_image`
-                # has the dimensions of the source file. They must be the same size to composite.
-                if paint_crop.size != final_image.size:
-                    paint_crop = paint_crop.resize(final_image.size, Image.Resampling.LANCZOS)
-
-                # 2. Alpha composite the cropped paint over the tile's image.
-                # This correctly blends the paint, respecting transparency.
-                final_image = Image.alpha_composite(final_image, paint_crop)
 
             # --- NEW: Conditionally skip unmodified tiles based on UI checkbox ---
             if not self.export_all_tiles.get():

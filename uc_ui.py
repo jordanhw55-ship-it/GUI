@@ -10,9 +10,6 @@ class UIManager:
         self.image_dock_canvas = None
         self.border_dock_canvas = None
         self.paint_color_button = None
-        self.border_preview_canvas = None # NEW: For smart border preview
-        self.paint_toggle_btn = None
-        self.eraser_toggle_btn = None
         self.border_tab = None # NEW: To hold a reference to the border tab widget
         self.smart_border_btn = None # NEW: For the smart border tool
         self.notebook = None # NEW: To hold a reference to the main notebook
@@ -86,7 +83,6 @@ class UIManager:
 
 
         layer_tab = tk.Frame(self.notebook, bg="#374151")
-        paint_tab = tk.Frame(self.notebook, bg="#374151")
         image_tab = tk.Frame(self.notebook, bg="#374151")
         filters_tab = tk.Frame(self.notebook, bg="#374151")
         self.border_tab = tk.Frame(self.notebook, bg="#374151") # Use the new instance variable
@@ -95,7 +91,6 @@ class UIManager:
         export_tab = tk.Frame(self.notebook, bg="#374151")
 
         self.notebook.add(layer_tab, text='Tiles')
-        self.notebook.add(paint_tab, text='Paint')
         self.notebook.add(self.border_tab, text='Border')
         self.notebook.add(image_tab, text='Image')
         self.notebook.add(tile_control_tab, text='Tile Control')
@@ -104,7 +99,6 @@ class UIManager:
         self.notebook.add(export_tab, text='Export')
 
         self._populate_layer_tab(layer_tab)
-        self._populate_paint_tab(paint_tab)
         self._populate_image_tab(image_tab)
         self._populate_tile_control_tab(tile_control_tab)
         self._populate_border_tab(self.border_tab)
@@ -139,41 +133,6 @@ class UIManager:
             image_set_menu.pack(fill='x', padx=10, pady=5)
         else:
             tk.Label(tab, text="No image sets found in 'images' folder.", bg="#374151", fg="#9ca3af", padx=10).pack(fill='x')
-
-    def _populate_paint_tab(self, tab):
-        label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
-        button_font = ('Inter', 11, 'bold')
-        tk.Label(tab, text="PAINTING TOOLS", **label_style).pack(fill='x')
-        paint_frame = tk.Frame(tab, bg="#374151")
-        paint_frame.pack(fill='x', padx=10, pady=5)
-        self.paint_toggle_btn = tk.Button(paint_frame, text="Paint Brush", bg='#d97706', fg='white', relief='flat', font=button_font,
-                                           command=lambda: self.app.paint_manager.toggle_paint_mode(tool='paint'))
-        self.paint_toggle_btn.pack(fill='x', expand=True)
-
-        self.eraser_toggle_btn = tk.Button(paint_frame, text="Transparency Brush", bg='#0e7490', fg='white', relief='flat', font=button_font,
-                                            command=lambda: self.app.paint_manager.toggle_paint_mode(tool='eraser'))
-        self.eraser_toggle_btn.pack(fill='x', expand=True, pady=(5,0))
-
-        self.tile_eraser_btn = tk.Button(paint_frame, text="Tile Eraser", bg='#991b1b', fg='white', relief='flat', font=button_font,
-                                           command=lambda: self.app.toggle_tile_eraser_mode())
-        self.tile_eraser_btn.pack(fill='x', expand=True, pady=(5,0))
-
-        self.universal_eraser_btn = tk.Button(paint_frame, text="Universal Eraser", bg='#be123c', fg='white', relief='flat', font=button_font,
-                                           command=lambda: self.app.paint_manager.toggle_paint_mode(tool='universal_eraser'))
-        self.universal_eraser_btn.pack(fill='x', expand=True, pady=(5,0))
-
-        tk.Frame(paint_frame, height=2, bg="#6b7280").pack(fill='x', pady=10)
-
-        self.paint_color_button = tk.Button(paint_frame, text="Choose Color", bg='#6b7280', fg='white', relief='flat', font=('Inter', 10),
-                               command=self.app.paint_manager.choose_paint_color, state='disabled')
-        self.paint_color_button.pack(fill='x', expand=True, pady=(5,0))
-        brush_size_frame = tk.Frame(paint_frame, bg="#374151")
-        brush_size_frame.pack(fill='x', pady=5)
-        tk.Label(brush_size_frame, text="Size:", bg="#374151", fg="white").pack(side=tk.LEFT)
-        tk.Scale(brush_size_frame, from_=1, to=50, orient=tk.HORIZONTAL, variable=self.app.paint_manager.brush_size, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).pack(side=tk.LEFT, expand=True)
-        clear_paint_btn = tk.Button(paint_frame, text="Clear All Paintings", bg='#ef4444', fg='white', relief='flat', font=('Inter', 10),
-                                     command=self.app.paint_manager.clear_paintings)
-        clear_paint_btn.pack(fill='x', expand=True, pady=(5,0))
 
     def _populate_image_tab(self, tab):
         label_style = {"bg": "#374151", "fg": "white", "font": ("Inter", 12, "bold"), "pady": 10}
