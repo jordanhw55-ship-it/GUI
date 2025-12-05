@@ -726,6 +726,10 @@ class BorderManager:
             # This is the crucial step to allow the tool to be re-enabled correctly.
             self._cleanup_drawing_bindings()
             
+            # >>> CRITICAL FIX: Delete the cursor files immediately upon exiting the mode
+            # This prevents a file lock error on Windows when re-activating the tool.
+            self._delete_brush_cursor_files()
+
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 
@@ -771,6 +775,21 @@ class BorderManager:
         # This prevents errors if the bindings were never created.
         if hasattr(self, 'on_mouse_down_binding_id') and self.on_mouse_down_binding_id:
             self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
+        if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
+            self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
+
+    def _delete_brush_cursor_files(self):
+        """Safely removes the temporary XBM files created for the custom brush cursor."""
+        # Use the already defined tools_dir from the app instance for consistency.
+        cursor_file = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
+        mask_file = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
+
+        for f_path in [cursor_file, mask_file]:
+            if os.path.exists(f_path):
+                try:
+                    os.remove(f_path)
+                except Exception as e:
+                    print(f"[ERROR] Failed to delete temporary cursor file {f_path}: {e}")
 
     def on_mouse_down(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -1043,6 +1062,9 @@ class BorderManager:
 
     def _update_brush_cursor_file(self):
         """Generates a cursor file on the fly and updates the canvas cursor."""
+        # 1. Start by cleaning up any previous files for robustness.
+        self._delete_brush_cursor_files()
+
         radius = self.smart_brush_radius.get()
         is_erasing = self.is_erasing_points.get()
         color = "red" if is_erasing else "cyan"
@@ -1067,11 +1089,7 @@ class BorderManager:
         cursor_img.save(self.cursor_file_path, "xbm")
         mask_img.save(self.mask_file_path, "xbm")
 
-        # --- DEFINITIVE FIX for TclError: bad cursor spec ---
-        # Tkinter on Windows requires forward slashes for cursor file paths.
-        cursor_path_tk = self.cursor_file_path.replace('\\', '/')
-        mask_path_tk = self.mask_file_path.replace('\\', '/')
-        self.canvas.config(cursor=f"@{{{cursor_path_tk}}} {{{mask_path_tk}}} {color}")
+        self.canvas.config(cursor=f"@{self.cursor_file_path} {self.mask_file_path} {color}")
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
