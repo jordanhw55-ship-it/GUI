@@ -27,6 +27,10 @@ class BorderManager:
         self.active_detection_image = None # The PIL image being processed
         self.active_detection_component = None # NEW: The component being analyzed
         self.cursor_circle_id = None # NEW: For the brush preview cursor
+        # --- NEW: For composite image detection ---
+        self.composite_x_offset = 0
+        self.composite_y_offset = 0
+
         self.preview_scale_var = tk.DoubleVar(value=1.0) # NEW: For preview zoom
         self.preview_cursor_circle_id = None # NEW: For preview canvas cursor
 
@@ -650,24 +654,52 @@ class BorderManager:
         self.app.smart_border_mode_active = not self.app.smart_border_mode_active
 
         if self.app.smart_border_mode_active:
-            # Find the top-most, non-decal, non-dock image under the mouse or in the center of the view
-            target_comp = self._find_image_for_detection()
-            if not target_comp or not target_comp.original_pil_image:
-                messagebox.showwarning("No Image", "Could not find a suitable image layer to analyze. Make sure an image is visible.")
+            # --- DEFINITIVE REWRITE: Create a composite image from all main tiles ---
+            # 1. Find all main tile components with images.
+            tile_components = [
+                c for c in self.app.components.values() 
+                if c.original_pil_image and not c.is_decal and not c.is_dock_asset
+            ]
+            if not tile_components:
+                messagebox.showwarning("No Images", "No image tiles found to analyze.")
                 self.app.smart_border_mode_active = False
                 return
 
-            # --- FIX: Store the component being analyzed, not just its image ---
-            self.active_detection_component = target_comp
-            self.active_detection_image = target_comp.original_pil_image.copy()
+            # 2. Calculate the overall bounding box in world coordinates.
+            min_x = min(c.world_x1 for c in tile_components)
+            min_y = min(c.world_y1 for c in tile_components)
+            max_x = max(c.world_x2 for c in tile_components)
+            max_y = max(c.world_y2 for c in tile_components)
+
+            # 3. Store the top-left corner as the world offset.
+            self.composite_x_offset = min_x
+            self.composite_y_offset = min_y
+
+            # 4. Create a new composite image.
+            composite_width = int(max_x - min_x)
+            composite_height = int(max_y - min_y)
+            self.active_detection_image = Image.new("RGBA", (composite_width, composite_height), (0,0,0,0))
+
+            # 5. Paste each tile's image onto the composite.
+            for comp in tile_components:
+                # We need to resize the component's original image to its current world dimensions
+                # before pasting to handle any resizing that has occurred.
+                world_w = int(comp.world_x2 - comp.world_x1)
+                world_h = int(comp.world_y2 - comp.world_y1)
+                if world_w <= 0 or world_h <= 0: continue
+                
+                resized_img = comp.original_pil_image.resize((world_w, world_h), Image.Resampling.LANCZOS)
+                paste_x = int(comp.world_x1 - self.composite_x_offset)
+                paste_y = int(comp.world_y1 - self.composite_y_offset)
+                self.active_detection_image.paste(resized_img, (paste_x, paste_y), resized_img)
+
             self.app.ui_manager.smart_border_btn.config(text="Smart Border (Active)", relief='sunken', bg='#ef4444')
             self.canvas.config(cursor="crosshair")
             
-            # --- FIX: Create the highlight layer when the tool is activated ---
             if self.highlight_layer_id is None:
                 self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, state='normal', tags="smart_border_highlight_layer")
 
-            print(f"Smart Border mode ENABLED. Analyzing image from '{target_comp.tag}'.")
+            print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
         else:
             self.active_detection_image = None
             self.clear_detected_points()
@@ -675,6 +707,9 @@ class BorderManager:
             self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
             self.canvas.config(cursor="")
             print("Smart Border mode DISABLED.")
+            # Reset offsets
+            self.composite_x_offset = 0
+            self.composite_y_offset = 0
 
             # --- FIX: Hide the highlight layer when the tool is deactivated ---
             if self.highlight_layer_id:
@@ -790,26 +825,16 @@ class BorderManager:
         """The core logic to detect border points under the brush."""
         brush_radius = self.smart_brush_radius.get()
         diff_threshold = self.smart_diff_threshold.get()
-        comp = self.active_detection_component
-        if not comp or not comp.original_pil_image: return
-        img = comp.original_pil_image
+        img = self.active_detection_image
+        if not img: return
 
         world_x, world_y = self.app.camera.screen_to_world(event.x, event.y)
 
-        # --- DEFINITIVE FIX for non-uniform scaling ---
-        # 1. Calculate the component's size in world units.
-        world_w = comp.world_x2 - comp.world_x1
-        world_h = comp.world_y2 - comp.world_y1
-        if world_w <= 0 or world_h <= 0: return
-
-        # 2. Calculate the scaling factor between the world size and the original image's pixel size.
-        # This tells us how many pixels are in each world unit.
-        scale_x = img.width / world_w
-        scale_y = img.height / world_h
-
-        # 3. Convert the mouse's world position to the component's local image coordinates.
-        img_x_center = int((world_x - comp.world_x1) * scale_x)
-        img_y_center = int((world_y - comp.world_y1) * scale_y)
+        # --- REWRITE: Convert world coordinates to composite image coordinates ---
+        # The composite image is 1:1 with world units, so no scaling is needed.
+        # We just need to offset by the composite's top-left corner.
+        img_x_center = int(world_x - self.composite_x_offset)
+        img_y_center = int(world_y - self.composite_y_offset)
 
         newly_detected_raw_coords = set()
         for dx in range(-brush_radius, brush_radius + 1):
@@ -832,10 +857,9 @@ class BorderManager:
                                         break
                             if is_edge: break
                         if is_edge:
-                            # 4. Convert the detected local image coordinate (x, y) back to WORLD coordinates for storage.
-                            point_world_x = (x / scale_x) + comp.world_x1
-                            point_world_y = (y / scale_y) + comp.world_y1
-                            newly_detected_raw_coords.add((point_world_x, point_world_y))
+                            # The detected point (x, y) is in the composite image's coordinate space.
+                            # Convert it back to WORLD coordinates for storage.
+                            newly_detected_raw_coords.add((x + self.composite_x_offset, y + self.composite_y_offset))
                     except IndexError:
                         continue
 
@@ -1004,12 +1028,11 @@ class BorderManager:
         if not self.raw_border_points:
             messagebox.showwarning("No Points", "No border points have been detected to finalize.")
             return
-
-        # --- FIX: Use the shared border renderer to incorporate thickness, style, and feathering ---
+        
         thickness = self.border_thickness.get()
         growth_direction = self.border_growth_direction.get()
 
-        # 1. Get the logical bounding box of the detected points
+        # 1. Get the logical bounding box of the detected points in WORLD coordinates
         min_x = int(min(p[0] for p in self.raw_border_points))
         min_y = int(min(p[1] for p in self.raw_border_points))
         max_x = int(max(p[0] for p in self.raw_border_points))
@@ -1022,7 +1045,7 @@ class BorderManager:
             messagebox.showerror("Error", "Could not create border from points (invalid size).")
             return
 
-        # 2. Calculate the final render size and position based on growth
+        # 2. Calculate the final render size and component position based on growth
         render_w, render_h = logical_w, logical_h
         comp_x, comp_y = min_x, min_y
         if growth_direction == 'out':
@@ -1030,12 +1053,16 @@ class BorderManager:
             comp_y -= thickness
             render_w += thickness * 2
             render_h += thickness * 2
-
-        # 3. Render the image using the same function as presets
-        border_image = self._render_border_image((logical_w, logical_h), (render_w, render_h), shape_form="path", path_data=self.raw_border_points)
+        
+        # 3. Adjust points to be relative to the new component's top-left corner for rendering
+        relative_points = [(p[0] - comp_x, p[1] - comp_y) for p in self.raw_border_points]
+        
+        # 4. Render the image using the same function as presets, passing the relative points
+        # The logical size is now the render size because the points are already relative.
+        border_image = self._render_border_image((render_w, render_h), (render_w, render_h), shape_form="path", path_data=relative_points)
         if not border_image: return
 
-        # 4. Create the new component with the correct world coordinates
+        # 5. Create the new component with the correct world coordinates
         border_tag = f"smart_border_{self.next_border_id}"
         self.next_border_id += 1
         border_comp = DraggableComponent(self.app, border_tag, comp_x, comp_y, comp_x + render_w, comp_y + render_h, "blue", "BORDER")
