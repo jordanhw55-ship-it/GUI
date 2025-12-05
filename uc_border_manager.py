@@ -1096,7 +1096,8 @@ class BorderManager:
 
         # 2. Build the cursor specification string using curly braces {} to handle
         #    paths with spaces or special characters correctly.
-        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {color}"
+        # DEFINITIVE FIX: Use simple string concatenation to avoid f-string parsing issues with Tcl.
+        cursor_spec = "@{" + cursor_path_tcl + "} {" + mask_path_tcl + "} " + color
 
         self.canvas.config(cursor=cursor_spec)
 
