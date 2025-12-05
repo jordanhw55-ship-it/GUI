@@ -38,26 +38,29 @@ class CursorWindow:
             self.window.after(10, self._make_click_through) # Delay to ensure window handle exists
 
         # --- Content ---
-        self.label = tk.Label(self.window, bg=self.transparent_color_hex)
-        self.label.pack()
-        self.tk_image = None # To hold a reference to the PhotoImage
+        # Replace the Label with a Canvas for better image rendering control.
+        self.canvas = tk.Canvas(
+            self.window, 
+            bg=self.transparent_color_hex, 
+            highlightthickness=0 # Ensures the canvas itself has no borders
+        )
+        self.canvas.pack(fill="both", expand=True)
+        self.image_id = self.canvas.create_image(0, 0, anchor=tk.NW) 
+        self.tk_image = None
 
     def _make_click_through(self):
         """
-        Uses the win32gui library to set the WS_EX_LAYERED style and LWA_COLORKEY.
-        The LWA_COLORKEY setting makes the transparent regions automatically click-through.
+        Uses the win32gui library to set both WS_EX_LAYERED and WS_EX_TRANSPARENT styles.
+        WS_EX_LAYERED + LWA_COLORKEY handles visual transparency.
+        WS_EX_TRANSPARENT forces all remaining pixels (like the circle) to ignore mouse events.
         """
         if not self.window.winfo_exists(): return
 
         try:
             hwnd = self.window.winfo_id()
-            # Get the current window style
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
-            # Only add the WS_EX_LAYERED style.
-            # We omit WS_EX_TRANSPARENT to avoid conflicts and enable click-through.
-            styles |= win32con.WS_EX_LAYERED
+            styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT 
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
-            # Use LWA_COLORKEY with the defined R,G,B components.
             color_key = win32api.RGB(self.R, self.G, self.B)
             win32gui.SetLayeredWindowAttributes(hwnd, color_key, 0, win32con.LWA_COLORKEY)
             print("[INFO] Custom cursor window is now click-through.")
@@ -68,10 +71,19 @@ class CursorWindow:
         """Updates the image displayed in the cursor window."""
         if pil_image:
             self.tk_image = ImageTk.PhotoImage(pil_image)
-            self.label.config(image=self.tk_image)
-            self.window.geometry(f"{pil_image.width}x{pil_image.height}+{self.window.winfo_x()}+{self.window.winfo_y()}")
+            
+            w, h = pil_image.width, pil_image.height
+            
+            # 1. Resize the Toplevel window to match the image size
+            self.window.geometry(f"{w}x{h}+{self.window.winfo_x()}+{self.window.winfo_y()}")
+
+            # 2. Update and center the image on the Canvas
+            self.canvas.config(width=w, height=h) # Also resize the canvas
+            self.canvas.coords(self.image_id, 0, 0) # Move image anchor to top-left
+            self.canvas.itemconfig(self.image_id, image=self.tk_image, anchor=tk.NW, state='normal')
         else:
-            self.label.config(image=None)
+            self.canvas.itemconfig(self.image_id, state='hidden')
+            self.tk_image = None
 
     def move(self, x, y):
         """Moves the top-left corner of the cursor window to the specified screen coordinates."""
