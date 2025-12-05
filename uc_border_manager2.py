@@ -278,21 +278,21 @@ class SmartBorderManager:
         # --- OPTIMIZATION: Slice the existing NumPy array instead of cropping and converting ---
         alpha_channel = img[y1:y2, x1:x2]
 
-        # --- REFACTOR: Combine gradient calculation and thresholding to reduce memory allocation ---
-        # 1. Create the initial mask from the horizontal gradient.
+        # --- REFACTOR: More efficient gradient calculation and thresholding ---
+        # 1. Calculate horizontal and vertical gradients.
+        grad_x = np.abs(np.diff(alpha_channel.astype(np.int16), axis=1)) > diff_threshold
+        grad_y = np.abs(np.diff(alpha_channel.astype(np.int16), axis=0)) > diff_threshold
+
+        # 2. Combine gradients into a single mask. We pad the smaller gradient arrays
+        #    to match the original alpha_channel shape for the 'where' operation.
         edge_mask = np.zeros_like(alpha_channel, dtype=bool)
-        edge_mask[:, :-1] = (np.abs(alpha_channel[:, 1:] - alpha_channel[:, :-1]) > diff_threshold)
-        
-        # 2. Perform an in-place OR operation with the vertical gradient.
-        # This avoids creating a separate grad_y array.
-        edge_mask[:-1, :] |= (np.abs(alpha_channel[1:, :] - alpha_channel[:-1, :]) > diff_threshold)
+        edge_mask[:, :-1] |= grad_x
+        edge_mask[:-1, :] |= grad_y
 
         edge_y_coords, edge_x_coords = np.where(edge_mask)
 
-        # --- REFACTOR: Use vectorized operations for coordinate conversion ---
-        world_coords = np.vstack((edge_x_coords + x1 + self.composite_x_offset, 
-                                  edge_y_coords + y1 + self.composite_y_offset)).T
-        
+        # --- REFACTOR: Use more direct vectorized operations for coordinate conversion ---
+        world_coords = np.column_stack((edge_x_coords + x1 + self.composite_x_offset, edge_y_coords + y1 + self.composite_y_offset))
         new_points = set(map(tuple, world_coords))
         self.raw_border_points.update(new_points)
 
