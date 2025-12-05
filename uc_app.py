@@ -363,6 +363,11 @@ class ImageEditorApp:
         comp = self.components.get(comp_tag)
         if not comp: return
 
+        # --- FIX: Prevent component drag logic from running when a paint tool is active ---
+        if self.paint_manager.paint_mode_active or self.paint_manager.eraser_mode_active or self.paint_manager.universal_eraser_mode_active:
+            # Let the generic drag handler route this to the paint manager instead.
+            return
+
         # --- NEW: Handle Tile Eraser ---
         if self.tile_eraser_mode_active:
             # We don't want to erase the main tiles, only clones, decals, or borders.
