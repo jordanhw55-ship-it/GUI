@@ -529,3 +529,55 @@ class SmartBorderManager:
 
         self.update_preview_canvas()
         print(f"[DEBUG] Preview selection mode DEACTIVATED. Area captured: {self.preview_area_world_coords}")
+
+    def finalize_border(self):
+        """
+        Converts the detected raw_border_points into a new, draggable border component.
+        """
+        if not self.raw_border_points:
+            messagebox.showwarning("No Points", "No border points have been detected. Use the smart border tool to draw a border first.")
+            return
+
+        # 1. Find the bounding box of the points in world coordinates.
+        min_x = min(p[0] for p in self.raw_border_points)
+        min_y = min(p[1] for p in self.raw_border_points)
+        max_x = max(p[0] for p in self.raw_border_points)
+        max_y = max(p[1] for p in self.raw_border_points)
+
+        width = int(max_x - min_x) + 1
+        height = int(max_y - min_y) + 1
+
+        if width <= 0 or height <= 0:
+            messagebox.showerror("Error", "Could not finalize border due to invalid dimensions.")
+            return
+
+        # 2. Create a new PIL image for the border.
+        border_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(border_image)
+
+        # 3. Draw the points onto the new image, translating them to local coordinates.
+        for p_x, p_y in self.raw_border_points:
+            local_x = int(p_x - min_x)
+            local_y = int(p_y - min_y)
+            draw.point((local_x, local_y), fill=self.highlight_color)
+
+        # 4. Create a new DraggableComponent for the border.
+        border_tag = f"smart_border_{self.app.image_manager.next_dynamic_id}"
+        self.app.image_manager.next_dynamic_id += 1
+
+        new_border_comp = DraggableComponent(
+            self.app, border_tag, min_x, min_y, max_x, max_y, "green", border_tag
+        )
+        new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
+        new_border_comp.original_pil_image = border_image.copy()
+
+        # 5. Add the new component to the application and bind its events.
+        self.app.components[border_tag] = new_border_comp
+        self.app._bind_component_events(border_tag)
+        new_border_comp.set_image(border_image) # This will handle the initial draw
+
+        # 6. Clear the detected points and deactivate the tool.
+        self.clear_detected_points()
+        self.toggle_smart_border_mode() # This will clean up bindings and cursors
+
+        messagebox.showinfo("Border Finalized", f"New border component '{border_tag}' has been created.")
