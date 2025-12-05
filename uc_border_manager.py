@@ -936,21 +936,24 @@ class BorderManager:
 
     def _process_preview_erasure(self, event, defer_redraw=False):
         """Erases points from the raw_border_points list based on the zoomed preview brush."""
-        if not self.raw_border_points or not self.active_detection_component: return
+        # --- FIX: The preview no longer depends on a single active component ---
+        if not self.raw_border_points: return
 
         scale = self.preview_scale_var.get()
         if scale == 0: return
 
         preview_canvas = self.app.ui_manager.border_preview_canvas
+        if not preview_canvas: return
         preview_w = preview_canvas.winfo_width()
         preview_h = preview_canvas.winfo_height()
 
-        # The preview is centered on the component's center
-        comp = self.active_detection_component
-        center_x = (comp.world_x1 + comp.world_x2) / 2
-        center_y = (comp.world_y1 + comp.world_y2) / 2
+        # --- DEFINITIVE FIX: Center the preview on the current mouse position in world coordinates ---
+        # 1. Get the last known mouse position on the main canvas.
+        main_canvas_x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        main_canvas_y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        center_x, center_y = self.app.camera.screen_to_world(main_canvas_x, main_canvas_y)
 
-        # 1. Determine center of erasure in WORLD coordinates from preview canvas click
+        # 2. Determine center of erasure in WORLD coordinates from preview canvas click
         zoom_x = event.x - preview_w / 2
         zoom_y = event.y - preview_h / 2
         world_x_center = (zoom_x / scale) + center_x
@@ -958,25 +961,15 @@ class BorderManager:
 
         # 2. Determine erasure radius in WORLD coordinates
         # Fixed preview eraser size (10 preview canvas pixels) divided by the zoom scale.
-        world_eraser_radius = 10 / scale
+        world_eraser_radius = 10 / scale # This is the radius of the red circle in the preview
 
         # 3. Find and remove points from raw_border_points
-        new_raw_border_points = []
-        erased_count = 0
-
-        for p_x, p_y in self.raw_border_points:
-            dist_sq = (p_x - world_x_center)**2 + (p_y - world_y_center)**2
-            if dist_sq > world_eraser_radius**2:
-                new_raw_border_points.append((p_x, p_y))
-            else:
-                erased_count += 1
-
-        if erased_count > 0:
-            self.raw_border_points = new_raw_border_points
+        points_to_remove = {p for p in self.raw_border_points if ((p[0] - world_x_center)**2 + (p[1] - world_y_center)**2) <= world_eraser_radius**2}
+        
+        if points_to_remove:
+            self.raw_border_points.difference_update(points_to_remove)
             if not defer_redraw:
                 self._deferred_redraw()
-            else:
-                self.status_message.set(f"Preview Eraser: Removed {erased_count} points. Redraw pending.")
 
 
     def _create_brush_cursor(self):
@@ -1031,20 +1024,22 @@ class BorderManager:
 
         preview_canvas.delete("preview_dot")
 
-        if not self.raw_border_points or not self.active_detection_component:
+        # --- FIX: The preview no longer depends on a single active component ---
+        if not self.raw_border_points:
             return
 
         scale = self.preview_scale_var.get()
         preview_w = preview_canvas.winfo_width()
         preview_h = preview_canvas.winfo_height()
 
-        # Center the preview on the component being analyzed
-        comp = self.active_detection_component
-        center_x = (comp.world_x1 + comp.world_x2) / 2
-        center_y = (comp.world_y1 + comp.world_y2) / 2
+        # --- DEFINITIVE FIX: Center the preview on the current mouse position in world coordinates ---
+        # 1. Get the last known mouse position on the main canvas.
+        main_canvas_x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        main_canvas_y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        center_x, center_y = self.app.camera.screen_to_world(main_canvas_x, main_canvas_y)
 
         for raw_x, raw_y in self.raw_border_points:
-            # 1. Translate point relative to component's world center
+            # 1. Translate point relative to the new world center (the mouse position)
             rel_x = raw_x - center_x
             rel_y = raw_y - center_y
 
