@@ -1057,37 +1057,46 @@ class BorderManager:
         # Redraw the main highlight layer to ensure it remains visible.
         self._update_highlights()
 
-        # --- DEFINITIVE FIX for cursor lag: Update the native cursor file ---
+        # Update the native cursor file to reflect the new mode (draw/erase).
         self._update_brush_cursor_file()
 
-    def _update_brush_cursor_file(self):
+    def _update_brush_cursor_file(self, color=None):
         """Generates a cursor file on the fly and updates the canvas cursor."""
-        # 1. Start by cleaning up any previous files for robustness.
+        # 1. IMMEDIATE CLEANUP: Attempt to delete previous files immediately.
+        # This resolves issues where Tcl holds a lock even after 'unconfig'.
         self._delete_brush_cursor_files()
 
         radius = self.smart_brush_radius.get()
         is_erasing = self.is_erasing_points.get()
-        color = "red" if is_erasing else "cyan"
+        # Use the provided color, or determine it from the erase mode.
+        final_color = color if color is not None else ("red" if is_erasing else "cyan")
         
-        # The size of the cursor bitmap
-        size = radius * 2 + 3
+        # The size of the cursor bitmap, with padding
+        size = radius * 2 + 2
         
-        # Create a black and white bitmap for the cursor shape
-        cursor_img = Image.new('1', (size, size), 0)
+        # 2. GENERATE AND CONVERT CURSOR IMAGE
+        # Create a new blank, transparent RGBA image to draw on.
+        cursor_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(cursor_img)
-        draw.ellipse((1, 1, size-2, size-2), fill=1, outline=1)
-        
-        # Create a mask for the color
-        mask_img = Image.new('1', (size, size), 0)
-        draw_mask = ImageDraw.Draw(mask_img)
-        draw_mask.ellipse((1, 1, size-2, size-2), fill=1, outline=1)
+        # Draw a white circle for the cursor shape.
+        draw.ellipse((1, 1, size - 1, size - 1), fill="white", outline="white")
 
+        # 3. CRITICAL: CONVERT TO MODE '1' FOR XBM SAVING
+        # XBM format requires a binary (1-bit per pixel) image mode.
+        cursor_bitmap = cursor_img.convert('1')
+        
         # Define file paths for the temporary cursor files
         self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
         self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
         
-        cursor_img.save(self.cursor_file_path, "xbm")
-        mask_img.save(self.mask_file_path, "xbm")
+        # 4. SAVE THE FILES
+        try:
+            cursor_bitmap.save(self.cursor_file_path, format="XBM")
+            cursor_bitmap.save(self.mask_file_path, format="XBM")
+        except Exception as e:
+            print(f"[ERROR] Failed to save XBM cursor files: {e}")
+            self.canvas.config(cursor="arrow") # Revert to a safe cursor
+            return
 
         # --- DEFINITIVE FIX for TclError: bad cursor spec ---
         # 1. Convert Windows backslashes to Tcl-compatible forward slashes.
@@ -1097,7 +1106,7 @@ class BorderManager:
         # 2. Build the cursor specification string using curly braces {} to handle
         #    paths with spaces or special characters correctly.
         # DEFINITIVE FIX: Use simple string concatenation to avoid f-string parsing issues with Tcl.
-        cursor_spec = "@{" + cursor_path_tcl + "} {" + mask_path_tcl + "} " + color
+        cursor_spec = f"@{{{cursor_path_tcl}}} {{{mask_path_tcl}}} {final_color}"
 
         self.canvas.config(cursor=cursor_spec)
 
