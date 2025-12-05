@@ -406,7 +406,7 @@ class SmartBorderManager:
 
         radius = self.smart_brush_radius.get()
         x1, y1 = (event.x - radius), (event.y - radius)
-        x2, y2 = (event.x + radius), (y + radius)
+        x2, y2 = (event.x + radius), (event.y + radius)
         self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
         self.canvas.itemconfig(self.brush_cursor_oval_id, state='normal')
         self.canvas.tag_raise(self.brush_cursor_oval_id)
