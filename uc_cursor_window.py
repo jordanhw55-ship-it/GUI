@@ -24,11 +24,12 @@ class CursorWindow:
         self.window.overrideredirect(True) # No title bar, borders, etc.
         self.window.wm_attributes("-topmost", True) # Always on top
 
-        # --- Transparency ---
-        # On Windows, we can make a specific color transparent.
-        # We'll use a unique color that's unlikely to be in a cursor image.
+        # --- Transparency & Click-Through Setup ---
+        # We use a specific color that we will make transparent via the win32 API.
+        # This is more reliable than Tkinter's built-in transparency for this use case.
         self.transparent_color = '#abcdef'
-        self.window.wm_attributes("-transparentcolor", self.transparent_color)
+        # --- FIX: Remove the conflicting Tkinter transparency attribute ---
+        # self.window.wm_attributes("-transparentcolor", self.transparent_color)
         self.window.config(bg=self.transparent_color)
 
         # --- Click-Through (Windows only) ---
@@ -47,10 +48,14 @@ class CursorWindow:
         """
         try:
             hwnd = self.window.winfo_id()
+            # Get the current window style
             styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            # Add the layered and transparent styles
             styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
             win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
-            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA)
+            # --- FIX: Use LWA_COLORKEY to make our specific background color transparent ---
+            # This ensures the window is truly see-through and click-through.
+            win32gui.SetLayeredWindowAttributes(hwnd, win32api.RGB(0xab, 0xcd, 0xef), 0, win32con.LWA_COLORKEY)
             print("[INFO] Custom cursor window is now click-through.")
         except Exception as e:
             print(f"[ERROR] Could not set click-through property on cursor window: {e}")
