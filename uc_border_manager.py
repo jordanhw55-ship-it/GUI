@@ -23,6 +23,7 @@ class BorderManager:
         self.is_drawing = False # Flag for active mouse drag
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = set() # DEFINITIVE FIX: Use a set for faster lookups and automatic duplicate removal
+        self.brush_cursor_oval_id = None # NEW: To hold the ID of the canvas-drawn cursor
         self.highlight_oval_ids = [] # Stores canvas IDs for the highlight points
         self.last_drawn_x = -1
         self.last_drawn_y = -1
@@ -712,7 +713,10 @@ class BorderManager:
             # --- DEFINITIVE FIX: Bind mouse events only when the tool is activated ---
             self.on_mouse_down_binding_id = self.canvas.bind("<Button-1>", self.on_mouse_down)
             self.on_mouse_up_binding_id = self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
-            self._update_brush_cursor_file() # Set the initial native cursor
+            # --- REWIND: Use a canvas-drawn cursor instead of a native one ---
+            self.on_mouse_move_binding_id = self.canvas.bind("<Motion>", self._update_canvas_brush_position)
+            self.canvas.config(cursor="none") # Hide the default system cursor
+            self._create_canvas_brush_cursor()
 
             print(f"Smart Border mode ENABLED. Analyzing composite image of {len(tile_components)} tiles.")
         else:
@@ -726,10 +730,12 @@ class BorderManager:
             # This is the crucial step to allow the tool to be re-enabled correctly.
             self._cleanup_drawing_bindings()
             
-            # >>> CRITICAL FIX: Delete the cursor files immediately upon exiting the mode
-            # This prevents a file lock error on Windows when re-activating the tool.
-            self._delete_brush_cursor_files()
-
+            # --- REWIND: Clean up the canvas-drawn cursor ---
+            if self.brush_cursor_oval_id:
+                self.canvas.delete(self.brush_cursor_oval_id)
+                self.brush_cursor_oval_id = None
+            if self.on_mouse_move_binding_id:
+                self.canvas.unbind("<Motion>", self.on_mouse_move_binding_id)
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 
@@ -777,19 +783,6 @@ class BorderManager:
             self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
         if hasattr(self, 'on_mouse_up_binding_id') and self.on_mouse_up_binding_id:
             self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
-
-    def _delete_brush_cursor_files(self):
-        """Safely removes the temporary XBM files created for the custom brush cursor."""
-        # Use the already defined tools_dir from the app instance for consistency.
-        cursor_file = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
-        mask_file = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
-
-        for f_path in [cursor_file, mask_file]:
-            if os.path.exists(f_path):
-                try:
-                    os.remove(f_path)
-                except Exception as e:
-                    print(f"[ERROR] Failed to delete temporary cursor file {f_path}: {e}")
 
     def on_mouse_down(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -1055,70 +1048,35 @@ class BorderManager:
         This ensures the highlight layer and brush cursor are updated immediately.
         """
         # Redraw the main highlight layer to ensure it remains visible.
-        self._update_highlights()
+        self._update_highlights() # This will redraw the canvas
+        self._update_canvas_brush_color() # Update the cursor color
 
-        # Update the native cursor file to reflect the new mode (draw/erase).
-        self._update_brush_cursor_file()
+    def _create_canvas_brush_cursor(self):
+        """Creates the canvas oval used as the brush cursor."""
+        if self.brush_cursor_oval_id:
+            self.canvas.delete(self.brush_cursor_oval_id)
+        
+        color = "red" if self.is_erasing_points.get() else "cyan"
+        self.brush_cursor_oval_id = self.canvas.create_oval(0, 0, 0, 0, outline=color, width=2, state='hidden')
 
-    def _update_brush_cursor_file(self, color=None):
-        """Generates a cursor file on the fly and updates the canvas cursor."""
-        # 1. IMMEDIATE CLEANUP: Attempt to delete previous files immediately.
-        # This resolves issues where Tcl holds a lock even after 'unconfig'.
-        # This is CRITICAL for Tkinter/Tcl to correctly parse the file path.
-        self._delete_brush_cursor_files()
+    def _update_canvas_brush_position(self, event):
+        """Moves the canvas-drawn cursor to follow the mouse."""
+        if not self.brush_cursor_oval_id: return
 
-        # --- FIX for NameError: 'radius' is not defined ---
-        # Get the current brush radius from the UI control.
         radius = self.smart_brush_radius.get()
+        x1, y1 = (event.x - radius), (event.y - radius)
+        x2, y2 = (event.x + radius), (event.y + radius)
+        self.canvas.coords(self.brush_cursor_oval_id, x1, y1, x2, y2)
+        self.canvas.itemconfig(self.brush_cursor_oval_id, state='normal')
+        self.canvas.tag_raise(self.brush_cursor_oval_id)
+
+    def _update_canvas_brush_color(self):
+        """Updates the color of the canvas-drawn cursor."""
+        if not self.brush_cursor_oval_id: return
+
         is_erasing = self.is_erasing_points.get()
-        # Use the provided color, or determine it from the erase mode.
-        final_color = color if color is not None else ("red" if is_erasing else "cyan")
-        
-        # The size of the cursor bitmap, with padding
-        size = radius * 2 + 2
-        
-        # 2. GENERATE AND CONVERT CURSOR IMAGE
-        cursor_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(cursor_img)
-        # Draw a white circle for the cursor shape.
-        draw.ellipse((1, 1, size - 1, size - 1), fill="white", outline="white")
-
-        # 3. CRITICAL: CONVERT TO MODE '1' FOR XBM SAVING
-        # XBM format requires a binary (1-bit per pixel) image mode.
-        cursor_bitmap = cursor_img.convert('1')
-        
-        # Define file paths for the temporary cursor files
-        self.cursor_file_path = os.path.join(self.app.tools_dir, "_temp_cursor.xbm")
-        self.mask_file_path = os.path.join(self.app.tools_dir, "_temp_mask.xbm")
-        
-        # 4. SAVE THE FILES
-        try:
-            # Use os.path.join for robust path construction
-            cursor_path = self.cursor_file_path # Use your existing attribute path
-            mask_path = self.mask_file_path # Use your existing attribute path
-            
-            # Save the converted binary image as the cursor file
-            cursor_bitmap.save(cursor_path, format="XBM")
-            
-            # For the mask, you can often use the same image, or invert it if needed.
-            # A common mask practice is to save an inverted image.
-            # Here, we'll assume cursor_bitmap works for the mask too.
-            cursor_bitmap.save(mask_path, format="XBM") 
-            
-        except Exception as e:
-            # If the save fails, print the error and return cleanly
-            print(f"[ERROR] Failed to save XBM cursor files: {e}")
-            self.canvas.config(cursor="arrow") # Revert to a safe cursor
-            return
-            
-        # 5. CONFIGURE THE CURSOR (Use the correct Tcl/Tk formatting)
-        cursor_path_tcl = cursor_path.replace('\\', '/')
-        mask_path_tcl = mask_path.replace('\\', '/')
-
-        cursor_spec = "@{" + cursor_path_tcl + "} {" + mask_path_tcl + "} " + final_color
-        
-        # This should now succeed if the file is correctly generated and the lock released
-        self.canvas.config(cursor=cursor_spec)
+        color = "red" if is_erasing else "cyan"
+        self.canvas.itemconfig(self.brush_cursor_oval_id, outline=color)
 
     def finalize_border(self):
         """Creates a new component from the detected border points."""
