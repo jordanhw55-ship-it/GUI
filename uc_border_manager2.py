@@ -147,6 +147,9 @@ class SmartBorderManager:
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 
+            # --- DEFINITIVE FIX: Clear the points from the previous session ---
+            self.clear_detected_points()
+
             if self.highlight_layer_id:
                 # --- DEFINITIVE FIX: Delete the canvas item and reset all related state ---
                 self.canvas.delete(self.highlight_layer_id)
