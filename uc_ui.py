@@ -387,7 +387,7 @@ class UIManager:
 
         # Draw/Erase Toggle
         # --- DEFINITIVE FIX: Add a command to update the UI when the checkbox is toggled ---
-        tk.Checkbutton(smart_controls_frame, text="Erase Points", variable=manager.is_erasing_points,
+        tk.Checkbutton(smart_controls_frame, text="Erase Points", variable=manager.smart_manager.is_erasing_points,
                         bg="#374151", fg="white", selectcolor="#1f2937", activebackground="#374151", activeforeground="white",
                         command=manager.on_erase_mode_toggle
                         ).grid(row=0, column=0, columnspan=2, sticky='w', pady=2)
@@ -401,11 +401,11 @@ class UIManager:
 
         # Sensitivity
         tk.Label(smart_controls_frame, text="Sensitivity:", bg="#374151", fg="white").grid(row=2, column=0, sticky='w', pady=2)
-        tk.Scale(smart_controls_frame, from_=10, to=100, orient=tk.HORIZONTAL, variable=manager.smart_diff_threshold, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
+        tk.Scale(smart_controls_frame, from_=10, to=100, orient=tk.HORIZONTAL, variable=manager.smart_manager.smart_diff_threshold, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=2, column=1, sticky='ew', padx=5)
 
         # Draw Skip
         tk.Label(smart_controls_frame, text="Draw Skip:", bg="#374151", fg="white").grid(row=3, column=0, sticky='w', pady=2)
-        tk.Scale(smart_controls_frame, from_=1, to=15, orient=tk.HORIZONTAL, variable=manager.smart_draw_skip, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=3, column=1, sticky='ew', padx=5)
+        tk.Scale(smart_controls_frame, from_=1, to=15, orient=tk.HORIZONTAL, variable=manager.smart_manager.smart_draw_skip, bg="#374151", fg="white", troughcolor="#4b5563", highlightthickness=0).grid(row=3, column=1, sticky='ew', padx=5)
 
         smart_action_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
         smart_action_frame.pack(fill='x')
