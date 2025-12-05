@@ -719,6 +719,10 @@ class BorderManager:
             self.canvas.config(cursor="")
             print("Smart Border mode DISABLED.")
             # Reset offsets
+
+            # --- DEFINITIVE FIX: Unbind mouse events when the tool is turned off ---
+            self._cleanup_drawing_bindings()
+
             self.composite_x_offset = 0
             self.composite_y_offset = 0
 
@@ -758,6 +762,12 @@ class BorderManager:
             if comp and comp.original_pil_image:
                 return comp
         return None
+
+    def _cleanup_drawing_bindings(self):
+        """Removes all temporary event bindings used by the smart border tool."""
+        self.canvas.unbind("<Button-1>", self.on_mouse_down_binding_id)
+        self.canvas.unbind("<B1-Motion>", self.on_mouse_drag_binding_id)
+        self.canvas.unbind("<ButtonRelease-1>", self.on_mouse_up_binding_id)
 
     def on_mouse_down(self, event):
         """Handles the start of a drawing or erasing stroke."""
@@ -1100,10 +1110,29 @@ class BorderManager:
         self.app.canvas.tag_raise(border_tag)
         self.app._save_undo_state({'type': 'add_component', 'tag': border_tag})
 
-        # --- DEFINITIVE FIX for CRASH PREVENTION ---
-        # Immediately clean up and exit smart mode BEFORE showing the success message.
-        # This ensures the state is fully reset before the user can interact with the UI again,
-        # preventing dangling references and crashes on subsequent actions.
-        self.toggle_smart_border_mode()
+        # ----------------------------------------------------------------------
+        # >>> DEFINITIVE CRASH & HANG PREVENTION FIX BLOCK <<<
+        # ----------------------------------------------------------------------
+        # This block performs a full and immediate cleanup of all temporary state,
+        # canvas objects, and event bindings to prevent the tool from failing on
+        # subsequent uses.
+
+        # 1. Clean up temporary canvas elements (CRITICAL)
+        self._hide_brush_cursor()
+        if self.highlight_layer_id:
+            self.canvas.itemconfig(self.highlight_layer_id, state='hidden')
+
+        # 2. Clean up state variables and bindings
+        self.active_detection_image = None
+        self.active_detection_component = None
+        self.raw_border_points.clear()
+        self.highlight_layer_image = None
+        self.highlight_layer_tk = None
+
+        # 3. Clean up event bindings and mode flag (CRITICAL)
+        self._cleanup_drawing_bindings()
+        self.app.smart_border_mode_active = False
+        self.app.ui_manager.smart_border_btn.config(text="Smart Border Tool", relief='flat', bg='#0e7490')
+        self.app.canvas.config(cursor="") # Revert cursor
 
         messagebox.showinfo("Success", f"Created new border component: {border_tag}")
