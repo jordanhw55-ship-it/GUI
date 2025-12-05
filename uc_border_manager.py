@@ -14,7 +14,6 @@ class BorderManager:
         self.canvas = app.canvas
         self.next_border_id = 0
 
-        # --- NEW: Smart Border Tool State ---
         self.is_drawing = False # Flag for active mouse drag
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = [] # Stores (x, y) tuples in original image coordinates
@@ -30,6 +29,12 @@ class BorderManager:
         self.cursor_circle_id = None # NEW: For the brush preview cursor
         self.preview_scale_var = tk.DoubleVar(value=1.0) # NEW: For preview zoom
         self.preview_cursor_circle_id = None # NEW: For preview canvas cursor
+
+        # --- NEW: Highlight Layer for Performance ---
+        self.highlight_layer_image = None
+        self.highlight_layer_tk = None
+        self.highlight_layer_id = None
+        self.highlight_color = (0, 255, 255, 255) # Cyan with full alpha
 
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
 
@@ -911,21 +916,44 @@ class BorderManager:
         if self.cursor_circle_id:
             self.canvas.itemconfig(self.cursor_circle_id, state='hidden')
 
-    def _update_preview_cursor(self, event):
-        """Updates the position and appearance of the preview brush cursor."""
-        preview_canvas = self.app.ui_manager.border_preview_canvas
-        if not preview_canvas: return
+    def _update_highlights(self):
+        """
+        OPTIMIZED: Redraws all highlight points onto a single transparent layer for performance.
+        """
+        canvas_w = self.canvas.winfo_width()
+        canvas_h = self.canvas.winfo_height()
+        if canvas_w <= 0 or canvas_h <= 0: return
 
-        if self.preview_cursor_circle_id is None:
-            self.preview_cursor_circle_id = preview_canvas.create_oval(0, 0, 0, 0, outline="red", width=2, state='hidden')
+        # 1. Ensure the highlight layer exists and matches the canvas size.
+        if self.highlight_layer_image is None or self.highlight_layer_image.size != (canvas_w, canvas_h):
+            self.highlight_layer_image = Image.new("RGBA", (canvas_w, canvas_h), (0, 0, 0, 0))
+            if self.highlight_layer_id:
+                self.canvas.delete(self.highlight_layer_id)
+            self.highlight_layer_tk = ImageTk.PhotoImage(self.highlight_layer_image)
+            self.highlight_layer_id = self.canvas.create_image(0, 0, anchor=tk.NW, image=self.highlight_layer_tk, tags="smart_border_highlight_layer")
+        else:
+            # If it exists, just clear it by drawing a transparent rectangle over it.
+            draw = ImageDraw.Draw(self.highlight_layer_image)
+            draw.rectangle([0, 0, canvas_w, canvas_h], fill=(0, 0, 0, 0))
 
-        radius = 10 # Fixed radius for preview eraser
-        x1, y1 = event.x - radius, event.y - radius
-        x2, y2 = event.x + radius, event.y + radius
+        # 2. Draw all points onto the PIL image layer.
+        if self.raw_border_points:
+            draw = ImageDraw.Draw(self.highlight_layer_image)
+            for raw_x, raw_y in self.raw_border_points:
+                sx, sy = self.app.camera.world_to_screen(raw_x, raw_y)
+                # Draw a 2x2 point for visibility
+                if 0 <= sx < canvas_w and 0 <= sy < canvas_h:
+                    draw.point((sx, sy), fill=self.highlight_color)
+                if 0 <= sx + 1 < canvas_w and 0 <= sy < canvas_h:
+                    draw.point((sx + 1, sy), fill=self.highlight_color)
+                if 0 <= sx < canvas_w and 0 <= sy + 1 < canvas_h:
+                    draw.point((sx, sy + 1), fill=self.highlight_color)
+                if 0 <= sx + 1 < canvas_w and 0 <= sy + 1 < canvas_h:
+                    draw.point((sx + 1, sy + 1), fill=self.highlight_color)
 
-        if self.preview_cursor_circle_id:
-            preview_canvas.coords(self.preview_cursor_circle_id, x1, y1, x2, y2)
-            preview_canvas.itemconfig(self.preview_cursor_circle_id, state='normal')
+        # 3. Update the PhotoImage and configure the canvas item.
+        self.highlight_layer_tk.paste(self.highlight_layer_image)
+        self.canvas.tag_raise("smart_border_highlight_layer")
 
     def _update_highlights(self):
         """Redraws all highlight ovals on the main canvas."""
