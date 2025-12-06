@@ -192,6 +192,23 @@ class BorderManager:
         else:
             messagebox.showwarning("Preset Not Applied", "Could not find any matching tiles on the canvas for this preset.")
 
+    def apply_all_preset_borders(self):
+        """Iterates through all available presets and applies each one."""
+        if not self.preset_border_names or self.preset_border_names == ["No presets available"]:
+            messagebox.showwarning("No Presets", "No preset border files found to apply.")
+            return
+
+        if not messagebox.askyesno("Confirm Apply All", f"This will attempt to apply all {len(self.preset_border_names)} presets. This may create many new components. Continue?"):
+            return
+
+        total_applied_count = 0
+        for pretty_name in self.preset_border_names:
+            # Temporarily set the selected var so the single-apply logic works
+            self.selected_preset_border.set(pretty_name)
+            self.apply_preset_border_to_selection()
+            total_applied_count += 1 # Assuming apply_preset_border_to_selection shows its own success/fail message
+        messagebox.showinfo("Process Complete", f"Finished applying all {total_applied_count} presets.")
+
     def remove_border_from_selection(self):
         pass
 

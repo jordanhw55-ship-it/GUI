@@ -57,6 +57,10 @@ class ImageEditorApp:
         self.pre_move_state = {} # NEW: To store component positions before a move
         self.smart_border_mode_active = False # NEW: For the smart border tool
         
+        # --- NEW: Inventory Toggle State ---
+        self.inventory_cover_visible = True
+        self.inventory_toggle_btn = None # To hold a reference to the button
+
         self.resize_selector_buttons = {} # NEW: To hold references to the resize tab buttons
         # --- NEW: Painting Feature State ---
         self.resize_width = tk.StringVar()
@@ -1283,6 +1287,27 @@ class ImageEditorApp:
             print("[DEBUG] App lost focus, hiding smart border cursor.")
             self.border_manager.smart_manager.cursor_window.hide()
 
+    def toggle_inventory_visibility(self):
+        """Toggles the visibility of the 'humanuitile-inventorycover' component."""
+        comp_tag = 'humanuitile-inventorycover'
+        comp = self.components.get(comp_tag)
+        if not comp:
+            print(f"[WARNING] Could not find component '{comp_tag}' to toggle.")
+            return
+
+        self.inventory_cover_visible = not self.inventory_cover_visible
+
+        if self.inventory_cover_visible:
+            new_state = 'normal'
+            if self.inventory_toggle_btn:
+                self.inventory_toggle_btn.config(text="Hide Inventory")
+        else:
+            new_state = 'hidden'
+            if self.inventory_toggle_btn:
+                self.inventory_toggle_btn.config(text="Show Inventory")
+
+        self.canvas.itemconfigure(comp.tag, state=new_state)
+        print(f"Set visibility for '{comp_tag}' to '{new_state}'.")
 
 # --- EXECUTION ---
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ class UIManager:
         """Creates the rest of the UI that might depend on other components."""
         self.create_status_box()
         self.create_coordinate_display() # NEW: Add the coordinate display
+        self.create_inventory_toggle() # NEW: Add the inventory toggle button
         self.create_sidebar_tabs()
 
     def create_status_box(self):
@@ -63,6 +64,18 @@ class UIManager:
         coord_label.pack(padx=5, pady=5)
 
         self.app.canvas.create_window(10, self.app.CANVAS_HEIGHT - 10, window=coord_box_frame, anchor="sw")
+
+    def create_inventory_toggle(self):
+        """Creates a floating button on the right to toggle the inventory cover."""
+        toggle_frame = tk.Frame(self.app.canvas, bg="#1f2937", bd=1, relief="solid", highlightbackground="#4b5563", highlightthickness=1)
+        
+        # The button's reference is stored in app.inventory_toggle_btn
+        self.app.inventory_toggle_btn = tk.Button(toggle_frame, text="Hide Inventory", bg='#4b5563', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                                     command=self.app.toggle_inventory_visibility, padx=5, pady=2)
+        self.app.inventory_toggle_btn.pack(side=tk.LEFT, padx=5, pady=5)
+
+        # Place the window on the top-right of the canvas
+        self.app.canvas.create_window(self.app.CANVAS_WIDTH - 10, 10, window=toggle_frame, anchor="ne")
 
     def create_sidebar_tabs(self):
         """Creates a tabbed interface in the sidebar for organizing controls."""
@@ -272,8 +285,12 @@ class UIManager:
         for name in manager.preset_border_names:
             menu.add_command(label=name, command=lambda value=name: manager.selected_preset_border.set(value))
 
-        tk.Button(preset_frame, text="Apply", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'),
-                  command=manager.apply_preset_border_to_selection).pack(side=tk.LEFT)
+        apply_button_frame = tk.Frame(preset_frame, bg="#374151")
+        apply_button_frame.pack(side=tk.LEFT)
+        tk.Button(apply_button_frame, text="Apply", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                  command=manager.apply_preset_border_to_selection).pack(side=tk.LEFT, padx=(0,1))
+        tk.Button(apply_button_frame, text="All", bg='#10b981', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                  command=manager.apply_all_preset_borders).pack(side=tk.LEFT)
 
 
         # --- NEW: Saved Borders Dropdown ---
