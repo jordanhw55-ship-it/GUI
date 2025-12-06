@@ -216,7 +216,7 @@ class ImageEditorApp:
             if comp.image_path:
                 saved_borders_to_save.append({
                     'path': comp.image_path,
-                    'relative_coords': (comp.relative_x, comp.relative_y)
+                    'relative_coords': (int(comp.relative_x), int(comp.relative_y))
                 })
         self.settings_manager.settings['dock_assets'] = dock_assets_to_save
         self.settings_manager.settings['saved_borders'] = saved_borders_to_save
