@@ -996,9 +996,13 @@ class SimpleWindow(QMainWindow):
         else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(canonical_hotkey if is_valid else "Click to set")
 
-        # Re-register all application hotkeys now that capture is complete.
+        # Re-register global hotkeys (F-keys, etc.)
         self.register_global_hotkeys()
-        self.register_keybind_hotkeys()
+
+        # --- FIX: Only re-register Python keybinds if AHK is NOT running ---
+        # This prevents Python hotkeys from being re-enabled while AHK is active.
+        if not (self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None):
+            self.register_keybind_hotkeys()
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
 
