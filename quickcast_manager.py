@@ -87,7 +87,10 @@ class QuickcastManager:
         
         is_enabled = self.main_window.quickcast_tab.setting_checkboxes[setting_name].isChecked()
         self.main_window.keybinds["settings"][setting_name] = is_enabled
-        self.register_keybind_hotkeys()
+        # --- FIX: Only register Python hotkeys if AHK is not active ---
+        # This prevents re-enabling Python hotkeys when they should be off.
+        if not (self.ahk_process and self.ahk_process.poll() is None):
+            self.register_keybind_hotkeys()
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
@@ -105,7 +108,10 @@ class QuickcastManager:
         button.style().polish(button)
         button.update()
 
-        self.register_keybind_hotkeys()
+        # --- FIX: Only register Python hotkeys if AHK is not active ---
+        # This prevents re-enabling Python hotkeys when they should be off.
+        if not (self.ahk_process and self.ahk_process.poll() is None):
+            self.register_keybind_hotkeys()
         print(f"[DEBUG] {name} quickcast toggled to {new_state}")
 
     def get_keybind_settings_from_ui(self):
