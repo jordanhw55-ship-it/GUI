@@ -212,15 +212,23 @@ class BorderManager:
         new_tag = f"{selected_tag}_instance_{self.app.image_manager.next_dynamic_id}"
         self.app.image_manager.next_dynamic_id += 1
 
-        # --- NEW: 2. Calculate the new world position based on the saved relative offset ---
-        # This ensures the border is placed correctly relative to the current tile composition.
-        comp_area_x1 = min((c.world_x1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
-        comp_area_y1 = min((c.world_y1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
+        # --- MODIFIED: Calculate new world position ---
+        # If the border has a parent, place it relative to the parent.
+        # Otherwise, place it relative to the entire composition.
+        parent_comp = self.app.components.get(original_border_comp.parent_tag) if original_border_comp.parent_tag else None
 
-        new_world_x1 = comp_area_x1 + original_border_comp.relative_x
-        new_world_y1 = comp_area_y1 + original_border_comp.relative_y
-        new_world_x2 = new_world_x1 + (original_border_comp.world_x2 - original_border_comp.world_x1)
-        new_world_y2 = new_world_y1 + (original_border_comp.world_y2 - original_border_comp.world_y1)
+        if parent_comp:
+            # Place relative to the parent component
+            base_x, base_y = parent_comp.world_x1, parent_comp.world_y1
+        else:
+            # Place relative to the entire tile composition (legacy behavior)
+            base_x = min((c.world_x1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
+            base_y = min((c.world_y1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
+
+        new_world_x1 = base_x + original_border_comp.relative_x
+        new_world_y1 = base_y + original_border_comp.relative_y
+        new_world_x2 = new_world_x1 + original_border_comp.width
+        new_world_y2 = new_world_y1 + original_border_comp.height
 
         # 3. Create a new DraggableComponent using the calculated coordinates and original image.
         new_comp = DraggableComponent(
@@ -233,6 +241,7 @@ class BorderManager:
         new_comp.is_decal = True
         new_comp.original_pil_image = original_border_comp.original_pil_image.copy()
         new_comp.image_path = original_border_comp.image_path
+        new_comp.parent_tag = original_border_comp.parent_tag # Ensure parent tag is carried over
 
         # 4. Add the new component to the application and draw it.
         self.app.components[new_tag] = new_comp
