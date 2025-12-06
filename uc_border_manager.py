@@ -188,7 +188,7 @@ class BorderManager:
             # A more robust solution would group them.
             for tag in created_tags:
                  self.app._save_undo_state({'type': 'add_component', 'tag': tag})
-            messagebox.showinfo("Preset Applied", f"Applied '{pretty_name}' preset to {len(created_tags)} tile(s).")
+            # messagebox.showinfo("Preset Applied", f"Applied '{pretty_name}' preset to {len(created_tags)} tile(s).")
         else:
             messagebox.showwarning("Preset Not Applied", "Could not find any matching tiles on the canvas for this preset.")
 
