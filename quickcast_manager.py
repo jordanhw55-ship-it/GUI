@@ -134,11 +134,12 @@ class QuickcastManager:
             except Exception as e:
                 print(f"[WARNING] Graceful AHK exit failed: {e}. Forcefully terminating.")
                 try:
+                    # Explicitly use taskkill to stop AHK process and its children cleanly
                     subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.ahk_process.pid)], check=True, creationflags=subprocess.CREATE_NO_WINDOW)
                 except Exception as e_kill:
                     print(f"[ERROR] taskkill failed: {e_kill}")
                     self.ahk_process.terminate()
-            
+                
             self.ahk_process = None
             self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
@@ -219,14 +220,19 @@ global is_paused := false
 
 ; --- Functions ---
 remapSpellwQC(originalKey) {{
+    ; Send Ctrl+90 (for game-specific quickcast logic)
     SendInput("{{Ctrl Down}}90{{Ctrl Up}}")
+    ; Send the original key down/up (to trigger the spell)
     SendInput "{{" originalKey " Down}}"
     SendInput "{{" originalKey " Up}}"
+    ; Send the mouse click (for quickcast)
     MouseClick("Left")
-    SendInput "90"
+    ; Send 90 to complete the quickcast sequence 
+    SendInput "90" 
 }}
 
 remapSpellwoQC(originalKey) {{
+    ; Standard keypress for non-quickcast ability
     SendInput "{{" originalKey " Down}}"
     SendInput "{{" originalKey " Up}}"
 }}
@@ -256,15 +262,17 @@ closePause() {{
 """
         
         script_content = static_block
-        hotkey_actions = {} # Use a dictionary to group actions by hotkey
+        
+        # FIX: Revert to storing a list of actions for each hotkey (chaining)
+        # This allows multiple actions (e.g., Q and W) to be executed sequentially 
+        # when mapped to the same key (e.g., '2').
+        hotkey_actions = {} 
 
         # Dynamically generate the keybinds based on UI settings
         for name, key_info in self.main_window.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
             
-            print(f"[DEBUG] AHK Gen - Processing: name='{name}', hotkey='{hotkey}', ahk_hotkey='{ahk_hotkey}'")
-
             category = name.split("_")[0]
             if category == "inv": category = "inventory"
             is_enabled = self.main_window.keybinds.get("settings", {}).get(category, True)
@@ -291,16 +299,21 @@ closePause() {{
             
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             
-            # Group actions by the remapped hotkey
+            # Group actions by the remapped hotkey (this list creation enables chaining)
             ahk_hotkey = to_ahk_hotkey(hotkey)
+
             if ahk_hotkey not in hotkey_actions:
                 hotkey_actions[ahk_hotkey] = []
+                
             hotkey_actions[ahk_hotkey].append(function_call)
+            print(f"[DEBUG] AHK Gen - Added action for '{name}' to hotkey '{ahk_hotkey}'.")
+
 
         # Generate the AHK hotkey definitions from the grouped actions
         for ahk_hotkey, actions in hotkey_actions.items():
-            action_block = "\n    ".join(actions)
-            script_content += f"\n${ahk_hotkey}:: {{\n    {action_block}\n}}"
+            # Actions list is joined by newlines to execute them sequentially (chaining)
+            action_block = "\n \t".join(actions)
+            script_content += f"\n${ahk_hotkey}:: {{\n \t{action_block}\n}}"
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
