@@ -977,6 +977,12 @@ class SimpleWindow(QMainWindow):
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
+            # --- FIX for startup crash ---
+            # If a remap happens very quickly on startup, it's possible for this
+            # to be called before the quickcast_tab's buttons are fully initialized.
+            # This check prevents a crash by ensuring the button exists in the dict.
+            if self.capturing_for_control not in self.quickcast_tab.key_buttons:
+                return
             button = self.quickcast_tab.key_buttons[self.capturing_for_control]
             button.setChecked(False) # Uncheck to remove capture highlight
             if is_valid:
