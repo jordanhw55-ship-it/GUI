@@ -917,19 +917,24 @@ class SimpleWindow(QMainWindow):
             print("[DEBUG] Hotkey capture aborted: previous capture thread still running.")
             return
 
-        self.is_capturing_hotkey = True
-        # Properly clean up any previous capture thread that might exist
-        if hasattr(self, 'capture_thread') and self.capture_thread and self.capture_thread.isRunning():
-            self.capture_thread.quit()
-            self.capture_thread.wait()
+        # --- REFINED CAPTURE LOGIC ---
+        self.is_capturing_hotkey = True # Set the global capture flag
 
+        # Unregister only the keybind hotkeys, leaving global F-keys active.
+        # This is safer than `keyboard.unhook_all()`.
+        self.quickcast_manager.unregister_python_hotkeys(unregister_globals=False)
 
-        self.automation_tab.message_edit.setEnabled(False)
-        self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
-        self.automation_tab.hotkey_capture_btn.setEnabled(False)
-
-        # Unhook all main hotkeys before starting the capture thread.
-        keyboard.unhook_all()
+        # Determine if we are capturing for a keybind or a message hotkey
+        # and update the correct UI elements.
+        if self.capturing_for_control:
+            # We are in keybind capture mode, no extra UI changes needed here as
+            # the calling function `on_keybind_button_clicked` already updated the button.
+            pass
+        else:
+            # We are in message capture mode.
+            self.automation_tab.message_edit.setEnabled(False)
+            self.automation_tab.hotkey_capture_btn.setText("[Press a key...]")
+            self.automation_tab.hotkey_capture_btn.setEnabled(False)
         
         # Create and start a new thread and worker for this capture
         # These will be instance attributes to manage their lifecycle correctly
@@ -993,16 +998,17 @@ class SimpleWindow(QMainWindow):
             self.automation_tab.hotkey_capture_btn.setText(canonical_hotkey if is_valid else "Click to set")
 
         # Re-register all application hotkeys now that capture is complete.
-        self.register_global_hotkeys()
-        self.register_keybind_hotkeys()
+        # We only need to re-register the keybinds, as globals were never unhooked.
+        self.quickcast_manager.register_keybind_hotkeys()
+
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
+        self.capturing_for_control = None # Clear the control reference
 
     def on_capture_thread_finished(self):
         """Clears references to the hotkey capture thread and worker."""
         self.capture_thread = None
         self.capture_worker = None
-        self.capturing_for_control = None # Clear the control reference
 
     def load_message_hotkeys(self):
         """Populates the hotkey table from the loaded settings."""

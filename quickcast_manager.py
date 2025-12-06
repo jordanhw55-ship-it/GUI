@@ -322,13 +322,22 @@ closePause() {{
             QMessageBox.critical(self.main_window, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
 
-    def unregister_python_hotkeys(self):
+    def unregister_python_hotkeys(self, unregister_globals=True):
         """Unregisters all hotkeys managed by the 'keyboard' library, except global controls."""
         import keyboard
         print("[INFO] Unregistering Python keybinds to prevent conflicts with AHK.")
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
-            # Keep global hotkeys (F2, F3, F5, F6) and message hotkeys registered in Python
-            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
+            is_global = hotkey_str in ['f2', 'f3', 'f5', 'f6'] or hotkey_str in self.main_window.message_hotkeys
+            
+            # If we are NOT unregistering globals, and this key IS a global, skip it.
+            if not unregister_globals and is_global:
+                continue
+            
+            try:
+                keyboard.remove_hotkey(hk_id)
+                del self.main_window.hotkey_ids[hotkey_str]
+            except (KeyError, ValueError):
+                pass # Already unregistered
                 try:
                     keyboard.remove_hotkey(hk_id)
                     del self.main_window.hotkey_ids[hotkey_str]
