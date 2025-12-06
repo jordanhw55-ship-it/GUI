@@ -577,7 +577,7 @@ class SimpleWindow(QMainWindow):
         self.apply_saved_recipes() # This call is now safe
 
         # Register global hotkeys (F5 for automation, etc.)
-        self.register_global_hotkeys()
+        self.quickcast_manager.register_all_hotkeys()
 
         # Apply theme last to ensure all widgets are styled correctly on startup
         # A theme index of -1 indicates a custom theme was last used.
@@ -865,7 +865,7 @@ class SimpleWindow(QMainWindow):
         # Reset message hotkeys
         self.message_hotkeys.clear()
         self.load_message_hotkeys() # This will clear the table
-        self.register_global_hotkeys() # This will unhook old and register new (just F5)
+        self.quickcast_manager.register_all_hotkeys() # This will unhook old and register new
 
         # Resize the window last, after all content and fonts have been reset.
         self.resize(950, 700)
@@ -999,7 +999,7 @@ class SimpleWindow(QMainWindow):
 
         # Re-register all application hotkeys now that capture is complete.
         # We only need to re-register the keybinds, as globals were never unhooked.
-        self.quickcast_manager.register_keybind_hotkeys()
+        self.quickcast_manager.register_all_hotkeys(re_register_globals=False)
 
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
@@ -1040,7 +1040,7 @@ class SimpleWindow(QMainWindow):
 
         # Reload the table and re-register all hotkeys
         self.load_message_hotkeys()
-        self.register_global_hotkeys()
+        self.quickcast_manager.register_all_hotkeys()
 
         # Reset UI for next entry
         self.automation_tab.hotkey_capture_btn.setText("Click to set")
@@ -1061,7 +1061,7 @@ class SimpleWindow(QMainWindow):
         if confirm == QMessageBox.StandardButton.Yes:
             self.message_hotkeys.pop(hotkey_to_delete, None)
             table.removeRow(selected_row)
-            self.register_global_hotkeys() # Re-register to remove the deleted one
+            self.quickcast_manager.register_all_hotkeys() # Re-register to remove the deleted one
 
             # Reset UI
             self.automation_tab.hotkey_capture_btn.setText("Click to set"); self.automation_tab.message_edit.clear()
@@ -1258,66 +1258,6 @@ class SimpleWindow(QMainWindow):
         """Resets all automation settings in the UI to their defaults."""
         self.automation_manager.reset_settings(confirm)
 
-    def register_global_hotkeys(self):
-        # This function will now only handle app-level hotkeys (F3, F5, F6) and message hotkeys.
-        """Registers all hotkeys, including global controls and custom messages."""
-        keyboard.unhook_all()
-        self.hotkey_ids.clear()
-
-        # Register global F5 for starting automation
-        try:
-            f5_id = keyboard.add_hotkey('f5', lambda: self.start_automation_signal.emit(), suppress=True)
-            self.hotkey_ids['f5'] = f5_id
-        except Exception as e:
-            print(f"Failed to register F5 hotkey: {e}")
-
-        # Register global F6 for stopping automation
-        try:
-            f6_id = keyboard.add_hotkey('f6', lambda: self.stop_automation_signal.emit(), suppress=True)
-            self.hotkey_ids['f6'] = f6_id
-        except Exception as e:
-            print(f"Failed to register F6 hotkey: {e}")
-
-        # Register global F3 for loading character
-        try:
-            f3_id = keyboard.add_hotkey('f3', lambda: self.load_character_signal.emit(), suppress=True)
-            self.hotkey_ids['f3'] = f3_id
-        except Exception as e:
-            print(f"Failed to register F3 hotkey: {e}")
-
-        # Register global F2 for toggling Quickcast (emit Qt signal to keep UI thread-safe)
-        # We handle this one manually to implement a debounce for key-holding.
-        def on_f2_press(e):
-            if e.event_type == keyboard.KEY_DOWN and not self.f2_key_down:
-                self.f2_key_down = True
-                self.quickcast_toggle_signal.emit()
-            elif e.event_type == keyboard.KEY_UP:
-                self.f2_key_down = False
-
-        # Unhook any previous F2 handler to be safe
-        if 'f2' in self.hotkey_ids:
-            try: keyboard.remove_hotkey(self.hotkey_ids['f2']) 
-            except (KeyError, ValueError): pass
-        
-        try:
-            self.hotkey_ids['f2'] = keyboard.hook_key('f2', on_f2_press, suppress=True)
-        except Exception as e:
-            print(f"Failed to hook F2 key: {e}")
-        # Register all custom message hotkeys
-        for hotkey, message in self.message_hotkeys.items():
-            self.register_single_hotkey(hotkey, message) # type: ignore
-
-    def register_keybind_hotkeys(self):
-        """
-        Safely unregisters and re-registers all keybind-specific hotkeys.
-
-        This method iterates through a copy of the tracked hotkey IDs and
-        selectively removes only those that are not global or message hotkeys.
-        It uses a try-except block to prevent crashes if a hotkey is already
-        unregistered, ensuring the application remains stable.
-        """
-        self.quickcast_manager.register_keybind_hotkeys()
-
     def register_single_hotkey(self, hotkey: str, message: str):
         """Helper to register a single message hotkey."""
         try:
@@ -1346,35 +1286,6 @@ class SimpleWindow(QMainWindow):
     def deactivate_ahk_script_if_running(self, inform_user=True):
         """Delegates AHK deactivation to the QuickcastManager."""
         return self.quickcast_manager.deactivate_ahk_script_if_running(inform_user)
-
-    def toggle_ahk_quickcast(self):
-        """Delegates AHK toggling to the QuickcastManager."""
-        self.quickcast_manager.toggle_ahk_quickcast()
-                
-    def _find_ahk_path(self) -> str | None:
-        """Finds the path to the AutoHotkey executable."""
-        program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
-        possible_paths = [
-            os.path.join(program_files, "AutoHotkey", "AutoHotkey.exe"),
-            os.path.join(program_files, "AutoHotkey", "v2", "AutoHotkey.exe"),
-            os.path.join(program_files, "AutoHotkey", "UX", "AutoHotkey.exe"),
-        ]
-        for path in possible_paths:
-            if os.path.exists(path):
-                return path
-        try:
-            result = subprocess.run(['where', 'AutoHotkey.exe'], capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            return result.stdout.strip().split('\n')[0]
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return None
-
-    def generate_and_run_ahk_script(self):
-        """Delegates AHK script generation to the QuickcastManager."""
-        return self.quickcast_manager.generate_and_run_ahk_script()
-
-    def unregister_python_hotkeys(self):
-        """Delegates Python hotkey unregistration to the QuickcastManager."""
-        self.quickcast_manager.unregister_python_hotkeys()
 
     def register_keybind_hotkeys(self):
         """

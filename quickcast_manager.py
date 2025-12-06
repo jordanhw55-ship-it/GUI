@@ -1,10 +1,11 @@
 import os
 import subprocess
 from PySide6.QtWidgets import QMessageBox, QPushButton
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QUrl, QObject
 from PySide6.QtGui import QDesktopServices
 
-from key_translator import to_ahk_hotkey, to_ahk_send, normalize_to_canonical
+from key_translator import to_ahk_hotkey, to_ahk_send, normalize_to_canonical, to_keyboard_lib
+import keyboard
 
 class QuickcastManager:
     def __init__(self, main_window):
@@ -22,8 +23,8 @@ class QuickcastManager:
             self.main_window.keybinds.clear()
             self.apply_keybind_settings() # This will reset the UI to defaults
             
-            # Re-register the now-empty python hotkeys (effectively clearing them)
-            self.register_keybind_hotkeys()
+            # Re-register all hotkeys, which will clear the old keybinds
+            self.register_all_hotkeys()
 
 
     def open_ahk_website(self):
@@ -66,7 +67,7 @@ class QuickcastManager:
 
         # If AHK is not running, register hotkeys with Python
         if not (hasattr(self, 'ahk_process') and self.ahk_process and self.ahk_process.poll() is None):
-            self.register_keybind_hotkeys()
+            self.register_all_hotkeys()
 
     def on_keybind_button_clicked(self, button: QPushButton, name: str):
         """Handles left-click on a keybind button to start capture."""
@@ -87,7 +88,7 @@ class QuickcastManager:
         
         is_enabled = self.main_window.quickcast_tab.setting_checkboxes[setting_name].isChecked()
         self.main_window.keybinds["settings"][setting_name] = is_enabled
-        self.register_keybind_hotkeys()
+        self.register_all_hotkeys()
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
@@ -112,7 +113,7 @@ class QuickcastManager:
         button.style().polish(button)
         button.update()
 
-        self.register_keybind_hotkeys()
+        self.register_all_hotkeys()
         print(f"[DEBUG] {name} quickcast toggled to {new_state}")
 
     def get_keybind_settings_from_ui(self):
@@ -145,8 +146,7 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
             # Re-register Python hotkeys now that AHK is off
-            self.main_window.register_global_hotkeys()
-            self.register_keybind_hotkeys()
+            self.register_all_hotkeys()
             
             self.main_window.status_overlay.hide()
             print("[INFO] AHK Quickcast script deactivated.")
@@ -341,36 +341,77 @@ closePause() {{
             QMessageBox.critical(self.main_window, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
 
-    def unregister_python_hotkeys(self, unregister_globals=True):
-        """Unregisters all hotkeys managed by the 'keyboard' library, except global controls."""
-        import keyboard
-        print("[INFO] Unregistering Python keybinds to prevent conflicts with AHK.")
-        for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
-            is_global = hotkey_str in ['f2', 'f3', 'f5', 'f6'] or hotkey_str in self.main_window.message_hotkeys
-            
-            # If we are NOT unregistering globals, and this key IS a global, skip it.
-            if not unregister_globals and is_global:
-                continue
-            
+    def unregister_python_hotkeys(self, unregister_globals=False):
+        """
+        Unregisters hotkeys. If unregister_globals is False, it only unregisters
+        the remappable keybinds, leaving F-keys and message hotkeys active.
+        """
+        print(f"[INFO] Unregistering Python hotkeys. Globals: {not unregister_globals}")
+        if unregister_globals:
+            keyboard.unhook_all()
+            self.main_window.hotkey_ids.clear()
+        else:
+            # Selectively unregister only keybinds
+            global_hotkeys = ['f2', 'f3', 'f5', 'f6'] + list(self.main_window.message_hotkeys.keys())
+            for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
+                # The hotkey_str for keybinds is the keyboard-lib format, not canonical.
+                # We can rely on the fact that keybinds won't be F-keys.
+                is_global_or_message = hotkey_str in global_hotkeys
+                if not is_global_or_message:
+                    try:
+                        keyboard.remove_hotkey(hk_id)
+                        del self.main_window.hotkey_ids[hotkey_str]
+                    except (KeyError, ValueError):
+                        pass # Already removed
+
+    def register_all_hotkeys(self, re_register_globals=True):
+        """
+        Centralized function to register all Python-based hotkeys.
+        It unhooks previous keys to prevent duplicates.
+        """
+        # Unhook all existing hotkeys to ensure a clean slate.
+        self.unregister_python_hotkeys(unregister_globals=re_register_globals)
+
+        if re_register_globals:
+            # --- Register Global Hotkeys (F-keys, messages) ---
+            print("[INFO] Registering global hotkeys...")
             try:
-                keyboard.remove_hotkey(hk_id)
-                del self.main_window.hotkey_ids[hotkey_str]
-            except (KeyError, ValueError):
-                pass # Already unregistered
+                self.main_window.hotkey_ids['f5'] = keyboard.add_hotkey('f5', lambda: self.main_window.start_automation_signal.emit(), suppress=True)
+                self.main_window.hotkey_ids['f6'] = keyboard.add_hotkey('f6', lambda: self.main_window.stop_automation_signal.emit(), suppress=True)
+                self.main_window.hotkey_ids['f3'] = keyboard.add_hotkey('f3', lambda: self.main_window.load_character_signal.emit(), suppress=True)
 
-    def register_keybind_hotkeys(self):
-        """Safely unregisters and re-registers all keybind-specific hotkeys in Python."""
-        import keyboard
-        # First, unregister all existing keybind hotkeys to prevent duplicates
-        for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
-            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
+                def on_f2_press(e):
+                    if e.event_type == keyboard.KEY_DOWN and not self.main_window.f2_key_down:
+                        self.main_window.f2_key_down = True
+                        self.main_window.quickcast_toggle_signal.emit()
+                    elif e.event_type == keyboard.KEY_UP:
+                        self.main_window.f2_key_down = False
+                self.main_window.hotkey_ids['f2'] = keyboard.hook_key('f2', on_f2_press, suppress=True)
+
+            except Exception as e:
+                print(f"[ERROR] Failed to register global F-key: {e}")
+
+            for hotkey, message in self.main_window.message_hotkeys.items():
                 try:
-                    keyboard.remove_hotkey(hk_id)
-                    del self.main_window.hotkey_ids[hotkey_str]
-                except (KeyError, ValueError):
-                    pass
+                    # Use a lambda with default arguments to capture current values
+                    hk_id = keyboard.add_hotkey(hotkey, lambda h=hotkey, msg=message: self.main_window.send_chat_message(h, msg), suppress=False)
+                    self.main_window.hotkey_ids[hotkey] = hk_id
+                except (ValueError, ImportError) as e:
+                    print(f"Failed to register message hotkey '{hotkey}': {e}")
 
-        # Then, register the current set of keybinds
+        # --- Register Remappable Keybinds ---
+        print("[INFO] Registering remappable keybinds...")
         for name, key_info in self.main_window.keybinds.items():
-            if "hotkey" in key_info and key_info["hotkey"]:
-                self.main_window.register_single_keybind(name, key_info["hotkey"])
+            hotkey = key_info.get("hotkey")
+            if not hotkey or "button" in hotkey.lower():
+                continue
+
+            try:
+                lib_hotkey = to_keyboard_lib(hotkey)
+                # Check for duplicates before adding
+                if lib_hotkey in self.main_window.hotkey_ids:
+                    continue
+                hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.main_window.execute_keybind(n, h), suppress=False)
+                self.main_window.hotkey_ids[lib_hotkey] = hk_id
+            except (ValueError, ImportError, KeyError) as e:
+                print(f"Failed to register keybind '{hotkey}' for '{name}': ({e.__class__.__name__}, {e})")
