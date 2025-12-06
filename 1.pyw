@@ -1358,7 +1358,7 @@ class SimpleWindow(QMainWindow):
             lib_hotkey = to_keyboard_lib(hotkey)
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
+            hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{lib_hotkey}' for '{name}': ({e.__class__.__name__}, {e})")
