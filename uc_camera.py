@@ -149,6 +149,16 @@ class Camera:
         self.pan_start_x = event.x
         self.pan_start_y = event.y
         
+        # --- NEW: Also move any in-progress smart border points ---
+        # This ensures the drawn points stay aligned with the tiles during a group pan.
+        if self.app.smart_border_mode_active and self.app.border_manager.smart_manager.raw_border_points:
+            smart_manager = self.app.border_manager.smart_manager
+            
+            # Create a new set of points with updated coordinates
+            updated_points = {(p_x + dx_world, p_y + dy_world) for p_x, p_y in smart_manager.raw_border_points}
+            smart_manager.raw_border_points = updated_points
+            smart_manager._rebuild_quadtree() # Rebuild the spatial index for the new point locations
+
         self.app.redraw_all_zoomable()
 
     def on_pan_release(self, event):
