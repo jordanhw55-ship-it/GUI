@@ -1221,19 +1221,31 @@ class SimpleWindow(QMainWindow):
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
 
-            # --- CRITICAL FIX for Remapping ---
+            # --- COMPREHENSIVE FIX for Remapping ---
             # If the AHK script is active, all remapping and quickcast logic is handled by AHK.
             # The Python hotkeys should have been unregistered, but as a failsafe, if this
             # function is ever called while AHK is active, it should do nothing and exit immediately.
             # This prevents Python from interfering with the AHK script.
             is_ahk_active = self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None
             if is_ahk_active:
+                print("[DEBUG] execute_keybind called while AHK active. Aborting to let AHK handle it.")
                 return
 
-            # If AHK is NOT active, the Python hotkey handler's only job is to pass-through
-            # the original, un-remapped key. Since the hotkey is suppressed, we must
-            # manually send it. The 'hotkey' variable here is the key that was pressed.
-            pyautogui.press(to_pyautogui(hotkey))
+            # If AHK is NOT active, the Python handler must perform the remap/quickcast itself.
+            is_quickcast = key_info.get("quickcast", False)
+            original_key_part = name.split('_')[-1] # e.g., "Numpad7" from "spell_Numpad7"
+            
+            # Translate the canonical key name to a pyautogui-compatible format
+            pyautogui_key = to_pyautogui(original_key_part)
+            if not pyautogui_key:
+                print(f"[WARNING] No pyautogui translation for key: {original_key_part}")
+                return
+
+            # Send the original key press (the remapped action)
+            pyautogui.press(pyautogui_key)
+
+            if is_quickcast:
+                pyautogui.click() # Perform the quickcast click
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False
@@ -1328,6 +1340,10 @@ class SimpleWindow(QMainWindow):
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message) # type: ignore
+        
+        # If AHK is not active, register the python-based keybinds.
+        if not (self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None):
+            self.register_keybind_hotkeys()
 
     def register_keybind_hotkeys(self):
         """

@@ -137,8 +137,10 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
             # Re-register Python hotkeys now that AHK is off
-            self.main_window.register_global_hotkeys()
-            self.register_keybind_hotkeys()
+            # This function now handles unhooking everything and re-registering all
+            # necessary Python hotkeys (globals, messages, and keybinds).
+            # This is more reliable than registering them separately.
+            self.main_window.register_global_hotkeys() 
             
             self.main_window.status_overlay.hide()
             print("[INFO] AHK Quickcast script deactivated.")
