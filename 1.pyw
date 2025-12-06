@@ -1200,11 +1200,10 @@ class SimpleWindow(QMainWindow):
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
         # If this function is already running, exit to prevent recursion from SendInput.
-        if self.is_executing_keybind:
-            return
-
-        
         try:
+            if self.is_executing_keybind:
+                return
+
             self.is_executing_keybind = True
             print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
 
@@ -1231,21 +1230,9 @@ class SimpleWindow(QMainWindow):
                 print("[DEBUG] execute_keybind called while AHK active. Aborting to let AHK handle it.")
                 return
 
-            # If AHK is NOT active, the Python handler must perform the remap/quickcast itself.
-            is_quickcast = key_info.get("quickcast", False)
-            original_key_part = name.split('_')[-1] # e.g., "Numpad7" from "spell_Numpad7"
-            
-            # Translate the canonical key name to a pyautogui-compatible format
-            pyautogui_key = to_pyautogui(original_key_part)
-            if not pyautogui_key:
-                print(f"[WARNING] No pyautogui translation for key: {original_key_part}")
-                return
-
-            # Send the original key press (the remapped action)
-            pyautogui.press(pyautogui_key)
-
-            if is_quickcast:
-                pyautogui.click() # Perform the quickcast click
+            # If AHK is NOT active, remapping should be disabled. Since the hotkey is
+            # suppressed, we must manually send the key that was originally pressed.
+            pyautogui.press(to_pyautogui(hotkey))
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False

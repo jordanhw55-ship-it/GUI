@@ -60,6 +60,11 @@ class QuickcastManager:
 
             button.setText(hotkey.upper())
             button.setProperty("quickcast", quickcast)
+            # --- FIX for quickcast not working on startup ---
+            # Explicitly set the property on the button instance.
+            # This ensures that even if the stylesheet isn't immediately reapplied,
+            # the button's internal state is correct from the start.
+            button.setProperty("quickcast", quickcast)
             button.style().unpolish(button)
             button.style().polish(button)
             button.update()
@@ -140,7 +145,10 @@ class QuickcastManager:
             # This function now handles unhooking everything and re-registering all
             # necessary Python hotkeys (globals, messages, and keybinds).
             # This is more reliable than registering them separately.
-            self.main_window.register_global_hotkeys() 
+            try:
+                self.main_window.register_global_hotkeys()
+            except Exception as e:
+                print(f"[ERROR] Failed to re-register global hotkeys after AHK deactivation: {e}")
             
             self.main_window.status_overlay.hide()
             print("[INFO] AHK Quickcast script deactivated.")
