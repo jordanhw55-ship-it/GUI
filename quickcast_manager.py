@@ -253,8 +253,14 @@ closePause() {{
 
         # Dynamically generate the keybinds based on UI settings
         for name, key_info in self.main_window.keybinds.items():
-            hotkey = key_info.get("hotkey")
-            if not hotkey or "button" in hotkey: continue
+            # --- FIX: Ensure default hotkey is used if not explicitly set ---
+            # The original code skipped keys that weren't remapped. This now
+            # retrieves the default key from the button's name if no hotkey is saved.
+            raw_default_key = name.split('_')[-1]
+            is_numpad_control = "numpad" in name.lower()
+            canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
+            hotkey = key_info.get("hotkey", canonical_default)
+            if not hotkey or "button" in hotkey or "click to set" in hotkey: continue
             
             # Translate the remapped key from canonical ("numpad 7") to AHK hotkey format ("numpad7")
             ahk_hotkey = to_ahk_hotkey(hotkey)
@@ -280,12 +286,10 @@ closePause() {{
             
             quickcast = key_info.get("quickcast", False)
 
-            # Determine if the key has been remapped from its default
-            raw_default_key = name.split('_')[-1]
-            is_numpad_control = "numpad" in name.lower()
-            canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
+            # --- FIX: Correct the condition to include non-remapped quickcast keys ---
+            # The original logic would skip a key if it wasn't remapped. This new
+            # condition correctly includes keys that are not remapped BUT have quickcast enabled.
             is_remapped = hotkey != canonical_default
-
             if not is_remapped and not quickcast: continue
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
