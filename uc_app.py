@@ -210,8 +210,14 @@ class ImageEditorApp:
         # 2. Get the current dock assets from the UI Creator.
         dock_assets_to_save = [{'path': asset.image_path, 'is_border': asset.is_border_asset} for asset in self.image_manager.dock_assets if asset.image_path]
         # 3. Update only the 'dock_assets' key in the loaded settings.
-        # --- NEW: Get and save the paths of finalized borders ---
-        saved_borders_to_save = [comp.image_path for comp in self.border_manager.finalized_borders.values() if comp.image_path]
+        # --- FIX: Save the relative coordinates along with the path for each border ---
+        saved_borders_to_save = []
+        for comp in self.border_manager.finalized_borders.values():
+            if comp.image_path:
+                saved_borders_to_save.append({
+                    'path': comp.image_path,
+                    'relative_coords': (comp.relative_x, comp.relative_y)
+                })
         self.settings_manager.settings['dock_assets'] = dock_assets_to_save
         self.settings_manager.settings['saved_borders'] = saved_borders_to_save
 
@@ -235,10 +241,10 @@ class ImageEditorApp:
 
     def _reload_saved_borders(self):
         """Loads finalized borders from paths saved in settings."""
-        saved_border_paths = self.settings_manager.get("saved_borders", [])
-        print(f"[INFO] Found {len(saved_border_paths)} saved borders to reload.")
-        for border_path in saved_border_paths:
-            self.border_manager.load_finalized_border_from_path(border_path)
+        saved_borders_info = self.settings_manager.get("saved_borders", [])
+        print(f"[INFO] Found {len(saved_borders_info)} saved borders to reload.")
+        for border_info in saved_borders_info:
+            self.border_manager.load_finalized_border_from_path(border_info)
 
     def _bind_component_events(self, comp_tag):
         """Binds press, drag, and release events for a given component tag."""

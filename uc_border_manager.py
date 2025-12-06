@@ -342,24 +342,29 @@ class BorderManager:
 
         self.app.ui_manager.update_saved_borders_dropdown()
 
-    def load_finalized_border_from_path(self, image_path: str):
+    def load_finalized_border_from_path(self, border_info: dict):
         """
         Recreates a finalized border component from a saved image path and adds it to the manager.
         This is used on application startup.
         """
-        if not image_path or not os.path.exists(image_path):
+        image_path = border_info.get('path')
+        relative_coords = border_info.get('relative_coords')
+
+        if not image_path or not os.path.exists(image_path) or relative_coords is None:
             print(f"[WARNING] Could not reload saved border. File not found: {image_path}")
             return
 
         try:
             border_image = Image.open(image_path).convert("RGBA")
             border_tag = os.path.splitext(os.path.basename(image_path))[0]
+            rel_x, rel_y = relative_coords
 
-            # Create a new component. The initial coordinates don't matter much as it's a template.
+            # Create a new component. The initial world coordinates are temporary as it's a template.
             new_border_comp = DraggableComponent(
                 self.app, border_tag, 0, 0, border_image.width, border_image.height, "green", border_tag
             )
             new_border_comp.is_decal = True
+            new_border_comp.relative_x, new_border_comp.relative_y = rel_x, rel_y # Apply the saved relative coords
             new_border_comp.original_pil_image = border_image.copy()
             new_border_comp.image_path = image_path # Store the path for re-saving
 
