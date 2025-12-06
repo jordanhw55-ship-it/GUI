@@ -1210,6 +1210,24 @@ class SimpleWindow(QMainWindow):
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
+
+            # --- BEGIN FIX: Implement Python-based quickcast logic ---
+            # This block was missing the actual key-sending logic for when AHK is not active.
+            is_quickcast = key_info.get("quickcast", False)
+            original_key_part = name.split('_')[-1] # e.g., "Numpad7" from "spell_Numpad7"
+            
+            # Translate the canonical key name to a pyautogui-compatible format
+            pyautogui_key = to_pyautogui(original_key_part)
+            if not pyautogui_key:
+                print(f"[WARNING] No pyautogui translation for key: {original_key_part}")
+                return
+
+            # Send the original key press
+            pyautogui.press(pyautogui_key)
+
+            if is_quickcast:
+                pyautogui.click() # Perform the quickcast click
+            # --- END FIX ---
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False
