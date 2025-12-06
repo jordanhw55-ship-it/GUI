@@ -60,11 +60,6 @@ class QuickcastManager:
 
             button.setText(hotkey.upper())
             button.setProperty("quickcast", quickcast)
-            # --- FIX for quickcast not working on startup ---
-            # Explicitly set the property on the button instance.
-            # This ensures that even if the stylesheet isn't immediately reapplied,
-            # the button's internal state is correct from the start.
-            button.setProperty("quickcast", quickcast)
             button.style().unpolish(button)
             button.style().polish(button)
             button.update()
@@ -142,13 +137,8 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
             # Re-register Python hotkeys now that AHK is off
-            # This function now handles unhooking everything and re-registering all
-            # necessary Python hotkeys (globals, messages, and keybinds).
-            # This is more reliable than registering them separately.
-            try:
-                self.main_window.register_global_hotkeys()
-            except Exception as e:
-                print(f"[ERROR] Failed to re-register global hotkeys after AHK deactivation: {e}")
+            self.main_window.register_global_hotkeys()
+            self.register_keybind_hotkeys()
             
             self.main_window.status_overlay.hide()
             print("[INFO] AHK Quickcast script deactivated.")
@@ -296,7 +286,7 @@ closePause() {{
             canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
             is_remapped = hotkey != canonical_default
 
-            if not is_remapped and not quickcast: continue
+            if not is_remapped and not quickcast: continue # Only skip if nothing has changed
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
             script_content += f"\n${ahk_hotkey}:: {function_call}"

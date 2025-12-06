@@ -977,12 +977,6 @@ class SimpleWindow(QMainWindow):
 
         # If we were capturing for a keybind button, update it
         if self.capturing_for_control:
-            # --- FIX for startup crash ---
-            # If a remap happens very quickly on startup, it's possible for this
-            # to be called before the quickcast_tab's buttons are fully initialized.
-            # This check prevents a crash by ensuring the button exists in the dict.
-            if self.capturing_for_control not in self.quickcast_tab.key_buttons:
-                return
             button = self.quickcast_tab.key_buttons[self.capturing_for_control]
             button.setChecked(False) # Uncheck to remove capture highlight
             if is_valid:
@@ -1002,13 +996,9 @@ class SimpleWindow(QMainWindow):
         else: # We were capturing for a message hotkey
             self.automation_tab.hotkey_capture_btn.setText(canonical_hotkey if is_valid else "Click to set")
 
-        # Re-register global hotkeys (F-keys, etc.)
+        # Re-register all application hotkeys now that capture is complete.
         self.register_global_hotkeys()
-
-        # --- FIX: Only re-register Python keybinds if AHK is NOT running ---
-        # This prevents Python hotkeys from being re-enabled while AHK is active.
-        if not (self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None):
-            self.register_keybind_hotkeys()
+        self.register_keybind_hotkeys()
         # Allow a new capture to be started. This is the crucial step.
         self.is_capturing_hotkey = False
 
@@ -1200,10 +1190,11 @@ class SimpleWindow(QMainWindow):
     def execute_keybind(self, name: str, hotkey: str):
         """Executes the action for a triggered keybind hotkey."""
         # If this function is already running, exit to prevent recursion from SendInput.
-        try:
-            if self.is_executing_keybind:
-                return
+        if self.is_executing_keybind:
+            return
 
+        
+        try:
             self.is_executing_keybind = True
             print(f"\n[DEBUG] execute_keybind triggered: name='{name}', hotkey='{hotkey}'")
 
@@ -1219,20 +1210,6 @@ class SimpleWindow(QMainWindow):
             print(f"[DEBUG] Is category '{category}' enabled? {is_enabled}")
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
-
-            # --- COMPREHENSIVE FIX for Remapping ---
-            # If the AHK script is active, all remapping and quickcast logic is handled by AHK.
-            # The Python hotkeys should have been unregistered, but as a failsafe, if this
-            # function is ever called while AHK is active, it should do nothing and exit immediately.
-            # This prevents Python from interfering with the AHK script.
-            is_ahk_active = self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None
-            if is_ahk_active:
-                print("[DEBUG] execute_keybind called while AHK active. Aborting to let AHK handle it.")
-                return
-
-            # If AHK is NOT active, remapping should be disabled. Since the hotkey is
-            # suppressed, we must manually send the key that was originally pressed.
-            pyautogui.press(to_pyautogui(hotkey))
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False
@@ -1327,10 +1304,6 @@ class SimpleWindow(QMainWindow):
         # Register all custom message hotkeys
         for hotkey, message in self.message_hotkeys.items():
             self.register_single_hotkey(hotkey, message) # type: ignore
-        
-        # If AHK is not active, register the python-based keybinds.
-        if not (self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None):
-            self.register_keybind_hotkeys()
 
     def register_keybind_hotkeys(self):
         """
@@ -1363,7 +1336,7 @@ class SimpleWindow(QMainWindow):
             lib_hotkey = to_keyboard_lib(hotkey)
 
             # The check for the active window is now handled inside execute_keybind.
-            hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=True)
+            hk_id = keyboard.add_hotkey(lib_hotkey, lambda n=name, h=hotkey: self.execute_keybind(n, h), suppress=False)
             self.hotkey_ids[name] = hk_id
         except (ValueError, ImportError, KeyError) as e:
             print(f"Failed to register keybind '{lib_hotkey}' for '{name}': ({e.__class__.__name__}, {e})")
