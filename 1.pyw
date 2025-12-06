@@ -1221,28 +1221,19 @@ class SimpleWindow(QMainWindow):
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
 
-            # Check if the AHK script is supposed to be active.
+            # --- CRITICAL FIX for Remapping ---
+            # If the AHK script is active, all remapping and quickcast logic is handled by AHK.
+            # The Python hotkeys should have been unregistered, but as a failsafe, if this
+            # function is ever called while AHK is active, it should do nothing and exit immediately.
+            # This prevents Python from interfering with the AHK script.
             is_ahk_active = self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None
-
-            # If AHK is NOT active, the Python hotkey handler should just re-send the original key press.
-            if not is_ahk_active:
-                pyautogui.press(to_pyautogui(hotkey))
+            if is_ahk_active:
                 return
 
-            is_quickcast = key_info.get("quickcast", False)
-            original_key_part = name.split('_')[-1] # e.g., "Numpad7" from "spell_Numpad7"
-            
-            # Translate the canonical key name to a pyautogui-compatible format
-            pyautogui_key = to_pyautogui(original_key_part)
-            if not pyautogui_key:
-                print(f"[WARNING] No pyautogui translation for key: {original_key_part}")
-                return
-
-            # Send the original key press
-            pyautogui.press(pyautogui_key)
-
-            if is_quickcast:
-                pyautogui.click() # Perform the quickcast click
+            # If AHK is NOT active, the Python hotkey handler's only job is to pass-through
+            # the original, un-remapped key. Since the hotkey is suppressed, we must
+            # manually send it. The 'hotkey' variable here is the key that was pressed.
+            pyautogui.press(to_pyautogui(hotkey))
         finally:
             # Always reset the flag, even if an error occurs.
             self.is_executing_keybind = False
