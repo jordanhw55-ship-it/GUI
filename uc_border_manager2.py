@@ -682,6 +682,11 @@ class SmartBorderManager:
         )
         new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
         new_border_comp.original_pil_image = border_image.copy()
+        
+        # --- NEW: Store position relative to the composite area for accuracy ---
+        # This is more robust than absolute world coordinates.
+        new_border_comp.relative_x = min_x - self.composite_x_offset
+        new_border_comp.relative_y = min_y - self.composite_y_offset
 
         # --- NEW: 5. Save the border image to a file for persistence ---
         os.makedirs(self.app.saved_borders_dir, exist_ok=True)

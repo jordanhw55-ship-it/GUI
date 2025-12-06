@@ -26,6 +26,10 @@ class DraggableComponent:
         self.is_dock_asset = is_dock_asset
         self.parent_tag = None # NEW: To link components, e.g., a border to its tile
 
+        # --- NEW: For accurate border positioning ---
+        self.relative_x = 0
+        self.relative_y = 0
+
         # World coordinates
         self.world_x1, self.world_y1, self.world_x2, self.world_y2 = x1, y1, x2, y2
 

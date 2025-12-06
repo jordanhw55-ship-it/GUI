@@ -212,14 +212,21 @@ class BorderManager:
         new_tag = f"{selected_tag}_instance_{self.app.image_manager.next_dynamic_id}"
         self.app.image_manager.next_dynamic_id += 1
 
-        # 2. Create a new DraggableComponent using the original's coordinates and image.
+        # --- NEW: 2. Calculate the new world position based on the saved relative offset ---
+        # This ensures the border is placed correctly relative to the current tile composition.
+        comp_area_x1 = min((c.world_x1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
+        comp_area_y1 = min((c.world_y1 for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset), default=0)
+
+        new_world_x1 = comp_area_x1 + original_border_comp.relative_x
+        new_world_y1 = comp_area_y1 + original_border_comp.relative_y
+        new_world_x2 = new_world_x1 + (original_border_comp.world_x2 - original_border_comp.world_x1)
+        new_world_y2 = new_world_y1 + (original_border_comp.world_y2 - original_border_comp.world_y1)
+
+        # 3. Create a new DraggableComponent using the calculated coordinates and original image.
         new_comp = DraggableComponent(
             self.app,
             new_tag,
-            original_border_comp.world_x1,
-            original_border_comp.world_y1,
-            original_border_comp.world_x2,
-            original_border_comp.world_y2,
+            new_world_x1, new_world_y1, new_world_x2, new_world_y2,
             "green",
             new_tag
         )
@@ -227,7 +234,7 @@ class BorderManager:
         new_comp.original_pil_image = original_border_comp.original_pil_image.copy()
         new_comp.image_path = original_border_comp.image_path
 
-        # 3. Add the new component to the application and draw it.
+        # 4. Add the new component to the application and draw it.
         self.app.components[new_tag] = new_comp
         self.app._bind_component_events(new_tag)
         new_comp.set_image(new_comp.original_pil_image) # This will handle the initial draw
