@@ -140,7 +140,7 @@ class QuickcastManager:
                     self.ahk_process.terminate()
             
             self.ahk_process = None
-            self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate (F2)")
+            self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
             # Re-register Python hotkeys now that AHK is off
@@ -164,7 +164,7 @@ class QuickcastManager:
                 self.deactivate_ahk_script_if_running(inform_user=True)
             else:
                 if self.generate_and_run_ahk_script():
-                    self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate (F2)")
+                    self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
                     self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
                     self.unregister_python_hotkeys()
         finally:
@@ -262,8 +262,12 @@ closePause() {{
         for name, key_info in self.main_window.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
-
-            ahk_hotkey = to_ahk_hotkey(hotkey) # Define ahk_hotkey before use
+            
+            # Translate the remapped key from canonical ("numpad 7") to AHK hotkey format ("numpad7")
+            ahk_hotkey = to_ahk_hotkey(hotkey)
+            if ahk_hotkey in defined_hotkeys:
+                print(f"[WARNING] Duplicate hotkey '{ahk_hotkey}' found for '{name}'. Skipping.")
+                continue
             
             print(f"[DEBUG] AHK Gen - Processing: name='{name}', hotkey='{hotkey}', ahk_hotkey='{ahk_hotkey}'")
 
@@ -271,13 +275,13 @@ closePause() {{
             if category == "inv": category = "inventory"
             is_enabled = self.main_window.keybinds.get("settings", {}).get(category, True)
             if not is_enabled: continue
-            
+
             original_key = ""
-            if name.startswith("spell_") or name.startswith("inv_"):
+            if name.startswith("spell_"):
                 # The original key is part of the name, e.g., "spell_Numpad7"
                 original_key_part = name.split("_")[1]
                 # Translate the original key to the format AHK's SendInput needs ("Numpad7")
-                original_key = to_ahk_send(original_key_part, "numpad" in name.lower())
+                original_key = to_ahk_send(original_key_part)
             
             if not original_key: continue
             
@@ -290,15 +294,10 @@ closePause() {{
             is_remapped = hotkey != canonical_default
 
             if not is_remapped and not quickcast: continue # Only skip if nothing has changed
-            
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
-            if ahk_hotkey not in hotkey_actions:
-                hotkey_actions[ahk_hotkey] = []
-            hotkey_actions[ahk_hotkey].append(function_call)
-
-        for ahk_hotkey, actions in hotkey_actions.items():
-            action_block = "\n    ".join(actions)
-            script_content += f"\n${ahk_hotkey}:: {{\n    {action_block}\n}}"
+            # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
+            script_content += f"\n${ahk_hotkey}:: {function_call}"
+            defined_hotkeys.add(ahk_hotkey)
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
@@ -320,18 +319,22 @@ closePause() {{
             QMessageBox.critical(self.main_window, "Script Error", f"Failed to generate or run AHK script: {e}")
             return False
 
-    def unregister_python_hotkeys(self):
+    def unregister_python_hotkeys(self, unregister_globals=True):
         """Unregisters all hotkeys managed by the 'keyboard' library, except global controls."""
         import keyboard
         print("[INFO] Unregistering Python keybinds to prevent conflicts with AHK.")
         for hotkey_str, hk_id in list(self.main_window.hotkey_ids.items()):
-            # Keep global hotkeys (F2, F3, F5, F6) and message hotkeys registered in Python
-            if hotkey_str not in ['f2', 'f3', 'f5', 'f6'] and hotkey_str not in self.main_window.message_hotkeys:
-                try:
-                    keyboard.remove_hotkey(hk_id)
-                    del self.main_window.hotkey_ids[hotkey_str]
-                except (KeyError, ValueError):
-                    pass # Already unregistered
+            is_global = hotkey_str in ['f2', 'f3', 'f5', 'f6'] or hotkey_str in self.main_window.message_hotkeys
+            
+            # If we are NOT unregistering globals, and this key IS a global, skip it.
+            if not unregister_globals and is_global:
+                continue
+            
+            try:
+                keyboard.remove_hotkey(hk_id)
+                del self.main_window.hotkey_ids[hotkey_str]
+            except (KeyError, ValueError):
+                pass # Already unregistered
 
     def register_keybind_hotkeys(self):
         """Safely unregisters and re-registers all keybind-specific hotkeys in Python."""
