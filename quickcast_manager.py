@@ -140,7 +140,7 @@ class QuickcastManager:
                     self.ahk_process.terminate()
             
             self.ahk_process = None
-            self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
+            self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate (F2)")
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
             # Re-register Python hotkeys now that AHK is off
@@ -164,7 +164,7 @@ class QuickcastManager:
                 self.deactivate_ahk_script_if_running(inform_user=True)
             else:
                 if self.generate_and_run_ahk_script():
-                    self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate Quickcast (F2)")
+                    self.main_window.quickcast_tab.activate_quickcast_btn.setText("Deactivate (F2)")
                     self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #B22222; color: white;")
                     self.unregister_python_hotkeys()
         finally:
