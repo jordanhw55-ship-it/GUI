@@ -19,6 +19,9 @@ class BorderManager:
         self.app = app
         self.canvas = app.canvas
 
+        # --- NEW: Path for file-based presets ---
+        self.preset_borders_dir = os.path.join(self.app.ui_creator_contents_path, "preset_borders")
+
         # Instantiate the sub-managers
         self.smart_manager = SmartBorderManager(app, self)
 
@@ -26,6 +29,11 @@ class BorderManager:
 
         self.preview_rect_ids = [] # DEFINITIVE FIX: Track multiple preview items
         self.preview_tk_images = [] # DEFINITIVE FIX: Hold multiple PhotoImage objects
+
+        # --- NEW: State for preset borders ---
+        self.preset_border_names = ["No presets available"]
+        self.selected_preset_border = tk.StringVar(value=self.preset_border_names[0])
+        # self.selected_preset_border.trace_add("write", self.preview_preset_border) # Preview is disabled for this preset type
 
         # --- NEW: State for finalized smart borders ---
         self.finalized_borders = {} # Stores tag -> DraggableComponent mapping
@@ -36,6 +44,8 @@ class BorderManager:
         self.border_textures = {}
         self._load_border_textures()
         self._create_procedural_textures()
+        
+        self._load_preset_borders_from_files()
 
         # Set default selections for the UI
 
@@ -84,7 +94,103 @@ class BorderManager:
         except Exception as e:
             print(f"Could not create procedural textures: {e}")
 
+    def _load_preset_borders_from_files(self):
+        """Scans the preset_borders directory for .txt files and populates the dropdown."""
+        os.makedirs(self.preset_borders_dir, exist_ok=True)
+        try:
+            preset_files = [f for f in os.listdir(self.preset_borders_dir) if f.endswith('.txt')]
+            if not preset_files:
+                print("[INFO] No .txt preset border files found.")
+                return
+
+            # Convert filenames like "TopBorder.txt" to "Top Border"
+            self.preset_border_names = []
+            for filename in sorted(preset_files):
+                base_name = os.path.splitext(filename)[0]
+                # Simple conversion from CamelCase to Title Case with spaces
+                pretty_name = ''.join([' ' + char if char.isupper() else char for char in base_name]).lstrip()
+                self.preset_border_names.append(pretty_name)
+
+            self.selected_preset_border.set(self.preset_border_names[0])
+            print(f"[INFO] Loaded {len(self.preset_border_names)} preset borders from files.")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to load preset borders from files: {e}")
+
     # --- Method Delegation ---
+
+    def apply_preset_border_to_selection(self):
+        """Applies a file-based preset border, creating components for each specified tile."""
+        pretty_name = self.selected_preset_border.get()
+        if pretty_name == "No presets available":
+            messagebox.showwarning("No Preset Selected", "Please select a preset border from the dropdown.")
+            return
+
+        # Convert "Top Border" back to "TopBorder.txt"
+        filename = pretty_name.replace(' ', '') + ".txt"
+        filepath = os.path.join(self.preset_borders_dir, filename)
+
+        if not os.path.exists(filepath):
+            messagebox.showerror("File Not Found", f"Could not find the preset file:\n{filepath}")
+            return
+
+        # Parse the file
+        points_by_tile = self._parse_border_file(filepath)
+        if not points_by_tile:
+            messagebox.showwarning("Empty Preset", f"The preset file '{filename}' is empty or invalid.")
+            return
+
+        # Create a border component for each tile in the file
+        created_tags = []
+        for tile_tag, points in points_by_tile.items():
+            parent_comp = self.app.components.get(tile_tag)
+            if not parent_comp:
+                print(f"[WARNING] Skipping preset points for non-existent tile '{tile_tag}'.")
+                continue
+
+            # Find bounding box of points to determine image size
+            if not points: continue
+            min_x = min(p[0] for p in points)
+            min_y = min(p[1] for p in points)
+            max_x = max(p[0] for p in points)
+            max_y = max(p[1] for p in points)
+            
+            width = int(max_x - min_x) + 1
+            height = int(max_y - min_y) + 1
+
+            # Create an image and draw the points relative to its top-left
+            border_img = Image.new("RGBA", (width, height), (0,0,0,0))
+            draw = ImageDraw.Draw(border_img)
+            for p_x, p_y in points:
+                draw.point((p_x - min_x, p_y - min_y), fill=(0, 255, 255, 255)) # Cyan color
+
+            # Create the DraggableComponent
+            new_border_tag = f"preset_{pretty_name.replace(' ','')}_{tile_tag}_{self.next_border_id}"
+            self.next_border_id += 1
+
+            # Position the new border component correctly in the world
+            world_x1 = parent_comp.world_x1 + min_x
+            world_y1 = parent_comp.world_y1 + min_y
+            world_x2 = world_x1 + width
+            world_y2 = world_y1 + height
+
+            new_comp = DraggableComponent(self.app, new_border_tag, world_x1, world_y1, world_x2, world_y2, "purple", new_border_tag)
+            new_comp.is_decal = True
+            new_comp.parent_tag = tile_tag
+            
+            self.app.components[new_border_tag] = new_comp
+            self.app._bind_component_events(new_border_tag)
+            new_comp.set_image(border_img)
+            created_tags.append(new_border_tag)
+
+        if created_tags:
+            # For now, we'll create a single undo action that removes all created components.
+            # A more robust solution would group them.
+            for tag in created_tags:
+                 self.app._save_undo_state({'type': 'add_component', 'tag': tag})
+            messagebox.showinfo("Preset Applied", f"Applied '{pretty_name}' preset to {len(created_tags)} tile(s).")
+        else:
+            messagebox.showwarning("Preset Not Applied", "Could not find any matching tiles on the canvas for this preset.")
 
     def remove_border_from_selection(self):
         pass
@@ -127,9 +233,39 @@ class BorderManager:
         final_image.paste(tiled_texture_layer, (0, 0), mask)
         return final_image
 
-    def clear_preset_preview(self):
+    def clear_preset_preview(self, *args):
         """Removes the preset preview rectangle from the canvas if it exists."""
+        for item_id in self.preview_rect_ids:
+            self.canvas.delete(item_id)
+        self.preview_rect_ids.clear()
+        self.preview_tk_images.clear()
         pass
+
+    def _parse_border_file(self, filepath: str) -> dict:
+        """Parses a .txt file and returns a dictionary of {tile_tag: [(x,y), ...]}.
+        
+        Expected format:
+        humanuitile01
+        293,164
+        294,164
+        humanuitile02
+        123,123
+        """
+        points_by_tile = {}
+        current_tile_tag = None
+        with open(filepath, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                if ',' in line: # It's a coordinate
+                    if current_tile_tag:
+                        x_str, y_str = line.split(',')
+                        points_by_tile[current_tile_tag].append((int(x_str), int(y_str)))
+                else: # It's a tile tag
+                    current_tile_tag = line
+                    if current_tile_tag not in points_by_tile:
+                        points_by_tile[current_tile_tag] = []
+        return points_by_tile
 
     # --- NEW: Smart Border Tool Methods ---
 

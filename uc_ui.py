@@ -254,10 +254,27 @@ class UIManager:
             indicatorcolor=[('selected', '#3b82f6')]
         )
 
-        # --- NEW: Add a spacer frame to push content down ---
-        # This frame will expand and take up the top half of the available space.
-        spacer_frame = tk.Frame(tab, bg="#374151")
-        spacer_frame.pack(fill="both", expand=True)
+        # --- NEW: Preset Borders Section ---
+        tk.Label(tab, text="PRESET BORDERS", **label_style).pack(fill='x')
+        preset_frame = tk.Frame(tab, bg="#374151", padx=10, pady=5)
+        preset_frame.pack(fill='x')
+
+        preset_dropdown = ttk.OptionMenu(
+            preset_frame,
+            manager.selected_preset_border,
+            manager.preset_border_names[0],
+            *manager.preset_border_names
+        )
+        preset_dropdown.pack(side=tk.LEFT, fill='x', expand=True, padx=(0, 5))
+        # --- NEW: Ensure the dropdown menu is updated with the latest names ---
+        menu = preset_dropdown["menu"]
+        menu.delete(0, "end")
+        for name in manager.preset_border_names:
+            menu.add_command(label=name, command=lambda value=name: manager.selected_preset_border.set(value))
+
+        tk.Button(preset_frame, text="Apply", bg='#3b82f6', fg='white', relief='flat', font=('Inter', 10, 'bold'),
+                  command=manager.apply_preset_border_to_selection).pack(side=tk.LEFT)
+
 
         # --- NEW: Saved Borders Dropdown ---
         tk.Frame(tab, height=2, bg="#6b7280").pack(fill='x', padx=10, pady=10)
