@@ -87,10 +87,7 @@ class QuickcastManager:
         
         is_enabled = self.main_window.quickcast_tab.setting_checkboxes[setting_name].isChecked()
         self.main_window.keybinds["settings"][setting_name] = is_enabled
-        # --- FIX: Only register Python hotkeys if AHK is not active ---
-        # This prevents re-enabling Python hotkeys when they should be off.
-        if not (self.ahk_process and self.ahk_process.poll() is None):
-            self.register_keybind_hotkeys()
+        self.register_keybind_hotkeys()
 
     def toggle_quickcast(self, name: str):
         """Toggles quickcast for a given keybind."""
@@ -108,10 +105,7 @@ class QuickcastManager:
         button.style().polish(button)
         button.update()
 
-        # --- FIX: Only register Python hotkeys if AHK is not active ---
-        # This prevents re-enabling Python hotkeys when they should be off.
-        if not (self.ahk_process and self.ahk_process.poll() is None):
-            self.register_keybind_hotkeys()
+        self.register_keybind_hotkeys()
         print(f"[DEBUG] {name} quickcast toggled to {new_state}")
 
     def get_keybind_settings_from_ui(self):
@@ -142,10 +136,9 @@ class QuickcastManager:
             self.main_window.quickcast_tab.activate_quickcast_btn.setText("Activate Quickcast (F2)")
             self.main_window.quickcast_tab.activate_quickcast_btn.setStyleSheet("background-color: #228B22; color: white;")
             
-            # --- FIX: Unregister Python keybinds when AHK is deactivated ---
-            # Instead of re-registering them, we unregister them to fully disable remapping.
+            # Re-register Python hotkeys now that AHK is off
             self.main_window.register_global_hotkeys()
-            self.unregister_python_hotkeys()
+            self.register_keybind_hotkeys()
             
             self.main_window.status_overlay.hide()
             print("[INFO] AHK Quickcast script deactivated.")
@@ -260,14 +253,8 @@ closePause() {{
 
         # Dynamically generate the keybinds based on UI settings
         for name, key_info in self.main_window.keybinds.items():
-            # --- FIX: Ensure default hotkey is used if not explicitly set ---
-            # The original code skipped keys that weren't remapped. This now
-            # retrieves the default key from the button's name if no hotkey is saved.
-            raw_default_key = name.split('_')[-1]
-            is_numpad_control = "numpad" in name.lower()
-            canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
-            hotkey = key_info.get("hotkey", canonical_default)
-            if not hotkey or "button" in hotkey or "click to set" in hotkey: continue
+            hotkey = key_info.get("hotkey")
+            if not hotkey or "button" in hotkey: continue
             
             # Translate the remapped key from canonical ("numpad 7") to AHK hotkey format ("numpad7")
             ahk_hotkey = to_ahk_hotkey(hotkey)
@@ -293,10 +280,12 @@ closePause() {{
             
             quickcast = key_info.get("quickcast", False)
 
-            # --- FIX: Correct the condition to include non-remapped quickcast keys ---
-            # The original logic would skip a key if it wasn't remapped. This new
-            # condition correctly includes keys that are not remapped BUT have quickcast enabled.
+            # Determine if the key has been remapped from its default
+            raw_default_key = name.split('_')[-1]
+            is_numpad_control = "numpad" in name.lower()
+            canonical_default = normalize_to_canonical(raw_default_key, is_numpad_control)
             is_remapped = hotkey != canonical_default
+
             if not is_remapped and not quickcast: continue
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
