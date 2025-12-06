@@ -206,6 +206,7 @@ class QuickcastTab(QWidget):
         # Create separate groups for better visual organization
         self.main_keys_group = QGroupBox("Main")
         self.numpad_keys_group = QGroupBox("Numpad")
+        self.extra_keys_group = QGroupBox("Extra")
 
         # --- Settings ---
         self.settings_group = QGroupBox("Settings")
@@ -228,10 +229,16 @@ class QuickcastTab(QWidget):
         remap_panel = QWidget()
         remap_panel_v_layout = QVBoxLayout(remap_panel) # Use a vertical layout for the panel
         
+        left_column_widget = QWidget()
+        left_column_layout = QVBoxLayout(left_column_widget)
+        left_column_layout.setContentsMargins(0,0,0,0)
+        left_column_layout.addWidget(self.main_keys_group)
+        left_column_layout.addWidget(self.extra_keys_group)
+
         key_groups_h_layout = QHBoxLayout() # Horizontal layout for the two group boxes
-        key_groups_h_layout.addWidget(self.main_keys_group, 2)
+        key_groups_h_layout.addWidget(left_column_widget, 2)
         key_groups_h_layout.addWidget(self.numpad_keys_group, 1)
-        remap_panel_v_layout.addLayout(key_groups_h_layout)
+        remap_panel_v_layout.addLayout(key_groups_h_layout) 
         remap_panel_v_layout.addStretch() # Add stretch to push the boxes up
         main_layout.addWidget(remap_panel, 2)
 
@@ -248,6 +255,16 @@ class QuickcastTab(QWidget):
                 # Create smaller buttons for main keys
                 self.key_buttons[key_id] = self._create_key_button(key, size=45)
                 main_keys_grid.addWidget(self.key_buttons[key_id], row_idx, col_idx)
+
+        # --- Extra Keys Grid ---
+        extra_keys_grid = QGridLayout(self.extra_keys_group)
+        extra_keys_layout = ["Z", "X", "C", "V"]
+        for col_idx, key in enumerate(extra_keys_layout):
+            key_id = f"spell_{key}"
+            # Create smaller buttons for extra keys
+            self.key_buttons[key_id] = self._create_key_button(key, size=45)
+            extra_keys_grid.addWidget(self.key_buttons[key_id], 0, col_idx)
+
 
         # --- Numpad Keys Grid ---
         numpad_keys_grid = QGridLayout(self.numpad_keys_group)
