@@ -24,7 +24,7 @@ class DraggableComponent:
         self.is_decal = False # To identify temporary decals
         self.is_border_asset = False # To identify border assets
         self.is_dock_asset = is_dock_asset
-        self.parent_tag = None # NEW: To link components, e.g., a border to its tile
+        self.parent_tag = None # To link components, e.g., a border to its tile
 
         # --- NEW: For accurate border positioning ---
         self.relative_x = 0

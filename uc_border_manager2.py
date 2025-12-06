@@ -683,10 +683,23 @@ class SmartBorderManager:
         new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
         new_border_comp.original_pil_image = border_image.copy()
         
-        # --- NEW: Store position relative to the composite area for accuracy ---
-        # This is more robust than absolute world coordinates.
-        new_border_comp.relative_x = min_x - self.composite_x_offset
-        new_border_comp.relative_y = min_y - self.composite_y_offset
+        # --- REVISED: Find the parent tile and store position relative to IT for accuracy ---
+        parent_tile = None
+        border_center_x = (min_x + max_x) / 2
+        border_center_y = (min_y + max_y) / 2
+
+        for comp in self.app.components.values():
+            if not comp.is_decal and not comp.is_dock_asset:
+                if comp.world_x1 <= border_center_x < comp.world_x2 and \
+                   comp.world_y1 <= border_center_y < comp.world_y2:
+                    parent_tile = comp
+                    break
+        
+        if parent_tile:
+            new_border_comp.parent_tag = parent_tile.tag
+            new_border_comp.relative_x = min_x - parent_tile.world_x1
+            new_border_comp.relative_y = min_y - parent_tile.world_y1
+            print(f"Border '{border_tag}' is now a child of '{parent_tile.tag}'.")
 
         # --- NEW: 5. Save the border image to a file for persistence ---
         os.makedirs(self.app.saved_borders_dir, exist_ok=True)

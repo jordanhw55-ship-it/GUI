@@ -367,10 +367,12 @@ class BorderManager:
             # New format: {'path': '...', 'relative_coords': (...)}
             image_path = border_info.get('path')
             relative_coords = border_info.get('relative_coords')
+            parent_tag = border_info.get('parent_tag') # NEW
         elif isinstance(border_info, str):
             # Old format: 'C:\\path\\to\\border.png'
             image_path = border_info
             relative_coords = (0, 0) # Default to top-left if coords are missing
+            parent_tag = None # NEW
         else:
             print(f"[WARNING] Skipping invalid saved border entry: {border_info}")
             return
@@ -389,6 +391,7 @@ class BorderManager:
             )
             new_border_comp.is_decal = True
             new_border_comp.relative_x, new_border_comp.relative_y = rel_x, rel_y # Apply the saved relative coords
+            new_border_comp.parent_tag = parent_tag # NEW: Restore the parent tag
             new_border_comp.original_pil_image = border_image.copy()
             new_border_comp.image_path = image_path # Store the path for re-saving
 
