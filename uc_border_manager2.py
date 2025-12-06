@@ -630,13 +630,50 @@ class SmartBorderManager:
         border_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(border_image)
 
-        # 3. Draw the points onto the new image, translating them to local coordinates.
-        for p_x, p_y in self.raw_border_points:
-            local_x = int(p_x - min_x)
-            local_y = int(p_y - min_y)
-            draw.point((local_x, local_y), fill=self.highlight_color)
+        # --- NEW: 3. Connect the dots to form continuous paths ---
+        # This algorithm finds paths through the unordered points to draw lines.
+        if self.raw_border_points:
+            remaining_points = list(self.raw_border_points)
+            paths = []
+            
+            # A threshold to decide if a point is "close enough" to be part of the same line.
+            # We'll set it to be slightly larger than the diagonal of a smart_draw_skip step.
+            max_dist_sq = (self.smart_draw_skip.get() * 1.5) ** 2
 
-        # 4. Create a new DraggableComponent for the border.
+            while remaining_points:
+                current_path = [remaining_points.pop(0)]
+                
+                while True:
+                    last_point = current_path[-1]
+                    
+                    # Find the closest point to the end of our current path
+                    best_dist_sq = float('inf')
+                    best_match_idx = -1
+                    for i, p in enumerate(remaining_points):
+                        dist_sq = (p[0] - last_point[0])**2 + (p[1] - last_point[1])**2
+                        if dist_sq < best_dist_sq:
+                            best_dist_sq = dist_sq
+                            best_match_idx = i
+
+                    # If the closest point is within our threshold, add it to the path
+                    if best_match_idx != -1 and best_dist_sq < max_dist_sq:
+                        current_path.append(remaining_points.pop(best_match_idx))
+                    else:
+                        # No more close points, this path is finished.
+                        break
+                
+                paths.append(current_path)
+
+            # Draw the found paths onto the new image
+            for path in paths:
+                if len(path) > 1:
+                    # Translate world coordinates to local image coordinates
+                    local_path = [(p[0] - min_x, p[1] - min_y) for p in path]
+                    draw.line(local_path, fill=self.highlight_color, width=1, joint='curve')
+                elif path: # Draw single, isolated points
+                    draw.point((path[0][0] - min_x, path[0][1] - min_y), fill=self.highlight_color)
+
+        # 4. Create a new DraggableComponent for the border. 
         border_tag = f"smart_border_{self.app.image_manager.next_dynamic_id}"
         self.app.image_manager.next_dynamic_id += 1
 
