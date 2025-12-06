@@ -698,6 +698,18 @@ class SmartBorderManager:
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save the border image file: {e}")
 
+        # --- NEW: Save the raw point coordinates to a text file ---
+        txt_save_path = os.path.join(self.app.saved_borders_dir, f"{border_tag}.txt")
+        try:
+            with open(txt_save_path, 'w') as f:
+                # Sort points for consistent output, e.g., by y then x coordinate
+                sorted_points = sorted(list(self.raw_border_points), key=lambda p: (p[1], p[0]))
+                for p_x, p_y in sorted_points:
+                    f.write(f"{int(p_x)},{int(p_y)}\n")
+            print(f"Saved border pixel coordinates to: {txt_save_path}")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Failed to save the border coordinate file: {e}")
+
         # 6. Add the new component to the application and bind its events.
         self.app.components[border_tag] = new_border_comp
         self.app._bind_component_events(border_tag)

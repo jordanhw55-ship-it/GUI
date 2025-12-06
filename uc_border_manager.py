@@ -273,12 +273,21 @@ class BorderManager:
 
         # 1. Rename the image file
         old_path = border_to_rename.image_path
+        old_txt_path = None
         if old_path and os.path.exists(old_path):
             dir_name = os.path.dirname(old_path)
+            old_base_name = os.path.splitext(os.path.basename(old_path))[0]
+            old_txt_path = os.path.join(dir_name, f"{old_base_name}.txt")
+
             new_filename = f"{new_name}.png"
             new_path = os.path.join(dir_name, new_filename)
+            new_txt_path = os.path.join(dir_name, f"{new_name}.txt")
             try:
                 os.rename(old_path, new_path)
+                # --- FIX: Also rename the corresponding .txt file if it exists ---
+                if os.path.exists(old_txt_path):
+                    os.rename(old_txt_path, new_txt_path)
+                    print(f"Renamed coordinate file to '{os.path.basename(new_txt_path)}'")
                 print(f"Renamed border file from '{os.path.basename(old_path)}' to '{new_filename}'")
             except OSError as e:
                 messagebox.showerror("File Error", f"Could not rename the border file:\n{e}")
@@ -326,7 +335,13 @@ class BorderManager:
         if border_to_delete.image_path and os.path.exists(border_to_delete.image_path):
             try:
                 os.remove(border_to_delete.image_path)
-                print(f"Deleted border file: {border_to_delete.image_path}")
+                print(f"Deleted border image file: {border_to_delete.image_path}")
+
+                # --- FIX: Also delete the corresponding .txt file ---
+                txt_path = os.path.splitext(border_to_delete.image_path)[0] + ".txt"
+                if os.path.exists(txt_path):
+                    os.remove(txt_path)
+                    print(f"Deleted border coordinate file: {txt_path}")
             except OSError as e:
                 messagebox.showerror("File Error", f"Could not delete the border file:\n{e}")
                 return
