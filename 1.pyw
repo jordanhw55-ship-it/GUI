@@ -398,16 +398,19 @@ class SimpleWindow(QMainWindow):
 
         # Initialize managers after all tabs are created
         self.automation_manager = AutomationManager(self)
-        
-        # Recipes data (moved from between tabs)
-        self.in_progress_recipes = {}
-        self.quickcast_manager = QuickcastManager(self)
-
 
         # Connect signals from the new AutomationTab
         self.automation_tab.start_automation_btn.clicked.connect(self.automation_manager.start_automation)
         self.automation_tab.stop_automation_btn.clicked.connect(self.automation_manager.stop_automation)
         self.automation_tab.reset_automation_btn.clicked.connect(self.reset_automation_settings)
+        
+        # Apply loaded automation settings after UI is created
+        self.apply_automation_settings()
+
+        # Quickcast tab
+        self.quickcast_tab = QuickcastTab(self)
+        self.stacked_widget.addWidget(self.quickcast_tab)
+        self.quickcast_manager = QuickcastManager(self)
         self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
@@ -418,13 +421,6 @@ class SimpleWindow(QMainWindow):
         for ctrls in self.automation_tab.automation_key_ctrls.values():
             ctrls["edit"].setValidator(int_validator)
         self.automation_tab.custom_action_edit1.setValidator(int_validator)
-
-        # Apply loaded automation settings after UI is created
-        self.apply_automation_settings()
-
-        # Quickcast tab
-        self.quickcast_tab = QuickcastTab(self)
-        self.stacked_widget.addWidget(self.quickcast_tab)
 
         # Connect signals for the new QuickcastTab
         for name, button in self.quickcast_tab.key_buttons.items():
