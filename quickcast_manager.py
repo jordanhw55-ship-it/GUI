@@ -311,8 +311,14 @@ closePause() {{
 
         # Generate the AHK hotkey definitions from the grouped actions
         for ahk_hotkey, actions in hotkey_actions.items():
-            # Actions list is joined by newlines to execute them sequentially (chaining)
-            action_block = "\n \t".join(actions)
+            # Check if chaining is required (more than one action mapped to the same key)
+            if len(actions) > 1:
+                # Actions list is joined by Sleep 50 to allow the game engine time to process the first command
+                separator = "\n \tSleep 50\n \t"
+                action_block = separator.join(actions)
+            else:
+                action_block = actions[0] # Single action
+                
             script_content += f"\n${ahk_hotkey}:: {{\n \t{action_block}\n}}"
         
         # Add a closing #HotIf to end the conditional block
