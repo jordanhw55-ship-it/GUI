@@ -1435,12 +1435,20 @@ class SimpleWindow(QMainWindow):
             # In prod: HellfireHelper.exe --run-ui-creator
             subprocess.Popen(command, cwd=working_dir)
         except Exception as e:
-            QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}")
+            QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}") # type: ignore
 
     # Ensure timers are cleaned up on exit
     def closeEvent(self, event):
         """Ensures all background processes and threads are cleaned up before closing."""
         self.settings_manager.save(self) # Save all settings on exit
+
+        # --- NEW: Terminate the UI Creator process if it's running ---
+        if self.ui_creator_process and self.ui_creator_process.poll() is None:
+            print("[INFO] Terminating active UI Creator process...")
+            self.ui_creator_process.terminate()
+            self.ui_creator_process.wait(timeout=2) # Wait briefly for it to close
+            print("[INFO] UI Creator process terminated.")
+
         self.automation_manager.stop_automation()
         keyboard.unhook_all() # Clean up all global listeners
 
