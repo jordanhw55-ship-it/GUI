@@ -674,8 +674,9 @@ class SmartBorderManager:
                     draw.point((path[0][0] - min_x, path[0][1] - min_y), fill=self.highlight_color)
 
         # 4. Create a new DraggableComponent for the border. 
-        border_tag = f"smart_border_{self.app.image_manager.next_dynamic_id}"
-        self.app.image_manager.next_dynamic_id += 1
+        # --- FIX: Use the border_manager's own ID counter ---
+        border_tag = f"smart_border_{self.border_manager.next_border_id}"
+        self.border_manager.next_border_id += 1
 
         new_border_comp = DraggableComponent(
             self.app, border_tag, min_x, min_y, max_x, max_y, "green", border_tag
@@ -683,24 +684,6 @@ class SmartBorderManager:
         new_border_comp.is_decal = True # Treat it like a decal for dragging/stamping
         new_border_comp.original_pil_image = border_image.copy()
         
-        # --- REVISED: Find the parent tile and store position relative to IT for accuracy ---
-        parent_tile = None
-        border_center_x = (min_x + max_x) / 2
-        border_center_y = (min_y + max_y) / 2
-
-        for comp in self.app.components.values():
-            if not comp.is_decal and not comp.is_dock_asset:
-                if comp.world_x1 <= border_center_x < comp.world_x2 and \
-                   comp.world_y1 <= border_center_y < comp.world_y2:
-                    parent_tile = comp
-                    break
-        
-        if parent_tile:
-            new_border_comp.parent_tag = parent_tile.tag
-            new_border_comp.relative_x = min_x - parent_tile.world_x1
-            new_border_comp.relative_y = min_y - parent_tile.world_y1
-            print(f"Border '{border_tag}' is now a child of '{parent_tile.tag}'.")
-
         # --- NEW: 5. Save the border image to a file for persistence ---
         os.makedirs(self.app.saved_borders_dir, exist_ok=True)
         save_path = os.path.join(self.app.saved_borders_dir, f"{border_tag}.png")
@@ -708,20 +691,46 @@ class SmartBorderManager:
             border_image.save(save_path)
             new_border_comp.image_path = save_path # Store the path in the component
             print(f"Saved new border image to: {save_path}")
+
+            # --- REVISED: Save the raw point coordinates relative to their parent tiles ---
+            txt_save_path = os.path.join(self.app.saved_borders_dir, f"{border_tag}.txt")
+            
+            # 1. Group points by their parent tile
+            points_by_tile = {}
+            tile_components = [c for c in self.app.components.values() if not c.is_decal and not c.is_dock_asset]
+
+            for p_x, p_y in self.raw_border_points:
+                parent_found = False
+                # Find which tile this point is on
+                for tile in tile_components:
+                    if tile.world_x1 <= p_x < tile.world_x2 and tile.world_y1 <= p_y < tile.world_y2:
+                        if tile.tag not in points_by_tile:
+                            points_by_tile[tile.tag] = []
+                        
+                        # Calculate coordinates relative to this tile's origin
+                        relative_x = p_x - tile.world_x1
+                        relative_y = p_y - tile.world_y1
+                        points_by_tile[tile.tag].append((int(relative_x), int(relative_y)))
+                        parent_found = True
+                        break # Move to the next point
+                if not parent_found:
+                    # Handle points that might not be on any tile (optional)
+                    if 'orphan' not in points_by_tile:
+                        points_by_tile['orphan'] = []
+                    points_by_tile['orphan'].append((int(p_x), int(p_y)))
+
+            # 2. Write the grouped points to the file
+            with open(txt_save_path, 'w') as f:
+                for tile_tag, points in points_by_tile.items():
+                    f.write(f"{tile_tag}\n")
+                    for rel_x, rel_y in points:
+                        f.write(f"{rel_x},{rel_y}\n")
+            
+            print(f"Saved border pixel coordinates to: {txt_save_path}")
+
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save the border image file: {e}")
-
-        # --- NEW: Save the raw point coordinates to a text file ---
-        txt_save_path = os.path.join(self.app.saved_borders_dir, f"{border_tag}.txt")
-        try:
-            with open(txt_save_path, 'w') as f:
-                # Sort points for consistent output, e.g., by y then x coordinate
-                sorted_points = sorted(list(self.raw_border_points), key=lambda p: (p[1], p[0]))
-                for p_x, p_y in sorted_points:
-                    f.write(f"{int(p_x)},{int(p_y)}\n")
-            print(f"Saved border pixel coordinates to: {txt_save_path}")
-        except Exception as e:
-            messagebox.showerror("Save Error", f"Failed to save the border coordinate file: {e}")
+            return # Stop if saving fails
 
         # 6. Add the new component to the application and bind its events.
         self.app.components[border_tag] = new_border_comp

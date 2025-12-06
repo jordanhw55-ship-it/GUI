@@ -404,6 +404,14 @@ class BorderManager:
             new_border_comp.original_pil_image = border_image.copy()
             new_border_comp.image_path = image_path # Store the path for re-saving
 
+            # --- FIX: Update the next_border_id to avoid name collisions ---
+            # Extracts the number from tags like "smart_border_5"
+            try:
+                border_num = int(border_tag.split('_')[-1])
+                self.next_border_id = max(self.next_border_id, border_num + 1)
+            except (ValueError, IndexError):
+                pass # Ignore if the name format is unexpected
+
             # Add it to the manager's state and update the UI dropdown
             self.add_finalized_border(new_border_comp)
             print(f"[INFO] Reloaded saved border '{border_tag}' from {os.path.basename(image_path)}")
