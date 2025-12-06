@@ -99,6 +99,13 @@ class QuickcastManager:
             self.main_window.keybinds[name] = {}
         self.main_window.keybinds[name]["quickcast"] = new_state
 
+        # CRITICAL FIX: If a hotkey isn't set, assign the default to ensure it's generated in AHK.
+        if "hotkey" not in self.main_window.keybinds[name]:
+            raw_default_key = name.split('_')[-1]
+            is_numpad = "numpad" in name.lower()
+            canonical_default = normalize_to_canonical(raw_default_key, is_numpad)
+            self.main_window.keybinds[name]["hotkey"] = canonical_default
+
         button = self.main_window.quickcast_tab.key_buttons[name]
         button.setProperty("quickcast", new_state)
         button.style().unpolish(button)
