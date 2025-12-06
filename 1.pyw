@@ -1221,15 +1221,11 @@ class SimpleWindow(QMainWindow):
             if not is_enabled:
                 return # Setting is disabled, let the keypress go through
 
-            # If AHK is not active, the python-based hotkeys are only for remapping and quickcasting.
-            # If the user has "Activate Quickcast" turned off, we should not perform any action here,
-            # because the hotkey is 'suppressed', and we need to manually send the original key.
-            # However, since we don't want remapping when deactivated, we do nothing.
-            # The hotkey should not be suppressed in this case, which is a deeper change.
-            # For now, let's just check if AHK is active. If not, we do nothing, which means
-            # the suppressed key is just eaten. The correct fix is to not suppress or to re-send.
-            # Let's re-send the original hotkey if AHK is off.
-            if not (self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None):
+            # Check if the AHK script is supposed to be active.
+            is_ahk_active = self.quickcast_manager.ahk_process and self.quickcast_manager.ahk_process.poll() is None
+
+            # If AHK is NOT active, the Python hotkey handler should just re-send the original key press.
+            if not is_ahk_active:
                 pyautogui.press(to_pyautogui(hotkey))
                 return
 
