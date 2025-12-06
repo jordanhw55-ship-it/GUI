@@ -256,15 +256,13 @@ closePause() {{
 """
         
         script_content = static_block
-        defined_hotkeys = set()
+        hotkey_actions = {} # {ahk_hotkey: [action1, action2]}
 
         # Dynamically generate the keybinds based on UI settings
         for name, key_info in self.main_window.keybinds.items():
             hotkey = key_info.get("hotkey")
             if not hotkey or "button" in hotkey: continue
             
-            # Translate the remapped key from canonical ("numpad 7") to AHK hotkey format ("numpad7")
-            ahk_hotkey = to_ahk_hotkey(hotkey)
             print(f"[DEBUG] AHK Gen - Processing: name='{name}', hotkey='{hotkey}', ahk_hotkey='{ahk_hotkey}'")
 
             category = name.split("_")[0]
@@ -291,8 +289,18 @@ closePause() {{
 
             if not is_remapped and not quickcast: continue # Only skip if nothing has changed
             function_call = f'remapSpellwQC("{original_key}")' if quickcast else f'remapSpellwoQC("{original_key}")'
+            
+            # Group actions by the remapped hotkey
+            ahk_hotkey = to_ahk_hotkey(hotkey)
+            if ahk_hotkey not in hotkey_actions:
+                hotkey_actions[ahk_hotkey] = []
+            hotkey_actions[ahk_hotkey].append(function_call)
+
+        # Generate the AHK hotkey definitions from the grouped actions
+        for ahk_hotkey, actions in hotkey_actions.items():
             # The '$' prefix prevents the hotkey from triggering itself if it sends the same key.
-            script_content += f"\n${ahk_hotkey}:: {function_call}"
+            action_block = "\n    ".join(actions)
+            script_content += f"\n${ahk_hotkey}:: {{\n    {action_block}\n}}"
         
         # Add a closing #HotIf to end the conditional block
         script_content += "\n#HotIf"
