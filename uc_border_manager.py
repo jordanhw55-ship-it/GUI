@@ -347,11 +347,20 @@ class BorderManager:
         Recreates a finalized border component from a saved image path and adds it to the manager.
         This is used on application startup.
         """
-        image_path = border_info.get('path')
-        relative_coords = border_info.get('relative_coords')
+        # --- FIX: Handle both old (str) and new (dict) settings formats ---
+        if isinstance(border_info, dict):
+            # New format: {'path': '...', 'relative_coords': (...)}
+            image_path = border_info.get('path')
+            relative_coords = border_info.get('relative_coords')
+        elif isinstance(border_info, str):
+            # Old format: 'C:\\path\\to\\border.png'
+            image_path = border_info
+            relative_coords = (0, 0) # Default to top-left if coords are missing
+        else:
+            print(f"[WARNING] Skipping invalid saved border entry: {border_info}")
+            return
 
         if not image_path or not os.path.exists(image_path) or relative_coords is None:
-            print(f"[WARNING] Could not reload saved border. File not found: {image_path}")
             return
 
         try:

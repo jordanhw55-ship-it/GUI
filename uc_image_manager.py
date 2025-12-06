@@ -213,11 +213,12 @@ class ImageManager:
             if target_comp.tag == stamp_source_comp.tag or target_comp.is_dock_asset or not target_comp.pil_image:
                 continue
 
-            is_target_a_border = target_comp.tag.startswith("preset_border_")
+            # --- FIX: A target is a border if it's a preset OR a finalized smart border ---
+            is_target_a_border = target_comp.tag.startswith("preset_border_") or target_comp.tag.startswith("smart_border_")
 
             # --- DEFINITIVE FIX: Handle both border-related checkboxes ---
             # 1. If "Ignore Borders" is checked, skip this component if it IS a border.
-            if self.ignore_borders_on_stamp.get() and target_comp.tag.startswith("preset_border_"):
+            if self.ignore_borders_on_stamp.get() and is_target_a_border:
                 print(f"Skipping border component '{target_comp.tag}' due to 'Ignore Borders' setting.")
                 continue
             
