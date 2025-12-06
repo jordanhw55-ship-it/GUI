@@ -198,9 +198,6 @@ class BorderManager:
             messagebox.showwarning("No Presets", "No preset border files found to apply.")
             return
 
-        if not messagebox.askyesno("Confirm Apply All", f"This will attempt to apply all {len(self.preset_border_names)} presets. This may create many new components. Continue?"):
-            return
-
         total_applied_count = 0
         for pretty_name in self.preset_border_names:
             # Temporarily set the selected var so the single-apply logic works

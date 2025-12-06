@@ -75,7 +75,8 @@ class UIManager:
         self.app.inventory_toggle_btn.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Place the window on the top-right of the canvas
-        self.app.canvas.create_window(self.app.CANVAS_WIDTH - 10, 10, window=toggle_frame, anchor="ne")
+        # --- FIX: Move the button to the left of the sidebar ---
+        self.app.canvas.create_window(self.app.CANVAS_WIDTH - self.app.SIDEBAR_WIDTH - 10, 10, window=toggle_frame, anchor="ne")
 
     def create_sidebar_tabs(self):
         """Creates a tabbed interface in the sidebar for organizing controls."""
