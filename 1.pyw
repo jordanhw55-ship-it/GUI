@@ -199,6 +199,7 @@ class SimpleWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.ui_creator_process = None # NEW: To track the UI creator subprocess
         self.navigation_sidebar = None
 
         self.settings_manager = SettingsManager()
@@ -1433,7 +1434,7 @@ class SimpleWindow(QMainWindow):
             # Launch the new process.
             # In dev: python.exe 1.pyw --run-ui-creator
             # In prod: HellfireHelper.exe --run-ui-creator
-            subprocess.Popen(command, cwd=working_dir)
+            self.ui_creator_process = subprocess.Popen(command, cwd=working_dir)
         except Exception as e:
             QMessageBox.critical(self, "Launch Error", f"Failed to launch the UI Creator:\n{e}") # type: ignore
 
