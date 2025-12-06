@@ -785,6 +785,13 @@ class ImageEditorApp:
                     if data['pil_image']:
                         new_comp.set_image(data['pil_image'])
                     print(f"Undid component deletion for '{data['tag']}'.")
+            elif action_type == 'border_points':
+                # --- NEW: Handle undo for smart border points ---
+                points_to_restore = last_state.get('before')
+                if points_to_restore is not None:
+                    self.border_manager.smart_manager.raw_border_points = points_to_restore
+                    self.border_manager.smart_manager._rebuild_quadtree()
+                    self.border_manager.smart_manager._update_highlights()
             else: # It's a component image state (original implementation)
                 for tag, image in last_state.items():
                     if tag in self.components:

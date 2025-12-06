@@ -30,6 +30,7 @@ class SmartBorderManager:
         self.is_erasing_points = tk.BooleanVar(value=False)
         self.raw_border_points = set()
         self.points_quadtree = None # NEW: To hold the Quadtree instance
+        self.pre_stroke_points = None # NEW: For undo functionality
 
         self.is_selecting_preview_area = False
         self.preview_selection_rect_id = None
@@ -191,6 +192,9 @@ class SmartBorderManager:
         if not self.app.smart_border_mode_active or not self.active_detection_image:
             return
         
+        # --- NEW: Save pre-stroke state for Undo ---
+        self.pre_stroke_points = self.raw_border_points.copy()
+
         self.is_drawing = True
         print("[DEBUG] Smart Border: Mouse Down")
         self.last_drawn_x, self.last_drawn_y = event.x, event.y
@@ -233,6 +237,17 @@ class SmartBorderManager:
         print("[DEBUG] Smart Border: Mouse Up")
         if self.redraw_scheduled:
             self.app.master.after_cancel(self.after_id)
+
+        # --- NEW: Finalize undo state ---
+        if self.pre_stroke_points is not None:
+            # Only save an undo state if the points have actually changed.
+            if self.pre_stroke_points != self.raw_border_points:
+                undo_data = {'type': 'border_points', 'before': self.pre_stroke_points, 'after': self.raw_border_points.copy()}
+                self.app._save_undo_state(undo_data)
+                print(f"[DEBUG] Saved undo state for border points. Before: {len(self.pre_stroke_points)}, After: {len(self.raw_border_points)}")
+            # Clear the pre-stroke state
+            self.pre_stroke_points = None
+
         self._perform_throttled_redraw()
 
     def on_preview_down(self, event):
@@ -440,6 +455,14 @@ class SmartBorderManager:
 
     def clear_detected_points(self):
         """Clears all detected points and their highlights."""
+        # --- NEW: Save state for Undo ---
+        if self.raw_border_points: # Only save if there's something to clear
+            undo_data = {
+                'type': 'border_points',
+                'before': self.raw_border_points.copy(),
+                'after': set() # The state after clearing is an empty set
+            }
+            self.app._save_undo_state(undo_data)
         self.raw_border_points.clear()
         # --- NEW: Also clear the Quadtree ---
         if self.points_quadtree:

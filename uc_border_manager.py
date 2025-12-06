@@ -231,6 +231,10 @@ class BorderManager:
         self.app.components[new_tag] = new_comp
         self.app._bind_component_events(new_tag)
         new_comp.set_image(new_comp.original_pil_image) # This will handle the initial draw
+
+        # --- NEW: Save the action for the undo stack ---
+        self.app._save_undo_state({'type': 'add_component', 'tag': new_tag})
+
         print(f"Placed a new instance of saved border '{selected_tag}' at its original position.")
 
     def rename_saved_border(self):
