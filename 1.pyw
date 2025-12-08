@@ -417,13 +417,13 @@ class SimpleWindow(QMainWindow):
 
         # Add validators to the line edits in the new tab
         self.quickcast_manager = QuickcastManager(self)
-        int_validator = QIntValidator(50, 600000, self)
+        # Allow typing numbers below 50, our custom logic will handle the correction.
+        int_validator = QIntValidator(0, 600000, self)
         
         # Connect editingFinished signal to enforce minimum value
         for name, ctrls in self.automation_tab.automation_key_ctrls.items():
             widget = ctrls["edit"]
             widget.setValidator(int_validator)
-            # Use a default argument in the lambda to capture the widget by value
             widget.editingFinished.connect(lambda w=widget: self.enforce_minimum_interval(w))
             
         custom_interval_edit = self.automation_tab.custom_action_edit1
@@ -1381,12 +1381,13 @@ class SimpleWindow(QMainWindow):
 
     def enforce_minimum_interval(self, line_edit_widget):
         """Checks the value of an interval input and defaults it to 50 if it's lower."""
+        # This signal fires when the user is done editing (e.g., clicks away).
         try:
-            value = int(line_edit_widget.text())
-            if value < 50:
+            current_text = line_edit_widget.text()
+            if current_text and int(current_text) < 50:
                 line_edit_widget.setText("50")
         except ValueError:
-            # If the box is empty or contains non-numeric text, do nothing.
+            # If the box is empty or contains non-numeric text, the validator will handle it.
             pass
  
 
