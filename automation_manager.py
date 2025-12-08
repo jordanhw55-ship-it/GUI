@@ -232,8 +232,16 @@ class AutomationManager(QObject):
             self.parent.register_global_hotkeys()
 
     def update_log(self, message: str):
-        """Appends a message to the automation log text box."""
-        self.automation_tab.automation_log_box.append(message)
+        """Appends a message to the automation log text box, capping the log size."""
+        log_box = self.automation_tab.automation_log_box
+        log_box.append(message)
+
+        # To prevent performance issues, cap the number of lines in the log.
+        if log_box.document().blockCount() > 2000:
+            cursor = log_box.textCursor()
+            cursor.movePosition(cursor.MoveOperation.Start)
+            cursor.select(cursor.SelectionType.BlockUnderCursor)
+            cursor.removeSelectedText()
 
     # -------------------------
     # Scheduler
