@@ -226,6 +226,7 @@ class SimpleWindow(QMainWindow):
         self.is_capturing_hotkey = False
         self.ahk_process = None
         self.dark_mode = True # Initialize with a default to prevent startup errors
+        self.in_progress_recipes = {}   # Holds recipe data for the Items tab
         self.message_hotkeys = {}       # {hotkey_str: message_str}
         self.custom_theme_enabled = self.settings_manager.get("custom_theme_enabled", False)
         self.keybinds = self.settings_manager.get("keybinds", {})
