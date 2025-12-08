@@ -418,9 +418,16 @@ class SimpleWindow(QMainWindow):
         # Add validators to the line edits in the new tab
         self.quickcast_manager = QuickcastManager(self)
         int_validator = QIntValidator(50, 600000, self)
-        for ctrls in self.automation_tab.automation_key_ctrls.values():
-            ctrls["edit"].setValidator(int_validator)
-        self.automation_tab.custom_action_edit1.setValidator(int_validator)
+        
+        # Connect editingFinished signal to enforce minimum value
+        for name, ctrls in self.automation_tab.automation_key_ctrls.items():
+            edit_widget = ctrls["edit"]
+            edit_widget.setValidator(int_validator)
+            edit_widget.editingFinished.connect(lambda w=edit_widget: self.enforce_minimum_interval(w))
+            
+        custom_interval_edit = self.automation_tab.custom_action_edit1
+        custom_interval_edit.setValidator(int_validator)
+        custom_interval_edit.editingFinished.connect(lambda w=custom_interval_edit: self.enforce_minimum_interval(w))
 
         # Connect signals for the new QuickcastTab
         for name, button in self.quickcast_tab.key_buttons.items():
@@ -1370,6 +1377,16 @@ class SimpleWindow(QMainWindow):
         self.quickcast_manager.deactivate_ahk_script_if_running(inform_user=False)
 
         event.accept()
+
+    def enforce_minimum_interval(self, line_edit_widget):
+        """Checks the value of an interval input and defaults it to 50 if it's lower."""
+        try:
+            value = int(line_edit_widget.text())
+            if value < 50:
+                line_edit_widget.setText("50")
+        except ValueError:
+            # If the box is empty or contains non-numeric text, do nothing.
+            pass
  
 
 class ThemePreview(QWidget):
