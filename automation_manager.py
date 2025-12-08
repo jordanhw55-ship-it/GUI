@@ -102,11 +102,13 @@ class AutomationManager(QObject):
 
         try:
             self.quest_interval_ms = int(self.automation_tab.automation_key_ctrls["Complete Quest"]["edit"].text().strip())
+            if self.quest_interval_ms < 50: self.quest_interval_ms = 50
         except Exception:
             self.quest_interval_ms = 15000
 
         try:
             self.custom_interval_ms = int(self.automation_tab.custom_action_edit1.text().strip())
+            if self.custom_interval_ms < 50: self.custom_interval_ms = 50
         except Exception:
             self.custom_interval_ms = 30000
 
@@ -130,6 +132,7 @@ class AutomationManager(QObject):
             if ctrls["chk"].isChecked():
                 try:
                     interval = int(ctrls["edit"].text().strip())
+                    if interval < 50: interval = 50
                 except Exception:
                     interval = 500
                 # Standardize the key name for the scheduler and vk_map lookup.
@@ -285,6 +288,7 @@ class AutomationManager(QObject):
                     # Find the original key name to get the interval from the UI control
                     original_key_name = next((k for k in self.automation_tab.automation_key_ctrls if k.lower().replace(" ", "").replace("num", "") == key), key)
                     interval = int(self.automation_tab.automation_key_ctrls[original_key_name]["edit"].text().strip())
+                    if interval < 50: interval = 50
                 except Exception:
                     interval = 500
                 self.next_key_due[key] += interval / 1000.0
