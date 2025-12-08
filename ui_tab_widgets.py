@@ -32,6 +32,11 @@ class CharacterLoadTab(QWidget):
         self.char_content_box.setFontFamily("Consolas")
         self.char_content_box.setFontPointSize(10)
 
+        # Create placeholder buttons for the bottom
+        self.placeholder_btn_1 = QPushButton("Placeholder 1")
+        self.placeholder_btn_2 = QPushButton("Placeholder 2")
+        self.placeholder_btn_3 = QPushButton("Placeholder 3")
+
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
         main_layout = QVBoxLayout(self)
@@ -43,7 +48,16 @@ class CharacterLoadTab(QWidget):
         action_layout.addWidget(self.load_char_btn); action_layout.addWidget(self.refresh_chars_btn); action_layout.addStretch()
         content_layout = QHBoxLayout()
         content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
-        main_layout.addLayout(path_layout); main_layout.addLayout(action_layout); main_layout.addLayout(content_layout)
+
+        # New layout for the bottom placeholder buttons
+        bottom_button_layout = QHBoxLayout()
+        bottom_button_layout.addWidget(self.placeholder_btn_1)
+        bottom_button_layout.addWidget(self.placeholder_btn_2)
+        bottom_button_layout.addWidget(self.placeholder_btn_3)
+
+        main_layout.addLayout(path_layout); main_layout.addLayout(action_layout)
+        main_layout.addLayout(content_layout, 1) # Add stretch factor to limit vertical growth
+        main_layout.addLayout(bottom_button_layout)
 
 class AutomationTab(QWidget):
     """A widget for the 'Automation' tab, handling key automation and message hotkeys."""
