@@ -1,7 +1,8 @@
 import os
 from PySide6.QtWidgets import QFileDialog, QMessageBox, QListWidgetItem
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
+import re
 
 try:
     import win32gui
@@ -35,6 +36,12 @@ class CharacterLoadManager:
         self.load_tab.load_char_btn.clicked.connect(self.load_selected_character)
         self.load_tab.refresh_chars_btn.clicked.connect(self.load_characters)
         self.load_tab.char_list_box.currentItemChanged.connect(self.show_character_file_contents)
+
+        # Connect the new placeholder button to the existing load function
+        self.load_tab.placeholder_btn_1.clicked.connect(self.load_selected_character)
+        
+        # Connect the second placeholder button to the new code-based load function
+        self.load_tab.placeholder_btn_2.clicked.connect(self.load_character_with_codes)
 
     def on_path_changed(self, new_path: str):
         """Updates the character path when the user edits the line edit."""
@@ -119,3 +126,72 @@ class CharacterLoadManager:
             pyautogui.press('enter'); pyautogui.hotkey('ctrl', 'v'); pyautogui.press('enter')
         except Exception as e:
             QMessageBox.critical(self.main_window, "Error", f"Failed to send command to game: {e}")
+
+    def load_character_with_codes(self):
+        """
+        Parses the selected character file for Preload() codes and sends them
+        sequentially to the game.
+        """
+        if not self.load_tab.char_list_box.currentItem() and self.load_tab.char_list_box.count() > 0:
+            self.load_tab.char_list_box.setCurrentRow(0)
+        
+        if not self.load_tab.char_list_box.currentItem():
+            QMessageBox.warning(self.main_window, "No Character Selected", "Please select a character from the list.")
+            return
+
+        file_content = self.load_tab.char_content_box.toPlainText()
+        if not file_content:
+            QMessageBox.warning(self.main_window, "Empty File", "The selected character file appears to be empty.")
+            return
+
+        # Find all content within `call Preload(...)`
+        preload_contents = re.findall(r'call Preload\(\s*\"(.+?)\"\s*\)', file_content)
+
+        if not preload_contents:
+            QMessageBox.warning(self.main_window, "No Codes Found", "Could not find any 'Preload' codes in the selected file.")
+            return
+
+        commands = []
+        # Scenario 1 & 2: Check for "-load" inside the preload content
+        if all(content.strip().startswith("-load") for content in preload_contents):
+            # This handles cases where the file contains one or more `call Preload("-load ...")` lines.
+            # Each line is a complete command.
+            commands = [content.strip() for content in preload_contents]
+
+        # Scenario 3: Check for "Code1: ...", "Code2: ..." format
+        elif any(content.strip().startswith("Code") for content in preload_contents):
+            # This handles the format where codes are prefixed with "Code1:", "Code2:", etc.
+            # The commands are "-load", followed by each raw code.
+            commands.append("-load")
+            for content in preload_contents:
+                match = re.match(r'Code\d+:\s*(.+)', content.strip())
+                if match:
+                    commands.append(match.group(1).strip())
+        
+        if not commands:
+            QMessageBox.warning(self.main_window, "Unsupported Format", "The format of the 'Preload' codes in this file is not recognized.")
+            return
+        
+        self._send_command_sequence(commands)
+
+    def _send_command_sequence(self, commands: list):
+        """Sends a list of commands to the game with a delay between each."""
+        try:
+            hwnd = win32gui.FindWindow(None, self.game_title)
+            if hwnd == 0:
+                QMessageBox.critical(self.main_window, "Error", f"'{self.game_title}' window not found.")
+                return
+            win32gui.SetForegroundWindow(hwnd)
+
+            clipboard = QApplication.clipboard()
+            original_clipboard = clipboard.text()
+
+            for i, command in enumerate(commands):
+                # Use a lambda with a default argument to capture the current command
+                QTimer.singleShot(i * 300, lambda cmd=command: (clipboard.setText(cmd), pyautogui.press('enter'), pyautogui.hotkey('ctrl', 'v'), pyautogui.press('enter')))
+            
+            # Schedule clipboard restoration after the last command is sent
+            QTimer.singleShot(len(commands) * 300, lambda: clipboard.setText(original_clipboard))
+
+        except Exception as e:
+            QMessageBox.critical(self.main_window, "Error", f"Failed to send command sequence to game: {e}")
