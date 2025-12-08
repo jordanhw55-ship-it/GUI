@@ -421,13 +421,14 @@ class SimpleWindow(QMainWindow):
         
         # Connect editingFinished signal to enforce minimum value
         for name, ctrls in self.automation_tab.automation_key_ctrls.items():
-            edit_widget = ctrls["edit"]
-            edit_widget.setValidator(int_validator)
-            edit_widget.editingFinished.connect(lambda w=edit_widget: self.enforce_minimum_interval(w))
+            widget = ctrls["edit"]
+            widget.setValidator(int_validator)
+            # Use a default argument in the lambda to capture the widget by value
+            widget.editingFinished.connect(lambda w=widget: self.enforce_minimum_interval(w))
             
         custom_interval_edit = self.automation_tab.custom_action_edit1
         custom_interval_edit.setValidator(int_validator)
-        custom_interval_edit.editingFinished.connect(lambda w=custom_interval_edit: self.enforce_minimum_interval(w))
+        custom_interval_edit.editingFinished.connect(lambda: self.enforce_minimum_interval(custom_interval_edit))
 
         # Connect signals for the new QuickcastTab
         for name, button in self.quickcast_tab.key_buttons.items():
