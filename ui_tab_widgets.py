@@ -33,9 +33,9 @@ class CharacterLoadTab(QWidget):
         self.char_content_box.setFontPointSize(10)
 
         # Create placeholder buttons for the bottom
-        self.placeholder_btn_1 = QPushButton("Placeholder 1")
-        self.placeholder_btn_2 = QPushButton("Placeholder 2")
-        self.placeholder_btn_3 = QPushButton("Placeholder 3")
+        self.placeholder_btn_1 = QPushButton("-load {filename}")
+        self.placeholder_btn_2 = QPushButton("-load -code1 -code2")
+        self.placeholder_btn_3 = QPushButton("-load {code}")
 
     def _create_layouts(self):
         """Creates and arranges the layouts for the tab."""
