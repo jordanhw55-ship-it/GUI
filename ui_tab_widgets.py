@@ -160,7 +160,7 @@ class AutomationTab(QWidget):
 
         key_automation_layout.addWidget(self.automation_keys_group)
         key_automation_layout.addLayout(automation_actions_layout)
-        key_automation_layout.addWidget(QLabel("Intervals are in ms. Example: 500 = 0.5s"))
+        key_automation_layout.addWidget(QLabel("Intervals are in ms (min 50). Example: 500 = 0.5s"))
 
         # --- Bottom Section (Hotkeys and Log) ---
         bottom_section_layout = QHBoxLayout()
