@@ -97,11 +97,16 @@ class CharacterLoadManager:
             self.load_tab.char_content_box.clear()
             return
         file_path = current_item.data(Qt.ItemDataRole.UserRole)
+        file_content = ""
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                self.load_tab.char_content_box.setText(f.read())
+                file_content = f.read()
+                self.load_tab.char_content_box.setText(file_content)
         except (IOError, OSError) as e:
-            self.load_tab.char_content_box.setText(f"Error reading file: {e}")
+            file_content = f"Error reading file: {e}"
+            self.load_tab.char_content_box.setText(file_content)
+        finally:
+            self._update_command_preview(file_content)
 
     def load_selected_character(self):
         """Sends the '-load' command for the selected character to the game."""
@@ -151,25 +156,28 @@ class CharacterLoadManager:
             QMessageBox.warning(self.main_window, "No Codes Found", "Could not find any 'Preload' codes in the selected file.")
             return
 
+        # --- REVISED LOGIC to handle all cases robustly ---
         commands = []
-        # Scenario 1 & 2: Check for "-load" inside the preload content
-        if all(content.strip().startswith("-load") for content in preload_contents):
-            # This handles cases where the file contains one or more `call Preload("-load ...")` lines.
-            # Each line is a complete command.
-            commands = [content.strip() for content in preload_contents]
+        # Check if the file uses the multi-part "Code1:", "Code2:" format
+        is_multipart_code_format = any(re.search(r'Code\d+:', content) for content in preload_contents)
 
-        # Scenario 3: Check for "Code1: ...", "Code2: ..." format
-        elif any(content.strip().startswith("Code") for content in preload_contents):
-            # This handles the format where codes are prefixed with "Code1:", "Code2:", etc.
-            # The commands are "-load", followed by each raw code.
+        if is_multipart_code_format:
+            # Scenario: Multiple codes that need to be sent after a single "-load"
             commands.append("-load")
             for content in preload_contents:
-                match = re.match(r'Code\d+:\s*(.+)', content.strip())
+                match = re.search(r'Code\d+:\s*([^\s"]+)', content)
                 if match:
-                    commands.append(match.group(1).strip())
-        
+                    commands.append(match.group(1))
+        else:
+            # Scenario: Each Preload line is a self-contained command (e.g., "-load ...")
+            for content in preload_contents:
+                # Find the "-load" command, ignoring surrounding characters like '|'
+                match = re.search(r'(-load\s+[^\s"]+)', content)
+                if match:
+                    commands.append(match.group(1))
+
         if not commands:
-            QMessageBox.warning(self.main_window, "Unsupported Format", "The format of the 'Preload' codes in this file is not recognized.")
+            QMessageBox.warning(self.main_window, "Unsupported Format", "Could not recognize the 'Preload' format in the selected file.")
             return
         
         self._send_command_sequence(commands)
@@ -195,3 +203,30 @@ class CharacterLoadManager:
 
         except Exception as e:
             QMessageBox.critical(self.main_window, "Error", f"Failed to send command sequence to game: {e}")
+
+    def _update_command_preview(self, file_content: str):
+        """Parses the file content and updates the command preview box."""
+        preview_box = self.load_tab.command_preview_box
+        preview_box.clear()
+
+        preload_contents = re.findall(r'call Preload\(\s*\"(.+?)\"\s*\)', file_content)
+        if not preload_contents:
+            preview_box.setText("(No multi-part load codes found)")
+            return
+
+        commands = []
+        is_multipart_code_format = any(re.search(r'Code\d+:', content) for content in preload_contents)
+
+        if is_multipart_code_format:
+            commands.append("-load")
+            for content in preload_contents:
+                match = re.search(r'Code\d+:\s*([^\s"]+)', content)
+                if match:
+                    commands.append(match.group(1))
+        else:
+            for content in preload_contents:
+                match = re.search(r'(-load\s+[^\s"]+)', content)
+                if match:
+                    commands.append(match.group(1))
+        
+        preview_box.setText("\n".join(commands))

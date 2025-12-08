@@ -32,6 +32,12 @@ class CharacterLoadTab(QWidget):
         self.char_content_box.setFontFamily("Consolas")
         self.char_content_box.setFontPointSize(10)
 
+        # New preview box for commands
+        self.command_preview_box = QTextEdit()
+        self.command_preview_box.setReadOnly(True)
+        self.command_preview_box.setFontFamily("Consolas")
+        self.command_preview_box.setFontPointSize(10)
+
         # Create placeholder buttons for the bottom
         self.placeholder_btn_1 = QPushButton("-load {filename}")
         self.placeholder_btn_2 = QPushButton("-load -code1 -code2")
@@ -46,8 +52,14 @@ class CharacterLoadTab(QWidget):
         path_layout.addWidget(self.reset_path_btn)
         action_layout = QHBoxLayout()
         action_layout.addWidget(self.load_char_btn); action_layout.addWidget(self.refresh_chars_btn); action_layout.addStretch()
+        
+        # Create a vertical layout for the right side to hold the preview and content boxes
+        right_side_layout = QVBoxLayout()
+        right_side_layout.addWidget(self.command_preview_box, 1) # Smaller stretch factor
+        right_side_layout.addWidget(self.char_content_box, 3)    # Larger stretch factor
+
         content_layout = QHBoxLayout()
-        content_layout.addWidget(self.char_list_box); content_layout.addWidget(self.char_content_box)
+        content_layout.addWidget(self.char_list_box); content_layout.addLayout(right_side_layout)
 
         # New layout for the bottom placeholder buttons
         bottom_button_layout = QHBoxLayout()
