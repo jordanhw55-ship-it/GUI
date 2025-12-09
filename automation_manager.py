@@ -344,10 +344,10 @@ class AutomationManager(QObject):
 
         vk_map = {
             'q': 0x51, 'w': 0x57, 'e': 0x45, 'r': 0x52,
-            'd': 0x44, 'f': 0x46, 't': 0x54,
+            'd': 0x44, 'f': 0x46, 't': 0x54, 'z': 0x5A, 'x': 0x58,
             'y': 0x59, 's': 0x53, 'h': 0x48, 'a': 0x41, 'p': 0x50,
             'esc': win32con.VK_ESCAPE, 'enter': win32con.VK_RETURN,
-            '1': 0x61, '2': 0x62, '3': 0x63,
+            '1': 0x61, '2': 0x62, '3': 0x63, # Numpad
             '4': 0x64, '5': 0x65, '6': 0x66,
             '7': 0x67, '8': 0x68, '9': 0x69,
             '0': 0x60,
@@ -361,7 +361,7 @@ class AutomationManager(QObject):
         win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_code, 0)
 
         # For letters, also send WM_CHAR so WC3 sees it even backgrounded
-        if key.lower() in ['q','w','e','r','d','f','t','z','x','y']:
+        if key.lower() in ['q','w','e','r','d','f','t','y','a','s','z','x']:
             win32api.PostMessage(hwnd, win32con.WM_CHAR, ord(key.lower()), 0)
 
         # Send up

@@ -229,4 +229,4 @@ class CharacterLoadManager:
                 if match:
                     commands.append(match.group(1))
         
-        preview_box.setText("\n".join(commands))
+        preview_box.setText("\n\n".join(commands))
