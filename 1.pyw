@@ -411,9 +411,9 @@ class SimpleWindow(QMainWindow):
         # Quickcast tab
         self.quickcast_tab = QuickcastTab(self)
         self.stacked_widget.addWidget(self.quickcast_tab)
-        self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey)
-        self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
-        self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
+        # self.automation_tab.hotkey_capture_btn.clicked.connect(self.capture_message_hotkey) # This is connected in AutomationManager
+        # self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey) # This is connected in AutomationManager
+        # self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey) # This is connected in AutomationManager
         self.automation_manager.log_message.connect(self.update_automation_log)
 
         # Add validators to the line edits in the new tab

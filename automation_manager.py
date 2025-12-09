@@ -79,7 +79,7 @@ class AutomationManager(QObject):
         self.automation_tab.hotkey_capture_btn.clicked.connect(self.parent.capture_message_hotkey)
         self.automation_tab.add_msg_btn.clicked.connect(self.add_message_hotkey)
         self.automation_tab.delete_msg_btn.clicked.connect(self.delete_message_hotkey)
-
+        
         self.log_message.connect(self.update_log)
     # -------------------------
     # Public control
@@ -213,7 +213,7 @@ class AutomationManager(QObject):
 
         self.message_hotkeys[hotkey] = message
         self.load_message_hotkeys()
-        self.parent.register_global_hotkeys() # Re-register all hotkeys
+        self.parent.quickcast_manager.register_all_hotkeys() # Re-register all hotkeys
 
         self.automation_tab.hotkey_capture_btn.setText("Click to set")
         self.automation_tab.message_edit.clear()
@@ -232,7 +232,7 @@ class AutomationManager(QObject):
         if QMessageBox.question(self.parent, "Confirm Delete", f"Are you sure you want to delete the hotkey '{hotkey_to_delete}'?") == QMessageBox.StandardButton.Yes:
             self.message_hotkeys.pop(hotkey_to_delete, None)
             table.removeRow(selected_row)
-            self.parent.register_global_hotkeys()
+            self.parent.quickcast_manager.register_all_hotkeys()
 
     def update_log(self, message: str):
         """Appends a message to the automation log text box, capping the log size."""
