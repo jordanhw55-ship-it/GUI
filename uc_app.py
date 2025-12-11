@@ -7,8 +7,8 @@ from PIL import Image, ImageTk, ImageDraw, ImageEnhance, ImageChops
 import os
 import json
 
+from uc_border_manager2 import NUMPY_AVAILABLE, SmartBorderManager # Import NUMPY_AVAILABLE
 import numpy as np
-from uc_border_manager2 import NUMPY_AVAILABLE # Import NUMPY_AVAILABLE
 try:
     from wand.image import Image as WandImage
     import io
