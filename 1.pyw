@@ -1,6 +1,7 @@
 import sys
 import os
 
+import uc_border_manager2 # Explicitly import to help PyInstaller find it
 # --- Fix for ModuleNotFoundError ---
 # Add the script's directory to the Python path. This allows the script
 # to find its sibling modules (like utils.py, data.py, etc.) when run
