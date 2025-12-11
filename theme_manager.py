@@ -3,6 +3,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
 
 from styles import DARK_STYLE, LIGHT_STYLE, FOREST_STYLE, OCEAN_STYLE
+from ui_components import ThemePreview
 
 class ThemeManager:
     def __init__(self, main_window):
@@ -17,9 +18,6 @@ class ThemeManager:
 
     def create_theme_grid(self, layout: QGridLayout):
         """Populates the provided grid layout with theme preview widgets."""
-        # Import from the main script file where it's defined.
-        from __main__ import ThemePreview
-
         row, col = 0, 0
         for i, theme in enumerate(self.themes):
             preview = ThemePreview()

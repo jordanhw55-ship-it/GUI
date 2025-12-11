@@ -1390,15 +1390,6 @@ class SimpleWindow(QMainWindow):
             # If the box is empty or contains non-numeric text, the validator will handle it.
             pass
  
-
-class ThemePreview(QWidget):
-    """Clickable theme preview."""
-    clicked = Signal()
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-        super().mousePressEvent(event)
-
 if __name__ == "__main__":
     # Check for the special argument to run the UI creator
     if "--run-ui-creator" in sys.argv:
