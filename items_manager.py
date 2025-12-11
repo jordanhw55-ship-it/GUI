@@ -10,7 +10,7 @@ class ItemsManager:
         self.item_database = main_window.item_database
 
         # Connect signals from the UI to this manager's methods
-        self.items_tab.search_box.textChanged.connect(self.on_item_search_changed)
+        self.items_tab.search_box.textChanged.connect(self.on_item_search_changed) # type: ignore
         for i, btn in self.items_tab.item_tab_buttons.items():
             btn.clicked.connect(lambda checked, idx=i: self.switch_items_sub_tab(idx))
 
