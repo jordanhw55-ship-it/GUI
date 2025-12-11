@@ -418,7 +418,7 @@ class SimpleWindow(QMainWindow):
         # Add validators to the line edits in the new tab
         self.quickcast_manager = QuickcastManager(self)
         # Allow typing numbers below 50, our custom logic will handle the correction.
-        int_validator = QIntValidator(0, 600000, self)
+        int_validator = QIntValidator(0, 21600000, self) # Increased max to 6 hours (21,600,000 ms)
         
         # Connect editingFinished signal to enforce minimum value
         for name, ctrls in self.automation_tab.automation_key_ctrls.items():
