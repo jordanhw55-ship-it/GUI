@@ -803,17 +803,18 @@ class SimpleWindow(QMainWindow):
         theme = self.theme_manager.themes[self.current_theme_index] if self.current_theme_index != -1 else self.custom_theme
         accent_color = theme.get("accent", theme.get("preview_color", "#FF7F50"))
         is_dark = theme.get("is_dark", self.dark_mode)
-        checked_fg = "#000000" if not is_dark else "#FFFFFF"
-        if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
+        checked_text_color = "#000000" if not is_dark else "#FFFFFF"
+        if self.current_theme_index == -1: checked_text_color = self.custom_theme.get("bg", "#121212")
+        default_text_color = self.palette().color(self.foregroundRole()).name()
         
         selected_sound = self.lobby_manager.selected_sound
         self.play_specific_sound(selected_sound) # Play the sound when updating styles
         for sound, btn in self.lobby_manager.lobbies_tab.ping_buttons.items():
             btn.setChecked(sound == selected_sound)
             if sound == selected_sound:
-                btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_fg}; border: 1px solid {accent_color};")
+                btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_text_color}; border: 1px solid {accent_color};")
             else:
-                btn.setStyleSheet("") # Revert to parent stylesheet
+                btn.setStyleSheet(f"color: {default_text_color};") # Explicitly set the text color back to the theme's default
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
