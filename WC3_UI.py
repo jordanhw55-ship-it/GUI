@@ -390,7 +390,7 @@ class WC3UITab(QWidget):
             if os.path.isdir(source_dir):
                 files_copied_count = 0
                 for filename in os.listdir(source_dir):
-                    if filename.lower().endswith(".blp"):
+                    if filename.lower().endswith((".blp", ".dds")):
                         if self._copy_file(filename, source_dir, dest_dir):
                             files_copied_count += 1
                 if files_copied_count > 0:
@@ -406,7 +406,7 @@ class WC3UITab(QWidget):
             if os.path.isdir(source_dir):
                 files_copied_count = 0
                 for filename in os.listdir(source_dir):
-                    if filename.lower().endswith(".blp"):
+                    if filename.lower().endswith((".blp", ".dds")):
                         if self._copy_file(filename, source_dir, dest_dir):
                             files_copied_count += 1
                 if files_copied_count > 0:
@@ -469,7 +469,7 @@ class WC3UITab(QWidget):
         for directory in dirs_to_check:
             if os.path.isdir(directory):
                 for filename in os.listdir(directory):
-                    if filename.lower().endswith(".blp"):
+                    if filename.lower().endswith((".blp", ".dds")):
                         files_to_delete.append(os.path.join(directory, filename))
 
         deleted_count = 0
