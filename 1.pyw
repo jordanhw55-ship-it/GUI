@@ -814,7 +814,7 @@ class SimpleWindow(QMainWindow):
             if sound == selected_sound:
                 btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_text_color}; border: 1px solid {accent_color};")
             else:
-                btn.setStyleSheet(f"color: {default_text_color};") # Explicitly set the text color back to the theme's default
+                btn.setStyleSheet("") # Revert to the default stylesheet
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
