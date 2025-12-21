@@ -729,8 +729,6 @@ class SimpleWindow(QMainWindow):
             
             <h4><b>Quickcast (AHK):</b></h4>
             <p>The Quickcast feature requires <b>AutoHotkey v2</b> to be installed. You can find installation links in the 'Quickcast' tab. Once activated, you can remap keys and enable quickcasting, which simulates a mouse click after a key press.</p>
-            <h4><b>Troubleshooting:</b></h4>
-            <p>If you encounter issues, a good first step is to reset the application via the 'Settings' tab. This will restore all settings to their default values.</p>
         """)
         
         layout.addWidget(title)

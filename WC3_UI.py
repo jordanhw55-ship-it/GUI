@@ -383,7 +383,7 @@ class WC3UITab(QWidget):
 
         # Apply UI Theme change
         if self.selected_theme:
-            theme_folder_name = self.selected_theme.lower().replace(" ", "")
+            theme_folder_name = self.selected_theme.replace(" ", "").lower()
             source_dir = os.path.join(get_base_path(), "contents", "WC3UI", "UI", theme_folder_name)
             dest_dir = os.path.join(wc3_path, "UI", "console", "human")
 
