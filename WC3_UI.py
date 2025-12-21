@@ -17,7 +17,6 @@ class WC3UITab(QWidget):
         self.selected_theme = None
         self.selected_hp_bar = None
         self.selected_unit_select = None
-        self.selected_background_file = None
 
         # Flag to track if tabs have been populated to prevent re-loading
         self._is_populated = False
@@ -88,13 +87,13 @@ class WC3UITab(QWidget):
         self.ui_tab = QWidget()
         self.unit_select_tab = QWidget()
         self.hp_bar_tab = QWidget()
-        self.background_tab = QWidget()
+        self.reticle_tab = QWidget()
 
         # Add sub-tabs to the tab widget
         self.tab_widget.addTab(self.ui_tab, "UI")
         self.tab_widget.addTab(self.unit_select_tab, "Unit Select")
         self.tab_widget.addTab(self.hp_bar_tab, "HP Bar")
-        self.tab_widget.addTab(self.background_tab, "Background")
+        self.tab_widget.addTab(self.reticle_tab, "Reticle")
 
         # Defer the expensive population until the tab is shown
         self._create_loading_placeholders()
@@ -125,7 +124,7 @@ class WC3UITab(QWidget):
 
     def _create_loading_placeholders(self):
         """Creates a simple 'Loading...' placeholder for each tab."""
-        tabs_to_setup = [self.ui_tab, self.unit_select_tab, self.hp_bar_tab, self.background_tab]
+        tabs_to_setup = [self.ui_tab, self.unit_select_tab, self.hp_bar_tab, self.reticle_tab]
         for i, tab in enumerate(tabs_to_setup):
             # Use a QGridLayout from the start to avoid layout type conflicts later
             layout = QGridLayout(tab)
@@ -258,7 +257,14 @@ class WC3UITab(QWidget):
         for button in self.unit_select_buttons:
             button.clicked.connect(lambda checked, b=button: self.on_option_selected(b, self.unit_select_buttons, 'unit_select'))
 
-        self._populate_background_tab()
+        # Populate other tabs with placeholders
+        # --- FIX: Only add placeholder content to the 'Reticle' tab ---
+        reticle_layout = self.reticle_tab.layout()
+        reticle_loading_widget = self.reticle_tab.findChild(QLabel, "loading_label_3")
+        if reticle_loading_widget:
+            reticle_loading_widget.deleteLater()
+        reticle_tab_name = self.tab_widget.tabText(self.tab_widget.indexOf(self.reticle_tab))
+        reticle_layout.addWidget(QLabel(f"Content for {reticle_tab_name} tab."))
 
     def on_option_selected(self, clicked_button: QPushButton, button_group: list, category: str):
         """Handles the logic when an option button is clicked, ensuring only one is selected."""
@@ -292,9 +298,6 @@ class WC3UITab(QWidget):
 
         if self.selected_unit_select:
             self.summary_list.addItem(f"Unit Select: {self.selected_unit_select}")
-            
-        if self.selected_background_file:
-            self.summary_list.addItem(f"Background: {os.path.basename(self.selected_background_file)}")
 
     def reset_summary_selections(self):
         """Resets all selections in the UI and clears the summary box."""
@@ -310,8 +313,6 @@ class WC3UITab(QWidget):
         self.selected_theme = None
         self.selected_hp_bar = None
         self.selected_unit_select = None
-        self.selected_background_file = None
-        self.background_file_edit.clear()
 
         # Update the UI
         self._update_summary_list()
@@ -377,10 +378,6 @@ class WC3UITab(QWidget):
         if self.selected_hp_bar:
             source_dir = os.path.join(get_base_path(), "contents", "WC3UI", "HP Bar", self.selected_hp_bar)
             dest_dir = os.path.join(wc3_path, "UI", "Feedback", "HpBarConsole")
-            # Also check for .dds files for HP bars
-            if self._copy_file("human-healthbar-fill.dds", source_dir, dest_dir):
-                changes_applied.append(f"HP Bar: {self.selected_hp_bar}")
-                
             if self._copy_file("human-healthbar-fill.blp", source_dir, dest_dir):
                 changes_applied.append(f"HP Bar: {self.selected_hp_bar}")
 
@@ -416,11 +413,6 @@ class WC3UITab(QWidget):
                     changes_applied.append(f"Unit Select: {self.selected_unit_select} ({files_copied_count} files)")
             else:
                 QMessageBox.warning(self, "Source Directory Not Found", f"Could not find the source directory for '{self.selected_unit_select}'.")
-        
-        # Apply Background change
-        if self.selected_background_file:
-            if self.convert_and_apply_background():
-                changes_applied.append(f"Background: {os.path.basename(self.selected_background_file)}")
 
         if changes_applied:
             QMessageBox.information(self, "Success", "The following changes have been applied:\n\n- " + "\n- ".join(changes_applied))
@@ -433,7 +425,7 @@ class WC3UITab(QWidget):
         dest_path = os.path.join(dest_dir, filename)
 
         if not os.path.exists(source_path):
-            # Silently fail if the file doesn't exist, as we check for multiple extensions.
+            QMessageBox.warning(self, "File Not Found", f"Could not find the source file:\n{source_path}")
             return False
         try:
             os.makedirs(dest_dir, exist_ok=True)
@@ -464,10 +456,6 @@ class WC3UITab(QWidget):
         # 1. HP Bar file
         hp_bar_file = os.path.join(wc3_path, "UI", "Feedback", "HpBarConsole", "human-healthbar-fill.blp")
         files_to_delete.append(hp_bar_file)
-        # Also remove .dds version
-        hp_bar_file_dds = os.path.join(wc3_path, "UI", "Feedback", "HpBarConsole", "human-healthbar-fill.dds")
-        files_to_delete.append(hp_bar_file_dds)
-
 
         # 2. UI Theme files (all .blp files in the destination)
         ui_theme_dir = os.path.join(wc3_path, "UI", "console", "human")
@@ -476,10 +464,6 @@ class WC3UITab(QWidget):
         # 3. Unit Selection files (all .blp files in the destination)
         unit_select_dir = os.path.join(wc3_path, "UI", "ReplaceableTextures", "Selection")
         dirs_to_check.append(unit_select_dir)
-        
-        # 4. Background video file
-        background_file = os.path.join(wc3_path, "webui", "webms", "mainmenu.webm")
-        files_to_delete.append(background_file)
 
         # Add all .blp files from the specified directories
         for directory in dirs_to_check:
@@ -532,75 +516,3 @@ class WC3UITab(QWidget):
             except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
                 error_output = e.stderr if hasattr(e, 'stderr') else str(e)
                 QMessageBox.critical(self, "Registry Error", f"Failed to execute registry file.\n\nError: {error_output}")
-
-    def _populate_background_tab(self):
-        """Creates and lays out the widgets for the background tab."""
-        layout = self.background_tab.layout()
-        loading_widget = self.background_tab.findChild(QLabel, "loading_label_3")
-        if loading_widget:
-            loading_widget.deleteLater()
-
-        # Create a group box for the feature
-        group = QGroupBox("Custom Main Menu Background")
-        group_layout = QVBoxLayout(group)
-
-        # Instructions
-        instructions = QLabel("Select a GIF or video file (e.g., .mp4) to convert and set as your main menu background.")
-        instructions.setWordWrap(True)
-        group_layout.addWidget(instructions)
-
-        # File selection widgets
-        file_layout = QHBoxLayout()
-        self.background_file_edit = QLineEdit()
-        self.background_file_edit.setPlaceholderText("No file selected...")
-        self.background_file_edit.setReadOnly(True)
-        browse_background_btn = QPushButton("Browse...")
-        file_layout.addWidget(self.background_file_edit)
-        file_layout.addWidget(browse_background_btn)
-        group_layout.addLayout(file_layout)
-        
-        # Add the group to the main layout
-        layout.addWidget(group, 0, 0)
-        layout.setRowStretch(1, 1) # Use setRowStretch for QGridLayout
-
-        # Connect signals
-        browse_background_btn.clicked.connect(self.browse_for_background_file)
-
-    def browse_for_background_file(self):
-        """Opens a file dialog to select a background video/gif."""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Background File",
-            "",
-            "Media Files (*.mp4 *.mov *.avi *.gif);;All Files (*)"
-        )
-        if file_path:
-            self.selected_background_file = file_path
-            self.background_file_edit.setText(file_path)
-            self._update_summary_list()
-
-    def convert_and_apply_background(self) -> bool:
-        """Converts the selected file to WebM and places it in the correct folder."""
-        if not self.selected_background_file:
-            return False
-
-        wc3_path = self.path_edit.text()
-        ffmpeg_path = os.path.join(get_base_path(), "contents", "tools", "ffmpeg.exe")
-
-        if not os.path.exists(ffmpeg_path):
-            QMessageBox.critical(self, "FFmpeg Not Found", f"ffmpeg.exe was not found in:\n{os.path.dirname(ffmpeg_path)}\nPlease place it there to use this feature.")
-            return False
-
-        output_dir = os.path.join(wc3_path, "webui", "webms")
-        output_path = os.path.join(output_dir, "mainmenu.webm")
-        os.makedirs(output_dir, exist_ok=True)
-
-        # High-quality VP9 conversion command
-        command = [ffmpeg_path, "-i", self.selected_background_file, "-c:v", "libvpx-vp9", "-crf", "30", "-b:v", "0", "-an", "-y", output_path]
-
-        try:
-            subprocess.run(command, check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            return True
-        except subprocess.CalledProcessError as e:
-            QMessageBox.critical(self, "Conversion Error", f"FFmpeg failed to convert the file.\n\nError:\n{e.stderr}")
-            return False
