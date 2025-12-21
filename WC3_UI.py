@@ -478,7 +478,7 @@ class WC3UITab(QWidget):
         dirs_to_check.append(unit_select_dir)
         
         # 4. Background video file
-        background_file = os.path.join(wc3_path, "UI", "Glues", "MainMenu", "MainMenu3d_exp", "MainMenu3d_exp.webm")
+        background_file = os.path.join(wc3_path, "webui", "webms", "mainmenu.webm")
         files_to_delete.append(background_file)
 
         # Add all .blp files from the specified directories
@@ -591,8 +591,8 @@ class WC3UITab(QWidget):
             QMessageBox.critical(self, "FFmpeg Not Found", f"ffmpeg.exe was not found in:\n{os.path.dirname(ffmpeg_path)}\nPlease place it there to use this feature.")
             return False
 
-        output_dir = os.path.join(wc3_path, "UI", "Glues", "MainMenu", "MainMenu3d_exp")
-        output_path = os.path.join(output_dir, "MainMenu3d_exp.webm")
+        output_dir = os.path.join(wc3_path, "webui", "webms")
+        output_path = os.path.join(output_dir, "mainmenu.webm")
         os.makedirs(output_dir, exist_ok=True)
 
         # High-quality VP9 conversion command
