@@ -161,7 +161,7 @@ class WC3UITab(QWidget):
 
             # Create a label for the image in column 1
             image_label = QLabel()
-            theme_folder = f"theme{i}"
+            theme_folder = f"Theme {i}".replace(" ", "").lower()
             image_name = f"theme{i}.png"
             image_path = os.path.join(get_base_path(), "contents", "WC3UI", "UI", theme_folder, image_name)
             if os.path.exists(image_path):
