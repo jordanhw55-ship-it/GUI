@@ -560,8 +560,8 @@ class WC3UITab(QWidget):
         group_layout.addLayout(file_layout)
         
         # Add the group to the main layout
-        layout.addWidget(group)
-        layout.addStretch()
+        layout.addWidget(group, 0, 0)
+        layout.setRowStretch(1, 1) # Use setRowStretch for QGridLayout
 
         # Connect signals
         browse_background_btn.clicked.connect(self.browse_for_background_file)
