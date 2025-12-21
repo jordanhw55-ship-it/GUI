@@ -805,8 +805,9 @@ class SimpleWindow(QMainWindow):
         is_dark = theme.get("is_dark", self.dark_mode)
         checked_fg = "#000000" if not is_dark else "#FFFFFF"
         if self.current_theme_index == -1: checked_fg = self.custom_theme.get("bg", "#121212")
-
+        
         selected_sound = self.lobby_manager.selected_sound
+        self.play_specific_sound(selected_sound) # Play the sound when updating styles
         for sound, btn in self.lobby_manager.lobbies_tab.ping_buttons.items():
             btn.setChecked(sound == selected_sound)
             if sound == selected_sound:

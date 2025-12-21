@@ -161,5 +161,5 @@ class LobbyManager:
 
     def select_ping_sound(self, sound_file: str):
         self.selected_sound = sound_file
-        self.main_window.play_specific_sound(sound_file)
+        # The main window will play the sound and then update the styles.
         self.main_window.update_ping_button_styles()

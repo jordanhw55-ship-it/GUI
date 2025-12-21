@@ -26,7 +26,6 @@ class CharacterLoadManager:
 
         self._connect_signals()
         self.load_tab.load_path_edit.setText(self.character_path)
-        self.load_characters()
 
     def _connect_signals(self):
         """Connects all UI signals for the load tab to the manager's methods."""
