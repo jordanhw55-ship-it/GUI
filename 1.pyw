@@ -805,7 +805,15 @@ class SimpleWindow(QMainWindow):
         is_dark = theme.get("is_dark", self.dark_mode)
         checked_text_color = "#000000" if not is_dark else "#FFFFFF"
         if self.current_theme_index == -1: checked_text_color = self.custom_theme.get("bg", "#121212")
-        default_text_color = self.palette().color(self.foregroundRole()).name()
+        
+        # Define the explicit default style for a deselected button based on your new dark theme
+        default_button_style = """
+            background-color: #4A4D4F;
+            color: #f0f0f0;
+            border: 1px solid #555555;
+            padding: 8px;
+            border-radius: 4px;
+        """
         
         selected_sound = self.lobby_manager.selected_sound
         self.play_specific_sound(selected_sound) # Play the sound when updating styles
@@ -814,7 +822,7 @@ class SimpleWindow(QMainWindow):
             if sound == selected_sound:
                 btn.setStyleSheet(f"background-color: {accent_color}; color: {checked_text_color}; border: 1px solid {accent_color};")
             else:
-                btn.setStyleSheet("") # Revert to the default stylesheet
+                btn.setStyleSheet(default_button_style) # Explicitly set the style for deselected buttons
 
     # Title bar dragging
     def mousePressEvent(self, event: QMouseEvent):
